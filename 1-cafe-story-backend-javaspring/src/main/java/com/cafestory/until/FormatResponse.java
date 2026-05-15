@@ -1,4 +1,4 @@
-package com.cafestory.dto;
+package com.cafestory.until;
 
 import lombok.Data;
 

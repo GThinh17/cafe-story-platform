@@ -1,6 +1,6 @@
 package com.cafestory.config;
 
-import com.cafestory.dto.FormatResponse;
+import com.cafestory.until.FormatResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.core.MethodParameter;
