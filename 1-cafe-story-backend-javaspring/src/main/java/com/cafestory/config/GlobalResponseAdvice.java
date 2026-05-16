@@ -13,6 +13,7 @@ import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpResponse;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
 @RestControllerAdvice
@@ -69,6 +70,18 @@ public class GlobalResponseAdvice implements ResponseBodyAdvice<Object> {
 
     // This handles any uncaught exceptions thrown in your app and formats them as a
     // "Fail" response
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<FormatResponse<Object>> handleResponseStatusException(ResponseStatusException ex) {
+        int statusCode = ex.getStatusCode().value();
+        FormatResponse<Object> errorResponse = new FormatResponse<>(
+                statusCode,
+                "Fail",
+                ex.getReason(),
+                null);
+
+        return new ResponseEntity<>(errorResponse, ex.getStatusCode());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<FormatResponse<Object>> handleAllExceptions(Exception ex) {
         FormatResponse<Object> errorResponse = new FormatResponse<>(
