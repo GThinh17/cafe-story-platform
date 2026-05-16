@@ -1,0 +1,102 @@
+# CafeStory AI Agent Instruction
+
+## 1. Project Overview
+
+CafeStory is a social blogging platform where users can:
+- Create blogs/posts
+- Follow users and pages
+- Like, comment, and share content
+- Create community pages
+- Report inappropriate content
+- Purchase premium subscriptions
+- Receive notifications
+- Interact socially similar to Facebook + Medium
+
+The system supports both normal users and administrators.
+
+---
+
+# 2. Tech Stack
+
+## Backend
+- Java 21
+- Spring Boot 3
+- Spring Security
+- JWT Authentication
+- Maven
+- MapStruct
+- Lombok
+- JPA/Hibernate
+
+## Frontend
+- Next.js
+- TypeScript
+- TailwindCSS
+
+## Database
+- PostgreSQL
+- Supabase PostgreSQL
+
+---
+
+# 3. Architecture
+
+The backend follows layered architecture:
+
+Controller -> Service -> Repository -> Database
+
+DTO and Mapper are required between layers.
+
+Never expose Entity directly to API responses.
+
+---
+
+# 4. Naming Convention
+
+## Entity
+Use singular PascalCase.
+
+Examples:
+- User
+- Blog
+- Page
+- Comment
+- Report
+
+## Table
+Use snake_case.
+
+Examples:
+- users
+- blog
+- page
+- pricing_rule
+
+## DTO
+Suffix:
+- Request
+- Response
+
+Examples:
+- CreateBlogRequest
+- BlogResponse
+
+## Service
+- UserService
+- BlogService
+
+Implementation:
+- UserServiceImpl
+
+---
+
+# 5. Database Rules
+
+## Primary Key
+Use UUID string.
+
+Example:
+```java
+@Id
+@GeneratedValue(strategy = GenerationType.UUID)
+private String id;
