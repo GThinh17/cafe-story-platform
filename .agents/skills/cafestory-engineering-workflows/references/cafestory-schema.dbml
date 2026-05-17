@@ -1,0 +1,412 @@
+Project cafe_story_platform {
+  database_type: "PostgreSQL"
+  Note: "Recommended ERD rewrite from ERD_CT250H.drawio. Focus: clean likes, comments, follows, cafe pages, moderation, reviewer, and payment flows."
+}
+
+Enum user_status {
+  ACTIVE
+  INACTIVE
+  BANNED
+}
+
+Enum page_status {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+}
+
+Enum post_status {
+  DRAFT
+  PUBLISHED
+  HIDDEN
+  REMOVED
+}
+
+Enum report_status {
+  OPEN
+  REVIEWING
+  RESOLVED
+  REJECTED
+}
+
+Enum moderation_decision {
+  SAFE
+  NEEDS_REVIEW
+  VIOLATION
+}
+
+Enum payment_status {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+  REFUNDED
+}
+
+Enum payout_status {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
+
+Table users {
+  id uuid [pk]
+  username varchar(80) [not null, unique]
+  full_name varchar(160) [not null]
+  password_hash varchar(255) [not null]
+  email varchar(160) [not null, unique]
+  phone varchar(30)
+  avatar_url text
+  status user_status [not null, default: "ACTIVE"]
+  created_at datetime [not null]
+  updated_at datetime
+  Note: "Do not store userLike/userFollower as source of truth. Count from like/follow tables or cache asynchronously."
+}
+
+Table roles {
+  id int [pk]
+  name varchar(60) [not null, unique]
+}
+
+Table user_roles {
+  user_id uuid [not null]
+  role_id int [not null]
+  created_at datetime [not null]
+
+  Indexes {
+    (user_id, role_id) [pk]
+  }
+}
+
+Table regions {
+  id uuid [pk]
+  name varchar(120) [not null]
+  latitude decimal(10, 7)
+  longitude decimal(10, 7)
+  created_at datetime [not null]
+}
+
+Table cafe_pages {
+  id uuid [pk]
+  owner_user_id uuid [not null]
+  region_id uuid
+  name varchar(160) [not null]
+  address text [not null]
+  description text
+  avatar_url text
+  cover_url text
+  status page_status [not null, default: "DRAFT"]
+  created_at datetime [not null]
+  updated_at datetime
+  Note: "This replaces Page + Page_detail for the common case. Add page_members when one cafe page has multiple staff/admin users."
+}
+
+Table page_members {
+  page_id uuid [not null]
+  user_id uuid [not null]
+  role_name varchar(40) [not null, default: "OWNER"]
+  created_at datetime [not null]
+
+  Indexes {
+    (page_id, user_id) [pk]
+  }
+}
+
+Table blogs {
+  id uuid [pk]
+  author_user_id uuid [not null]
+  page_id uuid
+  content text [not null]
+  image_url text
+  status post_status [not null, default: "PUBLISHED"]
+  created_at datetime [not null]
+  updated_at datetime
+  Note: "If page_id is set, the post belongs to a cafe page but still has a real user author."
+}
+
+Table comments {
+  id uuid [pk]
+  blog_id uuid [not null]
+  user_id uuid [not null]
+  parent_comment_id uuid
+  content text [not null]
+  status post_status [not null, default: "PUBLISHED"]
+  created_at datetime [not null]
+  updated_at datetime
+  Note: "This replaces Comment + detail_comment. parent_comment_id supports replies."
+}
+
+Table blog_likes {
+  user_id uuid [not null]
+  blog_id uuid [not null]
+  created_at datetime [not null]
+
+  Indexes {
+    (user_id, blog_id) [pk]
+    (blog_id)
+  }
+}
+
+Table comment_likes {
+  user_id uuid [not null]
+  comment_id uuid [not null]
+  created_at datetime [not null]
+
+  Indexes {
+    (user_id, comment_id) [pk]
+    (comment_id)
+  }
+}
+
+Table page_likes {
+  user_id uuid [not null]
+  page_id uuid [not null]
+  created_at datetime [not null]
+
+  Indexes {
+    (user_id, page_id) [pk]
+    (page_id)
+  }
+}
+
+Table user_follows {
+  follower_user_id uuid [not null]
+  following_user_id uuid [not null]
+  created_at datetime [not null]
+
+  Indexes {
+    (follower_user_id, following_user_id) [pk]
+    (following_user_id)
+  }
+
+  Note: "Add an application/database check: follower_user_id <> following_user_id."
+}
+
+Table page_follows {
+  user_id uuid [not null]
+  page_id uuid [not null]
+  created_at datetime [not null]
+
+  Indexes {
+    (user_id, page_id) [pk]
+    (page_id)
+  }
+}
+
+Table shares {
+  id uuid [pk]
+  blog_id uuid [not null]
+  user_id uuid [not null]
+  created_at datetime [not null]
+
+  Indexes {
+    (blog_id)
+    (user_id)
+  }
+}
+
+Table conversations {
+  id uuid [pk]
+  created_at datetime [not null]
+  updated_at datetime
+}
+
+Table conversation_participants {
+  conversation_id uuid [not null]
+  user_id uuid [not null]
+  joined_at datetime [not null]
+
+  Indexes {
+    (conversation_id, user_id) [pk]
+  }
+}
+
+Table messages {
+  id uuid [pk]
+  conversation_id uuid [not null]
+  sender_user_id uuid [not null]
+  content text [not null]
+  created_at datetime [not null]
+  deleted_at datetime
+}
+
+Table notifications {
+  id uuid [pk]
+  type varchar(80) [not null]
+  content text [not null]
+  actor_user_id uuid
+  target_type varchar(60)
+  target_id uuid
+  created_at datetime [not null]
+}
+
+Table notification_recipients {
+  notification_id uuid [not null]
+  user_id uuid [not null]
+
+  Indexes {
+    (notification_id, user_id) [pk]
+  }
+}
+
+Table ai_moderation_results {
+  id uuid [pk]
+  blog_id uuid
+  comment_id uuid
+  score decimal(5, 4) [not null]
+  decision moderation_decision [not null]
+  labels text
+  explanation text
+  model_name varchar(120)
+  created_at datetime [not null]
+}
+
+Table reviewer_profiles {
+  id uuid [pk]
+  user_id uuid [not null, unique]
+  display_name varchar(160) [not null]
+  total_score int [not null, default: 0]
+  created_at datetime [not null]
+  updated_at datetime
+}
+
+Table reviewer_scores {
+  id uuid [pk]
+  reviewer_id uuid [not null]
+  source_blog_id uuid
+  points int [not null]
+  reason varchar(160)
+  created_at datetime [not null]
+}
+
+Table reviewer_badges {
+  id uuid [pk]
+  name varchar(120) [not null, unique]
+  badge_type varchar(80) [not null]
+  status boolean [not null, default: true]
+  created_at datetime [not null]
+  updated_at datetime
+}
+
+Table reviewer_badge_awards {
+  reviewer_id uuid [not null]
+  badge_id uuid [not null]
+  page_id uuid
+  region_id uuid
+  awarded_at datetime [not null]
+
+  Indexes {
+    (reviewer_id, badge_id, page_id, region_id) [pk]
+  }
+}
+
+Table payment_methods {
+  id int [pk]
+  name varchar(80) [not null, unique]
+  status boolean [not null, default: true]
+  created_at datetime [not null]
+}
+
+Table payments {
+  id uuid [pk]
+  user_id uuid [not null]
+  page_id uuid
+  payment_method_id int [not null]
+  amount decimal(12, 2) [not null]
+  status payment_status [not null, default: "PENDING"]
+  expired_at datetime
+  paid_at datetime
+  created_at datetime [not null]
+}
+
+Table extra_fees {
+  id uuid [pk]
+  payment_id uuid [not null]
+  description varchar(255) [not null]
+  amount decimal(12, 2) [not null]
+  created_at datetime [not null]
+}
+
+Table payouts {
+  id uuid [pk]
+  reviewer_id uuid [not null]
+  payment_method_id int [not null]
+  amount decimal(12, 2) [not null]
+  status payout_status [not null, default: "PENDING"]
+  created_at datetime [not null]
+  paid_at datetime
+}
+
+Table content_reports {
+  id uuid [pk]
+  reporter_user_id uuid [not null]
+  blog_id uuid
+  comment_id uuid
+  reason varchar(160) [not null]
+  description text
+  status report_status [not null, default: "OPEN"]
+  created_at datetime [not null]
+  resolved_at datetime
+
+  Note: "Use either blog_id or comment_id depending on what is reported."
+}
+
+Ref: user_roles.user_id > users.id
+Ref: user_roles.role_id > roles.id
+
+Ref: cafe_pages.owner_user_id > users.id
+Ref: cafe_pages.region_id > regions.id
+Ref: page_members.page_id > cafe_pages.id
+Ref: page_members.user_id > users.id
+
+Ref: blogs.author_user_id > users.id
+Ref: blogs.page_id > cafe_pages.id
+Ref: comments.blog_id > blogs.id
+Ref: comments.user_id > users.id
+Ref: comments.parent_comment_id > comments.id
+
+Ref: blog_likes.user_id > users.id
+Ref: blog_likes.blog_id > blogs.id
+Ref: comment_likes.user_id > users.id
+Ref: comment_likes.comment_id > comments.id
+Ref: page_likes.user_id > users.id
+Ref: page_likes.page_id > cafe_pages.id
+
+Ref: user_follows.follower_user_id > users.id
+Ref: user_follows.following_user_id > users.id
+Ref: page_follows.user_id > users.id
+Ref: page_follows.page_id > cafe_pages.id
+
+Ref: shares.blog_id > blogs.id
+Ref: shares.user_id > users.id
+
+Ref: conversation_participants.conversation_id > conversations.id
+Ref: conversation_participants.user_id > users.id
+Ref: messages.conversation_id > conversations.id
+Ref: messages.sender_user_id > users.id
+
+Ref: notifications.actor_user_id > users.id
+Ref: notification_recipients.notification_id > notifications.id
+Ref: notification_recipients.user_id > users.id
+
+Ref: reviewer_profiles.user_id > users.id
+Ref: reviewer_scores.reviewer_id > reviewer_profiles.id
+Ref: reviewer_scores.source_blog_id > blogs.id
+Ref: reviewer_badge_awards.reviewer_id > reviewer_profiles.id
+Ref: reviewer_badge_awards.badge_id > reviewer_badges.id
+Ref: reviewer_badge_awards.page_id > cafe_pages.id
+Ref: reviewer_badge_awards.region_id > regions.id
+
+Ref: payments.payment_method_id > payment_methods.id
+Ref: payments.user_id > users.id
+Ref: payments.page_id > cafe_pages.id
+Ref: extra_fees.payment_id > payments.id
+Ref: payouts.reviewer_id > reviewer_profiles.id
+Ref: payouts.payment_method_id > payment_methods.id
+
+Ref: content_reports.reporter_user_id > users.id
+Ref: content_reports.blog_id > blogs.id
+Ref: content_reports.comment_id > comments.id
+Ref: ai_moderation_results.blog_id > blogs.id
+Ref: ai_moderation_results.comment_id > comments.id

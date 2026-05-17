@@ -96,3 +96,8 @@ Generated plans and summaries should include:
 - Business assumptions.
 - Validation commands.
 - Risks or TODOs that remain.
+
+## Database Context
+
+Use `db-context.md` for table ownership, source-of-truth rules, and relationship guidance.
+Use `cafestory-schema.dbml` when exact columns, enums, indexes, or foreign keys are needed.

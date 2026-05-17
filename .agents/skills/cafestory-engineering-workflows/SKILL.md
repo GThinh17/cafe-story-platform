@@ -19,6 +19,7 @@ Argument hint: provide the requested feature/fix, target app if known (`backend`
    - Inspect existing code patterns before adding new abstractions.
 2. Classify the request.
    - Backend API/domain work: read `references/backend-workflow.md`.
+   - Database, entity, migration, relationship, or repository work: read `references/db-context.md`.
    - Next.js web work: read `references/web-workflow.md`.
    - Mobile work: read `references/mobile-workflow.md`.
    - Cross-app or planning work: read `references/project-conventions.md` and the relevant workflow files.
@@ -72,6 +73,7 @@ Argument hint: provide the requested feature/fix, target app if known (`backend`
 ## Project Conventions
 
 Read `references/project-conventions.md` when a task needs business context, stack details, naming rules, or architecture constraints.
+Read `references/db-context.md` when a task needs database tables, relationships, enum values, or source-of-truth rules.
 
 Essential conventions:
 - Backend stack: Java 21, Spring Boot 3, Spring Security, JWT, Maven, MapStruct, Lombok, JPA/Hibernate.
@@ -83,6 +85,7 @@ Essential conventions:
 - API responses must not expose Entity classes directly.
 - Entity names use singular PascalCase; table names use snake_case.
 - DTOs end with `Request` or `Response`; implementations end with `Impl`.
+- Database schema source of truth lives in `references/cafestory-schema.dbml`.
 
 ## Orchestration Guidance
 
