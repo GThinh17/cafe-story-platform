@@ -1,0 +1,357 @@
+package com.cafestory.service;
+
+import com.cafestory.dto.requestDTO.BlogCreateDTO;
+import com.cafestory.dto.requestDTO.BlogUpdateDTO;
+import com.cafestory.dto.responseDTO.BlogResponseDTO;
+import com.cafestory.entity.Blog;
+import com.cafestory.entity.User;
+import com.cafestory.entity.enums.PostStatus;
+import com.cafestory.mapper.BlogMapper;
+import com.cafestory.repository.BlogRepository;
+import com.cafestory.service.serviceImplement.BlogServiceImpl;
+import com.cafestory.validation.BlogValidator;
+import com.cafestory.validation.UserValidator;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class BlogServiceImplTest {
+
+    @Mock
+    private BlogRepository blogRepository;
+
+    @Mock
+    private BlogMapper blogMapper;
+
+    @Mock
+    private BlogValidator blogValidator;
+
+    @Mock
+    private UserValidator userValidator;
+
+    @InjectMocks
+    private BlogServiceImpl blogService;
+
+    @Test
+    void createBlog_success_TC001() {
+        BlogCreateDTO request = createBlogRequest();
+        User author = user(request.getAuthorUserId());
+        Blog blog = blog();
+        Blog savedBlog = blog();
+        BlogResponseDTO response = blogResponse(savedBlog.getId(), request.getAuthorUserId());
+
+        when(userValidator.validateUserExists(request.getAuthorUserId())).thenReturn(author);
+        when(blogMapper.toBlog(request)).thenReturn(blog);
+        when(blogRepository.save(blog)).thenReturn(savedBlog);
+        when(blogMapper.toBlogResponseDTO(savedBlog)).thenReturn(response);
+
+        BlogResponseDTO result = blogService.createBlog(request);
+
+        assertThat(result).isEqualTo(response);
+        assertThat(blog.getAuthor()).isEqualTo(author);
+        assertThat(blog.getIsPinned()).isTrue();
+        assertThat(blog.getAllowComment()).isFalse();
+        verify(blogRepository).save(blog);
+    }
+
+    @Test
+    void createBlog_success_defaultBooleanFields_TC002() {
+        BlogCreateDTO request = createBlogRequest();
+        request.setIsPinned(null);
+        request.setAllowComment(null);
+        User author = user(request.getAuthorUserId());
+        Blog blog = blog();
+        blog.setIsPinned(false);
+        blog.setAllowComment(true);
+        BlogResponseDTO response = blogResponse(blog.getId(), request.getAuthorUserId());
+
+        when(userValidator.validateUserExists(request.getAuthorUserId())).thenReturn(author);
+        when(blogMapper.toBlog(request)).thenReturn(blog);
+        when(blogRepository.save(blog)).thenReturn(blog);
+        when(blogMapper.toBlogResponseDTO(blog)).thenReturn(response);
+
+        BlogResponseDTO result = blogService.createBlog(request);
+
+        assertThat(result).isEqualTo(response);
+        assertThat(blog.getIsPinned()).isFalse();
+        assertThat(blog.getAllowComment()).isTrue();
+    }
+
+    @Test
+    void createBlog_fail_authorNotFound_TC003() {
+        BlogCreateDTO request = createBlogRequest();
+
+        when(userValidator.validateUserExists(request.getAuthorUserId()))
+                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        assertThatThrownBy(() -> blogService.createBlog(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.NOT_FOUND));
+
+        verify(blogRepository, never()).save(any(Blog.class));
+    }
+
+    @Test
+    void getAllBlogs_success_TC004() {
+        Blog blog = blog();
+        BlogResponseDTO response = blogResponse(blog.getId(), UUID.randomUUID());
+
+        when(blogRepository.findAll()).thenReturn(List.of(blog));
+        when(blogMapper.toBlogResponseDTO(blog)).thenReturn(response);
+
+        List<BlogResponseDTO> result = blogService.getAllBlogs();
+
+        assertThat(result).containsExactly(response);
+    }
+
+    @Test
+    void getBlogsByAuthorId_success_TC005() {
+        UUID userId = UUID.randomUUID();
+        Blog blog = blog();
+        BlogResponseDTO response = blogResponse(blog.getId(), userId);
+
+        when(blogRepository.findByAuthorUserId(userId)).thenReturn(List.of(blog));
+        when(blogMapper.toBlogResponseDTO(blog)).thenReturn(response);
+
+        List<BlogResponseDTO> result = blogService.getBlogsByAuthorId(userId);
+
+        assertThat(result).containsExactly(response);
+        verify(userValidator).validateUserExists(userId);
+    }
+
+    @Test
+    void getAllBlogsByUserId_success_TC006() {
+        UUID userId = UUID.randomUUID();
+        Blog blog = blog();
+        BlogResponseDTO response = blogResponse(blog.getId(), userId);
+
+        when(blogRepository.findByAuthorUserId(userId)).thenReturn(List.of(blog));
+        when(blogMapper.toBlogResponseDTO(blog)).thenReturn(response);
+
+        List<BlogResponseDTO> result = blogService.getAllBlogsByUserId(userId);
+
+        assertThat(result).containsExactly(response);
+        verify(blogRepository).findByAuthorUserId(userId);
+    }
+
+    @Test
+    void getAllBlogsByUserId_fail_nullUserId_TC007() {
+        when(userValidator.validateUserExists(null))
+                .thenThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "User id is required"));
+
+        assertThatThrownBy(() -> blogService.getAllBlogsByUserId(null))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST))
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getReason())
+                        .isEqualTo("User id is required"));
+
+        verify(blogRepository, never()).findByAuthorUserId(null);
+    }
+
+    @Test
+    void getAllBlogsByUserId_fail_userNotFound_TC008() {
+        UUID userId = UUID.randomUUID();
+
+        when(userValidator.validateUserExists(userId))
+                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        assertThatThrownBy(() -> blogService.getAllBlogsByUserId(userId))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.NOT_FOUND))
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getReason())
+                        .isEqualTo("User not found"));
+
+        verify(blogRepository, never()).findByAuthorUserId(userId);
+    }
+
+    @Test
+    void getBlogById_success_TC009() {
+        UUID blogId = UUID.randomUUID();
+        Blog blog = blog();
+        BlogResponseDTO response = blogResponse(blogId, UUID.randomUUID());
+
+        when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
+        when(blogMapper.toBlogResponseDTO(blog)).thenReturn(response);
+
+        BlogResponseDTO result = blogService.getBlogById(blogId);
+
+        assertThat(result).isEqualTo(response);
+    }
+
+    @Test
+    void getBlogById_fail_blogNotFound_TC010() {
+        UUID blogId = UUID.randomUUID();
+
+        when(blogValidator.validateBlogExists(blogId))
+                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog not found"));
+
+        assertThatThrownBy(() -> blogService.getBlogById(blogId))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.NOT_FOUND));
+    }
+
+    @Test
+    void updateBlog_success_updateAllFields_TC011() {
+        UUID blogId = UUID.randomUUID();
+        BlogUpdateDTO request = updateBlogRequest();
+        Blog blog = blog();
+        BlogResponseDTO response = blogResponse(blogId, UUID.randomUUID());
+
+        when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
+        when(blogRepository.save(blog)).thenReturn(blog);
+        when(blogMapper.toBlogResponseDTO(blog)).thenReturn(response);
+
+        BlogResponseDTO result = blogService.updateBlog(blogId, request);
+
+        assertThat(result).isEqualTo(response);
+        assertThat(blog.getPageId()).isEqualTo(request.getPageId());
+        assertThat(blog.getRegionId()).isEqualTo(request.getRegionId());
+        assertThat(blog.getContent()).isEqualTo("Updated blog content");
+        assertThat(blog.getImageUrls()).containsExactly("https://example.com/updated-1.png");
+        assertThat(blog.getStatus()).isEqualTo(PostStatus.HIDDEN);
+        assertThat(blog.getIsPinned()).isTrue();
+        assertThat(blog.getAllowComment()).isFalse();
+        verify(blogRepository).save(blog);
+    }
+
+    @Test
+    void updateBlog_success_nullFields_TC012() {
+        UUID blogId = UUID.randomUUID();
+        BlogUpdateDTO request = new BlogUpdateDTO();
+        Blog blog = blog();
+        BlogResponseDTO response = blogResponse(blogId, UUID.randomUUID());
+
+        when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
+        when(blogRepository.save(blog)).thenReturn(blog);
+        when(blogMapper.toBlogResponseDTO(blog)).thenReturn(response);
+
+        BlogResponseDTO result = blogService.updateBlog(blogId, request);
+
+        assertThat(result).isEqualTo(response);
+        verify(blogRepository).save(blog);
+    }
+
+    @Test
+    void updateBlog_fail_blogNotFound_TC013() {
+        UUID blogId = UUID.randomUUID();
+        BlogUpdateDTO request = updateBlogRequest();
+
+        when(blogValidator.validateBlogExists(blogId))
+                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog not found"));
+
+        assertThatThrownBy(() -> blogService.updateBlog(blogId, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.NOT_FOUND));
+
+        verify(blogRepository, never()).save(any(Blog.class));
+    }
+
+    @Test
+    void deleteBlog_success_TC014() {
+        UUID blogId = UUID.randomUUID();
+        Blog blog = blog();
+
+        when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
+
+        blogService.deleteBlog(blogId);
+
+        verify(blogRepository).delete(blog);
+    }
+
+    @Test
+    void deleteBlog_fail_blogNotFound_TC015() {
+        UUID blogId = UUID.randomUUID();
+
+        when(blogValidator.validateBlogExists(blogId))
+                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog not found"));
+
+        assertThatThrownBy(() -> blogService.deleteBlog(blogId))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.NOT_FOUND));
+
+        verify(blogRepository, never()).delete(any(Blog.class));
+    }
+
+    private BlogCreateDTO createBlogRequest() {
+        BlogCreateDTO request = new BlogCreateDTO();
+        request.setAuthorUserId(UUID.randomUUID());
+        request.setPageId(UUID.randomUUID());
+        request.setRegionId(UUID.randomUUID());
+        request.setContent("Cafe review content");
+        request.setImageUrls(List.of("https://example.com/blog-1.png"));
+        request.setIsPinned(true);
+        request.setAllowComment(false);
+        return request;
+    }
+
+    private BlogUpdateDTO updateBlogRequest() {
+        BlogUpdateDTO request = new BlogUpdateDTO();
+        request.setPageId(UUID.randomUUID());
+        request.setRegionId(UUID.randomUUID());
+        request.setContent("Updated blog content");
+        request.setImageUrls(List.of("https://example.com/updated-1.png"));
+        request.setStatus(PostStatus.HIDDEN);
+        request.setIsPinned(true);
+        request.setAllowComment(false);
+        return request;
+    }
+
+    private Blog blog() {
+        Blog blog = new Blog();
+        blog.setId(UUID.randomUUID());
+        blog.setPageId(UUID.randomUUID());
+        blog.setRegionId(UUID.randomUUID());
+        blog.setContent("Cafe review content");
+        blog.setImageUrls(List.of("https://example.com/blog-1.png"));
+        blog.setStatus(PostStatus.PUBLISHED);
+        blog.setIsPinned(false);
+        blog.setAllowComment(true);
+        return blog;
+    }
+
+    private User user(UUID userId) {
+        User user = new User();
+        user.setUserId(userId);
+        user.setUserName("luan123");
+        user.setUserFullName("Nguyen Van Luan");
+        user.setUserPassword("123456");
+        user.setUserEmail("luan123@example.com");
+        user.setAccountStatus(true);
+        return user;
+    }
+
+    private BlogResponseDTO blogResponse(UUID blogId, UUID authorUserId) {
+        BlogResponseDTO response = new BlogResponseDTO();
+        response.setId(blogId);
+        response.setAuthorUserId(authorUserId);
+        response.setPageId(UUID.randomUUID());
+        response.setRegionId(UUID.randomUUID());
+        response.setContent("Cafe review content");
+        response.setImageUrls(List.of("https://example.com/blog-1.png"));
+        response.setStatus(PostStatus.PUBLISHED);
+        response.setIsPinned(false);
+        response.setAllowComment(true);
+        return response;
+    }
+}
