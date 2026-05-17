@@ -3,21 +3,25 @@ package com.cafestory.config;
 import com.cafestory.until.FormatResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpResponse;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 
-import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalResponseAdvice implements ResponseBodyAdvice<Object> {
@@ -86,10 +90,9 @@ public class GlobalResponseAdvice implements ResponseBodyAdvice<Object> {
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<FormatResponse<Object>> handleMethodArgumentTypeMismatch(
-            MethodArgumentTypeMismatchException ex) {
+    public ResponseEntity<FormatResponse<Object>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         String message = "Invalid request parameter: " + ex.getName();
-        if (UUID.class.equals(ex.getRequiredType())) {
+        if (ex.getRequiredType() != null && ex.getRequiredType().getSimpleName().equals("UUID")) {
             message = ex.getName() + " must be a valid UUID";
         }
 
@@ -97,6 +100,45 @@ public class GlobalResponseAdvice implements ResponseBodyAdvice<Object> {
                 HttpStatus.BAD_REQUEST.value(),
                 "Fail",
                 message,
+                null);
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<FormatResponse<Object>> handleValidationException(MethodArgumentNotValidException ex) {
+        String message = ex.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(this::formatFieldError)
+                .collect(Collectors.joining("; "));
+
+        FormatResponse<Object> errorResponse = new FormatResponse<>(
+                HttpStatus.BAD_REQUEST.value(),
+                "Fail",
+                message,
+                null);
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<FormatResponse<Object>> handleUnreadableMessage(HttpMessageNotReadableException ex) {
+        FormatResponse<Object> errorResponse = new FormatResponse<>(
+                HttpStatus.BAD_REQUEST.value(),
+                "Fail",
+                "Request body is invalid or contains invalid field format",
+                null);
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<FormatResponse<Object>> handleConstraintViolation(ConstraintViolationException ex) {
+        FormatResponse<Object> errorResponse = new FormatResponse<>(
+                HttpStatus.BAD_REQUEST.value(),
+                "Fail",
+                ex.getMessage(),
                 null);
 
         return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
@@ -111,5 +153,13 @@ public class GlobalResponseAdvice implements ResponseBodyAdvice<Object> {
                 null);
 
         return new ResponseEntity<>(errorResponse, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    private String formatFieldError(FieldError fieldError) {
+        String message = fieldError.getDefaultMessage();
+        if (message == null || message.isBlank()) {
+            message = "Invalid value";
+        }
+        return fieldError.getField() + ": " + message;
     }
 }
