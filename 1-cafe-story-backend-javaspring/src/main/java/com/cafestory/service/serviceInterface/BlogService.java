@@ -14,6 +14,8 @@ public interface BlogService {
 
     List<BlogResponseDTO> getBlogsByAuthorId(UUID authorUserId);
 
+    List<BlogResponseDTO> getAllBlogsByUserId(UUID userId);
+
     BlogResponseDTO getBlogById(UUID blogId);
 
     BlogResponseDTO updateBlog(UUID blogId, BlogUpdateDTO blogUpdateDTO);

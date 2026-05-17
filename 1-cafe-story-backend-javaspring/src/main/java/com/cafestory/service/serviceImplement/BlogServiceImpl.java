@@ -7,13 +7,11 @@ import com.cafestory.entity.Blog;
 import com.cafestory.entity.User;
 import com.cafestory.mapper.BlogMapper;
 import com.cafestory.repository.BlogRepository;
-import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.BlogService;
 import com.cafestory.validation.BlogValidator;
-import org.springframework.http.HttpStatus;
+import com.cafestory.validation.UserValidator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
@@ -22,25 +20,25 @@ import java.util.UUID;
 public class BlogServiceImpl implements BlogService {
 
     private final BlogRepository blogRepository;
-    private final UserRepository userRepository;
     private final BlogMapper blogMapper;
     private final BlogValidator blogValidator;
+    private final UserValidator userValidator;
 
     public BlogServiceImpl(
             BlogRepository blogRepository,
-            UserRepository userRepository,
             BlogMapper blogMapper,
-            BlogValidator blogValidator) {
+            BlogValidator blogValidator,
+            UserValidator userValidator) {
         this.blogRepository = blogRepository;
-        this.userRepository = userRepository;
         this.blogMapper = blogMapper;
         this.blogValidator = blogValidator;
+        this.userValidator = userValidator;
     }
 
     @Override
     @Transactional
     public BlogResponseDTO createBlog(BlogCreateDTO blogCreateDTO) {
-        User author = findUserById(blogCreateDTO.getAuthorUserId());
+        User author = userValidator.validateUserExists(blogCreateDTO.getAuthorUserId());
 
         Blog blog = blogMapper.toBlog(blogCreateDTO);
         blog.setAuthor(author);
@@ -67,7 +65,14 @@ public class BlogServiceImpl implements BlogService {
     @Override
     @Transactional(readOnly = true)
     public List<BlogResponseDTO> getBlogsByAuthorId(UUID authorUserId) {
-        return blogRepository.findByAuthorUserId(authorUserId)
+        return getAllBlogsByUserId(authorUserId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BlogResponseDTO> getAllBlogsByUserId(UUID userId) {
+        userValidator.validateUserExists(userId);
+        return blogRepository.findByAuthorUserId(userId)
                 .stream()
                 .map(blogMapper::toBlogResponseDTO)
                 .toList();
@@ -115,10 +120,5 @@ public class BlogServiceImpl implements BlogService {
     public void deleteBlog(UUID blogId) {
         Blog blog = blogValidator.validateBlogExists(blogId);
         blogRepository.delete(blog);
-    }
-
-    private User findUserById(UUID userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Author user not found"));
     }
 }

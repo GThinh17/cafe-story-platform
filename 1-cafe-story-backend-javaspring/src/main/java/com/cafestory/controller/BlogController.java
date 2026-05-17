@@ -39,9 +39,14 @@ public class BlogController {
     @GetMapping
     public List<BlogResponseDTO> getBlogs(@RequestParam(required = false) UUID authorUserId) {
         if (authorUserId != null) {
-            return blogService.getBlogsByAuthorId(authorUserId);
+            return blogService.getAllBlogsByUserId(authorUserId);
         }
         return blogService.getAllBlogs();
+    }
+
+    @GetMapping("/users/{userId}")
+    public List<BlogResponseDTO> getAllBlogsByUserId(@PathVariable UUID userId) {
+        return blogService.getAllBlogsByUserId(userId);
     }
 
     @GetMapping("/{blogId}")
