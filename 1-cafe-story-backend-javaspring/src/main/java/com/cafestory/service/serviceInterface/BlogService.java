@@ -1,0 +1,22 @@
+package com.cafestory.service.serviceInterface;
+
+import com.cafestory.dto.requestDTO.BlogCreateDTO;
+import com.cafestory.dto.requestDTO.BlogUpdateDTO;
+import com.cafestory.dto.responseDTO.BlogResponseDTO;
+
+import java.util.List;
+import java.util.UUID;
+
+public interface BlogService {
+    BlogResponseDTO createBlog(BlogCreateDTO blogCreateDTO);
+
+    List<BlogResponseDTO> getAllBlogs();
+
+    List<BlogResponseDTO> getBlogsByAuthorId(UUID authorUserId);
+
+    BlogResponseDTO getBlogById(UUID blogId);
+
+    BlogResponseDTO updateBlog(UUID blogId, BlogUpdateDTO blogUpdateDTO);
+
+    void deleteBlog(UUID blogId);
+}
