@@ -13,8 +13,11 @@ import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpResponse;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
+
+import java.util.UUID;
 
 @RestControllerAdvice
 public class GlobalResponseAdvice implements ResponseBodyAdvice<Object> {
@@ -80,6 +83,23 @@ public class GlobalResponseAdvice implements ResponseBodyAdvice<Object> {
                 null);
 
         return new ResponseEntity<>(errorResponse, ex.getStatusCode());
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<FormatResponse<Object>> handleMethodArgumentTypeMismatch(
+            MethodArgumentTypeMismatchException ex) {
+        String message = "Invalid request parameter: " + ex.getName();
+        if (UUID.class.equals(ex.getRequiredType())) {
+            message = ex.getName() + " must be a valid UUID";
+        }
+
+        FormatResponse<Object> errorResponse = new FormatResponse<>(
+                HttpStatus.BAD_REQUEST.value(),
+                "Fail",
+                message,
+                null);
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(Exception.class)

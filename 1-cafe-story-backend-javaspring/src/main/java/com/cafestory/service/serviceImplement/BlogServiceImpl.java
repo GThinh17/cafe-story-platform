@@ -9,6 +9,7 @@ import com.cafestory.mapper.BlogMapper;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.BlogService;
+import com.cafestory.validation.BlogValidator;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,11 +24,17 @@ public class BlogServiceImpl implements BlogService {
     private final BlogRepository blogRepository;
     private final UserRepository userRepository;
     private final BlogMapper blogMapper;
+    private final BlogValidator blogValidator;
 
-    public BlogServiceImpl(BlogRepository blogRepository, UserRepository userRepository, BlogMapper blogMapper) {
+    public BlogServiceImpl(
+            BlogRepository blogRepository,
+            UserRepository userRepository,
+            BlogMapper blogMapper,
+            BlogValidator blogValidator) {
         this.blogRepository = blogRepository;
         this.userRepository = userRepository;
         this.blogMapper = blogMapper;
+        this.blogValidator = blogValidator;
     }
 
     @Override
@@ -69,13 +76,13 @@ public class BlogServiceImpl implements BlogService {
     @Override
     @Transactional(readOnly = true)
     public BlogResponseDTO getBlogById(UUID blogId) {
-        return blogMapper.toBlogResponseDTO(findBlogById(blogId));
+        return blogMapper.toBlogResponseDTO(blogValidator.validateBlogExists(blogId));
     }
 
     @Override
     @Transactional
     public BlogResponseDTO updateBlog(UUID blogId, BlogUpdateDTO blogUpdateDTO) {
-        Blog blog = findBlogById(blogId);
+        Blog blog = blogValidator.validateBlogExists(blogId);
 
         if (blogUpdateDTO.getPageId() != null) {
             blog.setPageId(blogUpdateDTO.getPageId());
@@ -106,13 +113,8 @@ public class BlogServiceImpl implements BlogService {
     @Override
     @Transactional
     public void deleteBlog(UUID blogId) {
-        Blog blog = findBlogById(blogId);
+        Blog blog = blogValidator.validateBlogExists(blogId);
         blogRepository.delete(blog);
-    }
-
-    private Blog findBlogById(UUID blogId) {
-        return blogRepository.findById(blogId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog not found"));
     }
 
     private User findUserById(UUID userId) {
