@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-CafestoryApplication<cafestory>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.cafestory.CafestoryApplication",
+            "projectName": "cafestory",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
