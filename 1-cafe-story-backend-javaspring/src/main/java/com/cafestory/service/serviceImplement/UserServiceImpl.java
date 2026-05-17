@@ -7,6 +7,7 @@ import com.cafestory.entity.User;
 import com.cafestory.mapper.UserMapper;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.UserService;
+import com.cafestory.validation.UserValidator;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,10 +21,12 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
+    private final UserValidator userValidator;
 
-    public UserServiceImpl(UserRepository userRepository, UserMapper userMapper) {
+    public UserServiceImpl(UserRepository userRepository, UserMapper userMapper, UserValidator userValidator) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
+        this.userValidator = userValidator;
     }
 
     @Override
@@ -50,13 +53,13 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public UserResponseDTO getUserById(UUID userId) {
-        return userMapper.toUserResponseDTO(findUserById(userId));
+        return userMapper.toUserResponseDTO(userValidator.validateUserExists(userId));
     }
 
     @Override
     @Transactional
     public UserResponseDTO updateUser(UUID userId, UserUpdateDTO userUpdateDTO) {
-        User user = findUserById(userId);
+        User user = userValidator.validateUserExists(userId);
 
         if (userUpdateDTO.getUserName() != null) {
             validateUniqueUserName(userUpdateDTO.getUserName(), userId);
@@ -89,13 +92,8 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void deleteUser(UUID userId) {
-        User user = findUserById(userId);
+        User user = userValidator.validateUserExists(userId);
         userRepository.delete(user);
-    }
-
-    private User findUserById(UUID userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
     private void validateUniqueUserName(String userName, UUID currentUserId) {

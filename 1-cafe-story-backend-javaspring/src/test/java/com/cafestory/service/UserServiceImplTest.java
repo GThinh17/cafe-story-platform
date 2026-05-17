@@ -7,6 +7,7 @@ import com.cafestory.entity.User;
 import com.cafestory.mapper.UserMapper;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceImplement.UserServiceImpl;
+import com.cafestory.validation.UserValidator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,6 +35,9 @@ class UserServiceImplTest {
 
     @Mock
     private UserMapper userMapper;
+
+    @Mock
+    private UserValidator userValidator;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -106,7 +110,7 @@ class UserServiceImplTest {
         User user = user();
         UserResponseDTO response = userResponse(user.getUserId());
 
-        when(userRepository.findById(user.getUserId())).thenReturn(Optional.of(user));
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
         when(userMapper.toUserResponseDTO(user)).thenReturn(response);
 
         UserResponseDTO result = userService.getUserById(user.getUserId());
@@ -118,7 +122,8 @@ class UserServiceImplTest {
     void getUserById_fail_notFound_TC006() {
         UUID userId = UUID.randomUUID();
 
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        when(userValidator.validateUserExists(userId))
+                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         assertThatThrownBy(() -> userService.getUserById(userId))
                 .isInstanceOf(ResponseStatusException.class)
@@ -138,7 +143,7 @@ class UserServiceImplTest {
         response.setUserAvatar(request.getUserAvatar());
         response.setAccountStatus(request.getAccountStatus());
 
-        when(userRepository.findById(user.getUserId())).thenReturn(Optional.of(user));
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
         when(userRepository.findByUserName(request.getUserName())).thenReturn(Optional.empty());
         when(userRepository.findByUserEmail(request.getUserEmail())).thenReturn(Optional.empty());
         when(userRepository.save(user)).thenReturn(user);
@@ -164,7 +169,7 @@ class UserServiceImplTest {
         request.setUserEmail(user.getUserEmail());
         UserResponseDTO response = userResponse(user.getUserId());
 
-        when(userRepository.findById(user.getUserId())).thenReturn(Optional.of(user));
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
         when(userRepository.findByUserName(request.getUserName())).thenReturn(Optional.of(user));
         when(userRepository.findByUserEmail(request.getUserEmail())).thenReturn(Optional.of(user));
         when(userRepository.save(user)).thenReturn(user);
@@ -182,7 +187,7 @@ class UserServiceImplTest {
         UserUpdateDTO request = new UserUpdateDTO();
         UserResponseDTO response = userResponse(user.getUserId());
 
-        when(userRepository.findById(user.getUserId())).thenReturn(Optional.of(user));
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
         when(userRepository.save(user)).thenReturn(user);
         when(userMapper.toUserResponseDTO(user)).thenReturn(response);
 
@@ -197,7 +202,8 @@ class UserServiceImplTest {
         UUID userId = UUID.randomUUID();
         UserUpdateDTO request = updateUserRequest();
 
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        when(userValidator.validateUserExists(userId))
+                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         assertThatThrownBy(() -> userService.updateUser(userId, request))
                 .isInstanceOf(ResponseStatusException.class)
@@ -215,7 +221,7 @@ class UserServiceImplTest {
         UserUpdateDTO request = new UserUpdateDTO();
         request.setUserName("duplicate_user");
 
-        when(userRepository.findById(user.getUserId())).thenReturn(Optional.of(user));
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
         when(userRepository.findByUserName(request.getUserName())).thenReturn(Optional.of(anotherUser));
 
         assertThatThrownBy(() -> userService.updateUser(user.getUserId(), request))
@@ -234,7 +240,7 @@ class UserServiceImplTest {
         UserUpdateDTO request = new UserUpdateDTO();
         request.setUserEmail("duplicate@example.com");
 
-        when(userRepository.findById(user.getUserId())).thenReturn(Optional.of(user));
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
         when(userRepository.findByUserEmail(request.getUserEmail())).thenReturn(Optional.of(anotherUser));
 
         assertThatThrownBy(() -> userService.updateUser(user.getUserId(), request))
@@ -249,7 +255,7 @@ class UserServiceImplTest {
     void deleteUser_success_TC013() {
         User user = user();
 
-        when(userRepository.findById(user.getUserId())).thenReturn(Optional.of(user));
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
 
         userService.deleteUser(user.getUserId());
 
@@ -260,7 +266,8 @@ class UserServiceImplTest {
     void deleteUser_fail_notFound_TC014() {
         UUID userId = UUID.randomUUID();
 
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        when(userValidator.validateUserExists(userId))
+                .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         assertThatThrownBy(() -> userService.deleteUser(userId))
                 .isInstanceOf(ResponseStatusException.class)
