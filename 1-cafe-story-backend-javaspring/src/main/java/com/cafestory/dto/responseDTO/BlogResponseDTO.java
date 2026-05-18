@@ -18,6 +18,8 @@ public class BlogResponseDTO {
     private PostStatus status;
     private Boolean isPinned;
     private Boolean allowComment;
+    private Integer likeCount;
+    private Integer shareCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
