@@ -8,17 +8,14 @@ import java.util.List;
 import java.util.UUID;
 
 @Data
-public class BlogResponseDTO {
+public class CommentResponseDTO {
     private UUID id;
-    private UUID authorUserId;
-    private UUID pageId;
-    private UUID regionId;
+    private UUID blogId;
+    private UUID userId;
+    private UUID parentCommentId;
     private String content;
     private List<String> imageUrls;
     private PostStatus status;
-    private Boolean isPinned;
-    private Boolean allowComment;
-    private Integer commentCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -18,17 +18,19 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-@Data
+@Getter
+@Setter
 @Entity
-@Table(name = "blogs")
-public class Blog {
+@Table(name = "comments")
+public class Comment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -37,21 +39,24 @@ public class Blog {
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "author_user_id", nullable = false)
-    private User author;
+    @JoinColumn(name = "blog_id", nullable = false)
+    private Blog blog;
 
-    @Column(name = "page_id")
-    private UUID pageId;
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    @Column(name = "region_id")
-    private UUID regionId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_comment_id")
+    private Comment parentComment;
 
     @NotBlank(message = "Content is mandatory")
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
     @ElementCollection
-    @CollectionTable(name = "blog_images", joinColumns = @JoinColumn(name = "blog_id"))
+    @CollectionTable(name = "comment_images", joinColumns = @JoinColumn(name = "comment_id"))
     @Column(name = "image_url", columnDefinition = "TEXT")
     private List<String> imageUrls = new ArrayList<>();
 
@@ -59,15 +64,6 @@ public class Blog {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private PostStatus status = PostStatus.PUBLISHED;
-
-    @Column(name = "is_pinned", nullable = false)
-    private Boolean isPinned = false;
-
-    @Column(name = "allow_comment", nullable = false)
-    private Boolean allowComment = true;
-
-    @Column(name = "comment_count", nullable = false, columnDefinition = "integer default 0")
-    private Integer commentCount = 0;
 
     @NotNull
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -81,12 +77,6 @@ public class Blog {
         createdAt = LocalDateTime.now();
         if (status == null) {
             status = PostStatus.PUBLISHED;
-        }
-        if (allowComment == null) {
-            allowComment = true;
-        }
-        if (commentCount == null) {
-            commentCount = 0;
         }
     }
 
