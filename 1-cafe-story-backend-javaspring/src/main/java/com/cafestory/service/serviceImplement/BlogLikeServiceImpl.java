@@ -41,6 +41,7 @@ public class BlogLikeServiceImpl implements BlogLikeService {
     public BlogLikeResponseDTO likeBlog(UUID blogId, UUID userId) {
         Blog blog = blogValidator.validateBlogExists(blogId);
         User user = userValidator.validateUserExists(userId);
+        userValidator.validateUserActive(user);
         if (blogLikeRepository.existsByUserUserIdAndBlogId(userId, blogId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Blog already liked by user");
         }
@@ -59,7 +60,8 @@ public class BlogLikeServiceImpl implements BlogLikeService {
     @Transactional
     public void unlikeBlog(UUID blogId, UUID userId) {
         blogValidator.validateBlogExists(blogId);
-        userValidator.validateUserExists(userId);
+        User user = userValidator.validateUserExists(userId);
+        userValidator.validateUserActive(user);
 
         BlogLike blogLike = blogLikeRepository.findByUserUserIdAndBlogId(userId, blogId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog like not found"));

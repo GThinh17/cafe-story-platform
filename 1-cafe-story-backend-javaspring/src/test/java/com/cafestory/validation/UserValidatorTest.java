@@ -57,6 +57,38 @@ class UserValidatorTest {
                         .isEqualTo(HttpStatus.NOT_FOUND));
     }
 
+    @Test
+    void validateUserActive_success_TC004() {
+        User user = user();
+
+        userValidator.validateUserActive(user);
+
+        assertThat(user.getAccountStatus()).isTrue();
+    }
+
+    @Test
+    void validateUserActive_fail_nullUser_TC005() {
+        assertThatThrownBy(() -> userValidator.validateUserActive(null))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST))
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getReason())
+                        .isEqualTo("User is required"));
+    }
+
+    @Test
+    void validateUserActive_fail_inactiveUser_TC006() {
+        User user = user();
+        user.setAccountStatus(false);
+
+        assertThatThrownBy(() -> userValidator.validateUserActive(user))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.FORBIDDEN))
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getReason())
+                        .isEqualTo("User account is inactive"));
+    }
+
     private User user() {
         User user = new User();
         user.setUserId(UUID.randomUUID());
