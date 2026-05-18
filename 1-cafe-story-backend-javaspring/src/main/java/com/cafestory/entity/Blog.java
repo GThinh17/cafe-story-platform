@@ -66,6 +66,12 @@ public class Blog {
     @Column(name = "allow_comment", nullable = false)
     private Boolean allowComment = true;
 
+    @Column(name = "like_count", nullable = false, columnDefinition = "integer default 0")
+    private Integer likeCount = 0;
+
+    @Column(name = "share_count", nullable = false, columnDefinition = "integer default 0")
+    private Integer shareCount = 0;
+
     @NotNull
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -78,6 +84,15 @@ public class Blog {
         createdAt = LocalDateTime.now();
         if (status == null) {
             status = PostStatus.PUBLISHED;
+        }
+        if (allowComment == null) {
+            allowComment = true;
+        }
+        if (likeCount == null) {
+            likeCount = 0;
+        }
+        if (shareCount == null) {
+            shareCount = 0;
         }
     }
 
