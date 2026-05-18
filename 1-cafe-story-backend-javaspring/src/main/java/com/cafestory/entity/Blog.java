@@ -66,8 +66,11 @@ public class Blog {
     @Column(name = "allow_comment", nullable = false)
     private Boolean allowComment = true;
 
-    @Column(name = "comment_count", nullable = false, columnDefinition = "integer default 0")
-    private Integer commentCount = 0;
+    @Column(name = "like_count", nullable = false, columnDefinition = "integer default 0")
+    private Integer likeCount = 0;
+
+    @Column(name = "share_count", nullable = false, columnDefinition = "integer default 0")
+    private Integer shareCount = 0;
 
     @NotNull
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -85,8 +88,11 @@ public class Blog {
         if (allowComment == null) {
             allowComment = true;
         }
-        if (commentCount == null) {
-            commentCount = 0;
+        if (likeCount == null) {
+            likeCount = 0;
+        }
+        if (shareCount == null) {
+            shareCount = 0;
         }
     }
 
