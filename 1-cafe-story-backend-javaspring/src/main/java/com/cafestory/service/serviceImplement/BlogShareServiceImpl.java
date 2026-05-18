@@ -42,6 +42,7 @@ public class BlogShareServiceImpl implements BlogShareService {
     public BlogShareResponseDTO shareBlog(UUID blogId, UUID userId, ShareType shareType) {
         Blog blog = blogValidator.validateBlogExists(blogId);
         User user = userValidator.validateUserExists(userId);
+        userValidator.validateUserActive(user);
         ShareType resolvedShareType = resolveShareType(shareType);
         validateShareTypeAllowed(blog, resolvedShareType);
 

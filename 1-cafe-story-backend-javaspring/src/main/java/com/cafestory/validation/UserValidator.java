@@ -23,6 +23,15 @@ public class UserValidator {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
+    public void validateUserActive(User user) {
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User is required");
+        }
+        if (!Boolean.TRUE.equals(user.getAccountStatus())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User account is inactive");
+        }
+    }
+
     private void validateUserIdNotNull(UUID userId) {
         if (userId == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User id is required");
