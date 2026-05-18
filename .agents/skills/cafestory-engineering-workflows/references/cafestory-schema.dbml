@@ -50,23 +50,76 @@ Enum payout_status {
   PAID
 }
 
+Enum share_type {
+  PUBLIC
+  PRIVATE
+  PAGE_ONLY
+}
+
+Enum conversation_type {
+  DIRECT
+  GROUP
+}
+
+Enum member_role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+Enum message_type {
+  TEXT
+  IMAGE
+  STICKER
+  MIXED
+}
+
+Enum message_status {
+  SENT
+  FAILED
+  DELETED
+}
+
+Enum notification_type {
+  LIKE
+  SHARE
+  COMMENT
+  MESSAGE
+  FOLLOW
+}
+
+Enum reviewer_badge {
+  IRON
+  BRONZE
+  SILVER
+  GOLD
+  DIAMOND
+}
+
+Enum reviewer_payout_status {
+  CALCULATED
+  PAID
+  CANCELLED
+}
+
 Table users {
-  id uuid [pk]
-  username varchar(80) [not null, unique]
-  full_name varchar(160) [not null]
-  password_hash varchar(255) [not null]
-  email varchar(160) [not null, unique]
-  phone varchar(30)
-  avatar_url text
-  status user_status [not null, default: "ACTIVE"]
-  created_at datetime [not null]
-  updated_at datetime
-  Note: "Do not store userLike/userFollower as source of truth. Count from like/follow tables or cache asynchronously."
+  user_id uuid [pk]
+  user_name varchar(255) [not null]
+  user_full_name varchar(255)
+  user_password varchar(255) [not null]
+  user_email varchar(255) [not null, unique]
+  user_phone bigint
+  user_avatar varchar(255)
+  user_like int [not null, default: 0]
+  user_follower int [not null, default: 0]
+  account_status boolean [not null, default: true]
+  Note: "Current backend schema. user_like and user_follower are cached counters updated by services; relation tables remain the source of truth."
 }
 
 Table roles {
   id int [pk]
   name varchar(60) [not null, unique]
+  Note: "Default roles seeded by backend: USER, REVIEWER, ADMIN, CAFE_PAGE."
 }
 
 Table user_roles {
@@ -97,6 +150,8 @@ Table cafe_pages {
   avatar_url text
   cover_url text
   status page_status [not null, default: "DRAFT"]
+  like_count int [not null, default: 0]
+  follower_count int [not null, default: 0]
   created_at datetime [not null]
   updated_at datetime
   Note: "This replaces Page + Page_detail for the common case. Add page_members when one cafe page has multiple staff/admin users."
@@ -117,12 +172,22 @@ Table blogs {
   id uuid [pk]
   author_user_id uuid [not null]
   page_id uuid
+  region_id uuid
   content text [not null]
-  image_url text
   status post_status [not null, default: "PUBLISHED"]
+  is_pinned boolean [not null, default: false]
+  allow_comment boolean [not null, default: true]
+  like_count int [not null, default: 0]
+  share_count int [not null, default: 0]
+  comment_count int [not null, default: 0]
   created_at datetime [not null]
   updated_at datetime
   Note: "If page_id is set, the post belongs to a cafe page but still has a real user author."
+}
+
+Table blog_images {
+  blog_id uuid [not null]
+  image_url text
 }
 
 Table comments {
@@ -137,13 +202,19 @@ Table comments {
   Note: "This replaces Comment + detail_comment. parent_comment_id supports replies."
 }
 
+Table comment_images {
+  comment_id uuid [not null]
+  image_url text
+}
+
 Table blog_likes {
+  id uuid [pk]
   user_id uuid [not null]
   blog_id uuid [not null]
   created_at datetime [not null]
 
   Indexes {
-    (user_id, blog_id) [pk]
+    (user_id, blog_id) [unique]
     (blog_id)
   }
 }
@@ -160,23 +231,25 @@ Table comment_likes {
 }
 
 Table page_likes {
+  id uuid [pk]
   user_id uuid [not null]
   page_id uuid [not null]
   created_at datetime [not null]
 
   Indexes {
-    (user_id, page_id) [pk]
+    (user_id, page_id) [unique]
     (page_id)
   }
 }
 
 Table user_follows {
+  id uuid [pk]
   follower_user_id uuid [not null]
   following_user_id uuid [not null]
   created_at datetime [not null]
 
   Indexes {
-    (follower_user_id, following_user_id) [pk]
+    (follower_user_id, following_user_id) [unique]
     (following_user_id)
   }
 
@@ -184,20 +257,22 @@ Table user_follows {
 }
 
 Table page_follows {
+  id uuid [pk]
   user_id uuid [not null]
   page_id uuid [not null]
   created_at datetime [not null]
 
   Indexes {
-    (user_id, page_id) [pk]
+    (user_id, page_id) [unique]
     (page_id)
   }
 }
 
-Table shares {
+Table blog_shares {
   id uuid [pk]
   blog_id uuid [not null]
   user_id uuid [not null]
+  share_type share_type [not null, default: "PUBLIC"]
   created_at datetime [not null]
 
   Indexes {
@@ -208,46 +283,58 @@ Table shares {
 
 Table conversations {
   id uuid [pk]
+  type conversation_type [not null]
+  group_name varchar(255)
+  group_avatar varchar(255)
+  latest_message_id uuid
+  latest_message_preview text
   created_at datetime [not null]
-  updated_at datetime
+  updated_at datetime [not null]
 }
 
-Table conversation_participants {
+Table chat_members {
+  id uuid [pk]
   conversation_id uuid [not null]
   user_id uuid [not null]
+  role member_role [not null, default: "MEMBER"]
   joined_at datetime [not null]
 
   Indexes {
-    (conversation_id, user_id) [pk]
+    (conversation_id, user_id) [unique]
   }
 }
 
-Table messages {
+Table chat_messages {
   id uuid [pk]
   conversation_id uuid [not null]
-  sender_user_id uuid [not null]
-  content text [not null]
+  sender_id uuid [not null]
+  type message_type [not null]
+  text text
+  sticker_url varchar(255)
+  sticker_id varchar(255)
+  status message_status [not null, default: "SENT"]
   created_at datetime [not null]
-  deleted_at datetime
+  updated_at datetime [not null]
+}
+
+Table chat_message_images {
+  message_id uuid [not null]
+  image_url text
 }
 
 Table notifications {
   id uuid [pk]
-  type varchar(80) [not null]
-  content text [not null]
-  actor_user_id uuid
-  target_type varchar(60)
-  target_id uuid
+  recipient_id uuid [not null]
+  actor_id uuid [not null]
+  type notification_type [not null]
+  blog_id uuid
+  conversation_id uuid
+  target_user_id uuid
+  comment_id uuid
+  message_id uuid
+  is_read boolean [not null, default: false]
   created_at datetime [not null]
-}
-
-Table notification_recipients {
-  notification_id uuid [not null]
-  user_id uuid [not null]
-
-  Indexes {
-    (notification_id, user_id) [pk]
-  }
+  updated_at datetime [not null]
 }
 
 Table ai_moderation_results {
@@ -262,42 +349,47 @@ Table ai_moderation_results {
   created_at datetime [not null]
 }
 
-Table reviewer_profiles {
-  id uuid [pk]
+Table reviewers {
+  reviewer_id uuid [pk]
   user_id uuid [not null, unique]
-  display_name varchar(160) [not null]
-  total_score int [not null, default: 0]
   created_at datetime [not null]
   updated_at datetime
-}
-
-Table reviewer_scores {
-  id uuid [pk]
-  reviewer_id uuid [not null]
-  source_blog_id uuid
-  points int [not null]
-  reason varchar(160)
-  created_at datetime [not null]
 }
 
 Table reviewer_badges {
   id uuid [pk]
-  name varchar(120) [not null, unique]
-  badge_type varchar(80) [not null]
-  status boolean [not null, default: true]
+  reviewer_id uuid [not null]
+  badge_month varchar(255) [not null]
+  score bigint [not null, default: 0]
+  badge reviewer_badge [not null]
+  like_count bigint [not null, default: 0]
+  share_count bigint [not null, default: 0]
+  comment_count bigint [not null, default: 0]
   created_at datetime [not null]
   updated_at datetime
-}
-
-Table reviewer_badge_awards {
-  reviewer_id uuid [not null]
-  badge_id uuid [not null]
-  page_id uuid
-  region_id uuid
-  awarded_at datetime [not null]
 
   Indexes {
-    (reviewer_id, badge_id, page_id, region_id) [pk]
+    (reviewer_id, badge_month) [unique]
+  }
+}
+
+Table reviewer_payouts {
+  id uuid [pk]
+  reviewer_id uuid [not null]
+  payout_month varchar(255) [not null]
+  like_count bigint [not null, default: 0]
+  share_count bigint [not null, default: 0]
+  comment_count bigint [not null, default: 0]
+  like_amount bigint [not null, default: 0]
+  share_amount bigint [not null, default: 0]
+  comment_amount bigint [not null, default: 0]
+  total_amount bigint [not null, default: 0]
+  payout_status reviewer_payout_status [not null, default: "CALCULATED"]
+  created_at datetime [not null]
+  updated_at datetime
+
+  Indexes {
+    (reviewer_id, payout_month) [unique]
   }
 }
 
@@ -352,60 +444,58 @@ Table content_reports {
   Note: "Use either blog_id or comment_id depending on what is reported."
 }
 
-Ref: user_roles.user_id > users.id
+Ref: user_roles.user_id > users.user_id
 Ref: user_roles.role_id > roles.id
 
-Ref: cafe_pages.owner_user_id > users.id
+Ref: cafe_pages.owner_user_id > users.user_id
 Ref: cafe_pages.region_id > regions.id
 Ref: page_members.page_id > cafe_pages.id
-Ref: page_members.user_id > users.id
+Ref: page_members.user_id > users.user_id
 
-Ref: blogs.author_user_id > users.id
+Ref: blogs.author_user_id > users.user_id
 Ref: blogs.page_id > cafe_pages.id
+Ref: blog_images.blog_id > blogs.id
 Ref: comments.blog_id > blogs.id
-Ref: comments.user_id > users.id
+Ref: comments.user_id > users.user_id
 Ref: comments.parent_comment_id > comments.id
+Ref: comment_images.comment_id > comments.id
 
-Ref: blog_likes.user_id > users.id
+Ref: blog_likes.user_id > users.user_id
 Ref: blog_likes.blog_id > blogs.id
-Ref: comment_likes.user_id > users.id
+Ref: comment_likes.user_id > users.user_id
 Ref: comment_likes.comment_id > comments.id
-Ref: page_likes.user_id > users.id
+Ref: page_likes.user_id > users.user_id
 Ref: page_likes.page_id > cafe_pages.id
 
-Ref: user_follows.follower_user_id > users.id
-Ref: user_follows.following_user_id > users.id
-Ref: page_follows.user_id > users.id
+Ref: user_follows.follower_user_id > users.user_id
+Ref: user_follows.following_user_id > users.user_id
+Ref: page_follows.user_id > users.user_id
 Ref: page_follows.page_id > cafe_pages.id
 
-Ref: shares.blog_id > blogs.id
-Ref: shares.user_id > users.id
+Ref: blog_shares.blog_id > blogs.id
+Ref: blog_shares.user_id > users.user_id
 
-Ref: conversation_participants.conversation_id > conversations.id
-Ref: conversation_participants.user_id > users.id
-Ref: messages.conversation_id > conversations.id
-Ref: messages.sender_user_id > users.id
+Ref: chat_members.conversation_id > conversations.id
+Ref: chat_members.user_id > users.user_id
+Ref: chat_messages.conversation_id > conversations.id
+Ref: chat_messages.sender_id > users.user_id
+Ref: chat_message_images.message_id > chat_messages.id
 
-Ref: notifications.actor_user_id > users.id
-Ref: notification_recipients.notification_id > notifications.id
-Ref: notification_recipients.user_id > users.id
+Ref: notifications.recipient_id > users.user_id
+Ref: notifications.actor_id > users.user_id
 
-Ref: reviewer_profiles.user_id > users.id
-Ref: reviewer_scores.reviewer_id > reviewer_profiles.id
-Ref: reviewer_scores.source_blog_id > blogs.id
-Ref: reviewer_badge_awards.reviewer_id > reviewer_profiles.id
-Ref: reviewer_badge_awards.badge_id > reviewer_badges.id
-Ref: reviewer_badge_awards.page_id > cafe_pages.id
-Ref: reviewer_badge_awards.region_id > regions.id
+Ref: reviewers.user_id > users.user_id
+Ref: reviewer_badges.reviewer_id > reviewers.reviewer_id
+Ref: reviewer_payouts.reviewer_id > reviewers.reviewer_id
 
 Ref: payments.payment_method_id > payment_methods.id
-Ref: payments.user_id > users.id
+Ref: payments.user_id > users.user_id
 Ref: payments.page_id > cafe_pages.id
 Ref: extra_fees.payment_id > payments.id
-Ref: payouts.reviewer_id > reviewer_profiles.id
+Ref: payouts.reviewer_id > reviewers.reviewer_id
 Ref: payouts.payment_method_id > payment_methods.id
 
-Ref: content_reports.reporter_user_id > users.id
+Ref: content_reports.reporter_user_id > users.user_id
 Ref: content_reports.blog_id > blogs.id
 Ref: content_reports.comment_id > comments.id
 Ref: ai_moderation_results.blog_id > blogs.id
