@@ -15,5 +15,13 @@ public interface UserMapper {
     @Mapping(target = "userLike", ignore = true)
     @Mapping(target = "userFollower", ignore = true)
     @Mapping(target = "accountStatus", ignore = true)
+    @Mapping(target = "userRole", ignore = true)
+    @Mapping(target = "city", ignore = true)
+    @Mapping(target = "province", ignore = true)
+    @Mapping(target = "district", ignore = true)
+    @Mapping(target = "ward", ignore = true)
+    @Mapping(target = "country", ignore = true)
+    @Mapping(target = "latitude", ignore = true)
+    @Mapping(target = "longitude", ignore = true)
     User toUser(UserCreateDTO userCreateDTO);
 }
