@@ -4,23 +4,29 @@ import com.cafestory.dto.responseDTO.reviewer.ReviewerBadgeResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerGeoAnalyticsResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerPayoutResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerRankingResponseDTO;
+import com.cafestory.dto.responseDTO.reviewer.ReviewerResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerSegmentResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerStatsResponseDTO;
 import com.cafestory.entity.BlogLike;
 import com.cafestory.entity.BlogShare;
 import com.cafestory.entity.Comment;
+import com.cafestory.entity.Reviewer;
 import com.cafestory.entity.ReviewerBadgeHistory;
 import com.cafestory.entity.ReviewerPayout;
+import com.cafestory.entity.Role;
 import com.cafestory.entity.User;
-import com.cafestory.entity.enums.PayoutStatus;
+import com.cafestory.entity.UserRoleAssignment;
 import com.cafestory.entity.enums.ReviewerBadge;
-import com.cafestory.entity.enums.UserRole;
+import com.cafestory.entity.enums.PayoutStatus;
 import com.cafestory.repository.BlogLikeRepository;
 import com.cafestory.repository.BlogShareRepository;
 import com.cafestory.repository.CommentRepository;
 import com.cafestory.repository.ReviewerBadgeHistoryRepository;
 import com.cafestory.repository.ReviewerPayoutRepository;
+import com.cafestory.repository.ReviewerRepository;
+import com.cafestory.repository.RoleRepository;
 import com.cafestory.repository.UserRepository;
+import com.cafestory.repository.UserRoleAssignmentRepository;
 import com.cafestory.service.serviceInterface.ReviewerService;
 import com.cafestory.validation.UserValidator;
 import org.springframework.http.HttpStatus;
@@ -47,12 +53,17 @@ public class ReviewerServiceImpl implements ReviewerService {
     private static final long LIKE_AMOUNT = 100;
     private static final long SHARE_AMOUNT = 300;
     private static final long COMMENT_AMOUNT = 500;
+    private static final String ADMIN_ROLE = "ADMIN";
+    private static final String REVIEWER_ROLE = "REVIEWER";
 
     private final BlogLikeRepository blogLikeRepository;
     private final BlogShareRepository blogShareRepository;
     private final CommentRepository commentRepository;
     private final ReviewerPayoutRepository reviewerPayoutRepository;
     private final ReviewerBadgeHistoryRepository reviewerBadgeHistoryRepository;
+    private final ReviewerRepository reviewerRepository;
+    private final RoleRepository roleRepository;
+    private final UserRoleAssignmentRepository userRoleAssignmentRepository;
     private final UserRepository userRepository;
     private final UserValidator userValidator;
 
@@ -62,6 +73,9 @@ public class ReviewerServiceImpl implements ReviewerService {
             CommentRepository commentRepository,
             ReviewerPayoutRepository reviewerPayoutRepository,
             ReviewerBadgeHistoryRepository reviewerBadgeHistoryRepository,
+            ReviewerRepository reviewerRepository,
+            RoleRepository roleRepository,
+            UserRoleAssignmentRepository userRoleAssignmentRepository,
             UserRepository userRepository,
             UserValidator userValidator) {
         this.blogLikeRepository = blogLikeRepository;
@@ -69,8 +83,21 @@ public class ReviewerServiceImpl implements ReviewerService {
         this.commentRepository = commentRepository;
         this.reviewerPayoutRepository = reviewerPayoutRepository;
         this.reviewerBadgeHistoryRepository = reviewerBadgeHistoryRepository;
+        this.reviewerRepository = reviewerRepository;
+        this.roleRepository = roleRepository;
+        this.userRoleAssignmentRepository = userRoleAssignmentRepository;
         this.userRepository = userRepository;
         this.userValidator = userValidator;
+    }
+
+    @Override
+    @Transactional
+    public ReviewerResponseDTO createReviewer(UUID userId) {
+        User user = userValidator.validateUserExists(userId);
+        assignRole(user, REVIEWER_ROLE);
+        Reviewer reviewer = reviewerRepository.findByUserUserId(userId).orElseGet(Reviewer::new);
+        reviewer.setUser(user);
+        return toReviewerResponse(reviewerRepository.save(reviewer));
     }
 
     @Override
@@ -86,10 +113,11 @@ public class ReviewerServiceImpl implements ReviewerService {
     @Override
     @Transactional(readOnly = true)
     public ReviewerStatsResponseDTO countReviewerStatsByDateRange(UUID reviewerId, LocalDateTime startDate, LocalDateTime endDate) {
-        userValidator.validateUserExists(reviewerId);
-        long likeCount = blogLikeRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(reviewerId, startDate, endDate);
-        long shareCount = blogShareRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(reviewerId, startDate, endDate);
-        long commentCount = commentRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(reviewerId, startDate, endDate);
+        Reviewer reviewer = validateReviewerExists(reviewerId);
+        UUID userId = reviewer.getUser().getUserId();
+        long likeCount = blogLikeRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(userId, startDate, endDate);
+        long shareCount = blogShareRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(userId, startDate, endDate);
+        long commentCount = commentRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(userId, startDate, endDate);
         long score = calculateScore(likeCount, shareCount, commentCount);
         return new ReviewerStatsResponseDTO(reviewerId, "custom", likeCount, shareCount, commentCount, score);
     }
@@ -107,8 +135,8 @@ public class ReviewerServiceImpl implements ReviewerService {
         Map<UUID, EngagementAccumulator> engagement = aggregateEngagementForAllUsers(range.startDate(), range.endDate());
         List<ReviewerRankingResponseDTO> rankings = engagement.values()
                 .stream()
+                .filter(accumulator -> matchesLocation(accumulator.reviewer(), city, province, district))
                 .map(this::toRankingResponse)
-                .filter(response -> matchesLocation(response.getReviewerId(), city, province, district))
                 .sorted(rankingComparator())
                 .toList();
         List<ReviewerRankingResponseDTO> ranked = new ArrayList<>();
@@ -170,11 +198,11 @@ public class ReviewerServiceImpl implements ReviewerService {
         Map<UUID, EngagementAccumulator> engagement = aggregateEngagementForAllUsers(range.startDate(), range.endDate());
         List<ReviewerPayoutResponseDTO> responses = new ArrayList<>();
         for (EngagementAccumulator accumulator : engagement.values()) {
-            if (reviewerPayoutRepository.existsByReviewerUserIdAndPayoutMonth(accumulator.reviewer().getUserId(), month) && !overwrite) {
+            if (reviewerPayoutRepository.existsByReviewerReviewerIdAndPayoutMonth(accumulator.reviewer().getReviewerId(), month) && !overwrite) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Duplicate payout generation");
             }
             ReviewerPayout payout = reviewerPayoutRepository
-                    .findByReviewerUserIdAndPayoutMonth(accumulator.reviewer().getUserId(), month)
+                    .findByReviewerReviewerIdAndPayoutMonth(accumulator.reviewer().getReviewerId(), month)
                     .orElseGet(ReviewerPayout::new);
             payout.setReviewer(accumulator.reviewer());
             payout.setPayoutMonth(month);
@@ -200,11 +228,11 @@ public class ReviewerServiceImpl implements ReviewerService {
         Map<UUID, EngagementAccumulator> engagement = aggregateEngagementForAllUsers(range.startDate(), range.endDate());
         List<ReviewerBadgeResponseDTO> responses = new ArrayList<>();
         for (EngagementAccumulator accumulator : engagement.values()) {
-            if (reviewerBadgeHistoryRepository.existsByReviewerUserIdAndMonth(accumulator.reviewer().getUserId(), month) && !overwrite) {
+            if (reviewerBadgeHistoryRepository.existsByReviewerReviewerIdAndMonth(accumulator.reviewer().getReviewerId(), month) && !overwrite) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Duplicate badge generation");
             }
             ReviewerBadgeHistory badgeHistory = reviewerBadgeHistoryRepository
-                    .findByReviewerUserIdAndMonth(accumulator.reviewer().getUserId(), month)
+                    .findByReviewerReviewerIdAndMonth(accumulator.reviewer().getReviewerId(), month)
                     .orElseGet(ReviewerBadgeHistory::new);
             badgeHistory.setReviewer(accumulator.reviewer());
             badgeHistory.setMonth(month);
@@ -222,7 +250,7 @@ public class ReviewerServiceImpl implements ReviewerService {
     @Transactional(readOnly = true)
     public List<ReviewerPayoutResponseDTO> getReviewerPayoutHistory(UUID requesterId, UUID reviewerId) {
         validateSelfOrAdmin(requesterId, reviewerId);
-        return reviewerPayoutRepository.findByReviewerUserIdOrderByPayoutMonthDesc(reviewerId)
+        return reviewerPayoutRepository.findByReviewerReviewerIdOrderByPayoutMonthDesc(reviewerId)
                 .stream()
                 .map(this::toPayoutResponse)
                 .toList();
@@ -232,7 +260,7 @@ public class ReviewerServiceImpl implements ReviewerService {
     @Transactional(readOnly = true)
     public List<ReviewerBadgeResponseDTO> getReviewerBadgeHistory(UUID requesterId, UUID reviewerId) {
         validateSelfOrAdmin(requesterId, reviewerId);
-        return reviewerBadgeHistoryRepository.findByReviewerUserIdOrderByMonthDesc(reviewerId)
+        return reviewerBadgeHistoryRepository.findByReviewerReviewerIdOrderByMonthDesc(reviewerId)
                 .stream()
                 .map(this::toBadgeResponse)
                 .toList();
@@ -297,44 +325,54 @@ public class ReviewerServiceImpl implements ReviewerService {
     }
 
     private Map<UUID, EngagementAccumulator> aggregateEngagementForAllUsers(LocalDateTime startDate, LocalDateTime endDate) {
-        Map<UUID, EngagementAccumulator> engagement = aggregateEngagement(startDate, endDate);
-        userRepository.findAll().forEach(user -> engagement.putIfAbsent(user.getUserId(), new EngagementAccumulator(user)));
+        Map<UUID, Reviewer> reviewersByUserId = new HashMap<>();
+        Map<UUID, EngagementAccumulator> engagement = new HashMap<>();
+        for (Reviewer reviewer : reviewerRepository.findAll()) {
+            reviewersByUserId.put(reviewer.getUser().getUserId(), reviewer);
+            engagement.putIfAbsent(reviewer.getReviewerId(), new EngagementAccumulator(reviewer));
+        }
+        aggregateEngagement(startDate, endDate, reviewersByUserId, engagement);
         return engagement;
     }
 
-    private Map<UUID, EngagementAccumulator> aggregateEngagement(LocalDateTime startDate, LocalDateTime endDate) {
-        Map<UUID, EngagementAccumulator> engagement = new HashMap<>();
+    private void aggregateEngagement(
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            Map<UUID, Reviewer> reviewersByUserId,
+            Map<UUID, EngagementAccumulator> engagement) {
         for (BlogLike like : blogLikeRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(startDate, endDate)) {
-            accumulator(engagement, like.getUser()).incrementLikes();
+            accumulator(engagement, reviewersByUserId.get(like.getUser().getUserId())).incrementLikes();
         }
         for (BlogShare share : blogShareRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(startDate, endDate)) {
-            accumulator(engagement, share.getUser()).incrementShares();
+            accumulator(engagement, reviewersByUserId.get(share.getUser().getUserId())).incrementShares();
         }
         for (Comment comment : commentRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(startDate, endDate)) {
-            accumulator(engagement, comment.getUser()).incrementComments();
+            accumulator(engagement, reviewersByUserId.get(comment.getUser().getUserId())).incrementComments();
         }
-        return engagement;
     }
 
-    private EngagementAccumulator accumulator(Map<UUID, EngagementAccumulator> engagement, User reviewer) {
-        return engagement.computeIfAbsent(reviewer.getUserId(), ignored -> new EngagementAccumulator(reviewer));
+    private EngagementAccumulator accumulator(Map<UUID, EngagementAccumulator> engagement, Reviewer reviewer) {
+        if (reviewer == null) {
+            return new EngagementAccumulator(null);
+        }
+        return engagement.computeIfAbsent(reviewer.getReviewerId(), ignored -> new EngagementAccumulator(reviewer));
     }
 
     private ReviewerRankingResponseDTO toRankingResponse(EngagementAccumulator accumulator) {
         ReviewerRankingResponseDTO response = new ReviewerRankingResponseDTO();
-        response.setReviewerId(accumulator.reviewer().getUserId());
+        response.setReviewerId(accumulator.reviewer().getReviewerId());
         response.setLikeCount(accumulator.likeCount());
         response.setShareCount(accumulator.shareCount());
         response.setCommentCount(accumulator.commentCount());
         response.setScore(accumulator.score());
         response.setBadge(badgeForScore(accumulator.score()));
-        response.setLocation(firstNonBlank(accumulator.reviewer().getCity(), accumulator.reviewer().getProvince(), "unknown"));
+        response.setLocation(firstNonBlank(accumulator.reviewer().getUser().getCity(), accumulator.reviewer().getUser().getProvince(), "unknown"));
         return response;
     }
 
     private ReviewerSegmentResponseDTO toSegmentResponse(EngagementAccumulator accumulator) {
         ReviewerSegmentResponseDTO response = new ReviewerSegmentResponseDTO();
-        response.setReviewerId(accumulator.reviewer().getUserId());
+        response.setReviewerId(accumulator.reviewer().getReviewerId());
         response.setLikeCount(accumulator.likeCount());
         response.setShareCount(accumulator.shareCount());
         response.setCommentCount(accumulator.commentCount());
@@ -358,14 +396,14 @@ public class ReviewerServiceImpl implements ReviewerService {
         response.setTotalComments(totalComments);
         response.setTotalScore(totalScore);
         response.setAverageScore(accumulators.isEmpty() ? 0 : (double) totalScore / accumulators.size());
-        response.setTopReviewer(top == null ? null : top.reviewer().getUserId());
+        response.setTopReviewer(top == null ? null : top.reviewer().getReviewerId());
         return response;
     }
 
     private ReviewerPayoutResponseDTO toPayoutResponse(ReviewerPayout payout) {
         ReviewerPayoutResponseDTO response = new ReviewerPayoutResponseDTO();
         response.setId(payout.getId());
-        response.setReviewerId(payout.getReviewer().getUserId());
+        response.setReviewerId(payout.getReviewer().getReviewerId());
         response.setPayoutMonth(payout.getPayoutMonth());
         response.setLikeCount(payout.getLikeCount());
         response.setShareCount(payout.getShareCount());
@@ -381,7 +419,7 @@ public class ReviewerServiceImpl implements ReviewerService {
     private ReviewerBadgeResponseDTO toBadgeResponse(ReviewerBadgeHistory badgeHistory) {
         ReviewerBadgeResponseDTO response = new ReviewerBadgeResponseDTO();
         response.setId(badgeHistory.getId());
-        response.setReviewerId(badgeHistory.getReviewer().getUserId());
+        response.setReviewerId(badgeHistory.getReviewer().getReviewerId());
         response.setMonth(badgeHistory.getMonth());
         response.setScore(badgeHistory.getScore());
         response.setBadge(badgeHistory.getBadge());
@@ -391,19 +429,51 @@ public class ReviewerServiceImpl implements ReviewerService {
         return response;
     }
 
+    private ReviewerResponseDTO toReviewerResponse(Reviewer reviewer) {
+        ReviewerResponseDTO response = new ReviewerResponseDTO();
+        response.setReviewerId(reviewer.getReviewerId());
+        response.setUserId(reviewer.getUser().getUserId());
+        response.setRole(REVIEWER_ROLE);
+        return response;
+    }
+
     private void validateSelfOrAdmin(UUID requesterId, UUID reviewerId) {
         User requester = userValidator.validateUserExists(requesterId);
-        userValidator.validateUserExists(reviewerId);
-        if (!requester.getUserId().equals(reviewerId) && requester.getUserRole() != UserRole.ADMIN) {
+        Reviewer reviewer = validateReviewerExists(reviewerId);
+        if (!requester.getUserId().equals(reviewer.getUser().getUserId()) && !hasRole(requester.getUserId(), ADMIN_ROLE)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized access");
         }
     }
 
+    private Reviewer validateReviewerExists(UUID reviewerId) {
+        return reviewerRepository.findById(reviewerId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reviewer not found"));
+    }
+
     private void validateAdmin(UUID requesterId) {
         User requester = userValidator.validateUserExists(requesterId);
-        if (requester.getUserRole() != UserRole.ADMIN) {
+        if (!hasRole(requester.getUserId(), ADMIN_ROLE)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized access");
         }
+    }
+
+    private void assignRole(User user, String roleName) {
+        Role role = roleRepository.findByName(roleName).orElseGet(() -> {
+            Role newRole = new Role();
+            newRole.setName(roleName);
+            return roleRepository.save(newRole);
+        });
+        if (userRoleAssignmentRepository.existsByUserUserIdAndRoleName(user.getUserId(), roleName)) {
+            return;
+        }
+        UserRoleAssignment assignment = new UserRoleAssignment();
+        assignment.setUser(user);
+        assignment.setRole(role);
+        userRoleAssignmentRepository.save(assignment);
+    }
+
+    private boolean hasRole(UUID userId, String roleName) {
+        return userRoleAssignmentRepository.existsByUserUserIdAndRoleName(userId, roleName);
     }
 
     private void validateSegment(String segment) {
@@ -418,11 +488,11 @@ public class ReviewerServiceImpl implements ReviewerService {
         }
     }
 
-    private boolean matchesLocation(UUID reviewerId, String city, String province, String district) {
-        User user = userRepository.findById(reviewerId).orElse(null);
-        if (user == null) {
+    private boolean matchesLocation(Reviewer reviewer, String city, String province, String district) {
+        if (reviewer == null || reviewer.getUser() == null) {
             return false;
         }
+        User user = reviewer.getUser();
         return matches(city, user.getCity()) && matches(province, user.getProvince()) && matches(district, user.getDistrict());
     }
 
@@ -430,7 +500,8 @@ public class ReviewerServiceImpl implements ReviewerService {
         return expected == null || expected.isBlank() || expected.equalsIgnoreCase(nullToUnknown(actual));
     }
 
-    private String locationValue(User user, String groupBy) {
+    private String locationValue(Reviewer reviewer, String groupBy) {
+        User user = reviewer.getUser();
         return switch (groupBy.toLowerCase()) {
             case "city" -> nullToUnknown(user.getCity());
             case "province" -> nullToUnknown(user.getProvince());
@@ -486,23 +557,23 @@ public class ReviewerServiceImpl implements ReviewerService {
                 .thenComparingLong(EngagementAccumulator::commentCount)
                 .thenComparingLong(EngagementAccumulator::shareCount)
                 .thenComparingLong(EngagementAccumulator::likeCount)
-                .thenComparing(accumulator -> accumulator.reviewer().getUserId().toString(), Comparator.reverseOrder());
+                .thenComparing(accumulator -> accumulator.reviewer().getReviewerId().toString(), Comparator.reverseOrder());
     }
 
     private record DateRange(LocalDateTime startDate, LocalDateTime endDate) {
     }
 
     private static class EngagementAccumulator {
-        private final User reviewer;
+        private final Reviewer reviewer;
         private long likeCount;
         private long shareCount;
         private long commentCount;
 
-        EngagementAccumulator(User reviewer) {
+        EngagementAccumulator(Reviewer reviewer) {
             this.reviewer = reviewer;
         }
 
-        User reviewer() {
+        Reviewer reviewer() {
             return reviewer;
         }
 

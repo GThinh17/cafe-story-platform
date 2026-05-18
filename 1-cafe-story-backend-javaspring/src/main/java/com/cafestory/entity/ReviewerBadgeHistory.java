@@ -36,7 +36,7 @@ public class ReviewerBadgeHistory {
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "reviewer_id", nullable = false)
-    private User reviewer;
+    private Reviewer reviewer;
 
     @NotNull
     @Column(name = "badge_month", nullable = false)

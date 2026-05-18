@@ -9,9 +9,9 @@ import java.util.UUID;
 
 public interface ReviewerBadgeHistoryRepository extends JpaRepository<ReviewerBadgeHistory, UUID> {
 
-    boolean existsByReviewerUserIdAndMonth(UUID reviewerId, String month);
+    boolean existsByReviewerReviewerIdAndMonth(UUID reviewerId, String month);
 
-    Optional<ReviewerBadgeHistory> findByReviewerUserIdAndMonth(UUID reviewerId, String month);
+    Optional<ReviewerBadgeHistory> findByReviewerReviewerIdAndMonth(UUID reviewerId, String month);
 
-    List<ReviewerBadgeHistory> findByReviewerUserIdOrderByMonthDesc(UUID reviewerId);
+    List<ReviewerBadgeHistory> findByReviewerReviewerIdOrderByMonthDesc(UUID reviewerId);
 }

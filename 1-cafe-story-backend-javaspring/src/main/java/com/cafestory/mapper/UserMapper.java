@@ -15,7 +15,6 @@ public interface UserMapper {
     @Mapping(target = "userLike", ignore = true)
     @Mapping(target = "userFollower", ignore = true)
     @Mapping(target = "accountStatus", ignore = true)
-    @Mapping(target = "userRole", ignore = true)
     @Mapping(target = "city", ignore = true)
     @Mapping(target = "province", ignore = true)
     @Mapping(target = "district", ignore = true)

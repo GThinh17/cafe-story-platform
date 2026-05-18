@@ -4,6 +4,7 @@ import com.cafestory.dto.responseDTO.reviewer.ReviewerBadgeResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerGeoAnalyticsResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerPayoutResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerRankingResponseDTO;
+import com.cafestory.dto.responseDTO.reviewer.ReviewerResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerSegmentResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerStatsResponseDTO;
 
@@ -12,6 +13,8 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ReviewerService {
+
+    ReviewerResponseDTO createReviewer(UUID userId);
 
     ReviewerStatsResponseDTO countReviewerStats(UUID requesterId, UUID reviewerId, String period);
 

@@ -4,6 +4,7 @@ import com.cafestory.dto.responseDTO.reviewer.ReviewerBadgeResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerGeoAnalyticsResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerPayoutResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerRankingResponseDTO;
+import com.cafestory.dto.responseDTO.reviewer.ReviewerResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerSegmentResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerStatsResponseDTO;
 import com.cafestory.service.serviceInterface.ReviewerService;
@@ -18,13 +19,18 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/reviewers")
+@RequestMapping("/api/reviewers")
 public class ReviewerController {
 
     private final ReviewerService reviewerService;
 
     public ReviewerController(ReviewerService reviewerService) {
         this.reviewerService = reviewerService;
+    }
+
+    @PostMapping("/create/{userId}")
+    public ReviewerResponseDTO createReviewer(@PathVariable UUID userId) {
+        return reviewerService.createReviewer(userId);
     }
 
     @GetMapping("/{reviewerId}/stats")

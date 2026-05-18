@@ -3,19 +3,23 @@ package com.cafestory.reviewer;
 import com.cafestory.entity.BlogLike;
 import com.cafestory.entity.BlogShare;
 import com.cafestory.entity.Comment;
+import com.cafestory.entity.Reviewer;
 import com.cafestory.entity.ReviewerBadgeHistory;
 import com.cafestory.entity.ReviewerPayout;
+import com.cafestory.entity.Role;
 import com.cafestory.entity.User;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerRankingResponseDTO;
 import com.cafestory.entity.enums.PayoutStatus;
 import com.cafestory.entity.enums.ReviewerBadge;
-import com.cafestory.entity.enums.UserRole;
 import com.cafestory.repository.BlogLikeRepository;
 import com.cafestory.repository.BlogShareRepository;
 import com.cafestory.repository.CommentRepository;
 import com.cafestory.repository.ReviewerBadgeHistoryRepository;
 import com.cafestory.repository.ReviewerPayoutRepository;
+import com.cafestory.repository.ReviewerRepository;
+import com.cafestory.repository.RoleRepository;
 import com.cafestory.repository.UserRepository;
+import com.cafestory.repository.UserRoleAssignmentRepository;
 import com.cafestory.service.serviceImplement.ReviewerServiceImpl;
 import com.cafestory.validation.UserValidator;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,7 +31,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
-import java.time.YearMonth;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -37,7 +40,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -47,6 +49,9 @@ class ReviewerServiceImplTest {
     private final UUID reviewerId = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private final UUID secondReviewerId = UUID.fromString("22222222-2222-2222-2222-222222222222");
     private final UUID thirdReviewerId = UUID.fromString("33333333-3333-3333-3333-333333333333");
+    private final UUID reviewerUserId = UUID.fromString("10101010-1010-1010-1010-101010101010");
+    private final UUID secondReviewerUserId = UUID.fromString("20202020-2020-2020-2020-202020202020");
+    private final UUID thirdReviewerUserId = UUID.fromString("30303030-3030-3030-3030-303030303030");
     private final UUID adminId = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
 
     @Mock
@@ -65,6 +70,15 @@ class ReviewerServiceImplTest {
     private ReviewerBadgeHistoryRepository reviewerBadgeHistoryRepository;
 
     @Mock
+    private ReviewerRepository reviewerRepository;
+
+    @Mock
+    private RoleRepository roleRepository;
+
+    @Mock
+    private UserRoleAssignmentRepository userRoleAssignmentRepository;
+
+    @Mock
     private UserRepository userRepository;
 
     @Mock
@@ -80,19 +94,23 @@ class ReviewerServiceImplTest {
                 commentRepository,
                 reviewerPayoutRepository,
                 reviewerBadgeHistoryRepository,
+                reviewerRepository,
+                roleRepository,
+                userRoleAssignmentRepository,
                 userRepository,
                 userValidator);
     }
 
     @Test
     void countReviewerStats_success_allPeriods_TC001() {
-        User reviewer = user(reviewerId, UserRole.USER, "HCM", "HCM", "D1");
-        when(userValidator.validateUserExists(reviewerId)).thenReturn(reviewer);
-        when(blogLikeRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(eq(reviewerId), any(), any()))
+        User user = user(reviewerUserId, "HCM", "HCM", "D1");
+        when(userValidator.validateUserExists(reviewerUserId)).thenReturn(user);
+        when(reviewerRepository.findById(reviewerId)).thenReturn(Optional.of(reviewer(reviewerId, user)));
+        when(blogLikeRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(eq(reviewerUserId), any(), any()))
                 .thenReturn(1L, 2L, 3L, 4L);
-        when(blogShareRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(eq(reviewerId), any(), any()))
+        when(blogShareRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(eq(reviewerUserId), any(), any()))
                 .thenReturn(5L, 6L, 7L, 8L);
-        when(commentRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(eq(reviewerId), any(), any()))
+        when(commentRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(eq(reviewerUserId), any(), any()))
                 .thenReturn(9L, 10L, 11L, 12L);
 
         assertStats("day", 1, 5, 9);
@@ -102,15 +120,34 @@ class ReviewerServiceImplTest {
     }
 
     @Test
+    void createReviewer_success_updatesUserRole_TC011() {
+        User user = user(reviewerUserId, null, null, null);
+        when(userValidator.validateUserExists(reviewerUserId)).thenReturn(user);
+        when(roleRepository.findByName("REVIEWER")).thenReturn(Optional.of(role(2, "REVIEWER")));
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(reviewerUserId, "REVIEWER")).thenReturn(false);
+        when(reviewerRepository.findByUserUserId(reviewerUserId)).thenReturn(Optional.empty());
+        mockReviewerSave();
+
+        var result = reviewerService.createReviewer(reviewerUserId);
+
+        assertThat(result.getReviewerId()).isNotNull();
+        assertThat(result.getUserId()).isEqualTo(reviewerUserId);
+        assertThat(result.getRole()).isEqualTo("REVIEWER");
+        verify(userRoleAssignmentRepository).save(any());
+        verify(reviewerRepository).save(any(Reviewer.class));
+    }
+
+    @Test
     void countReviewerStatsByDateRange_success_countsAndFormulaMethods_TC009() {
         LocalDateTime start = LocalDateTime.of(2026, 5, 1, 0, 0);
         LocalDateTime end = LocalDateTime.of(2026, 6, 1, 0, 0);
-        when(userValidator.validateUserExists(reviewerId)).thenReturn(user(reviewerId, UserRole.USER, null, null, null));
-        when(blogLikeRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(reviewerId, start, end))
+        User user = user(reviewerUserId, null, null, null);
+        when(reviewerRepository.findById(reviewerId)).thenReturn(Optional.of(reviewer(reviewerId, user)));
+        when(blogLikeRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(reviewerUserId, start, end))
                 .thenReturn(7L);
-        when(blogShareRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(reviewerId, start, end))
+        when(blogShareRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(reviewerUserId, start, end))
                 .thenReturn(3L);
-        when(commentRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(reviewerId, start, end))
+        when(commentRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(reviewerUserId, start, end))
                 .thenReturn(2L);
 
         var stats = reviewerService.countReviewerStatsByDateRange(reviewerId, start, end);
@@ -122,18 +159,21 @@ class ReviewerServiceImplTest {
 
     @Test
     void payout_success_formulaGenerateDuplicateAndOverwrite_TC002() {
-        User admin = user(adminId, UserRole.ADMIN, null, null, null);
-        User reviewer = user(reviewerId, UserRole.USER, null, null, null);
+        User admin = user(adminId, null, null, null);
+        User reviewerUser = user(reviewerUserId, null, null, null);
+        Reviewer reviewer = reviewer(reviewerId, reviewerUser);
         when(userValidator.validateUserExists(adminId)).thenReturn(admin);
-        when(userRepository.findAll()).thenReturn(List.of(reviewer));
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(any(UUID.class), eq("ADMIN")))
+                .thenAnswer(invocation -> adminId.equals(invocation.getArgument(0)));
+        when(reviewerRepository.findAll()).thenReturn(List.of(reviewer));
         when(blogLikeRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any()))
-                .thenReturn(List.of(like(reviewer), like(reviewer)));
+                .thenReturn(List.of(like(reviewerUser), like(reviewerUser)));
         when(blogShareRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any()))
-                .thenReturn(List.of(share(reviewer)));
+                .thenReturn(List.of(share(reviewerUser)));
         when(commentRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any()))
-                .thenReturn(List.of(comment(reviewer), comment(reviewer), comment(reviewer)));
-        when(reviewerPayoutRepository.existsByReviewerUserIdAndPayoutMonth(reviewerId, "2026-05")).thenReturn(false);
-        when(reviewerPayoutRepository.findByReviewerUserIdAndPayoutMonth(reviewerId, "2026-05")).thenReturn(Optional.empty());
+                .thenReturn(List.of(comment(reviewerUser), comment(reviewerUser), comment(reviewerUser)));
+        when(reviewerPayoutRepository.existsByReviewerReviewerIdAndPayoutMonth(reviewerId, "2026-05")).thenReturn(false);
+        when(reviewerPayoutRepository.findByReviewerReviewerIdAndPayoutMonth(reviewerId, "2026-05")).thenReturn(Optional.empty());
         mockPayoutSave();
 
         var generated = reviewerService.generateMonthlyPayouts(adminId, "2026-05", false);
@@ -147,14 +187,14 @@ class ReviewerServiceImplTest {
         assertThat(generated.get(0).getCommentAmount()).isEqualTo(1500);
         assertThat(generated.get(0).getTotalAmount()).isEqualTo(2000);
 
-        when(reviewerPayoutRepository.existsByReviewerUserIdAndPayoutMonth(reviewerId, "2026-05")).thenReturn(true);
+        when(reviewerPayoutRepository.existsByReviewerReviewerIdAndPayoutMonth(reviewerId, "2026-05")).thenReturn(true);
         assertThatThrownBy(() -> reviewerService.generateMonthlyPayouts(adminId, "2026-05", false))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
 
         ReviewerPayout existing = new ReviewerPayout();
         existing.setId(UUID.randomUUID());
-        when(reviewerPayoutRepository.findByReviewerUserIdAndPayoutMonth(reviewerId, "2026-05")).thenReturn(Optional.of(existing));
+        when(reviewerPayoutRepository.findByReviewerReviewerIdAndPayoutMonth(reviewerId, "2026-05")).thenReturn(Optional.of(existing));
 
         var overwritten = reviewerService.generateMonthlyPayouts(adminId, "2026-05", true);
 
@@ -174,21 +214,24 @@ class ReviewerServiceImplTest {
         assertThat(reviewerService.calculateReviewerBadge(1499)).isEqualTo("GOLD");
         assertThat(reviewerService.calculateReviewerBadge(1500)).isEqualTo("DIAMOND");
 
-        User admin = user(adminId, UserRole.ADMIN, null, null, null);
-        User reviewer = user(reviewerId, UserRole.USER, null, null, null);
+        User admin = user(adminId, null, null, null);
+        User reviewerUser = user(reviewerUserId, null, null, null);
+        Reviewer reviewer = reviewer(reviewerId, reviewerUser);
         when(userValidator.validateUserExists(adminId)).thenReturn(admin);
-        when(userRepository.findAll()).thenReturn(List.of(reviewer));
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(any(UUID.class), eq("ADMIN")))
+                .thenAnswer(invocation -> adminId.equals(invocation.getArgument(0)));
+        when(reviewerRepository.findAll()).thenReturn(List.of(reviewer));
         when(blogLikeRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any()))
                 .thenReturn(List.of());
         when(blogShareRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any()))
                 .thenReturn(List.of());
         when(commentRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any()))
-                .thenReturn(List.of(comment(reviewer), comment(reviewer), comment(reviewer), comment(reviewer), comment(reviewer),
-                        comment(reviewer), comment(reviewer), comment(reviewer), comment(reviewer), comment(reviewer),
-                        comment(reviewer), comment(reviewer), comment(reviewer), comment(reviewer), comment(reviewer),
-                        comment(reviewer), comment(reviewer), comment(reviewer), comment(reviewer), comment(reviewer)));
-        when(reviewerBadgeHistoryRepository.existsByReviewerUserIdAndMonth(reviewerId, "2026-05")).thenReturn(false);
-        when(reviewerBadgeHistoryRepository.findByReviewerUserIdAndMonth(reviewerId, "2026-05")).thenReturn(Optional.empty());
+                .thenReturn(List.of(comment(reviewerUser), comment(reviewerUser), comment(reviewerUser), comment(reviewerUser), comment(reviewerUser),
+                        comment(reviewerUser), comment(reviewerUser), comment(reviewerUser), comment(reviewerUser), comment(reviewerUser),
+                        comment(reviewerUser), comment(reviewerUser), comment(reviewerUser), comment(reviewerUser), comment(reviewerUser),
+                        comment(reviewerUser), comment(reviewerUser), comment(reviewerUser), comment(reviewerUser), comment(reviewerUser)));
+        when(reviewerBadgeHistoryRepository.existsByReviewerReviewerIdAndMonth(reviewerId, "2026-05")).thenReturn(false);
+        when(reviewerBadgeHistoryRepository.findByReviewerReviewerIdAndMonth(reviewerId, "2026-05")).thenReturn(Optional.empty());
         mockBadgeSave();
 
         var generated = reviewerService.generateMonthlyBadges(adminId, "2026-05", false);
@@ -197,14 +240,14 @@ class ReviewerServiceImplTest {
         assertThat(generated.get(0).getScore()).isEqualTo(100);
         assertThat(generated.get(0).getBadge()).isEqualTo(ReviewerBadge.BRONZE);
 
-        when(reviewerBadgeHistoryRepository.existsByReviewerUserIdAndMonth(reviewerId, "2026-05")).thenReturn(true);
+        when(reviewerBadgeHistoryRepository.existsByReviewerReviewerIdAndMonth(reviewerId, "2026-05")).thenReturn(true);
         assertThatThrownBy(() -> reviewerService.generateMonthlyBadges(adminId, "2026-05", false))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
 
         ReviewerBadgeHistory existing = new ReviewerBadgeHistory();
         existing.setId(UUID.randomUUID());
-        when(reviewerBadgeHistoryRepository.findByReviewerUserIdAndMonth(reviewerId, "2026-05")).thenReturn(Optional.of(existing));
+        when(reviewerBadgeHistoryRepository.findByReviewerReviewerIdAndMonth(reviewerId, "2026-05")).thenReturn(Optional.of(existing));
 
         var overwritten = reviewerService.generateMonthlyBadges(adminId, "2026-05", true);
 
@@ -213,10 +256,10 @@ class ReviewerServiceImplTest {
 
     @Test
     void ranking_success_sortTieBreakerPaginationAndPeriods_TC004() {
-        User first = user(reviewerId, UserRole.USER, "HCM", "HCM", "D1");
-        User second = user(secondReviewerId, UserRole.USER, "HCM", "HCM", "D2");
-        User third = user(thirdReviewerId, UserRole.USER, "HN", "HN", "Ba Dinh");
-        mockRankingData(first, second, third);
+        User first = user(reviewerUserId, "HCM", "HCM", "D1");
+        User second = user(secondReviewerUserId, "HCM", "HCM", "D2");
+        User third = user(thirdReviewerUserId, "HN", "HN", "Ba Dinh");
+        mockRankingData(reviewer(reviewerId, first), reviewer(secondReviewerId, second), reviewer(thirdReviewerId, third));
 
         var ranking = reviewerService.getReviewerRanking("day", 1, 2, null, null, null);
 
@@ -237,10 +280,11 @@ class ReviewerServiceImplTest {
     @Test
     void ranking_success_tieBreakersUuidAndPaginationSanitize_TC010() {
         UUID fourthReviewerId = UUID.fromString("44444444-4444-4444-4444-444444444444");
-        User first = user(reviewerId, UserRole.USER, "HCM", "HCM", "D1");
-        User second = user(secondReviewerId, UserRole.USER, "HCM", "HCM", "D2");
-        User third = user(thirdReviewerId, UserRole.USER, "HN", "HN", "Ba Dinh");
-        User fourth = user(fourthReviewerId, UserRole.USER, "DN", "DN", "Hai Chau");
+        UUID fourthReviewerUserId = UUID.fromString("40404040-4040-4040-4040-404040404040");
+        User first = user(reviewerUserId, "HCM", "HCM", "D1");
+        User second = user(secondReviewerUserId, "HCM", "HCM", "D2");
+        User third = user(thirdReviewerUserId, "HN", "HN", "Ba Dinh");
+        User fourth = user(fourthReviewerUserId, "DN", "DN", "Hai Chau");
         when(blogLikeRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any()))
                 .thenReturn(List.of(like(first), like(first), like(first), like(first), like(first),
                         like(second), like(second), like(second), like(second), like(second),
@@ -250,11 +294,11 @@ class ReviewerServiceImplTest {
                 .thenReturn(List.of(share(second)));
         when(commentRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any()))
                 .thenReturn(List.of(comment(first), comment(third)));
-        when(userRepository.findAll()).thenReturn(List.of(first, second, third, fourth));
-        when(userRepository.findById(reviewerId)).thenReturn(Optional.of(first));
-        when(userRepository.findById(secondReviewerId)).thenReturn(Optional.of(second));
-        when(userRepository.findById(thirdReviewerId)).thenReturn(Optional.of(third));
-        when(userRepository.findById(fourthReviewerId)).thenReturn(Optional.of(fourth));
+        when(reviewerRepository.findAll()).thenReturn(List.of(
+                reviewer(reviewerId, first),
+                reviewer(secondReviewerId, second),
+                reviewer(thirdReviewerId, third),
+                reviewer(fourthReviewerId, fourth)));
 
         var sanitized = reviewerService.getReviewerRanking("day", 0, 0, null, null, null);
 
@@ -269,10 +313,10 @@ class ReviewerServiceImplTest {
 
     @Test
     void geo_success_groupingUnknownFilteringAndTotals_TC005() {
-        User first = user(reviewerId, UserRole.USER, "HCM", "HCM", "D1");
-        User second = user(secondReviewerId, UserRole.USER, "HCM", "HCM", "D2");
-        User unknown = user(thirdReviewerId, UserRole.USER, null, null, null);
-        mockRankingData(first, second, unknown);
+        User first = user(reviewerUserId, "HCM", "HCM", "D1");
+        User second = user(secondReviewerUserId, "HCM", "HCM", "D2");
+        User unknown = user(thirdReviewerUserId, null, null, null);
+        mockRankingData(reviewer(reviewerId, first), reviewer(secondReviewerId, second), reviewer(thirdReviewerId, unknown));
 
         var byCity = reviewerService.getGeoAnalytics("month", "city");
 
@@ -311,9 +355,10 @@ class ReviewerServiceImplTest {
         assertThat(reviewerService.calculateReviewerSegment(1499)).isEqualTo("top");
         assertThat(reviewerService.calculateReviewerSegment(1500)).isEqualTo("elite");
 
-        User reviewer = user(reviewerId, UserRole.USER, null, null, null);
-        when(userRepository.findAll()).thenReturn(List.of(reviewer));
-        when(blogLikeRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(List.of(like(reviewer)));
+        User reviewerUser = user(reviewerUserId, null, null, null);
+        Reviewer reviewer = reviewer(reviewerId, reviewerUser);
+        when(reviewerRepository.findAll()).thenReturn(List.of(reviewer));
+        when(blogLikeRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(List.of(like(reviewerUser)));
         when(blogShareRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(List.of());
         when(commentRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(List.of());
 
@@ -325,50 +370,54 @@ class ReviewerServiceImplTest {
 
     @Test
     void permission_successAndFailure_TC007() {
-        User reviewer = user(reviewerId, UserRole.USER, null, null, null);
-        User other = user(secondReviewerId, UserRole.USER, null, null, null);
-        User admin = user(adminId, UserRole.ADMIN, null, null, null);
-        when(userValidator.validateUserExists(reviewerId)).thenReturn(reviewer);
-        when(userValidator.validateUserExists(secondReviewerId)).thenReturn(other);
+        User reviewerUser = user(reviewerUserId, null, null, null);
+        Reviewer reviewer = reviewer(reviewerId, reviewerUser);
+        User other = user(secondReviewerUserId, null, null, null);
+        User admin = user(adminId, null, null, null);
+        when(userValidator.validateUserExists(reviewerUserId)).thenReturn(reviewerUser);
+        when(userValidator.validateUserExists(secondReviewerUserId)).thenReturn(other);
         when(userValidator.validateUserExists(adminId)).thenReturn(admin);
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(any(UUID.class), eq("ADMIN")))
+                .thenAnswer(invocation -> adminId.equals(invocation.getArgument(0)));
+        when(reviewerRepository.findById(reviewerId)).thenReturn(Optional.of(reviewer));
 
-        when(blogLikeRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(eq(reviewerId), any(), any())).thenReturn(0L);
-        when(blogShareRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(eq(reviewerId), any(), any())).thenReturn(0L);
-        when(commentRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(eq(reviewerId), any(), any())).thenReturn(0L);
+        when(blogLikeRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(eq(reviewerUserId), any(), any())).thenReturn(0L);
+        when(blogShareRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(eq(reviewerUserId), any(), any())).thenReturn(0L);
+        when(commentRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(eq(reviewerUserId), any(), any())).thenReturn(0L);
 
-        assertThat(reviewerService.countReviewerStats(reviewerId, reviewerId, "day").getReviewerId()).isEqualTo(reviewerId);
+        assertThat(reviewerService.countReviewerStats(reviewerUserId, reviewerId, "day").getReviewerId()).isEqualTo(reviewerId);
 
-        assertThatThrownBy(() -> reviewerService.getReviewerPayoutHistory(secondReviewerId, reviewerId))
+        assertThatThrownBy(() -> reviewerService.getReviewerPayoutHistory(secondReviewerUserId, reviewerId))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
 
         ReviewerPayout payout = payout(reviewer);
         ReviewerBadgeHistory badge = badge(reviewer);
-        when(reviewerPayoutRepository.findByReviewerUserIdOrderByPayoutMonthDesc(reviewerId)).thenReturn(List.of(payout));
-        when(reviewerBadgeHistoryRepository.findByReviewerUserIdOrderByMonthDesc(reviewerId)).thenReturn(List.of(badge));
-        assertThat(reviewerService.getReviewerPayoutHistory(reviewerId, reviewerId)).hasSize(1);
+        when(reviewerPayoutRepository.findByReviewerReviewerIdOrderByPayoutMonthDesc(reviewerId)).thenReturn(List.of(payout));
+        when(reviewerBadgeHistoryRepository.findByReviewerReviewerIdOrderByMonthDesc(reviewerId)).thenReturn(List.of(badge));
+        assertThat(reviewerService.getReviewerPayoutHistory(reviewerUserId, reviewerId)).hasSize(1);
         assertThat(reviewerService.getReviewerPayoutHistory(adminId, reviewerId)).hasSize(1);
-        assertThat(reviewerService.getReviewerBadgeHistory(reviewerId, reviewerId)).hasSize(1);
+        assertThat(reviewerService.getReviewerBadgeHistory(reviewerUserId, reviewerId)).hasSize(1);
         assertThat(reviewerService.getReviewerBadgeHistory(adminId, reviewerId)).hasSize(1);
-        assertThatThrownBy(() -> reviewerService.getReviewerBadgeHistory(secondReviewerId, reviewerId))
+        assertThatThrownBy(() -> reviewerService.getReviewerBadgeHistory(secondReviewerUserId, reviewerId))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
 
-        when(userRepository.findAll()).thenReturn(List.of(reviewer));
+        when(reviewerRepository.findAll()).thenReturn(List.of(reviewer));
         when(blogLikeRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(List.of());
         when(blogShareRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(List.of());
         when(commentRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any())).thenReturn(List.of());
-        when(reviewerPayoutRepository.existsByReviewerUserIdAndPayoutMonth(reviewerId, "2026-05")).thenReturn(false);
-        when(reviewerPayoutRepository.findByReviewerUserIdAndPayoutMonth(reviewerId, "2026-05")).thenReturn(Optional.empty());
+        when(reviewerPayoutRepository.existsByReviewerReviewerIdAndPayoutMonth(reviewerId, "2026-05")).thenReturn(false);
+        when(reviewerPayoutRepository.findByReviewerReviewerIdAndPayoutMonth(reviewerId, "2026-05")).thenReturn(Optional.empty());
         mockPayoutSave();
-        when(reviewerBadgeHistoryRepository.existsByReviewerUserIdAndMonth(reviewerId, "2026-05")).thenReturn(false);
-        when(reviewerBadgeHistoryRepository.findByReviewerUserIdAndMonth(reviewerId, "2026-05")).thenReturn(Optional.empty());
+        when(reviewerBadgeHistoryRepository.existsByReviewerReviewerIdAndMonth(reviewerId, "2026-05")).thenReturn(false);
+        when(reviewerBadgeHistoryRepository.findByReviewerReviewerIdAndMonth(reviewerId, "2026-05")).thenReturn(Optional.empty());
         mockBadgeSave();
 
         assertThat(reviewerService.generateMonthlyPayouts(adminId, "2026-05", false)).hasSize(1);
         assertThat(reviewerService.generateMonthlyBadges(adminId, "2026-05", false)).hasSize(1);
 
-        assertThatThrownBy(() -> reviewerService.generateMonthlyPayouts(reviewerId, "2026-05", true))
+        assertThatThrownBy(() -> reviewerService.generateMonthlyPayouts(reviewerUserId, "2026-05", true))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
     }
@@ -390,7 +439,7 @@ class ReviewerServiceImplTest {
     }
 
     private void assertStats(String period, long likes, long shares, long comments) {
-        var result = reviewerService.countReviewerStats(reviewerId, reviewerId, period);
+        var result = reviewerService.countReviewerStats(reviewerUserId, reviewerId, period);
         assertThat(result.getPeriod()).isEqualTo(period);
         assertThat(result.getLikeCount()).isEqualTo(likes);
         assertThat(result.getShareCount()).isEqualTo(shares);
@@ -398,22 +447,22 @@ class ReviewerServiceImplTest {
         assertThat(result.getScore()).isEqualTo(likes + shares * 3 + comments * 5);
     }
 
-    private void mockRankingData(User first, User second, User third) {
+    private void mockRankingData(Reviewer first, Reviewer second, Reviewer third) {
+        User firstUser = first.getUser();
+        User secondUser = second.getUser();
+        User thirdUser = third.getUser();
         when(blogLikeRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any()))
-                .thenReturn(List.of(like(first), like(first), like(first), like(first), like(first),
-                        like(second), like(second),
-                        like(third)));
+                .thenReturn(List.of(like(firstUser), like(firstUser), like(firstUser), like(firstUser), like(firstUser),
+                        like(secondUser), like(secondUser),
+                        like(thirdUser)));
         when(blogShareRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any()))
-                .thenReturn(List.of(share(first),
-                        share(second), share(second), share(second)));
+                .thenReturn(List.of(share(firstUser),
+                        share(secondUser), share(secondUser), share(secondUser)));
         when(commentRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any()))
-                .thenReturn(List.of(comment(first), comment(first),
-                        comment(second), comment(second),
-                        comment(third)));
-        when(userRepository.findById(reviewerId)).thenReturn(Optional.of(first));
-        when(userRepository.findById(secondReviewerId)).thenReturn(Optional.of(second));
-        when(userRepository.findById(thirdReviewerId)).thenReturn(Optional.of(third));
-        when(userRepository.findAll()).thenReturn(List.of(first, second, third));
+                .thenReturn(List.of(comment(firstUser), comment(firstUser),
+                        comment(secondUser), comment(secondUser),
+                        comment(thirdUser)));
+        when(reviewerRepository.findAll()).thenReturn(List.of(first, second, third));
     }
 
     private BlogLike like(User user) {
@@ -441,18 +490,41 @@ class ReviewerServiceImplTest {
         return comment;
     }
 
-    private User user(UUID userId, UserRole role, String city, String province, String district) {
+    private User user(UUID userId, String city, String province, String district) {
         User user = new User();
         user.setUserId(userId);
         user.setUserName("user-" + userId);
         user.setUserEmail(userId + "@example.com");
         user.setUserPassword("secret");
         user.setAccountStatus(true);
-        user.setUserRole(role);
         user.setCity(city);
         user.setProvince(province);
         user.setDistrict(district);
         return user;
+    }
+
+    private Reviewer reviewer(UUID reviewerId, User user) {
+        Reviewer reviewer = new Reviewer();
+        reviewer.setReviewerId(reviewerId);
+        reviewer.setUser(user);
+        return reviewer;
+    }
+
+    private Role role(Integer id, String name) {
+        Role role = new Role();
+        role.setId(id);
+        role.setName(name);
+        return role;
+    }
+
+    private void mockReviewerSave() {
+        doAnswer(invocation -> {
+            Reviewer reviewer = invocation.getArgument(0);
+            if (reviewer.getReviewerId() == null) {
+                reviewer.setReviewerId(UUID.randomUUID());
+            }
+            return reviewer;
+        }).when(reviewerRepository).save(any(Reviewer.class));
     }
 
     private void mockPayoutSave() {
@@ -476,7 +548,7 @@ class ReviewerServiceImplTest {
         }).when(reviewerBadgeHistoryRepository).save(any(ReviewerBadgeHistory.class));
     }
 
-    private ReviewerPayout payout(User reviewer) {
+    private ReviewerPayout payout(Reviewer reviewer) {
         ReviewerPayout payout = new ReviewerPayout();
         payout.setId(UUID.randomUUID());
         payout.setReviewer(reviewer);
@@ -485,7 +557,7 @@ class ReviewerServiceImplTest {
         return payout;
     }
 
-    private ReviewerBadgeHistory badge(User reviewer) {
+    private ReviewerBadgeHistory badge(Reviewer reviewer) {
         ReviewerBadgeHistory badge = new ReviewerBadgeHistory();
         badge.setId(UUID.randomUUID());
         badge.setReviewer(reviewer);
@@ -494,3 +566,4 @@ class ReviewerServiceImplTest {
         return badge;
     }
 }
+

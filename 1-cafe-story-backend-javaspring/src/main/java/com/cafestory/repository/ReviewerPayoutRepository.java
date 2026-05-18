@@ -9,9 +9,9 @@ import java.util.UUID;
 
 public interface ReviewerPayoutRepository extends JpaRepository<ReviewerPayout, UUID> {
 
-    boolean existsByReviewerUserIdAndPayoutMonth(UUID reviewerId, String payoutMonth);
+    boolean existsByReviewerReviewerIdAndPayoutMonth(UUID reviewerId, String payoutMonth);
 
-    Optional<ReviewerPayout> findByReviewerUserIdAndPayoutMonth(UUID reviewerId, String payoutMonth);
+    Optional<ReviewerPayout> findByReviewerReviewerIdAndPayoutMonth(UUID reviewerId, String payoutMonth);
 
-    List<ReviewerPayout> findByReviewerUserIdOrderByPayoutMonthDesc(UUID reviewerId);
+    List<ReviewerPayout> findByReviewerReviewerIdOrderByPayoutMonthDesc(UUID reviewerId);
 }
