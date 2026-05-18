@@ -72,6 +72,9 @@ public class Blog {
     @Column(name = "share_count", nullable = false, columnDefinition = "integer default 0")
     private Integer shareCount = 0;
 
+    @Column(name = "comment_count", nullable = false, columnDefinition = "integer default 0")
+    private Integer commentCount = 0;
+
     @NotNull
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -93,6 +96,9 @@ public class Blog {
         }
         if (shareCount == null) {
             shareCount = 0;
+        }
+        if (commentCount == null) {
+            commentCount = 0;
         }
     }
 

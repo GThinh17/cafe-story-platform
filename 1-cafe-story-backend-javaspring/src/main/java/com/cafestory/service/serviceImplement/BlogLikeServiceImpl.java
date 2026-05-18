@@ -51,6 +51,7 @@ public class BlogLikeServiceImpl implements BlogLikeService {
 
         BlogLike savedBlogLike = blogLikeRepository.save(blogLike);
         incrementLikeCount(blog);
+        incrementAuthorLikeCount(blog);
         return blogInteractionMapper.toBlogLikeResponseDTO(savedBlogLike);
     }
 
@@ -65,6 +66,7 @@ public class BlogLikeServiceImpl implements BlogLikeService {
 
         blogLikeRepository.delete(blogLike);
         decrementLikeCount(blogLike.getBlog());
+        decrementAuthorLikeCount(blogLike.getBlog());
     }
 
     @Override
@@ -95,5 +97,23 @@ public class BlogLikeServiceImpl implements BlogLikeService {
     private void decrementLikeCount(Blog blog) {
         int currentCount = blog.getLikeCount() == null ? 0 : blog.getLikeCount();
         blog.setLikeCount(Math.max(0, currentCount - 1));
+    }
+
+    private void incrementAuthorLikeCount(Blog blog) {
+        User author = blog.getAuthor();
+        if (author == null) {
+            return;
+        }
+        int currentCount = author.getUserLike() == null ? 0 : author.getUserLike();
+        author.setUserLike(currentCount + 1);
+    }
+
+    private void decrementAuthorLikeCount(Blog blog) {
+        User author = blog.getAuthor();
+        if (author == null) {
+            return;
+        }
+        int currentCount = author.getUserLike() == null ? 0 : author.getUserLike();
+        author.setUserLike(Math.max(0, currentCount - 1));
     }
 }

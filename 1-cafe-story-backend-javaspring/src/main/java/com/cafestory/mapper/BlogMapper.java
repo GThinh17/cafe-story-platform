@@ -19,6 +19,7 @@ public interface BlogMapper {
     @Mapping(target = "allowComment", ignore = true)
     @Mapping(target = "likeCount", ignore = true)
     @Mapping(target = "shareCount", ignore = true)
+    @Mapping(target = "commentCount", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     Blog toBlog(BlogCreateDTO blogCreateDTO);

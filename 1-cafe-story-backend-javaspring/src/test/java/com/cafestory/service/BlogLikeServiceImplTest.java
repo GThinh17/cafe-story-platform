@@ -51,6 +51,7 @@ class BlogLikeServiceImplTest {
         UUID blogId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
         Blog blog = blog(blogId);
+        blog.getAuthor().setUserLike(5);
         User user = user(userId);
         BlogLike savedLike = blogLike(UUID.randomUUID(), blog, user);
         BlogLikeResponseDTO response = response(savedLike.getId(), blogId, userId);
@@ -65,6 +66,7 @@ class BlogLikeServiceImplTest {
 
         assertThat(result).isEqualTo(response);
         assertThat(blog.getLikeCount()).isEqualTo(1);
+        assertThat(blog.getAuthor().getUserLike()).isEqualTo(6);
     }
 
     @Test
@@ -92,6 +94,7 @@ class BlogLikeServiceImplTest {
         UUID userId = UUID.randomUUID();
         Blog blog = blog(blogId);
         blog.setLikeCount(2);
+        blog.getAuthor().setUserLike(4);
         BlogLike blogLike = blogLike(UUID.randomUUID(), blog, user(userId));
 
         when(blogLikeRepository.findByUserUserIdAndBlogId(userId, blogId)).thenReturn(Optional.of(blogLike));
@@ -99,6 +102,7 @@ class BlogLikeServiceImplTest {
         blogLikeService.unlikeBlog(blogId, userId);
 
         assertThat(blog.getLikeCount()).isEqualTo(1);
+        assertThat(blog.getAuthor().getUserLike()).isEqualTo(3);
         verify(blogValidator).validateBlogExists(blogId);
         verify(userValidator).validateUserExists(userId);
         verify(blogLikeRepository).delete(blogLike);
@@ -152,6 +156,7 @@ class BlogLikeServiceImplTest {
     private Blog blog(UUID blogId) {
         Blog blog = new Blog();
         blog.setId(blogId);
+        blog.setAuthor(user(UUID.randomUUID()));
         blog.setContent("Blog content");
         blog.setLikeCount(0);
         blog.setShareCount(0);
