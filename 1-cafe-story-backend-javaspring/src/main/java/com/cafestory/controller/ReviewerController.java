@@ -33,6 +33,16 @@ public class ReviewerController {
         return reviewerService.createReviewer(userId);
     }
 
+    @GetMapping("/{userId}")
+    public ReviewerResponseDTO getReviewer(@PathVariable UUID userId) {
+        return reviewerService.getReviewer(userId);
+    }
+
+    @GetMapping
+    public List<ReviewerResponseDTO> getAllReviewer() {
+        return reviewerService.getAllReviewer();
+    }
+
     @GetMapping("/{reviewerId}/stats")
     public ReviewerStatsResponseDTO getReviewerStats(
             @PathVariable UUID reviewerId,

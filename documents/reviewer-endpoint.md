@@ -39,6 +39,50 @@ WHERE name = 'ADMIN'
 ON CONFLICT DO NOTHING;
 ```
 
+## 0. Get & get all Reviewer
+
+Gets reviewer stats
+
+```http
+GET /api/reviewers/{userId}
+
+GET /api/reviewers/
+```
+
+Body: none
+
+Response example:
+
+```json
+{
+    "statusCode": 200,
+    "status": "Success",
+    "message": "Request processed successfully",
+    "data": [
+        {
+            "reviewerId": "111111-11111-11111-1111-11111111111",
+            "userId": "2222222-2222-2222-2222-2222222222",
+            "role": "REVIEWER",
+            "avatar": "https://example.com/avatar.png",
+            "region": {
+                "regionId": "333333-3333-3333-3333-111111111",
+                "city": "Ho Chi Minh",
+                "province": "Ho Chi Minh",
+                "ward": "Ben Nghe",
+                "area": "3123123",
+                "street": "Nguyen Hue"
+            },
+            "name": "Nguyen Van A",
+            "follower": 112,
+            "follow": 121,
+            "like": 232,
+            "badge": "BRONZE",
+            "score": 2323
+        }
+    ]
+}
+```
+
 ## 1. Create Reviewer
 
 Creates a reviewer profile for an existing user and assigns the `REVIEWER` role through `user_roles`.

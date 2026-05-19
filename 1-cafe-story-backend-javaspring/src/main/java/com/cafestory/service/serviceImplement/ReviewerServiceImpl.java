@@ -7,6 +7,7 @@ import com.cafestory.dto.responseDTO.reviewer.ReviewerRankingResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerSegmentResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerStatsResponseDTO;
+import com.cafestory.dto.responseDTO.RegionResponseDTO;
 import com.cafestory.entity.BlogLike;
 import com.cafestory.entity.BlogShare;
 import com.cafestory.entity.Comment;
@@ -27,6 +28,7 @@ import com.cafestory.repository.ReviewerPayoutRepository;
 import com.cafestory.repository.ReviewerRepository;
 import com.cafestory.repository.RoleRepository;
 import com.cafestory.repository.UserRepository;
+import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRoleAssignmentRepository;
 import com.cafestory.service.serviceInterface.ReviewerService;
 import com.cafestory.validation.UserValidator;
@@ -66,6 +68,7 @@ public class ReviewerServiceImpl implements ReviewerService {
     private final RoleRepository roleRepository;
     private final UserRoleAssignmentRepository userRoleAssignmentRepository;
     private final UserRepository userRepository;
+    private final UserFollowRepository userFollowRepository;
     private final UserValidator userValidator;
 
     public ReviewerServiceImpl(
@@ -78,6 +81,7 @@ public class ReviewerServiceImpl implements ReviewerService {
             RoleRepository roleRepository,
             UserRoleAssignmentRepository userRoleAssignmentRepository,
             UserRepository userRepository,
+            UserFollowRepository userFollowRepository,
             UserValidator userValidator) {
         this.blogLikeRepository = blogLikeRepository;
         this.blogShareRepository = blogShareRepository;
@@ -88,6 +92,7 @@ public class ReviewerServiceImpl implements ReviewerService {
         this.roleRepository = roleRepository;
         this.userRoleAssignmentRepository = userRoleAssignmentRepository;
         this.userRepository = userRepository;
+        this.userFollowRepository = userFollowRepository;
         this.userValidator = userValidator;
     }
 
@@ -99,6 +104,23 @@ public class ReviewerServiceImpl implements ReviewerService {
         Reviewer reviewer = reviewerRepository.findByUserUserId(userId).orElseGet(Reviewer::new);
         reviewer.setUser(user);
         return toReviewerResponse(reviewerRepository.save(reviewer));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ReviewerResponseDTO getReviewer(UUID userId) {
+        Reviewer reviewer = reviewerRepository.findByUserUserId(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reviewer not found"));
+        return toReviewerResponse(reviewer);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ReviewerResponseDTO> getAllReviewer() {
+        return reviewerRepository.findAll()
+                .stream()
+                .map(this::toReviewerResponse)
+                .toList();
     }
 
     @Override
@@ -433,10 +455,40 @@ public class ReviewerServiceImpl implements ReviewerService {
 
     private ReviewerResponseDTO toReviewerResponse(Reviewer reviewer) {
         ReviewerResponseDTO response = new ReviewerResponseDTO();
+        User user = reviewer.getUser();
         response.setReviewerId(reviewer.getReviewerId());
-        response.setUserId(reviewer.getUser().getUserId());
+        response.setUserId(user.getUserId());
         response.setRole(REVIEWER_ROLE);
+        response.setAvatar(user.getUserAvatar());
+        response.setRegion(toRegionResponse(user.getRegion()));
+        response.setName(firstNonBlank(user.getUserFullName(), user.getUserName(), null));
+        response.setFollower(defaultInt(user.getUserFollower()));
+        response.setFollow(userFollowRepository.findByFollowerUserId(user.getUserId()).size());
+        response.setLike(defaultInt(user.getUserLike()));
+        ReviewerBadgeHistory latestBadge = reviewerBadgeHistoryRepository
+                .findTopByReviewerReviewerIdOrderByMonthDesc(reviewer.getReviewerId())
+                .orElse(null);
+        response.setBadge(latestBadge == null ? ReviewerBadge.IRON : latestBadge.getBadge());
+        response.setScore(latestBadge == null ? 0 : latestBadge.getScore());
         return response;
+    }
+
+    private RegionResponseDTO toRegionResponse(Region region) {
+        if (region == null) {
+            return null;
+        }
+        RegionResponseDTO response = new RegionResponseDTO();
+        response.setRegionId(region.getRegionId());
+        response.setCity(region.getCity());
+        response.setProvince(region.getProvince());
+        response.setWard(region.getWard());
+        response.setArea(region.getArea());
+        response.setStreet(region.getStreet());
+        return response;
+    }
+
+    private int defaultInt(Integer value) {
+        return value == null ? 0 : value;
     }
 
     private void validateSelfOrAdmin(UUID requesterId, UUID reviewerId) {

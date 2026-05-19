@@ -19,6 +19,7 @@ import com.cafestory.repository.ReviewerBadgeHistoryRepository;
 import com.cafestory.repository.ReviewerPayoutRepository;
 import com.cafestory.repository.ReviewerRepository;
 import com.cafestory.repository.RoleRepository;
+import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.repository.UserRoleAssignmentRepository;
 import com.cafestory.service.serviceImplement.ReviewerServiceImpl;
@@ -83,6 +84,9 @@ class ReviewerServiceImplTest {
     private UserRepository userRepository;
 
     @Mock
+    private UserFollowRepository userFollowRepository;
+
+    @Mock
     private UserValidator userValidator;
 
     private ReviewerServiceImpl reviewerService;
@@ -99,6 +103,7 @@ class ReviewerServiceImplTest {
                 roleRepository,
                 userRoleAssignmentRepository,
                 userRepository,
+                userFollowRepository,
                 userValidator);
     }
 
@@ -136,6 +141,57 @@ class ReviewerServiceImplTest {
         assertThat(result.getRole()).isEqualTo("REVIEWER");
         verify(userRoleAssignmentRepository).save(any());
         verify(reviewerRepository).save(any(Reviewer.class));
+    }
+
+    @Test
+    void getReviewer_success_returnsProfileFieldsLatestBadgeAndRegion_TC012() {
+        User user = user(reviewerUserId, "HCM", "HCM", "D1");
+        user.setUserFullName("Cafe Reviewer");
+        user.setUserAvatar("avatar.png");
+        user.setUserFollower(12);
+        user.setUserLike(34);
+        Reviewer reviewer = reviewer(reviewerId, user);
+        ReviewerBadgeHistory latestBadge = badge(reviewer);
+        latestBadge.setBadge(ReviewerBadge.GOLD);
+        latestBadge.setScore(800);
+        when(reviewerRepository.findByUserUserId(reviewerUserId)).thenReturn(Optional.of(reviewer));
+        when(userFollowRepository.findByFollowerUserId(reviewerUserId)).thenReturn(List.of());
+        when(reviewerBadgeHistoryRepository.findTopByReviewerReviewerIdOrderByMonthDesc(reviewerId)).thenReturn(Optional.of(latestBadge));
+
+        var result = reviewerService.getReviewer(reviewerUserId);
+
+        assertThat(result.getReviewerId()).isEqualTo(reviewerId);
+        assertThat(result.getName()).isEqualTo("Cafe Reviewer");
+        assertThat(result.getAvatar()).isEqualTo("avatar.png");
+        assertThat(result.getFollower()).isEqualTo(12);
+        assertThat(result.getFollow()).isZero();
+        assertThat(result.getLike()).isEqualTo(34);
+        assertThat(result.getBadge()).isEqualTo(ReviewerBadge.GOLD);
+        assertThat(result.getScore()).isEqualTo(800);
+        assertThat(result.getRegion().getCity()).isEqualTo("HCM");
+        assertThat(result.getRegion().getArea()).isEqualTo("D1");
+    }
+
+    @Test
+    void getAllReviewer_success_returnsAllProfilesWithFallbackBadge_TC013() {
+        User firstUser = user(reviewerUserId, null, null, null);
+        firstUser.setUserName("first");
+        User secondUser = user(secondReviewerUserId, null, null, null);
+        secondUser.setUserName("second");
+        when(reviewerRepository.findAll()).thenReturn(List.of(
+                reviewer(reviewerId, firstUser),
+                reviewer(secondReviewerId, secondUser)));
+        when(userFollowRepository.findByFollowerUserId(any(UUID.class))).thenReturn(List.of());
+        when(reviewerBadgeHistoryRepository.findTopByReviewerReviewerIdOrderByMonthDesc(any(UUID.class))).thenReturn(Optional.empty());
+
+        var result = reviewerService.getAllReviewer();
+
+        assertThat(result).hasSize(2);
+        assertThat(result).extracting("reviewerId").containsExactly(reviewerId, secondReviewerId);
+        assertThat(result).allSatisfy(reviewer -> {
+            assertThat(reviewer.getBadge()).isEqualTo(ReviewerBadge.IRON);
+            assertThat(reviewer.getScore()).isZero();
+        });
     }
 
     @Test
