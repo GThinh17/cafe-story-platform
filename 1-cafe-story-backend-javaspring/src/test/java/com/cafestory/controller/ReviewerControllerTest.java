@@ -8,6 +8,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,5 +37,34 @@ class ReviewerControllerTest {
 
         assertThat(result).isEqualTo(response);
         verify(reviewerService).createReviewer(userId);
+    }
+
+    @Test
+    void getReviewer_success_TC002() {
+        UUID userId = UUID.randomUUID();
+        UUID reviewerId = UUID.randomUUID();
+        ReviewerResponseDTO response = new ReviewerResponseDTO();
+        response.setReviewerId(reviewerId);
+        response.setUserId(userId);
+        response.setName("Reviewer");
+
+        when(reviewerService.getReviewer(userId)).thenReturn(response);
+
+        ReviewerResponseDTO result = reviewerController.getReviewer(userId);
+
+        assertThat(result).isEqualTo(response);
+        verify(reviewerService).getReviewer(userId);
+    }
+
+    @Test
+    void getAllReviewer_success_TC003() {
+        ReviewerResponseDTO response = new ReviewerResponseDTO();
+        response.setReviewerId(UUID.randomUUID());
+        when(reviewerService.getAllReviewer()).thenReturn(List.of(response));
+
+        List<ReviewerResponseDTO> result = reviewerController.getAllReviewer();
+
+        assertThat(result).containsExactly(response);
+        verify(reviewerService).getAllReviewer();
     }
 }
