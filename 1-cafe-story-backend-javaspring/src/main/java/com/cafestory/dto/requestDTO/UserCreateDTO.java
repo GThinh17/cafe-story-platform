@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+import java.util.UUID;
+
 @Data
 public class UserCreateDTO {
 
@@ -26,4 +28,6 @@ public class UserCreateDTO {
     private Long userPhone;
 
     private String userAvatar;
+
+    private UUID regionId;
 }

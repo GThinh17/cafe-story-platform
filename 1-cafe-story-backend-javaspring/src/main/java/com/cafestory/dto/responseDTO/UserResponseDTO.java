@@ -15,4 +15,6 @@ public class UserResponseDTO {
     private Integer userLike;
     private Integer userFollower;
     private Boolean accountStatus;
+    private UUID regionId;
+    private RegionResponseDTO region;
 }

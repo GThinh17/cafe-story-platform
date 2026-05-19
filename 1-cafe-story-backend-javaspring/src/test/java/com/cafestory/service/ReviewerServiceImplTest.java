@@ -1,4 +1,4 @@
-package com.cafestory.reviewer;
+package com.cafestory.service;
 
 import com.cafestory.entity.BlogLike;
 import com.cafestory.entity.BlogShare;
@@ -6,6 +6,7 @@ import com.cafestory.entity.Comment;
 import com.cafestory.entity.Reviewer;
 import com.cafestory.entity.ReviewerBadgeHistory;
 import com.cafestory.entity.ReviewerPayout;
+import com.cafestory.entity.Region;
 import com.cafestory.entity.Role;
 import com.cafestory.entity.User;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerRankingResponseDTO;
@@ -329,14 +330,14 @@ class ReviewerServiceImplTest {
         assertThat(byCity).anySatisfy(group -> assertThat(group.getLocationName()).isEqualTo("unknown"));
 
         assertThat(reviewerService.getGeoAnalytics("month", "province")).isNotEmpty();
-        assertThat(reviewerService.getGeoAnalytics("month", "district")).isNotEmpty();
+        assertThat(reviewerService.getGeoAnalytics("month", "area")).isNotEmpty();
 
         var cityFiltered = reviewerService.getReviewerRanking("month", 1, 10, "hcm", null, null);
         assertThat(cityFiltered).hasSize(2);
         var provinceFiltered = reviewerService.getReviewerRanking("month", 1, 10, null, "hcm", null);
         assertThat(provinceFiltered).hasSize(2);
-        var districtFiltered = reviewerService.getReviewerRanking("month", 1, 10, null, null, "d1");
-        assertThat(districtFiltered).hasSize(1);
+        var areaFiltered = reviewerService.getReviewerRanking("month", 1, 10, null, null, "d1");
+        assertThat(areaFiltered).hasSize(1);
         var unknownFiltered = reviewerService.getReviewerRanking("month", 1, 10, "unknown", null, null);
         assertThat(unknownFiltered).hasSize(1);
         assertThat(unknownFiltered.get(0).getReviewerId()).isEqualTo(thirdReviewerId);
@@ -490,17 +491,26 @@ class ReviewerServiceImplTest {
         return comment;
     }
 
-    private User user(UUID userId, String city, String province, String district) {
+    private User user(UUID userId, String city, String province, String area) {
         User user = new User();
         user.setUserId(userId);
         user.setUserName("user-" + userId);
         user.setUserEmail(userId + "@example.com");
         user.setUserPassword("secret");
         user.setAccountStatus(true);
-        user.setCity(city);
-        user.setProvince(province);
-        user.setDistrict(district);
+        if (city != null || province != null || area != null) {
+            user.setRegion(region(city, province, area));
+        }
         return user;
+    }
+
+    private Region region(String city, String province, String area) {
+        Region region = new Region();
+        region.setRegionId(UUID.randomUUID());
+        region.setCity(city);
+        region.setProvince(province);
+        region.setArea(area);
+        return region;
     }
 
     private Reviewer reviewer(UUID reviewerId, User user) {

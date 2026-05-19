@@ -1,4 +1,4 @@
-package com.cafestory.chat;
+package com.cafestory.controller;
 
 import com.cafestory.controller.ChatSocketController;
 import com.cafestory.dto.requestDTO.chat.SendMessageRequest;
