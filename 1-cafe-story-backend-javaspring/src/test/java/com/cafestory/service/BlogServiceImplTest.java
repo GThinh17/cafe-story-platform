@@ -10,6 +10,7 @@ import com.cafestory.mapper.BlogMapper;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.service.serviceImplement.BlogServiceImpl;
 import com.cafestory.validation.BlogValidator;
+import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.UserValidator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,6 +43,9 @@ class BlogServiceImplTest {
     private BlogValidator blogValidator;
 
     @Mock
+    private CafePageValidator cafePageValidator;
+
+    @Mock
     private UserValidator userValidator;
 
     @InjectMocks
@@ -66,12 +70,14 @@ class BlogServiceImplTest {
         assertThat(blog.getAuthor()).isEqualTo(author);
         assertThat(blog.getIsPinned()).isTrue();
         assertThat(blog.getAllowComment()).isFalse();
+        verify(cafePageValidator).validateUserCanCreateBlogOnPage(request.getPageId(), request.getAuthorUserId());
         verify(blogRepository).save(blog);
     }
 
     @Test
     void createBlog_success_defaultBooleanFields_TC002() {
         BlogCreateDTO request = createBlogRequest();
+        request.setPageId(null);
         request.setIsPinned(null);
         request.setAllowComment(null);
         User author = user(request.getAuthorUserId());
@@ -93,7 +99,27 @@ class BlogServiceImplTest {
     }
 
     @Test
-    void createBlog_fail_authorNotFound_TC003() {
+    void createBlog_fail_authorNotAllowedOnPage_TC003() {
+        BlogCreateDTO request = createBlogRequest();
+        User author = user(request.getAuthorUserId());
+
+        when(userValidator.validateUserExists(request.getAuthorUserId())).thenReturn(author);
+        org.mockito.Mockito.doThrow(new ResponseStatusException(
+                        HttpStatus.FORBIDDEN,
+                        "User is not allowed to create blog on this cafe page"))
+                .when(cafePageValidator)
+                .validateUserCanCreateBlogOnPage(request.getPageId(), request.getAuthorUserId());
+
+        assertThatThrownBy(() -> blogService.createBlog(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.FORBIDDEN));
+
+        verify(blogRepository, never()).save(any(Blog.class));
+    }
+
+    @Test
+    void createBlog_fail_authorNotFound_TC004() {
         BlogCreateDTO request = createBlogRequest();
 
         when(userValidator.validateUserExists(request.getAuthorUserId()))
@@ -108,7 +134,7 @@ class BlogServiceImplTest {
     }
 
     @Test
-    void getAllBlogs_success_TC004() {
+    void getAllBlogs_success_TC005() {
         Blog blog = blog();
         BlogResponseDTO response = blogResponse(blog.getId(), UUID.randomUUID());
 
@@ -121,7 +147,7 @@ class BlogServiceImplTest {
     }
 
     @Test
-    void getBlogsByAuthorId_success_TC005() {
+    void getBlogsByAuthorId_success_TC006() {
         UUID userId = UUID.randomUUID();
         Blog blog = blog();
         BlogResponseDTO response = blogResponse(blog.getId(), userId);
@@ -136,7 +162,7 @@ class BlogServiceImplTest {
     }
 
     @Test
-    void getAllBlogsByUserId_success_TC006() {
+    void getAllBlogsByUserId_success_TC007() {
         UUID userId = UUID.randomUUID();
         Blog blog = blog();
         BlogResponseDTO response = blogResponse(blog.getId(), userId);
@@ -151,7 +177,7 @@ class BlogServiceImplTest {
     }
 
     @Test
-    void getAllBlogsByUserId_fail_nullUserId_TC007() {
+    void getAllBlogsByUserId_fail_nullUserId_TC008() {
         when(userValidator.validateUserExists(null))
                 .thenThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "User id is required"));
 
@@ -166,7 +192,7 @@ class BlogServiceImplTest {
     }
 
     @Test
-    void getAllBlogsByUserId_fail_userNotFound_TC008() {
+    void getAllBlogsByUserId_fail_userNotFound_TC009() {
         UUID userId = UUID.randomUUID();
 
         when(userValidator.validateUserExists(userId))
@@ -183,7 +209,7 @@ class BlogServiceImplTest {
     }
 
     @Test
-    void getBlogById_success_TC009() {
+    void getBlogById_success_TC010() {
         UUID blogId = UUID.randomUUID();
         Blog blog = blog();
         BlogResponseDTO response = blogResponse(blogId, UUID.randomUUID());
@@ -197,7 +223,7 @@ class BlogServiceImplTest {
     }
 
     @Test
-    void getBlogById_fail_blogNotFound_TC010() {
+    void getBlogById_fail_blogNotFound_TC011() {
         UUID blogId = UUID.randomUUID();
 
         when(blogValidator.validateBlogExists(blogId))
@@ -210,7 +236,7 @@ class BlogServiceImplTest {
     }
 
     @Test
-    void updateBlog_success_updateAllFields_TC011() {
+    void updateBlog_success_updateAllFields_TC012() {
         UUID blogId = UUID.randomUUID();
         BlogUpdateDTO request = updateBlogRequest();
         Blog blog = blog();
@@ -234,7 +260,7 @@ class BlogServiceImplTest {
     }
 
     @Test
-    void updateBlog_success_nullFields_TC012() {
+    void updateBlog_success_nullFields_TC013() {
         UUID blogId = UUID.randomUUID();
         BlogUpdateDTO request = new BlogUpdateDTO();
         Blog blog = blog();
@@ -251,7 +277,7 @@ class BlogServiceImplTest {
     }
 
     @Test
-    void updateBlog_fail_blogNotFound_TC013() {
+    void updateBlog_fail_blogNotFound_TC014() {
         UUID blogId = UUID.randomUUID();
         BlogUpdateDTO request = updateBlogRequest();
 
@@ -267,7 +293,7 @@ class BlogServiceImplTest {
     }
 
     @Test
-    void deleteBlog_success_TC014() {
+    void deleteBlog_success_TC015() {
         UUID blogId = UUID.randomUUID();
         Blog blog = blog();
 
@@ -279,7 +305,7 @@ class BlogServiceImplTest {
     }
 
     @Test
-    void deleteBlog_fail_blogNotFound_TC015() {
+    void deleteBlog_fail_blogNotFound_TC016() {
         UUID blogId = UUID.randomUUID();
 
         when(blogValidator.validateBlogExists(blogId))

@@ -8,4 +8,6 @@ import java.util.UUID;
 
 public interface BlogRepository extends JpaRepository<Blog, UUID> {
     List<Blog> findByAuthorUserId(UUID authorUserId);
+
+    List<Blog> findByPageId(UUID pageId);
 }
