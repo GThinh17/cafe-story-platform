@@ -1,5 +1,6 @@
 package com.cafestory.controller;
 
+import com.cafestory.dto.requestDTO.RegionRequestDTO;
 import com.cafestory.dto.requestDTO.UserCreateDTO;
 import com.cafestory.dto.requestDTO.UserUpdateDTO;
 import com.cafestory.dto.responseDTO.UserResponseDTO;
@@ -79,6 +80,25 @@ class UserControllerTest {
 
         assertThat(result.getUserFullName()).isEqualTo("Updated User");
         verify(userService).updateUser(userId, request);
+    }
+
+    @Test
+    void updateUserRegion_success_TC006() {
+        UUID userId = UUID.randomUUID();
+        RegionRequestDTO request = new RegionRequestDTO();
+        request.setCity("Ho Chi Minh");
+        request.setProvince("Ho Chi Minh");
+        request.setDistrict("District 1");
+        request.setWard("Ben Nghe");
+        request.setStreet("Nguyen Hue");
+        UserResponseDTO response = userResponse();
+
+        when(userService.updateUserRegion(userId, request)).thenReturn(response);
+
+        UserResponseDTO result = userController.updateUserRegion(userId, request);
+
+        assertThat(result).isEqualTo(response);
+        verify(userService).updateUserRegion(userId, request);
     }
 
     @Test

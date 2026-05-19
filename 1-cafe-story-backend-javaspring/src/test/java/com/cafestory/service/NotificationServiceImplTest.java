@@ -1,4 +1,4 @@
-package com.cafestory.notification;
+package com.cafestory.service;
 
 import com.cafestory.dto.requestDTO.notification.CreateNotificationRequest;
 import com.cafestory.entity.Notification;

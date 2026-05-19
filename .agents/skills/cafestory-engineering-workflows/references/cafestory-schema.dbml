@@ -90,7 +90,7 @@ Enum trend_window_type {
 }
 
 Enum message_type {
-  TEXT
+  TEXT  
   IMAGE
   STICKER
   MIXED
@@ -132,6 +132,7 @@ Table users {
   user_email varchar(255) [not null, unique]
   user_phone bigint
   user_avatar varchar(255)
+  region_id uuid
   user_like int [not null, default: 0]
   user_follower int [not null, default: 0]
   account_status boolean [not null, default: true]
@@ -155,11 +156,15 @@ Table user_roles {
 }
 
 Table regions {
-  id uuid [pk]
-  name varchar(120) [not null]
-  latitude decimal(10, 7)
-  longitude decimal(10, 7)
+  region_id uuid [pk]
+  city varchar(255)
+  province varchar(255)
+  ward varchar(255)
+  area varchar(255)
+  street varchar(255)
   created_at datetime [not null]
+  updated_at datetime
+  Note: "Shared address table for users and cafe pages. area replaces the old user district field. country, latitude, and longitude are not used by the current backend."
 }
 
 Table cafe_pages {
@@ -540,7 +545,8 @@ Ref: user_roles.user_id > users.user_id
 Ref: user_roles.role_id > roles.id
 
 Ref: cafe_pages.owner_user_id > users.user_id
-Ref: cafe_pages.region_id > regions.id
+Ref: users.region_id > regions.region_id
+Ref: cafe_pages.region_id > regions.region_id
 Ref: page_members.page_id > cafe_pages.id
 Ref: page_members.user_id > users.user_id
 

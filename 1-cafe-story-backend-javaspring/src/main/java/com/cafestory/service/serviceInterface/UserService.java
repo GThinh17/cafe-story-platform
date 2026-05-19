@@ -16,5 +16,7 @@ public interface UserService {
 
     UserResponseDTO updateUser(UUID userId, UserUpdateDTO userUpdateDTO);
 
+    UserResponseDTO updateUserRegion(UUID userId, RegionRequestDTO regionRequestDTO);
+
     void deleteUser(UUID userId);
 }
