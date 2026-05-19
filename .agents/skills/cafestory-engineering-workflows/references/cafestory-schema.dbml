@@ -63,8 +63,15 @@ Enum conversation_type {
 
 Enum member_role {
   OWNER
+  CO_OWNER
   ADMIN
   MEMBER
+}
+
+Enum page_member_status {
+  PENDING
+  ACTIVE
+  REJECTED
 }
 
 Enum message_type {
@@ -142,7 +149,7 @@ Table regions {
 
 Table cafe_pages {
   id uuid [pk]
-  owner_user_id uuid [not null]
+  owner_user_id uuid [not null, unique]
   region_id uuid
   name varchar(160) [not null]
   address text [not null]
@@ -154,14 +161,17 @@ Table cafe_pages {
   follower_count int [not null, default: 0]
   created_at datetime [not null]
   updated_at datetime
-  Note: "This replaces Page + Page_detail for the common case. Add page_members when one cafe page has multiple staff/admin users."
+  Note: "owner_user_id is the creator/primary owner and must be unique so one user can create only one cafe page. Use page_members for additional owners/staff."
 }
 
 Table page_members {
   page_id uuid [not null]
   user_id uuid [not null]
-  role_name varchar(40) [not null, default: "OWNER"]
+  role_name varchar(40) [not null, default: "MEMBER"]
+  status page_member_status [not null, default: "ACTIVE"]
   created_at datetime [not null]
+  updated_at datetime
+  Note: "Stores cafe page members and co-owners. User self-registration creates MEMBER/PENDING. Page managers can approve to ACTIVE/REJECTED or add members directly as ACTIVE. OWNER/CO_OWNER ACTIVE can create blogs for this page."
 
   Indexes {
     (page_id, user_id) [pk]

@@ -11,6 +11,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -19,6 +20,8 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -66,6 +69,9 @@ public class CafePage {
 
     @Column(name = "follower_count", nullable = false, columnDefinition = "integer default 0")
     private Integer followerCount = 0;
+
+    @OneToMany(mappedBy = "cafePage")
+    private List<PageMember> members = new ArrayList<>();
 
     @NotNull
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -22,7 +22,11 @@ For exact table/column/enum definitions, read `cafestory-schema.dbml`.
 - Blog shares use `blog_shares.share_type` with `PUBLIC`, `PRIVATE`, and `PAGE_ONLY`.
 - Reports target either a blog or a comment; exactly one of `content_reports.blog_id` or `content_reports.comment_id` should be set by application validation.
 - User follow must reject self-follow: `follower_user_id <> following_user_id`.
-- Page ownership starts with `cafe_pages.owner_user_id`; use `page_members` when a cafe page has multiple staff/admin users.
+- Page ownership starts with `cafe_pages.owner_user_id`; this primary owner/creator is unique, so one user can create only one cafe page.
+- `page_members` stores page owners/co-owners/members with `status`: `PENDING`, `ACTIVE`, `REJECTED`.
+- User self-registration for a page creates `page_members.role_name=MEMBER` and `status=PENDING`.
+- Page managers can approve/reject pending membership, or add a page member directly with `status=ACTIVE`.
+- A user can create a blog for a cafe page only when they are `cafe_pages.owner_user_id` or an `ACTIVE` `OWNER`/`CO_OWNER` in `page_members` for that page.
 
 ## Domain Groups
 
@@ -62,7 +66,8 @@ Payments:
 - `payout_status`: `PENDING`, `APPROVED`, `REJECTED`, `PAID`
 - `share_type`: `PUBLIC`, `PRIVATE`, `PAGE_ONLY`
 - `conversation_type`: `DIRECT`, `GROUP`
-- `member_role`: `OWNER`, `ADMIN`, `MEMBER`
+- `member_role`: `OWNER`, `CO_OWNER`, `ADMIN`, `MEMBER`
+- `page_member_status`: `PENDING`, `ACTIVE`, `REJECTED`
 - `message_type`: `TEXT`, `IMAGE`, `STICKER`, `MIXED`
 - `message_status`: `SENT`, `FAILED`, `DELETED`
 - `notification_type`: `LIKE`, `SHARE`, `COMMENT`, `MESSAGE`, `FOLLOW`

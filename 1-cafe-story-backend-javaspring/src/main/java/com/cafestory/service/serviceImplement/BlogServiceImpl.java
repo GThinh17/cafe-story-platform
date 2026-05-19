@@ -9,6 +9,7 @@ import com.cafestory.mapper.BlogMapper;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.service.serviceInterface.BlogService;
 import com.cafestory.validation.BlogValidator;
+import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.UserValidator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,16 +23,19 @@ public class BlogServiceImpl implements BlogService {
     private final BlogRepository blogRepository;
     private final BlogMapper blogMapper;
     private final BlogValidator blogValidator;
+    private final CafePageValidator cafePageValidator;
     private final UserValidator userValidator;
 
     public BlogServiceImpl(
             BlogRepository blogRepository,
             BlogMapper blogMapper,
             BlogValidator blogValidator,
+            CafePageValidator cafePageValidator,
             UserValidator userValidator) {
         this.blogRepository = blogRepository;
         this.blogMapper = blogMapper;
         this.blogValidator = blogValidator;
+        this.cafePageValidator = cafePageValidator;
         this.userValidator = userValidator;
     }
 
@@ -39,6 +43,9 @@ public class BlogServiceImpl implements BlogService {
     @Transactional
     public BlogResponseDTO createBlog(BlogCreateDTO blogCreateDTO) {
         User author = userValidator.validateUserExists(blogCreateDTO.getAuthorUserId());
+        if (blogCreateDTO.getPageId() != null) {
+            cafePageValidator.validateUserCanCreateBlogOnPage(blogCreateDTO.getPageId(), author.getUserId());
+        }
 
         Blog blog = blogMapper.toBlog(blogCreateDTO);
         blog.setAuthor(author);

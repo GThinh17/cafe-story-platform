@@ -12,6 +12,7 @@ import com.cafestory.mapper.BlogMapper;
 import com.cafestory.mapper.CafePageMapper;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.CafePageRepository;
+import com.cafestory.repository.PageMemberRepository;
 import com.cafestory.service.serviceImplement.CafePageServiceImpl;
 import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.UserValidator;
@@ -25,6 +26,8 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -36,6 +39,9 @@ class CafePageServiceImplTest {
 
     @Mock
     private BlogRepository blogRepository;
+
+    @Mock
+    private PageMemberRepository pageMemberRepository;
 
     @Mock
     private CafePageMapper cafePageMapper;
@@ -69,10 +75,30 @@ class CafePageServiceImplTest {
         assertThat(result).isEqualTo(response);
         assertThat(cafePage.getOwner()).isEqualTo(owner);
         verify(userValidator).validateUserActive(owner);
+        verify(cafePageValidator).validateUserCanCreateCafePage(owner.getUserId());
+        verify(pageMemberRepository).saveAll(anyList());
     }
 
     @Test
-    void getAllCafePages_success_TC002() {
+    void createCafePage_fail_ownerAlreadyHasPage_TC002() {
+        CafePageCreateDTO request = createRequest();
+        User owner = user(request.getOwnerUserId());
+
+        when(userValidator.validateUserExists(request.getOwnerUserId())).thenReturn(owner);
+        org.mockito.Mockito.doThrow(new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.CONFLICT,
+                        "User already owns a cafe page"))
+                .when(cafePageValidator)
+                .validateUserCanCreateCafePage(owner.getUserId());
+
+        assertThatThrownBy(() -> cafePageService.createCafePage(request))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .satisfies(error -> assertThat(((org.springframework.web.server.ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(org.springframework.http.HttpStatus.CONFLICT));
+    }
+
+    @Test
+    void getAllCafePages_success_TC003() {
         CafePage cafePage = cafePage(UUID.randomUUID(), user(UUID.randomUUID()));
         CafePageResponseDTO response = response(cafePage.getId(), cafePage.getOwner().getUserId());
 
@@ -85,7 +111,7 @@ class CafePageServiceImplTest {
     }
 
     @Test
-    void getCafePagesByOwnerId_success_TC003() {
+    void getCafePagesByOwnerId_success_TC004() {
         UUID ownerUserId = UUID.randomUUID();
         CafePage cafePage = cafePage(UUID.randomUUID(), user(ownerUserId));
         CafePageResponseDTO response = response(cafePage.getId(), ownerUserId);
@@ -100,7 +126,7 @@ class CafePageServiceImplTest {
     }
 
     @Test
-    void getCafePageById_success_TC004() {
+    void getCafePageById_success_TC005() {
         CafePage cafePage = cafePage(UUID.randomUUID(), user(UUID.randomUUID()));
         CafePageResponseDTO response = response(cafePage.getId(), cafePage.getOwner().getUserId());
 
@@ -113,7 +139,7 @@ class CafePageServiceImplTest {
     }
 
     @Test
-    void getBlogsByCafePageId_success_TC005() {
+    void getBlogsByCafePageId_success_TC006() {
         UUID cafePageId = UUID.randomUUID();
         Blog blog = blog(UUID.randomUUID(), cafePageId);
         BlogResponseDTO response = new BlogResponseDTO();
@@ -130,7 +156,7 @@ class CafePageServiceImplTest {
     }
 
     @Test
-    void updateCafePage_success_TC006() {
+    void updateCafePage_success_TC007() {
         UUID cafePageId = UUID.randomUUID();
         CafePage cafePage = cafePage(cafePageId, user(UUID.randomUUID()));
         CafePageUpdateDTO request = new CafePageUpdateDTO();
@@ -152,7 +178,7 @@ class CafePageServiceImplTest {
     }
 
     @Test
-    void deleteCafePage_success_TC007() {
+    void deleteCafePage_success_TC008() {
         UUID cafePageId = UUID.randomUUID();
         CafePage cafePage = cafePage(cafePageId, user(UUID.randomUUID()));
 

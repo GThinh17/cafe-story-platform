@@ -8,4 +8,6 @@ import java.util.UUID;
 
 public interface CafePageRepository extends JpaRepository<CafePage, UUID> {
     List<CafePage> findByOwnerUserId(UUID ownerUserId);
+
+    boolean existsByOwnerUserId(UUID ownerUserId);
 }

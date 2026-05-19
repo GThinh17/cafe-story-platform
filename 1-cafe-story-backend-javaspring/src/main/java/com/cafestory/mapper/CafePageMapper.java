@@ -17,6 +17,7 @@ public interface CafePageMapper {
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "likeCount", ignore = true)
     @Mapping(target = "followerCount", ignore = true)
+    @Mapping(target = "members", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     CafePage toCafePage(CafePageCreateDTO cafePageCreateDTO);
