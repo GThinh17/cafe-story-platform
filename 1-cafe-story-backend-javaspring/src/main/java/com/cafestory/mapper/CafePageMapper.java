@@ -10,10 +10,12 @@ import org.mapstruct.Mapping;
 public interface CafePageMapper {
 
     @Mapping(source = "owner.userId", target = "ownerUserId")
+    @Mapping(source = "region.regionId", target = "regionId")
     CafePageResponseDTO toCafePageResponseDTO(CafePage cafePage);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "owner", ignore = true)
+    @Mapping(target = "region", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "likeCount", ignore = true)
     @Mapping(target = "followerCount", ignore = true)

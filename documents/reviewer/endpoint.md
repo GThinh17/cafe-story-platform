@@ -17,7 +17,7 @@ http://localhost:8080/api/reviewers
 - Valid `period` values: `day`, `week`, `month`, `3months`.
 - Valid `month` format: `YYYY-MM`, for example `2026-05`.
 - Valid `segment` values: `inactive`, `new`, `active`, `strong`, `top`, `elite`.
-- Valid `groupBy` values: `city`, `province`, `district`.
+- Valid `groupBy` values: `city`, `province`, `area`.
 
 ## Database Role Setup
 
@@ -116,7 +116,7 @@ GET /api/reviewers/ranking?period={period}&page={page}&limit={limit}
 Optional location filters:
 
 ```http
-GET /api/reviewers/ranking?period={period}&page={page}&limit={limit}&city={city}&province={province}&district={district}
+GET /api/reviewers/ranking?period={period}&page={page}&limit={limit}&city={city}&province={province}&area={area}
 ```
 
 Query params:
@@ -128,7 +128,7 @@ Query params:
 | `limit` | no | `20` | Default `20`, max `100` |
 | `city` | no | `HCM` | Case-insensitive |
 | `province` | no | `HCM` | Case-insensitive |
-| `district` | no | `D1` | Case-insensitive |
+| `area` | no | `D1` | Case-insensitive. `district` is still accepted as a backward-compatible alias. |
 
 Postman example:
 
@@ -225,7 +225,7 @@ Query params:
 | Name | Required | Example | Note |
 | --- | --- | --- | --- |
 | `period` | yes | `month` | `day`, `week`, `month`, `3months` |
-| `groupBy` | yes | `city` | `city`, `province`, `district` |
+| `groupBy` | yes | `city` | `city`, `province`, `area` |
 
 Postman example:
 
@@ -457,4 +457,5 @@ Response example:
 | Non-owner user reads reviewer private history | `403 FORBIDDEN` |
 | Non-admin generates payout/badge | `403 FORBIDDEN` |
 | Generate duplicate payout/badge with `overwrite=false` | `409 CONFLICT` |
+
 

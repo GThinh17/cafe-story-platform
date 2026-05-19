@@ -1,10 +1,13 @@
 package com.cafestory.service;
 
+import com.cafestory.dto.requestDTO.RegionRequestDTO;
 import com.cafestory.dto.requestDTO.UserCreateDTO;
 import com.cafestory.dto.requestDTO.UserUpdateDTO;
 import com.cafestory.dto.responseDTO.UserResponseDTO;
+import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
 import com.cafestory.mapper.UserMapper;
+import com.cafestory.repository.RegionRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceImplement.UserServiceImpl;
 import com.cafestory.validation.UserValidator;
@@ -34,6 +37,9 @@ class UserServiceImplTest {
     private UserRepository userRepository;
 
     @Mock
+    private RegionRepository regionRepository;
+
+    @Mock
     private UserMapper userMapper;
 
     @Mock
@@ -48,16 +54,20 @@ class UserServiceImplTest {
         User user = user();
         User savedUser = user();
         UserResponseDTO response = userResponse(savedUser.getUserId());
+        Region region = region();
+        request.setRegionId(region.getRegionId());
 
         when(userRepository.findByUserName(request.getUserName())).thenReturn(Optional.empty());
         when(userRepository.findByUserEmail(request.getUserEmail())).thenReturn(Optional.empty());
         when(userMapper.toUser(request)).thenReturn(user);
+        when(regionRepository.findById(region.getRegionId())).thenReturn(Optional.of(region));
         when(userRepository.save(user)).thenReturn(savedUser);
         when(userMapper.toUserResponseDTO(savedUser)).thenReturn(response);
 
         UserResponseDTO result = userService.createUser(request);
 
         assertThat(result).isEqualTo(response);
+        assertThat(user.getRegion()).isEqualTo(region);
         verify(userRepository).save(user);
     }
 
@@ -136,6 +146,8 @@ class UserServiceImplTest {
         User user = user();
         UserUpdateDTO request = updateUserRequest();
         UserResponseDTO response = userResponse(user.getUserId());
+        Region region = region();
+        request.setRegionId(region.getRegionId());
         response.setUserName(request.getUserName());
         response.setUserFullName(request.getUserFullName());
         response.setUserEmail(request.getUserEmail());
@@ -146,6 +158,7 @@ class UserServiceImplTest {
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
         when(userRepository.findByUserName(request.getUserName())).thenReturn(Optional.empty());
         when(userRepository.findByUserEmail(request.getUserEmail())).thenReturn(Optional.empty());
+        when(regionRepository.findById(region.getRegionId())).thenReturn(Optional.of(region));
         when(userRepository.save(user)).thenReturn(user);
         when(userMapper.toUserResponseDTO(user)).thenReturn(response);
 
@@ -158,6 +171,7 @@ class UserServiceImplTest {
         assertThat(result.getUserAvatar()).isEqualTo("https://example.com/updated.png");
         assertThat(result.getAccountStatus()).isFalse();
         assertThat(user.getUserPassword()).isEqualTo("updated-password");
+        assertThat(user.getRegion()).isEqualTo(region);
         verify(userRepository).save(user);
     }
 
@@ -252,6 +266,58 @@ class UserServiceImplTest {
     }
 
     @Test
+    void updateUserRegion_success_createRegionWhenUserHasNoRegion_TC015() {
+        User user = user();
+        RegionRequestDTO request = regionRequest();
+        UserResponseDTO response = userResponse(user.getUserId());
+
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
+        when(regionRepository.save(any(Region.class))).thenAnswer(invocation -> {
+            Region region = invocation.getArgument(0);
+            region.setRegionId(UUID.randomUUID());
+            return region;
+        });
+        when(userRepository.save(user)).thenReturn(user);
+        when(userMapper.toUserResponseDTO(user)).thenReturn(response);
+
+        UserResponseDTO result = userService.updateUserRegion(user.getUserId(), request);
+
+        assertThat(result).isEqualTo(response);
+        assertThat(user.getRegion()).isNotNull();
+        assertThat(user.getRegion().getCity()).isEqualTo("Ho Chi Minh");
+        assertThat(user.getRegion().getProvince()).isEqualTo("Ho Chi Minh");
+        assertThat(user.getRegion().getWard()).isEqualTo("Ben Nghe");
+        assertThat(user.getRegion().getArea()).isEqualTo("District 1");
+        assertThat(user.getRegion().getStreet()).isEqualTo("Nguyen Hue");
+        verify(regionRepository).save(any(Region.class));
+        verify(userRepository).save(user);
+    }
+
+    @Test
+    void updateUserRegion_success_updateExistingRegionAndPreferArea_TC016() {
+        User user = user();
+        Region existingRegion = region();
+        user.setRegion(existingRegion);
+        RegionRequestDTO request = regionRequest();
+        request.setDistrict("Ignored District");
+        request.setArea("Area 1");
+        UserResponseDTO response = userResponse(user.getUserId());
+
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
+        when(regionRepository.save(existingRegion)).thenReturn(existingRegion);
+        when(userRepository.save(user)).thenReturn(user);
+        when(userMapper.toUserResponseDTO(user)).thenReturn(response);
+
+        UserResponseDTO result = userService.updateUserRegion(user.getUserId(), request);
+
+        assertThat(result).isEqualTo(response);
+        assertThat(existingRegion.getArea()).isEqualTo("Area 1");
+        assertThat(existingRegion.getStreet()).isEqualTo("Nguyen Hue");
+        verify(regionRepository).save(existingRegion);
+        verify(userRepository).save(user);
+    }
+
+    @Test
     void deleteUser_success_TC013() {
         User user = user();
 
@@ -298,6 +364,16 @@ class UserServiceImplTest {
         return request;
     }
 
+    private RegionRequestDTO regionRequest() {
+        RegionRequestDTO request = new RegionRequestDTO();
+        request.setCity("Ho Chi Minh");
+        request.setProvince("Ho Chi Minh");
+        request.setDistrict("District 1");
+        request.setWard("Ben Nghe");
+        request.setStreet("Nguyen Hue");
+        return request;
+    }
+
     private User user() {
         User user = new User();
         user.setUserId(UUID.randomUUID());
@@ -325,5 +401,16 @@ class UserServiceImplTest {
         response.setUserFollower(0);
         response.setAccountStatus(true);
         return response;
+    }
+
+    private Region region() {
+        Region region = new Region();
+        region.setRegionId(UUID.randomUUID());
+        region.setCity("HCM");
+        region.setProvince("HCM");
+        region.setWard("Ben Nghe");
+        region.setArea("D1");
+        region.setStreet("Nguyen Hue");
+        return region;
     }
 }

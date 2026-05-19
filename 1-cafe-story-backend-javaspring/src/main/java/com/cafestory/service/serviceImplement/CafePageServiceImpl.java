@@ -14,11 +14,14 @@ import com.cafestory.mapper.CafePageMapper;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.CafePageRepository;
 import com.cafestory.repository.PageMemberRepository;
+import com.cafestory.repository.RegionRepository;
 import com.cafestory.service.serviceInterface.CafePageService;
 import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.UserValidator;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -31,6 +34,7 @@ public class CafePageServiceImpl implements CafePageService {
     private final CafePageRepository cafePageRepository;
     private final BlogRepository blogRepository;
     private final PageMemberRepository pageMemberRepository;
+    private final RegionRepository regionRepository;
     private final CafePageMapper cafePageMapper;
     private final BlogMapper blogMapper;
     private final CafePageValidator cafePageValidator;
@@ -40,6 +44,7 @@ public class CafePageServiceImpl implements CafePageService {
             CafePageRepository cafePageRepository,
             BlogRepository blogRepository,
             PageMemberRepository pageMemberRepository,
+            RegionRepository regionRepository,
             CafePageMapper cafePageMapper,
             BlogMapper blogMapper,
             CafePageValidator cafePageValidator,
@@ -47,6 +52,7 @@ public class CafePageServiceImpl implements CafePageService {
         this.cafePageRepository = cafePageRepository;
         this.blogRepository = blogRepository;
         this.pageMemberRepository = pageMemberRepository;
+        this.regionRepository = regionRepository;
         this.cafePageMapper = cafePageMapper;
         this.blogMapper = blogMapper;
         this.cafePageValidator = cafePageValidator;
@@ -62,6 +68,10 @@ public class CafePageServiceImpl implements CafePageService {
 
         CafePage cafePage = cafePageMapper.toCafePage(cafePageCreateDTO);
         cafePage.setOwner(owner);
+        if (cafePageCreateDTO.getRegionId() != null) {
+            cafePage.setRegion(regionRepository.findById(cafePageCreateDTO.getRegionId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Region not found")));
+        }
 
         CafePage savedCafePage = cafePageRepository.save(cafePage);
         pageMemberRepository.saveAll(createPageMembers(savedCafePage, owner, cafePageCreateDTO.getCoOwnerUserIds()));
@@ -139,7 +149,8 @@ public class CafePageServiceImpl implements CafePageService {
         CafePage cafePage = cafePageValidator.validateCafePageExists(cafePageId);
 
         if (cafePageUpdateDTO.getRegionId() != null) {
-            cafePage.setRegionId(cafePageUpdateDTO.getRegionId());
+            cafePage.setRegion(regionRepository.findById(cafePageUpdateDTO.getRegionId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Region not found")));
         }
         if (cafePageUpdateDTO.getName() != null) {
             cafePage.setName(cafePageUpdateDTO.getName());

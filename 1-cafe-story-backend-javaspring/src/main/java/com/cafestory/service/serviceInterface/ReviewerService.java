@@ -20,7 +20,7 @@ public interface ReviewerService {
 
     ReviewerStatsResponseDTO countReviewerStatsByDateRange(UUID reviewerId, LocalDateTime startDate, LocalDateTime endDate);
 
-    List<ReviewerRankingResponseDTO> getReviewerRanking(String period, int page, int limit, String city, String province, String district);
+    List<ReviewerRankingResponseDTO> getReviewerRanking(String period, int page, int limit, String city, String province, String area);
 
     long calculateReviewerScore(ReviewerStatsResponseDTO stats);
 

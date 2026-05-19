@@ -13,6 +13,7 @@ import com.cafestory.entity.Comment;
 import com.cafestory.entity.Reviewer;
 import com.cafestory.entity.ReviewerBadgeHistory;
 import com.cafestory.entity.ReviewerPayout;
+import com.cafestory.entity.Region;
 import com.cafestory.entity.Role;
 import com.cafestory.entity.User;
 import com.cafestory.entity.UserRoleAssignment;
@@ -130,12 +131,12 @@ public class ReviewerServiceImpl implements ReviewerService {
             int limit,
             String city,
             String province,
-            String district) {
+            String area) {
         DateRange range = dateRangeForPeriod(period);
         Map<UUID, EngagementAccumulator> engagement = aggregateEngagementForAllUsers(range.startDate(), range.endDate());
         List<ReviewerRankingResponseDTO> rankings = engagement.values()
                 .stream()
-                .filter(accumulator -> matchesLocation(accumulator.reviewer(), city, province, district))
+                .filter(accumulator -> matchesLocation(accumulator.reviewer(), city, province, area))
                 .map(this::toRankingResponse)
                 .sorted(rankingComparator())
                 .toList();
@@ -366,7 +367,8 @@ public class ReviewerServiceImpl implements ReviewerService {
         response.setCommentCount(accumulator.commentCount());
         response.setScore(accumulator.score());
         response.setBadge(badgeForScore(accumulator.score()));
-        response.setLocation(firstNonBlank(accumulator.reviewer().getUser().getCity(), accumulator.reviewer().getUser().getProvince(), "unknown"));
+        Region region = accumulator.reviewer().getUser().getRegion();
+        response.setLocation(region == null ? "unknown" : firstNonBlank(region.getCity(), region.getProvince(), "unknown"));
         return response;
     }
 
@@ -483,17 +485,19 @@ public class ReviewerServiceImpl implements ReviewerService {
     }
 
     private void validateGroupBy(String groupBy) {
-        if (!List.of("city", "province", "district").contains(groupBy == null ? "" : groupBy.toLowerCase())) {
+        if (!List.of("city", "province", "area").contains(groupBy == null ? "" : groupBy.toLowerCase())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid groupBy");
         }
     }
 
-    private boolean matchesLocation(Reviewer reviewer, String city, String province, String district) {
+    private boolean matchesLocation(Reviewer reviewer, String city, String province, String area) {
         if (reviewer == null || reviewer.getUser() == null) {
             return false;
         }
-        User user = reviewer.getUser();
-        return matches(city, user.getCity()) && matches(province, user.getProvince()) && matches(district, user.getDistrict());
+        Region region = reviewer.getUser().getRegion();
+        return matches(city, region == null ? null : region.getCity())
+                && matches(province, region == null ? null : region.getProvince())
+                && matches(area, region == null ? null : region.getArea());
     }
 
     private boolean matches(String expected, String actual) {
@@ -501,11 +505,11 @@ public class ReviewerServiceImpl implements ReviewerService {
     }
 
     private String locationValue(Reviewer reviewer, String groupBy) {
-        User user = reviewer.getUser();
+        Region region = reviewer.getUser().getRegion();
         return switch (groupBy.toLowerCase()) {
-            case "city" -> nullToUnknown(user.getCity());
-            case "province" -> nullToUnknown(user.getProvince());
-            case "district" -> nullToUnknown(user.getDistrict());
+            case "city" -> nullToUnknown(region == null ? null : region.getCity());
+            case "province" -> nullToUnknown(region == null ? null : region.getProvince());
+            case "area" -> nullToUnknown(region == null ? null : region.getArea());
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid groupBy");
         };
     }
