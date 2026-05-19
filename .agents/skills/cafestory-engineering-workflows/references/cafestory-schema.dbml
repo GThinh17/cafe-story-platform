@@ -74,6 +74,21 @@ Enum page_member_status {
   REJECTED
 }
 
+Enum blog_event_type {
+  VIEW
+  LIKE
+  COMMENT
+  SHARE
+  SAVE
+  REPORT
+}
+
+Enum trend_window_type {
+  HOUR_24
+  DAY_7
+  MONTH_1
+}
+
 Enum message_type {
   TEXT
   IMAGE
@@ -291,6 +306,73 @@ Table blog_shares {
   }
 }
 
+Table blog_events {
+  id uuid [pk]
+  blog_id uuid [not null]
+  user_id uuid
+  event_type blog_event_type [not null]
+  weight decimal(8, 2) [not null, default: 1.0]
+  created_at datetime [not null]
+
+  Indexes {
+    (blog_id)
+    (user_id)
+    (event_type)
+    (created_at)
+  }
+}
+
+Table blog_daily_metrics {
+  id uuid [pk]
+  blog_id uuid [not null]
+  metric_date date [not null]
+  views bigint [not null, default: 0]
+  likes bigint [not null, default: 0]
+  comments bigint [not null, default: 0]
+  shares bigint [not null, default: 0]
+  saves bigint [not null, default: 0]
+  reports bigint [not null, default: 0]
+  avg_read_seconds decimal(10, 2) [not null, default: 0]
+  created_at datetime [not null]
+  updated_at datetime
+
+  Indexes {
+    (blog_id, metric_date) [unique]
+  }
+}
+
+Table blog_trending_scores {
+  id uuid [pk]
+  blog_id uuid [not null]
+  window_type trend_window_type [not null]
+  trend_score decimal(14, 4) [not null]
+  rank_position int [not null]
+  reason text
+  computed_at datetime [not null]
+
+  Indexes {
+    (window_type, computed_at)
+    (rank_position)
+  }
+}
+
+Table blog_ranking_overrides {
+  id uuid [pk]
+  blog_id uuid [not null]
+  boost_score decimal(12, 2) [not null, default: 0]
+  is_pinned boolean [not null, default: false]
+  reason text
+  start_at datetime [not null]
+  end_at datetime
+  created_by uuid
+  created_at datetime [not null]
+
+  Indexes {
+    (blog_id)
+    (start_at, end_at)
+  }
+}
+
 Table conversations {
   id uuid [pk]
   type conversation_type [not null]
@@ -484,6 +566,12 @@ Ref: page_follows.page_id > cafe_pages.id
 
 Ref: blog_shares.blog_id > blogs.id
 Ref: blog_shares.user_id > users.user_id
+Ref: blog_events.blog_id > blogs.id
+Ref: blog_events.user_id > users.user_id
+Ref: blog_daily_metrics.blog_id > blogs.id
+Ref: blog_trending_scores.blog_id > blogs.id
+Ref: blog_ranking_overrides.blog_id > blogs.id
+Ref: blog_ranking_overrides.created_by > users.user_id
 
 Ref: chat_members.conversation_id > conversations.id
 Ref: chat_members.user_id > users.user_id
