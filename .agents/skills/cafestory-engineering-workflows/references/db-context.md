@@ -20,6 +20,15 @@ For exact table/column/enum definitions, read `cafestory-schema.dbml`.
 - Comment replies use `comments.parent_comment_id`.
 - Blog and comment images use element collection tables: `blog_images` and `comment_images`.
 - Blog shares use `blog_shares.share_type` with `PUBLIC`, `PRIVATE`, and `PAGE_ONLY`.
+- Trending blogs are calculated from source tables/events, not blog cached counters: `blog_likes`, `comments`, `blog_shares`, `content_reports`, `blog_events`, `blog_daily_metrics`, and `blog_trending_scores`.
+- `blog_events` stores soft interaction events such as `VIEW`, `SAVE`, and `REPORT`; likes/comments/shares remain clear domain tables.
+- `blog_daily_metrics` has one row per `blog_id + metric_date`; update the existing row instead of creating duplicates.
+- `blog_trending_scores` stores score snapshots for `HOUR_24`, `DAY_7`, and `MONTH_1`.
+- Admin ranking overrides live in `blog_ranking_overrides`; active `boost_score` increases ranking and active `is_pinned` prioritizes the blog.
+- Personalized feed recommendations are cached in `blog_recommendation_scores`; feed APIs should read the latest cached rows instead of recalculating every request.
+- `blog_recommendation_scores` stores explainable score components: `trending_score`, `followed_page_score`, `followed_user_score`, `same_region_score`, `freshness_score`, and `report_penalty`.
+- Rebuild recommendation cache through the scheduled job or manual rebuild endpoint after trending scores, follows, reports, or region context changes.
+- `HIDDEN` and `REMOVED` blogs and blogs with AI moderation `VIOLATION` must not appear in trending.
 - Reports target either a blog or a comment; exactly one of `content_reports.blog_id` or `content_reports.comment_id` should be set by application validation.
 - User follow must reject self-follow: `follower_user_id <> following_user_id`.
 - Page ownership starts with `cafe_pages.owner_user_id`; this primary owner/creator is unique, so one user can create only one cafe page.
@@ -40,7 +49,7 @@ Cafe pages and regions:
 - `regions`, `cafe_pages`, `page_members`.
 
 Publishing:
-- `blogs`, `blog_images`, `comments`, `comment_images`, `blog_shares`.
+- `blogs`, `blog_images`, `comments`, `comment_images`, `blog_shares`, `blog_recommendation_scores`.
 
 Reactions and follows:
 - `blog_likes`, `comment_likes`, `page_likes`, `user_follows`, `page_follows`.
@@ -70,6 +79,8 @@ Payments:
 - `conversation_type`: `DIRECT`, `GROUP`
 - `member_role`: `OWNER`, `CO_OWNER`, `ADMIN`, `MEMBER`
 - `page_member_status`: `PENDING`, `ACTIVE`, `REJECTED`
+- `blog_event_type`: `VIEW`, `LIKE`, `COMMENT`, `SHARE`, `SAVE`, `REPORT`
+- `trend_window_type`: `HOUR_24`, `DAY_7`, `MONTH_1`
 - `message_type`: `TEXT`, `IMAGE`, `STICKER`, `MIXED`
 - `message_status`: `SENT`, `FAILED`, `DELETED`
 - `notification_type`: `LIKE`, `SHARE`, `COMMENT`, `MESSAGE`, `FOLLOW`

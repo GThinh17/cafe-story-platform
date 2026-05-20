@@ -1,10 +1,13 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.dto.requestDTO.RegionRequestDTO;
 import com.cafestory.dto.requestDTO.UserCreateDTO;
 import com.cafestory.dto.requestDTO.UserUpdateDTO;
 import com.cafestory.dto.responseDTO.UserResponseDTO;
+import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
 import com.cafestory.mapper.UserMapper;
+import com.cafestory.repository.RegionRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.UserService;
 import com.cafestory.validation.UserValidator;
@@ -21,16 +24,19 @@ import java.util.UUID;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final RegionRepository regionRepository;
     private final UserMapper userMapper;
     private final UserValidator userValidator;
     private final PasswordEncoder passwordEncoder;
 
     public UserServiceImpl(
             UserRepository userRepository,
+            RegionRepository regionRepository,
             UserMapper userMapper,
             UserValidator userValidator,
             PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.regionRepository = regionRepository;
         this.userMapper = userMapper;
         this.userValidator = userValidator;
         this.passwordEncoder = passwordEncoder;
@@ -44,6 +50,10 @@ public class UserServiceImpl implements UserService {
 
         User user = userMapper.toUser(userCreateDTO);
         user.setUserPassword(passwordEncoder.encode(userCreateDTO.getUserPassword()));
+        if (userCreateDTO.getRegionId() != null) {
+            user.setRegion(regionRepository.findById(userCreateDTO.getRegionId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Region not found")));
+        }
         User savedUser = userRepository.save(user);
 
         return userMapper.toUserResponseDTO(savedUser);
@@ -92,7 +102,44 @@ public class UserServiceImpl implements UserService {
         if (userUpdateDTO.getAccountStatus() != null) {
             user.setAccountStatus(userUpdateDTO.getAccountStatus());
         }
+        if (userUpdateDTO.getRegionId() != null) {
+            user.setRegion(regionRepository.findById(userUpdateDTO.getRegionId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Region not found")));
+        }
 
+        User updatedUser = userRepository.save(user);
+        return userMapper.toUserResponseDTO(updatedUser);
+    }
+
+    @Override
+    @Transactional
+    public UserResponseDTO updateUserRegion(UUID userId, RegionRequestDTO regionRequestDTO) {
+        User user = userValidator.validateUserExists(userId);
+        Region region = user.getRegion();
+        if (region == null) {
+            region = new Region();
+            user.setRegion(region);
+        }
+
+        if (regionRequestDTO.getCity() != null) {
+            region.setCity(regionRequestDTO.getCity());
+        }
+        if (regionRequestDTO.getProvince() != null) {
+            region.setProvince(regionRequestDTO.getProvince());
+        }
+        if (regionRequestDTO.getWard() != null) {
+            region.setWard(regionRequestDTO.getWard());
+        }
+        String area = firstNonBlank(regionRequestDTO.getArea(), regionRequestDTO.getDistrict());
+        if (area != null) {
+            region.setArea(area);
+        }
+        if (regionRequestDTO.getStreet() != null) {
+            region.setStreet(regionRequestDTO.getStreet());
+        }
+
+        Region savedRegion = regionRepository.save(region);
+        user.setRegion(savedRegion);
         User updatedUser = userRepository.save(user);
         return userMapper.toUserResponseDTO(updatedUser);
     }
@@ -118,5 +165,9 @@ public class UserServiceImpl implements UserService {
                 .ifPresent(user -> {
                     throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
                 });
+    }
+
+    private String firstNonBlank(String first, String second) {
+        return first != null && !first.isBlank() ? first : second;
     }
 }

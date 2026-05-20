@@ -1,5 +1,6 @@
 package com.cafestory.controller;
 
+import com.cafestory.dto.requestDTO.RegionRequestDTO;
 import com.cafestory.dto.requestDTO.UserCreateDTO;
 import com.cafestory.dto.requestDTO.UserUpdateDTO;
 import com.cafestory.dto.responseDTO.UserResponseDTO;
@@ -50,6 +51,13 @@ public class UserController {
             @PathVariable UUID userId,
             @Valid @RequestBody UserUpdateDTO userUpdateDTO) {
         return userService.updateUser(userId, userUpdateDTO);
+    }
+
+    @PatchMapping("/{userId}/region")
+    public UserResponseDTO updateUserRegion(
+            @PathVariable UUID userId,
+            @RequestBody RegionRequestDTO regionRequestDTO) {
+        return userService.updateUserRegion(userId, regionRequestDTO);
     }
 
     @DeleteMapping("/{userId}")

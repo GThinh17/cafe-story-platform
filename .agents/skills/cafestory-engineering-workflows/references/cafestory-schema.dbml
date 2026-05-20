@@ -74,8 +74,23 @@ Enum page_member_status {
   REJECTED
 }
 
+Enum blog_event_type {
+  VIEW
+  LIKE
+  COMMENT
+  SHARE
+  SAVE
+  REPORT
+}
+
+Enum trend_window_type {
+  HOUR_24
+  DAY_7
+  MONTH_1
+}
+
 Enum message_type {
-  TEXT
+  TEXT  
   IMAGE
   STICKER
   MIXED
@@ -117,6 +132,7 @@ Table users {
   user_email varchar(255) [not null, unique]
   user_phone bigint
   user_avatar varchar(255)
+  region_id uuid
   user_like int [not null, default: 0]
   user_follower int [not null, default: 0]
   account_status boolean [not null, default: true]
@@ -157,11 +173,15 @@ Table refresh_tokens {
 }
 
 Table regions {
-  id uuid [pk]
-  name varchar(120) [not null]
-  latitude decimal(10, 7)
-  longitude decimal(10, 7)
+  region_id uuid [pk]
+  city varchar(255)
+  province varchar(255)
+  ward varchar(255)
+  area varchar(255)
+  street varchar(255)
   created_at datetime [not null]
+  updated_at datetime
+  Note: "Shared address table for users and cafe pages. area replaces the old user district field. country, latitude, and longitude are not used by the current backend."
 }
 
 Table cafe_pages {
@@ -306,6 +326,101 @@ Table blog_shares {
     (blog_id)
     (user_id)
   }
+}
+
+Table blog_events {
+  id uuid [pk]
+  blog_id uuid [not null]
+  user_id uuid
+  event_type blog_event_type [not null]
+  weight decimal(8, 2) [not null, default: 1.0]
+  created_at datetime [not null]
+
+  Indexes {
+    (blog_id)
+    (user_id)
+    (event_type)
+    (created_at)
+  }
+}
+
+Table blog_daily_metrics {
+  id uuid [pk]
+  blog_id uuid [not null]
+  metric_date date [not null]
+  views bigint [not null, default: 0]
+  likes bigint [not null, default: 0]
+  comments bigint [not null, default: 0]
+  shares bigint [not null, default: 0]
+  saves bigint [not null, default: 0]
+  reports bigint [not null, default: 0]
+  avg_read_seconds decimal(10, 2) [not null, default: 0]
+  created_at datetime [not null]
+  updated_at datetime
+
+  Indexes {
+    (blog_id, metric_date) [unique]
+  }
+}
+
+Table blog_trending_scores {
+  id uuid [pk]
+  blog_id uuid [not null]
+  window_type trend_window_type [not null]
+  trend_score decimal(14, 4) [not null]
+  rank_position int [not null]
+  reason text
+  computed_at datetime [not null]
+
+  Indexes {
+    (window_type, computed_at)
+    (rank_position)
+  }
+}
+
+Table blog_ranking_overrides {
+  id uuid [pk]
+  blog_id uuid [not null]
+  boost_score decimal(12, 2) [not null, default: 0]
+  is_pinned boolean [not null, default: false]
+  reason text
+  start_at datetime [not null]
+  end_at datetime
+  created_by uuid
+  created_at datetime [not null]
+
+  Indexes {
+    (blog_id)
+    (start_at, end_at)
+  }
+}
+
+Table blog_recommendation_scores {
+  id uuid [pk]
+  user_id uuid [not null]
+  blog_id uuid [not null]
+  window_type trend_window_type [not null]
+  context_region_id uuid
+  feed_score decimal(14, 4) [not null]
+  trending_score decimal(14, 4) [not null, default: 0]
+  followed_page_score decimal(14, 4) [not null, default: 0]
+  followed_user_score decimal(14, 4) [not null, default: 0]
+  same_region_score decimal(14, 4) [not null, default: 0]
+  freshness_score decimal(14, 4) [not null, default: 0]
+  report_penalty decimal(14, 4) [not null, default: 0]
+  rank_position int [not null]
+  reason text
+  computed_at datetime [not null]
+  created_at datetime [not null]
+
+  Indexes {
+    (user_id, blog_id, window_type, context_region_id) [unique]
+    (user_id, window_type, context_region_id, computed_at)
+    (user_id, window_type, context_region_id, rank_position)
+    (blog_id)
+  }
+
+  Note: "Cached personalized feed scores per user/window/region context. API reads this table; scheduled/manual rebuild writes it. Component columns explain why a blog is recommended."
 }
 
 Table conversations {
@@ -476,7 +591,8 @@ Ref: user_roles.role_id > roles.id
 Ref: refresh_tokens.user_id > users.user_id
 
 Ref: cafe_pages.owner_user_id > users.user_id
-Ref: cafe_pages.region_id > regions.id
+Ref: users.region_id > regions.region_id
+Ref: cafe_pages.region_id > regions.region_id
 Ref: page_members.page_id > cafe_pages.id
 Ref: page_members.user_id > users.user_id
 
@@ -502,6 +618,15 @@ Ref: page_follows.page_id > cafe_pages.id
 
 Ref: blog_shares.blog_id > blogs.id
 Ref: blog_shares.user_id > users.user_id
+Ref: blog_events.blog_id > blogs.id
+Ref: blog_events.user_id > users.user_id
+Ref: blog_daily_metrics.blog_id > blogs.id
+Ref: blog_trending_scores.blog_id > blogs.id
+Ref: blog_ranking_overrides.blog_id > blogs.id
+Ref: blog_ranking_overrides.created_by > users.user_id
+Ref: blog_recommendation_scores.user_id > users.user_id
+Ref: blog_recommendation_scores.blog_id > blogs.id
+Ref: blog_recommendation_scores.context_region_id > regions.region_id
 
 Ref: chat_members.conversation_id > conversations.id
 Ref: chat_members.user_id > users.user_id

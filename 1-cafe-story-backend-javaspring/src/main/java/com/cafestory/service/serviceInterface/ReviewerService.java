@@ -16,11 +16,15 @@ public interface ReviewerService {
 
     ReviewerResponseDTO createReviewer(UUID userId);
 
+    ReviewerResponseDTO getReviewer(UUID userId);
+
+    List<ReviewerResponseDTO> getAllReviewer();
+
     ReviewerStatsResponseDTO countReviewerStats(UUID requesterId, UUID reviewerId, String period);
 
     ReviewerStatsResponseDTO countReviewerStatsByDateRange(UUID reviewerId, LocalDateTime startDate, LocalDateTime endDate);
 
-    List<ReviewerRankingResponseDTO> getReviewerRanking(String period, int page, int limit, String city, String province, String district);
+    List<ReviewerRankingResponseDTO> getReviewerRanking(String period, int page, int limit, String city, String province, String area);
 
     long calculateReviewerScore(ReviewerStatsResponseDTO stats);
 

@@ -1,4 +1,4 @@
-package com.cafestory.chat;
+package com.cafestory.service;
 
 import com.cafestory.dto.requestDTO.chat.CreateDirectConversationRequest;
 import com.cafestory.dto.requestDTO.chat.CreateGroupConversationRequest;

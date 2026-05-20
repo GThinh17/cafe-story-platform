@@ -7,12 +7,14 @@ import com.cafestory.dto.responseDTO.reviewer.ReviewerRankingResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerSegmentResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerStatsResponseDTO;
+import com.cafestory.dto.responseDTO.RegionResponseDTO;
 import com.cafestory.entity.BlogLike;
 import com.cafestory.entity.BlogShare;
 import com.cafestory.entity.Comment;
 import com.cafestory.entity.Reviewer;
 import com.cafestory.entity.ReviewerBadgeHistory;
 import com.cafestory.entity.ReviewerPayout;
+import com.cafestory.entity.Region;
 import com.cafestory.entity.Role;
 import com.cafestory.entity.User;
 import com.cafestory.entity.UserRoleAssignment;
@@ -26,6 +28,7 @@ import com.cafestory.repository.ReviewerPayoutRepository;
 import com.cafestory.repository.ReviewerRepository;
 import com.cafestory.repository.RoleRepository;
 import com.cafestory.repository.UserRepository;
+import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRoleAssignmentRepository;
 import com.cafestory.service.serviceInterface.ReviewerService;
 import com.cafestory.validation.UserValidator;
@@ -65,6 +68,7 @@ public class ReviewerServiceImpl implements ReviewerService {
     private final RoleRepository roleRepository;
     private final UserRoleAssignmentRepository userRoleAssignmentRepository;
     private final UserRepository userRepository;
+    private final UserFollowRepository userFollowRepository;
     private final UserValidator userValidator;
 
     public ReviewerServiceImpl(
@@ -77,6 +81,7 @@ public class ReviewerServiceImpl implements ReviewerService {
             RoleRepository roleRepository,
             UserRoleAssignmentRepository userRoleAssignmentRepository,
             UserRepository userRepository,
+            UserFollowRepository userFollowRepository,
             UserValidator userValidator) {
         this.blogLikeRepository = blogLikeRepository;
         this.blogShareRepository = blogShareRepository;
@@ -87,6 +92,7 @@ public class ReviewerServiceImpl implements ReviewerService {
         this.roleRepository = roleRepository;
         this.userRoleAssignmentRepository = userRoleAssignmentRepository;
         this.userRepository = userRepository;
+        this.userFollowRepository = userFollowRepository;
         this.userValidator = userValidator;
     }
 
@@ -98,6 +104,23 @@ public class ReviewerServiceImpl implements ReviewerService {
         Reviewer reviewer = reviewerRepository.findByUserUserId(userId).orElseGet(Reviewer::new);
         reviewer.setUser(user);
         return toReviewerResponse(reviewerRepository.save(reviewer));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ReviewerResponseDTO getReviewer(UUID userId) {
+        Reviewer reviewer = reviewerRepository.findByUserUserId(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reviewer not found"));
+        return toReviewerResponse(reviewer);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ReviewerResponseDTO> getAllReviewer() {
+        return reviewerRepository.findAll()
+                .stream()
+                .map(this::toReviewerResponse)
+                .toList();
     }
 
     @Override
@@ -130,12 +153,12 @@ public class ReviewerServiceImpl implements ReviewerService {
             int limit,
             String city,
             String province,
-            String district) {
+            String area) {
         DateRange range = dateRangeForPeriod(period);
         Map<UUID, EngagementAccumulator> engagement = aggregateEngagementForAllUsers(range.startDate(), range.endDate());
         List<ReviewerRankingResponseDTO> rankings = engagement.values()
                 .stream()
-                .filter(accumulator -> matchesLocation(accumulator.reviewer(), city, province, district))
+                .filter(accumulator -> matchesLocation(accumulator.reviewer(), city, province, area))
                 .map(this::toRankingResponse)
                 .sorted(rankingComparator())
                 .toList();
@@ -366,7 +389,8 @@ public class ReviewerServiceImpl implements ReviewerService {
         response.setCommentCount(accumulator.commentCount());
         response.setScore(accumulator.score());
         response.setBadge(badgeForScore(accumulator.score()));
-        response.setLocation(firstNonBlank(accumulator.reviewer().getUser().getCity(), accumulator.reviewer().getUser().getProvince(), "unknown"));
+        Region region = accumulator.reviewer().getUser().getRegion();
+        response.setLocation(region == null ? "unknown" : firstNonBlank(region.getCity(), region.getProvince(), "unknown"));
         return response;
     }
 
@@ -431,10 +455,40 @@ public class ReviewerServiceImpl implements ReviewerService {
 
     private ReviewerResponseDTO toReviewerResponse(Reviewer reviewer) {
         ReviewerResponseDTO response = new ReviewerResponseDTO();
+        User user = reviewer.getUser();
         response.setReviewerId(reviewer.getReviewerId());
-        response.setUserId(reviewer.getUser().getUserId());
+        response.setUserId(user.getUserId());
         response.setRole(REVIEWER_ROLE);
+        response.setAvatar(user.getUserAvatar());
+        response.setRegion(toRegionResponse(user.getRegion()));
+        response.setName(firstNonBlank(user.getUserFullName(), user.getUserName(), null));
+        response.setFollower(defaultInt(user.getUserFollower()));
+        response.setFollow(userFollowRepository.findByFollowerUserId(user.getUserId()).size());
+        response.setLike(defaultInt(user.getUserLike()));
+        ReviewerBadgeHistory latestBadge = reviewerBadgeHistoryRepository
+                .findTopByReviewerReviewerIdOrderByMonthDesc(reviewer.getReviewerId())
+                .orElse(null);
+        response.setBadge(latestBadge == null ? ReviewerBadge.IRON : latestBadge.getBadge());
+        response.setScore(latestBadge == null ? 0 : latestBadge.getScore());
         return response;
+    }
+
+    private RegionResponseDTO toRegionResponse(Region region) {
+        if (region == null) {
+            return null;
+        }
+        RegionResponseDTO response = new RegionResponseDTO();
+        response.setRegionId(region.getRegionId());
+        response.setCity(region.getCity());
+        response.setProvince(region.getProvince());
+        response.setWard(region.getWard());
+        response.setArea(region.getArea());
+        response.setStreet(region.getStreet());
+        return response;
+    }
+
+    private int defaultInt(Integer value) {
+        return value == null ? 0 : value;
     }
 
     private void validateSelfOrAdmin(UUID requesterId, UUID reviewerId) {
@@ -483,17 +537,19 @@ public class ReviewerServiceImpl implements ReviewerService {
     }
 
     private void validateGroupBy(String groupBy) {
-        if (!List.of("city", "province", "district").contains(groupBy == null ? "" : groupBy.toLowerCase())) {
+        if (!List.of("city", "province", "area").contains(groupBy == null ? "" : groupBy.toLowerCase())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid groupBy");
         }
     }
 
-    private boolean matchesLocation(Reviewer reviewer, String city, String province, String district) {
+    private boolean matchesLocation(Reviewer reviewer, String city, String province, String area) {
         if (reviewer == null || reviewer.getUser() == null) {
             return false;
         }
-        User user = reviewer.getUser();
-        return matches(city, user.getCity()) && matches(province, user.getProvince()) && matches(district, user.getDistrict());
+        Region region = reviewer.getUser().getRegion();
+        return matches(city, region == null ? null : region.getCity())
+                && matches(province, region == null ? null : region.getProvince())
+                && matches(area, region == null ? null : region.getArea());
     }
 
     private boolean matches(String expected, String actual) {
@@ -501,11 +557,11 @@ public class ReviewerServiceImpl implements ReviewerService {
     }
 
     private String locationValue(Reviewer reviewer, String groupBy) {
-        User user = reviewer.getUser();
+        Region region = reviewer.getUser().getRegion();
         return switch (groupBy.toLowerCase()) {
-            case "city" -> nullToUnknown(user.getCity());
-            case "province" -> nullToUnknown(user.getProvince());
-            case "district" -> nullToUnknown(user.getDistrict());
+            case "city" -> nullToUnknown(region == null ? null : region.getCity());
+            case "province" -> nullToUnknown(region == null ? null : region.getProvince());
+            case "area" -> nullToUnknown(region == null ? null : region.getArea());
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid groupBy");
         };
     }

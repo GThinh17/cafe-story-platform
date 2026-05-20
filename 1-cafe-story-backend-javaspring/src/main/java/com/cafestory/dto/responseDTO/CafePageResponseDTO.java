@@ -11,6 +11,7 @@ public class CafePageResponseDTO {
     private UUID id;
     private UUID ownerUserId;
     private UUID regionId;
+    private RegionResponseDTO region;
     private String name;
     private String address;
     private String description;

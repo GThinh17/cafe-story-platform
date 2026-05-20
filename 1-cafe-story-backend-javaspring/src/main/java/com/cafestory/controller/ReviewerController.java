@@ -33,6 +33,16 @@ public class ReviewerController {
         return reviewerService.createReviewer(userId);
     }
 
+    @GetMapping("/{userId}")
+    public ReviewerResponseDTO getReviewer(@PathVariable UUID userId) {
+        return reviewerService.getReviewer(userId);
+    }
+
+    @GetMapping
+    public List<ReviewerResponseDTO> getAllReviewer() {
+        return reviewerService.getAllReviewer();
+    }
+
     @GetMapping("/{reviewerId}/stats")
     public ReviewerStatsResponseDTO getReviewerStats(
             @PathVariable UUID reviewerId,
@@ -48,8 +58,9 @@ public class ReviewerController {
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(required = false) String city,
             @RequestParam(required = false) String province,
+            @RequestParam(required = false) String area,
             @RequestParam(required = false) String district) {
-        return reviewerService.getReviewerRanking(period, page, limit, city, province, district);
+        return reviewerService.getReviewerRanking(period, page, limit, city, province, firstNonBlank(area, district));
     }
 
     @GetMapping("/segments")
@@ -94,5 +105,9 @@ public class ReviewerController {
             @PathVariable UUID reviewerId,
             @RequestParam UUID requesterId) {
         return reviewerService.getReviewerBadgeHistory(requesterId, reviewerId);
+    }
+
+    private String firstNonBlank(String first, String second) {
+        return first != null && !first.isBlank() ? first : second;
     }
 }

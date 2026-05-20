@@ -39,8 +39,9 @@ public class CafePage {
     @JoinColumn(name = "owner_user_id", nullable = false)
     private User owner;
 
-    @Column(name = "region_id")
-    private UUID regionId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "region_id")
+    private Region region;
 
     @NotBlank(message = "Cafe page name is mandatory")
     @Column(name = "name", nullable = false)

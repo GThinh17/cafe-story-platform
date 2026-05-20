@@ -1,4 +1,4 @@
-package com.cafestory.reviewer;
+package com.cafestory.service;
 
 import com.cafestory.entity.BlogLike;
 import com.cafestory.entity.BlogShare;
@@ -6,6 +6,7 @@ import com.cafestory.entity.Comment;
 import com.cafestory.entity.Reviewer;
 import com.cafestory.entity.ReviewerBadgeHistory;
 import com.cafestory.entity.ReviewerPayout;
+import com.cafestory.entity.Region;
 import com.cafestory.entity.Role;
 import com.cafestory.entity.User;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerRankingResponseDTO;
@@ -18,6 +19,7 @@ import com.cafestory.repository.ReviewerBadgeHistoryRepository;
 import com.cafestory.repository.ReviewerPayoutRepository;
 import com.cafestory.repository.ReviewerRepository;
 import com.cafestory.repository.RoleRepository;
+import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.repository.UserRoleAssignmentRepository;
 import com.cafestory.service.serviceImplement.ReviewerServiceImpl;
@@ -82,6 +84,9 @@ class ReviewerServiceImplTest {
     private UserRepository userRepository;
 
     @Mock
+    private UserFollowRepository userFollowRepository;
+
+    @Mock
     private UserValidator userValidator;
 
     private ReviewerServiceImpl reviewerService;
@@ -98,6 +103,7 @@ class ReviewerServiceImplTest {
                 roleRepository,
                 userRoleAssignmentRepository,
                 userRepository,
+                userFollowRepository,
                 userValidator);
     }
 
@@ -135,6 +141,57 @@ class ReviewerServiceImplTest {
         assertThat(result.getRole()).isEqualTo("REVIEWER");
         verify(userRoleAssignmentRepository).save(any());
         verify(reviewerRepository).save(any(Reviewer.class));
+    }
+
+    @Test
+    void getReviewer_success_returnsProfileFieldsLatestBadgeAndRegion_TC012() {
+        User user = user(reviewerUserId, "HCM", "HCM", "D1");
+        user.setUserFullName("Cafe Reviewer");
+        user.setUserAvatar("avatar.png");
+        user.setUserFollower(12);
+        user.setUserLike(34);
+        Reviewer reviewer = reviewer(reviewerId, user);
+        ReviewerBadgeHistory latestBadge = badge(reviewer);
+        latestBadge.setBadge(ReviewerBadge.GOLD);
+        latestBadge.setScore(800);
+        when(reviewerRepository.findByUserUserId(reviewerUserId)).thenReturn(Optional.of(reviewer));
+        when(userFollowRepository.findByFollowerUserId(reviewerUserId)).thenReturn(List.of());
+        when(reviewerBadgeHistoryRepository.findTopByReviewerReviewerIdOrderByMonthDesc(reviewerId)).thenReturn(Optional.of(latestBadge));
+
+        var result = reviewerService.getReviewer(reviewerUserId);
+
+        assertThat(result.getReviewerId()).isEqualTo(reviewerId);
+        assertThat(result.getName()).isEqualTo("Cafe Reviewer");
+        assertThat(result.getAvatar()).isEqualTo("avatar.png");
+        assertThat(result.getFollower()).isEqualTo(12);
+        assertThat(result.getFollow()).isZero();
+        assertThat(result.getLike()).isEqualTo(34);
+        assertThat(result.getBadge()).isEqualTo(ReviewerBadge.GOLD);
+        assertThat(result.getScore()).isEqualTo(800);
+        assertThat(result.getRegion().getCity()).isEqualTo("HCM");
+        assertThat(result.getRegion().getArea()).isEqualTo("D1");
+    }
+
+    @Test
+    void getAllReviewer_success_returnsAllProfilesWithFallbackBadge_TC013() {
+        User firstUser = user(reviewerUserId, null, null, null);
+        firstUser.setUserName("first");
+        User secondUser = user(secondReviewerUserId, null, null, null);
+        secondUser.setUserName("second");
+        when(reviewerRepository.findAll()).thenReturn(List.of(
+                reviewer(reviewerId, firstUser),
+                reviewer(secondReviewerId, secondUser)));
+        when(userFollowRepository.findByFollowerUserId(any(UUID.class))).thenReturn(List.of());
+        when(reviewerBadgeHistoryRepository.findTopByReviewerReviewerIdOrderByMonthDesc(any(UUID.class))).thenReturn(Optional.empty());
+
+        var result = reviewerService.getAllReviewer();
+
+        assertThat(result).hasSize(2);
+        assertThat(result).extracting("reviewerId").containsExactly(reviewerId, secondReviewerId);
+        assertThat(result).allSatisfy(reviewer -> {
+            assertThat(reviewer.getBadge()).isEqualTo(ReviewerBadge.IRON);
+            assertThat(reviewer.getScore()).isZero();
+        });
     }
 
     @Test
@@ -329,14 +386,14 @@ class ReviewerServiceImplTest {
         assertThat(byCity).anySatisfy(group -> assertThat(group.getLocationName()).isEqualTo("unknown"));
 
         assertThat(reviewerService.getGeoAnalytics("month", "province")).isNotEmpty();
-        assertThat(reviewerService.getGeoAnalytics("month", "district")).isNotEmpty();
+        assertThat(reviewerService.getGeoAnalytics("month", "area")).isNotEmpty();
 
         var cityFiltered = reviewerService.getReviewerRanking("month", 1, 10, "hcm", null, null);
         assertThat(cityFiltered).hasSize(2);
         var provinceFiltered = reviewerService.getReviewerRanking("month", 1, 10, null, "hcm", null);
         assertThat(provinceFiltered).hasSize(2);
-        var districtFiltered = reviewerService.getReviewerRanking("month", 1, 10, null, null, "d1");
-        assertThat(districtFiltered).hasSize(1);
+        var areaFiltered = reviewerService.getReviewerRanking("month", 1, 10, null, null, "d1");
+        assertThat(areaFiltered).hasSize(1);
         var unknownFiltered = reviewerService.getReviewerRanking("month", 1, 10, "unknown", null, null);
         assertThat(unknownFiltered).hasSize(1);
         assertThat(unknownFiltered.get(0).getReviewerId()).isEqualTo(thirdReviewerId);
@@ -490,17 +547,26 @@ class ReviewerServiceImplTest {
         return comment;
     }
 
-    private User user(UUID userId, String city, String province, String district) {
+    private User user(UUID userId, String city, String province, String area) {
         User user = new User();
         user.setUserId(userId);
         user.setUserName("user-" + userId);
         user.setUserEmail(userId + "@example.com");
         user.setUserPassword("secret");
         user.setAccountStatus(true);
-        user.setCity(city);
-        user.setProvince(province);
-        user.setDistrict(district);
+        if (city != null || province != null || area != null) {
+            user.setRegion(region(city, province, area));
+        }
         return user;
+    }
+
+    private Region region(String city, String province, String area) {
+        Region region = new Region();
+        region.setRegionId(UUID.randomUUID());
+        region.setCity(city);
+        region.setProvince(province);
+        region.setArea(area);
+        return region;
     }
 
     private Reviewer reviewer(UUID reviewerId, User user) {
