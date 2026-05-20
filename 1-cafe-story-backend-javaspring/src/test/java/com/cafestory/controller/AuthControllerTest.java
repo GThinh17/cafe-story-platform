@@ -4,10 +4,11 @@ import com.cafestory.dto.requestDTO.LoginRequest;
 import com.cafestory.dto.requestDTO.RegisterRequest;
 import com.cafestory.dto.responseDTO.AuthResponse;
 import com.cafestory.dto.responseDTO.AuthUserResponse;
-import com.cafestory.security.AuthenticatedUserPrincipal;
-import com.cafestory.security.JwtService;
 import com.cafestory.service.serviceInterface.AuthService;
 import com.cafestory.service.serviceInterface.RefreshTokenService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
+import com.cafestory.until.security.JwtService;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

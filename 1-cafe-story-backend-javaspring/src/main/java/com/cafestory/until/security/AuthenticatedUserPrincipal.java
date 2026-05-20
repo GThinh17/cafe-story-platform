@@ -1,4 +1,4 @@
-package com.cafestory.security;
+package com.cafestory.until.security;
 
 import java.util.List;
 import java.util.UUID;

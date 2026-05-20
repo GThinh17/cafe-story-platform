@@ -1,8 +1,9 @@
 package com.cafestory.config;
 
 import com.cafestory.entity.User;
-import com.cafestory.security.JwtAuthenticationFilter;
-import com.cafestory.security.JwtService;
+import com.cafestory.until.security.JwtAuthenticationFilter;
+import com.cafestory.until.security.JwtService;
+
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

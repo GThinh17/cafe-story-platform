@@ -1,4 +1,4 @@
-package com.cafestory.security;
+package com.cafestory.until.security;
 
 import com.cafestory.entity.User;
 import com.fasterxml.jackson.core.type.TypeReference;
