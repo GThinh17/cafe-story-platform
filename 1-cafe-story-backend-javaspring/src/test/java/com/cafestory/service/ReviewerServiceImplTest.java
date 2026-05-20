@@ -151,6 +151,8 @@ class ReviewerServiceImplTest {
         user.setUserFollower(12);
         user.setUserLike(34);
         Reviewer reviewer = reviewer(reviewerId, user);
+        LocalDateTime expireDate = LocalDateTime.of(2026, 11, 20, 12, 0);
+        reviewer.setReviewerExpiresAt(expireDate);
         ReviewerBadgeHistory latestBadge = badge(reviewer);
         latestBadge.setBadge(ReviewerBadge.GOLD);
         latestBadge.setScore(800);
@@ -170,6 +172,7 @@ class ReviewerServiceImplTest {
         assertThat(result.getScore()).isEqualTo(800);
         assertThat(result.getRegion().getCity()).isEqualTo("HCM");
         assertThat(result.getRegion().getArea()).isEqualTo("D1");
+        assertThat(result.getExpireDate()).isEqualTo(expireDate);
     }
 
     @Test
@@ -178,9 +181,15 @@ class ReviewerServiceImplTest {
         firstUser.setUserName("first");
         User secondUser = user(secondReviewerUserId, null, null, null);
         secondUser.setUserName("second");
+        Reviewer firstReviewer = reviewer(reviewerId, firstUser);
+        LocalDateTime firstExpireDate = LocalDateTime.of(2026, 11, 20, 12, 0);
+        firstReviewer.setReviewerExpiresAt(firstExpireDate);
+        Reviewer secondReviewer = reviewer(secondReviewerId, secondUser);
+        LocalDateTime secondExpireDate = LocalDateTime.of(2027, 5, 20, 12, 0);
+        secondReviewer.setReviewerExpiresAt(secondExpireDate);
         when(reviewerRepository.findAll()).thenReturn(List.of(
-                reviewer(reviewerId, firstUser),
-                reviewer(secondReviewerId, secondUser)));
+                firstReviewer,
+                secondReviewer));
         when(userFollowRepository.findByFollowerUserId(any(UUID.class))).thenReturn(List.of());
         when(reviewerBadgeHistoryRepository.findTopByReviewerReviewerIdOrderByMonthDesc(any(UUID.class))).thenReturn(Optional.empty());
 
@@ -188,6 +197,7 @@ class ReviewerServiceImplTest {
 
         assertThat(result).hasSize(2);
         assertThat(result).extracting("reviewerId").containsExactly(reviewerId, secondReviewerId);
+        assertThat(result).extracting("expireDate").containsExactly(firstExpireDate, secondExpireDate);
         assertThat(result).allSatisfy(reviewer -> {
             assertThat(reviewer.getBadge()).isEqualTo(ReviewerBadge.IRON);
             assertThat(reviewer.getScore()).isZero();

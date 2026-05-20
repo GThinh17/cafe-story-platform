@@ -2,6 +2,8 @@ package com.cafestory.service.serviceImplement;
 
 import com.cafestory.dto.requestDTO.CreatePaymentRequestDTO;
 import com.cafestory.dto.responseDTO.PaymentResponseDTO;
+import com.cafestory.dto.responseDTO.VnpayIpnResponseDTO;
+import com.cafestory.dto.responseDTO.VnpayReturnResponseDTO;
 import com.cafestory.entity.ExtraFee;
 import com.cafestory.entity.Payment;
 import com.cafestory.entity.PaymentDetail;
@@ -21,6 +23,7 @@ import com.cafestory.repository.UserRepository;
 import com.cafestory.repository.UserRoleAssignmentRepository;
 import com.cafestory.service.serviceInterface.PaymentService;
 import com.cafestory.service.serviceInterface.StripeCheckoutClient;
+import com.cafestory.service.serviceInterface.VnpayPaymentClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stripe.exception.SignatureVerificationException;
@@ -32,7 +35,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -48,6 +54,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final RoleRepository roleRepository;
     private final UserRoleAssignmentRepository userRoleAssignmentRepository;
     private final StripeCheckoutClient stripeCheckoutClient;
+    private final VnpayPaymentClient vnpayPaymentClient;
     private final ObjectMapper objectMapper;
     private final String stripeWebhookSecret;
 
@@ -60,6 +67,7 @@ public class PaymentServiceImpl implements PaymentService {
             RoleRepository roleRepository,
             UserRoleAssignmentRepository userRoleAssignmentRepository,
             StripeCheckoutClient stripeCheckoutClient,
+            VnpayPaymentClient vnpayPaymentClient,
             ObjectMapper objectMapper,
             @Value("${stripe.webhook-secret:}") String stripeWebhookSecret) {
         this.paymentRepository = paymentRepository;
@@ -70,6 +78,7 @@ public class PaymentServiceImpl implements PaymentService {
         this.roleRepository = roleRepository;
         this.userRoleAssignmentRepository = userRoleAssignmentRepository;
         this.stripeCheckoutClient = stripeCheckoutClient;
+        this.vnpayPaymentClient = vnpayPaymentClient;
         this.objectMapper = objectMapper;
         this.stripeWebhookSecret = stripeWebhookSecret;
     }
@@ -107,6 +116,12 @@ public class PaymentServiceImpl implements PaymentService {
             detail.setProviderName("BANK_TRANSFER");
             detail.setTransferContent("CAFE_PAYMENT_" + savedPayment.getPaymentId());
             detail.setNote("Manual bank transfer payment. Mark as paid after transfer is verified.");
+        } else if (request.getPaymentMethod() == PaymentMethod.VNPAY) {
+            String paymentUrl = vnpayPaymentClient.createPaymentUrl(savedPayment, extraFee);
+            detail.setProviderName("VNPAY");
+            detail.setProviderOrderId(savedPayment.getPaymentId().toString());
+            detail.setProviderPaymentUrl(paymentUrl);
+            detail.setTransferContent("CAFE_VNPAY_" + savedPayment.getPaymentId());
         } else {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid payment method");
         }
@@ -151,6 +166,67 @@ public class PaymentServiceImpl implements PaymentService {
         markPaymentPaid(detail.getPayment(), webhookData.paymentIntentId());
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public VnpayReturnResponseDTO handleVnpayReturn(Map<String, String> params) {
+        if (!vnpayPaymentClient.verifySignature(params)) {
+            return vnpayReturn(null, "failed", null, params, "Invalid signature");
+        }
+        UUID paymentId = parsePaymentId(params.get("vnp_TxnRef")).orElse(null);
+        if (paymentId == null) {
+            return vnpayReturn(null, "failed", null, params, "Payment not found");
+        }
+        Payment payment = paymentRepository.findById(paymentId).orElse(null);
+        if (payment == null || payment.getPaymentMethod() != PaymentMethod.VNPAY) {
+            return vnpayReturn(paymentId, "failed", null, params, "Payment not found");
+        }
+        if (!amountMatches(payment, params.get("vnp_Amount"))) {
+            return vnpayReturn(paymentId, "failed", payment, params, "Invalid amount");
+        }
+        if (payment.getPaymentStatus() == PaymentStatus.PAID || isVnpaySuccess(params)) {
+            return vnpayReturn(paymentId, "success", payment, params, "Payment successful");
+        }
+        if (payment.getPaymentStatus() == PaymentStatus.PENDING && isVnpayPending(params)) {
+            return vnpayReturn(paymentId, "pending", payment, params, "Payment pending");
+        }
+        return vnpayReturn(paymentId, "failed", payment, params, "Payment failed");
+    }
+
+    @Override
+    @Transactional
+    public VnpayIpnResponseDTO handleVnpayIpn(Map<String, String> params) {
+        try {
+            if (!vnpayPaymentClient.verifySignature(params)) {
+                return new VnpayIpnResponseDTO("97", "Invalid signature");
+            }
+            Optional<UUID> paymentId = parsePaymentId(params.get("vnp_TxnRef"));
+            if (paymentId.isEmpty()) {
+                return new VnpayIpnResponseDTO("01", "Order not found");
+            }
+            Payment payment = paymentRepository.findById(paymentId.get()).orElse(null);
+            if (payment == null || payment.getPaymentMethod() != PaymentMethod.VNPAY) {
+                return new VnpayIpnResponseDTO("01", "Order not found");
+            }
+            if (!amountMatches(payment, params.get("vnp_Amount"))) {
+                return new VnpayIpnResponseDTO("04", "invalid amount");
+            }
+            if (payment.getPaymentStatus() != PaymentStatus.PENDING) {
+                return new VnpayIpnResponseDTO("02", "Order already confirmed");
+            }
+
+            PaymentDetail detail = paymentDetailRepository.findByPaymentPaymentId(payment.getPaymentId()).orElse(null);
+            updateVnpayDetail(detail, params);
+            if (isVnpaySuccess(params)) {
+                markPaymentPaid(payment, null);
+            } else {
+                markPaymentFailed(payment, params);
+            }
+            return new VnpayIpnResponseDTO("00", "Confirm Success");
+        } catch (Exception ex) {
+            return new VnpayIpnResponseDTO("99", "Unknown error");
+        }
+    }
+
     private Payment validatePaymentExists(UUID paymentId) {
         return paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
@@ -172,6 +248,15 @@ public class PaymentServiceImpl implements PaymentService {
         activatePurchasedProduct(payment);
     }
 
+    private void markPaymentFailed(Payment payment, Map<String, String> params) {
+        if ("24".equals(params.get("vnp_ResponseCode"))) {
+            payment.setPaymentStatus(PaymentStatus.CANCELLED);
+        } else {
+            payment.setPaymentStatus(PaymentStatus.FAILED);
+        }
+        paymentRepository.save(payment);
+    }
+
     private void activatePurchasedProduct(Payment payment) {
         ExtraFee extraFee = payment.getExtraFee();
         if (extraFee.getFeeType() == ExtraFeeType.REVIEWER_REGISTRATION) {
@@ -186,7 +271,12 @@ public class PaymentServiceImpl implements PaymentService {
         Reviewer reviewer = reviewerRepository.findByUserUserId(buyer.getUserId()).orElseGet(Reviewer::new);
         reviewer.setUser(buyer);
         reviewer.setReviewerActive(true);
-        reviewer.setReviewerExpiresAt(LocalDateTime.now().plusMonths(extraFee.getDurationMonths()));
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime currentExpireDate = reviewer.getReviewerExpiresAt();
+        LocalDateTime baseExpireDate = currentExpireDate != null && currentExpireDate.isAfter(now)
+                ? currentExpireDate
+                : now;
+        reviewer.setReviewerExpiresAt(baseExpireDate.plusMonths(extraFee.getDurationMonths()));
         reviewerRepository.save(reviewer);
         assignReviewerRole(buyer);
     }
@@ -249,6 +339,77 @@ public class PaymentServiceImpl implements PaymentService {
             response.setTransferContent(detail.getTransferContent());
         }
         return response;
+    }
+
+    private void updateVnpayDetail(PaymentDetail detail, Map<String, String> params) {
+        if (detail == null) {
+            return;
+        }
+        detail.setProviderTransactionId(params.get("vnp_TransactionNo"));
+        detail.setFailureCode(successCode(params) ? null : params.get("vnp_ResponseCode"));
+        detail.setFailureMessage(successCode(params) ? null : "VNPAY transaction failed");
+        detail.setRawResponse(writeJson(params));
+        paymentDetailRepository.save(detail);
+    }
+
+    private boolean isVnpaySuccess(Map<String, String> params) {
+        return successCode(params) && "00".equals(params.get("vnp_TransactionStatus"));
+    }
+
+    private boolean successCode(Map<String, String> params) {
+        return "00".equals(params.get("vnp_ResponseCode"));
+    }
+
+    private boolean isVnpayPending(Map<String, String> params) {
+        return "01".equals(params.get("vnp_TransactionStatus"));
+    }
+
+    private boolean amountMatches(Payment payment, String vnpAmount) {
+        if (vnpAmount == null || vnpAmount.isBlank() || payment.getAmount() == null) {
+            return false;
+        }
+        try {
+            BigDecimal callbackAmount = new BigDecimal(vnpAmount).divide(BigDecimal.valueOf(100), 2, RoundingMode.UNNECESSARY);
+            return payment.getAmount().compareTo(callbackAmount) == 0;
+        } catch (ArithmeticException | NumberFormatException ex) {
+            return false;
+        }
+    }
+
+    private Optional<UUID> parsePaymentId(String value) {
+        if (value == null || value.isBlank()) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(UUID.fromString(value));
+        } catch (IllegalArgumentException ex) {
+            return Optional.empty();
+        }
+    }
+
+    private VnpayReturnResponseDTO vnpayReturn(
+            UUID paymentId,
+            String status,
+            Payment payment,
+            Map<String, String> params,
+            String message) {
+        VnpayReturnResponseDTO response = new VnpayReturnResponseDTO();
+        response.setPaymentId(paymentId);
+        response.setStatus(status);
+        response.setPaymentStatus(payment == null ? null : payment.getPaymentStatus());
+        response.setResponseCode(params.get("vnp_ResponseCode"));
+        response.setTransactionStatus(params.get("vnp_TransactionStatus"));
+        response.setTransactionNo(params.get("vnp_TransactionNo"));
+        response.setMessage(message);
+        return response;
+    }
+
+    private String writeJson(Map<String, String> params) {
+        try {
+            return objectMapper.writeValueAsString(params);
+        } catch (Exception ex) {
+            return "{}";
+        }
     }
 
     private record StripeWebhookData(String type, String sessionId, String paymentIntentId) {

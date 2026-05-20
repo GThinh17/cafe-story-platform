@@ -3,6 +3,8 @@ package com.cafestory.controller;
 import com.cafestory.config.GlobalResponseAdvice;
 import com.cafestory.dto.requestDTO.CreatePaymentRequestDTO;
 import com.cafestory.dto.responseDTO.PaymentResponseDTO;
+import com.cafestory.dto.responseDTO.VnpayIpnResponseDTO;
+import com.cafestory.dto.responseDTO.VnpayReturnResponseDTO;
 import com.cafestory.entity.enums.PaymentMethod;
 import com.cafestory.entity.enums.PaymentStatus;
 import com.cafestory.service.serviceInterface.PaymentService;
@@ -22,7 +24,10 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup;
 
@@ -75,6 +80,20 @@ class PaymentControllerTest {
     }
 
     @Test
+    void createPayment_success_vnpay_TC006() {
+        CreatePaymentRequestDTO request = request(PaymentMethod.VNPAY);
+        PaymentResponseDTO response = response(PaymentMethod.VNPAY);
+        response.setPaymentUrl("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_TxnRef=123&vnp_SecureHash=abc");
+        when(paymentService.createPayment(request)).thenReturn(response);
+
+        PaymentResponseDTO result = paymentController.createPayment(request);
+
+        assertThat(result.getPaymentUrl()).contains("vnp_SecureHash=abc");
+        assertThat(result.getPaymentMethod()).isEqualTo(PaymentMethod.VNPAY);
+        verify(paymentService).createPayment(request);
+    }
+
+    @Test
     void getPayment_success_TC003() {
         UUID paymentId = UUID.randomUUID();
         PaymentResponseDTO response = response(PaymentMethod.STRIPE_CARD);
@@ -105,6 +124,39 @@ class PaymentControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void handleVnpayReturn_success_returnsWrappedStatus_TC007() throws Exception {
+        VnpayReturnResponseDTO response = new VnpayReturnResponseDTO();
+        response.setPaymentId(UUID.fromString("33333333-3333-3333-3333-333333333333"));
+        response.setStatus("success");
+        response.setPaymentStatus(PaymentStatus.PAID);
+        response.setResponseCode("00");
+        when(paymentService.handleVnpayReturn(anyMap())).thenReturn(response);
+
+        mockMvc.perform(get("/api/payments/vnpay/return")
+                        .param("vnp_TxnRef", "33333333-3333-3333-3333-333333333333")
+                        .param("vnp_ResponseCode", "00")
+                        .param("vnp_SecureHash", "valid"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("success"))
+                .andExpect(jsonPath("$.data.paymentStatus").value("PAID"));
+    }
+
+    @Test
+    void handleVnpayIpn_success_returnsRawVnpayResponse_TC008() throws Exception {
+        when(paymentService.handleVnpayIpn(anyMap()))
+                .thenReturn(new VnpayIpnResponseDTO("00", "Confirm Success"));
+
+        mockMvc.perform(get("/api/payments/vnpay/ipn")
+                        .param("vnp_TxnRef", "33333333-3333-3333-3333-333333333333")
+                        .param("vnp_ResponseCode", "00")
+                        .param("vnp_SecureHash", "valid"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.RspCode").value("00"))
+                .andExpect(jsonPath("$.Message").value("Confirm Success"))
+                .andExpect(jsonPath("$.statusCode").doesNotExist());
     }
 
     private CreatePaymentRequestDTO request(PaymentMethod method) {

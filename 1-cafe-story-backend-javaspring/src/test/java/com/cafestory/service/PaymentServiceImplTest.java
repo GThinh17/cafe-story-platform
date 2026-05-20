@@ -2,6 +2,7 @@ package com.cafestory.service;
 
 import com.cafestory.dto.requestDTO.CreatePaymentRequestDTO;
 import com.cafestory.dto.responseDTO.PaymentResponseDTO;
+import com.cafestory.dto.responseDTO.VnpayIpnResponseDTO;
 import com.cafestory.entity.ExtraFee;
 import com.cafestory.entity.Payment;
 import com.cafestory.entity.PaymentDetail;
@@ -21,6 +22,7 @@ import com.cafestory.repository.UserRoleAssignmentRepository;
 import com.cafestory.service.serviceImplement.PaymentServiceImpl;
 import com.cafestory.service.serviceImplement.StripeCheckoutClientImpl;
 import com.cafestory.service.serviceInterface.StripeCheckoutClient;
+import com.cafestory.service.serviceInterface.VnpayPaymentClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stripe.exception.ApiException;
 import com.stripe.model.checkout.Session;
@@ -36,6 +38,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -79,6 +83,9 @@ class PaymentServiceImplTest {
     @Mock
     private StripeCheckoutClient stripeCheckoutClient;
 
+    @Mock
+    private VnpayPaymentClient vnpayPaymentClient;
+
     private PaymentServiceImpl paymentService;
 
     @BeforeEach
@@ -92,6 +99,7 @@ class PaymentServiceImplTest {
                 roleRepository,
                 userRoleAssignmentRepository,
                 stripeCheckoutClient,
+                vnpayPaymentClient,
                 new ObjectMapper(),
                 "");
     }
@@ -132,6 +140,25 @@ class PaymentServiceImplTest {
         assertThat(result.getPaymentMethod()).isEqualTo(PaymentMethod.BANK_TRANSFER);
         assertThat(result.getPaymentUrl()).isNull();
         assertThat(result.getTransferContent()).isEqualTo("CAFE_PAYMENT_" + paymentId);
+    }
+
+    @Test
+    void createPayment_success_vnpay_TC012() {
+        User buyer = user();
+        ExtraFee extraFee = extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION);
+        when(userRepository.findById(buyerId)).thenReturn(Optional.of(buyer));
+        when(extraFeeRepository.findById(extraFeeId)).thenReturn(Optional.of(extraFee));
+        mockPaymentSave();
+        mockPaymentDetailSave();
+        when(vnpayPaymentClient.createPaymentUrl(any(Payment.class), any(ExtraFee.class)))
+                .thenReturn("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_TxnRef=" + paymentId);
+
+        PaymentResponseDTO result = paymentService.createPayment(request(PaymentMethod.VNPAY));
+
+        assertThat(result.getPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
+        assertThat(result.getPaymentMethod()).isEqualTo(PaymentMethod.VNPAY);
+        assertThat(result.getPaymentUrl()).contains("vnp_TxnRef=" + paymentId);
+        assertThat(result.getTransferContent()).isEqualTo("CAFE_VNPAY_" + paymentId);
     }
 
     @Test
@@ -207,6 +234,33 @@ class PaymentServiceImplTest {
     }
 
     @Test
+    void handleStripeWebhook_success_existingActiveReviewerExtendsFromCurrentExpiry_TC020() {
+        Reviewer existing = new Reviewer();
+        existing.setReviewerId(UUID.randomUUID());
+        existing.setUser(user());
+        existing.setReviewerActive(true);
+        LocalDateTime currentExpiry = LocalDateTime.now().plusMonths(6);
+        existing.setReviewerExpiresAt(currentExpiry);
+        Payment payment = pendingPayment(PaymentMethod.STRIPE_CARD, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
+        PaymentDetail detail = paymentDetail(payment);
+        when(paymentDetailRepository.findByProviderOrderId("cs_test_123")).thenReturn(Optional.of(detail));
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.of(detail));
+        mockPaymentSave();
+        mockPaymentDetailSave();
+        when(reviewerRepository.findByUserUserId(buyerId)).thenReturn(Optional.of(existing));
+        mockReviewerSave();
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "REVIEWER")).thenReturn(true);
+
+        paymentService.handleStripeWebhook(stripePayload(), null);
+
+        assertThat(existing.getReviewerActive()).isTrue();
+        assertThat(existing.getReviewerExpiresAt()).isAfter(currentExpiry.plusMonths(6).minusSeconds(1));
+        assertThat(existing.getReviewerExpiresAt()).isBefore(currentExpiry.plusMonths(6).plusSeconds(1));
+        verify(reviewerRepository).save(existing);
+        verify(userRoleAssignmentRepository, never()).save(any());
+    }
+
+    @Test
     void markBankTransferPaid_success_activatesReviewer_TC007() {
         Payment payment = pendingPayment(PaymentMethod.BANK_TRANSFER, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
         PaymentDetail detail = paymentDetail(payment);
@@ -238,6 +292,112 @@ class PaymentServiceImplTest {
 
         verify(reviewerRepository, never()).save(any());
         verify(userRoleAssignmentRepository, never()).save(any());
+    }
+
+    @Test
+    void handleVnpayIpn_success_updatesPayment_TC013() {
+        Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING));
+        PaymentDetail detail = paymentDetail(payment);
+        detail.setProviderName("VNPAY");
+        Map<String, String> params = vnpayParams("00", "00", "29900000", paymentId.toString());
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(true);
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.of(detail));
+
+        VnpayIpnResponseDTO result = paymentService.handleVnpayIpn(params);
+
+        assertThat(result.getRspCode()).isEqualTo("00");
+        assertThat(payment.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
+        assertThat(payment.getPaidAt()).isNotNull();
+        assertThat(detail.getProviderTransactionId()).isEqualTo("14123456");
+        verify(paymentRepository).save(payment);
+        verify(paymentDetailRepository).save(detail);
+    }
+
+    @Test
+    void handleVnpayIpn_success_duplicateAlreadyPaidIsIdempotent_TC014() {
+        Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING));
+        payment.setPaymentStatus(PaymentStatus.PAID);
+        Map<String, String> params = vnpayParams("00", "00", "29900000", paymentId.toString());
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(true);
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+
+        VnpayIpnResponseDTO result = paymentService.handleVnpayIpn(params);
+
+        assertThat(result.getRspCode()).isEqualTo("02");
+        assertThat(result.getMessage()).isEqualTo("Order already confirmed");
+        verify(paymentRepository, never()).save(any());
+        verify(paymentDetailRepository, never()).save(any());
+    }
+
+    @Test
+    void handleVnpayIpn_fail_invalidSignature_TC015() {
+        Map<String, String> params = vnpayParams("00", "00", "29900000", paymentId.toString());
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(false);
+
+        VnpayIpnResponseDTO result = paymentService.handleVnpayIpn(params);
+
+        assertThat(result.getRspCode()).isEqualTo("97");
+        verify(paymentRepository, never()).findById(any());
+    }
+
+    @Test
+    void handleVnpayIpn_fail_amountMismatch_TC016() {
+        Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING));
+        Map<String, String> params = vnpayParams("00", "00", "10000000", paymentId.toString());
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(true);
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+
+        VnpayIpnResponseDTO result = paymentService.handleVnpayIpn(params);
+
+        assertThat(result.getRspCode()).isEqualTo("04");
+        assertThat(result.getMessage()).isEqualTo("invalid amount");
+        verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
+    void handleVnpayIpn_fail_orderIdMismatch_TC017() {
+        Map<String, String> params = vnpayParams("00", "00", "29900000", UUID.randomUUID().toString());
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(true);
+        when(paymentRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
+
+        VnpayIpnResponseDTO result = paymentService.handleVnpayIpn(params);
+
+        assertThat(result.getRspCode()).isEqualTo("01");
+        assertThat(result.getMessage()).isEqualTo("Order not found");
+    }
+
+    @Test
+    void handleVnpayIpn_failedPayment_updatesFailed_TC018() {
+        Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING));
+        PaymentDetail detail = paymentDetail(payment);
+        Map<String, String> params = vnpayParams("51", "02", "29900000", paymentId.toString());
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(true);
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.of(detail));
+
+        VnpayIpnResponseDTO result = paymentService.handleVnpayIpn(params);
+
+        assertThat(result.getRspCode()).isEqualTo("00");
+        assertThat(payment.getPaymentStatus()).isEqualTo(PaymentStatus.FAILED);
+        assertThat(detail.getFailureCode()).isEqualTo("51");
+        verify(paymentRepository).save(payment);
+    }
+
+    @Test
+    void handleVnpayIpn_cancelledPayment_updatesCancelled_TC019() {
+        Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING));
+        PaymentDetail detail = paymentDetail(payment);
+        Map<String, String> params = vnpayParams("24", "02", "29900000", paymentId.toString());
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(true);
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.of(detail));
+
+        VnpayIpnResponseDTO result = paymentService.handleVnpayIpn(params);
+
+        assertThat(result.getRspCode()).isEqualTo("00");
+        assertThat(payment.getPaymentStatus()).isEqualTo(PaymentStatus.CANCELLED);
+        assertThat(detail.getFailureCode()).isEqualTo("24");
     }
 
     @Test
@@ -380,6 +540,17 @@ class PaymentServiceImplTest {
                   }
                 }
                 """;
+    }
+
+    private Map<String, String> vnpayParams(String responseCode, String transactionStatus, String amount, String txnRef) {
+        Map<String, String> params = new HashMap<>();
+        params.put("vnp_TxnRef", txnRef);
+        params.put("vnp_Amount", amount);
+        params.put("vnp_ResponseCode", responseCode);
+        params.put("vnp_TransactionStatus", transactionStatus);
+        params.put("vnp_TransactionNo", "14123456");
+        params.put("vnp_SecureHash", "valid-signature");
+        return params;
     }
 
     private void mockPaymentSave() {
