@@ -40,8 +40,10 @@ For exact table/column/enum definitions, read `cafestory-schema.dbml`.
 ## Domain Groups
 
 Identity and access:
-- `users`, `roles`, `user_roles`.
+- `users`, `roles`, `user_roles`, `refresh_tokens`.
 - Default role names: `USER`, `REVIEWER`, `ADMIN`, `CAFE_PAGE`.
+- Auth uses JWT access tokens in HttpOnly cookie `access_token` and refresh tokens in HttpOnly cookie `refresh_token`.
+- Store only SHA-256 refresh token hashes in `refresh_tokens.token_hash`; never persist raw refresh tokens.
 
 Cafe pages and regions:
 - `regions`, `cafe_pages`, `page_members`.
