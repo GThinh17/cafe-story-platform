@@ -9,6 +9,7 @@ import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.UserService;
 import com.cafestory.validation.UserValidator;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -22,11 +23,17 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final UserValidator userValidator;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserServiceImpl(UserRepository userRepository, UserMapper userMapper, UserValidator userValidator) {
+    public UserServiceImpl(
+            UserRepository userRepository,
+            UserMapper userMapper,
+            UserValidator userValidator,
+            PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.userMapper = userMapper;
         this.userValidator = userValidator;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -36,6 +43,7 @@ public class UserServiceImpl implements UserService {
         validateUniqueUserEmail(userCreateDTO.getUserEmail(), null);
 
         User user = userMapper.toUser(userCreateDTO);
+        user.setUserPassword(passwordEncoder.encode(userCreateDTO.getUserPassword()));
         User savedUser = userRepository.save(user);
 
         return userMapper.toUserResponseDTO(savedUser);
@@ -69,7 +77,7 @@ public class UserServiceImpl implements UserService {
             user.setUserFullName(userUpdateDTO.getUserFullName());
         }
         if (userUpdateDTO.getUserPassword() != null) {
-            user.setUserPassword(userUpdateDTO.getUserPassword());
+            user.setUserPassword(passwordEncoder.encode(userUpdateDTO.getUserPassword()));
         }
         if (userUpdateDTO.getUserEmail() != null) {
             validateUniqueUserEmail(userUpdateDTO.getUserEmail(), userId);
