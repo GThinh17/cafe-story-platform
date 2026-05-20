@@ -1,4 +1,4 @@
-package com.cafestory.schedule;
+package com.cafestory.until.schedule;
 
 import com.cafestory.service.serviceInterface.BlogTrendingService;
 import org.springframework.scheduling.annotation.Scheduled;
