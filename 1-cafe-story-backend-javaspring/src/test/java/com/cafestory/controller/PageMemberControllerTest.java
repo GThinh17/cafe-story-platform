@@ -1,11 +1,11 @@
 package com.cafestory.controller;
 
 import com.cafestory.dto.requestDTO.PageMemberAddRequestDTO;
-import com.cafestory.dto.requestDTO.PageMemberJoinRequestDTO;
 import com.cafestory.dto.requestDTO.PageMemberStatusUpdateDTO;
 import com.cafestory.dto.responseDTO.PageMemberResponseDTO;
 import com.cafestory.entity.enums.PageMemberStatus;
 import com.cafestory.service.serviceInterface.PageMemberService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -31,35 +31,36 @@ class PageMemberControllerTest {
     @Test
     void requestToJoinPage_success_TC001() {
         UUID cafePageId = UUID.randomUUID();
-        PageMemberJoinRequestDTO request = joinRequest();
-        PageMemberResponseDTO response = response(cafePageId, request.getUserId(), PageMemberStatus.PENDING);
+        UUID userId = UUID.randomUUID();
+        PageMemberResponseDTO response = response(cafePageId, userId, PageMemberStatus.PENDING);
 
-        when(pageMemberService.requestToJoinPage(cafePageId, request.getUserId())).thenReturn(response);
+        when(pageMemberService.requestToJoinPage(cafePageId, userId)).thenReturn(response);
 
-        PageMemberResponseDTO result = pageMemberController.requestToJoinPage(cafePageId, request);
+        PageMemberResponseDTO result = pageMemberController.requestToJoinPage(cafePageId, principal(userId));
 
         assertThat(result).isEqualTo(response);
-        verify(pageMemberService).requestToJoinPage(cafePageId, request.getUserId());
+        verify(pageMemberService).requestToJoinPage(cafePageId, userId);
     }
 
     @Test
     void addPageMember_success_TC002() {
         UUID cafePageId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
         PageMemberAddRequestDTO request = addRequest();
         PageMemberResponseDTO response = response(cafePageId, request.getUserId(), PageMemberStatus.ACTIVE);
 
         when(pageMemberService.addPageMember(
                 cafePageId,
-                request.getActorUserId(),
+                actorUserId,
                 request.getUserId(),
                 request.getRoleName())).thenReturn(response);
 
-        PageMemberResponseDTO result = pageMemberController.addPageMember(cafePageId, request);
+        PageMemberResponseDTO result = pageMemberController.addPageMember(cafePageId, request, principal(actorUserId));
 
         assertThat(result).isEqualTo(response);
         verify(pageMemberService).addPageMember(
                 cafePageId,
-                request.getActorUserId(),
+                actorUserId,
                 request.getUserId(),
                 request.getRoleName());
     }
@@ -68,21 +69,23 @@ class PageMemberControllerTest {
     void updatePageMemberStatus_success_TC003() {
         UUID cafePageId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
+        UUID actorUserId = UUID.randomUUID();
         PageMemberStatusUpdateDTO request = statusRequest();
         PageMemberResponseDTO response = response(cafePageId, userId, PageMemberStatus.ACTIVE);
 
         when(pageMemberService.updatePageMemberStatus(
                 cafePageId,
-                request.getActorUserId(),
+                actorUserId,
                 userId,
                 request.getStatus())).thenReturn(response);
 
-        PageMemberResponseDTO result = pageMemberController.updatePageMemberStatus(cafePageId, userId, request);
+        PageMemberResponseDTO result =
+                pageMemberController.updatePageMemberStatus(cafePageId, userId, request, principal(actorUserId));
 
         assertThat(result).isEqualTo(response);
         verify(pageMemberService).updatePageMemberStatus(
                 cafePageId,
-                request.getActorUserId(),
+                actorUserId,
                 userId,
                 request.getStatus());
     }
@@ -113,15 +116,8 @@ class PageMemberControllerTest {
         verify(pageMemberService).getPendingPageMembers(cafePageId);
     }
 
-    private PageMemberJoinRequestDTO joinRequest() {
-        PageMemberJoinRequestDTO request = new PageMemberJoinRequestDTO();
-        request.setUserId(UUID.randomUUID());
-        return request;
-    }
-
     private PageMemberAddRequestDTO addRequest() {
         PageMemberAddRequestDTO request = new PageMemberAddRequestDTO();
-        request.setActorUserId(UUID.randomUUID());
         request.setUserId(UUID.randomUUID());
         request.setRoleName("MEMBER");
         return request;
@@ -129,7 +125,6 @@ class PageMemberControllerTest {
 
     private PageMemberStatusUpdateDTO statusRequest() {
         PageMemberStatusUpdateDTO request = new PageMemberStatusUpdateDTO();
-        request.setActorUserId(UUID.randomUUID());
         request.setStatus(PageMemberStatus.ACTIVE);
         return request;
     }
@@ -141,5 +136,9 @@ class PageMemberControllerTest {
         response.setRoleName("MEMBER");
         response.setStatus(status);
         return response;
+    }
+
+    private AuthenticatedUserPrincipal principal(UUID userId) {
+        return new AuthenticatedUserPrincipal(userId, "tester", List.of("USER"));
     }
 }

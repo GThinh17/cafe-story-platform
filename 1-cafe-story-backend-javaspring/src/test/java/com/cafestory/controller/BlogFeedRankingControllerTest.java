@@ -3,6 +3,7 @@ package com.cafestory.controller;
 import com.cafestory.dto.responseDTO.BlogFeedResponse;
 import com.cafestory.entity.enums.TrendWindowType;
 import com.cafestory.service.serviceInterface.BlogFeedRankingService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -39,7 +40,7 @@ class BlogFeedRankingControllerTest {
                 .thenReturn(response);
 
         List<BlogFeedResponse> result = blogFeedRankingController.getPersonalizedFeed(
-                userId,
+                principal(userId),
                 windowType,
                 regionId,
                 page,
@@ -59,7 +60,7 @@ class BlogFeedRankingControllerTest {
         when(blogFeedRankingService.rebuildRecommendationCache(userId, windowType, regionId)).thenReturn(response);
 
         List<BlogFeedResponse> result = blogFeedRankingController.rebuildPersonalizedFeed(
-                userId,
+                principal(userId),
                 windowType,
                 regionId);
 
@@ -88,5 +89,9 @@ class BlogFeedRankingControllerTest {
         response.setCreatedAt(LocalDateTime.now().minusHours(4));
         response.setComputedAt(LocalDateTime.now());
         return response;
+    }
+
+    private AuthenticatedUserPrincipal principal(UUID userId) {
+        return new AuthenticatedUserPrincipal(userId, "tester", List.of("USER"));
     }
 }

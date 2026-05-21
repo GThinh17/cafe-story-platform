@@ -1,8 +1,8 @@
 package com.cafestory.controller;
 
-import com.cafestory.dto.requestDTO.CafePageInteractionRequestDTO;
 import com.cafestory.dto.responseDTO.PageFollowResponseDTO;
 import com.cafestory.service.serviceInterface.PageFollowService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -28,15 +28,15 @@ class PageFollowControllerTest {
     @Test
     void followPage_success_TC001() {
         UUID cafePageId = UUID.randomUUID();
-        CafePageInteractionRequestDTO request = request();
+        UUID userId = UUID.randomUUID();
         PageFollowResponseDTO response = response();
 
-        when(pageFollowService.followPage(cafePageId, request.getUserId())).thenReturn(response);
+        when(pageFollowService.followPage(cafePageId, userId)).thenReturn(response);
 
-        PageFollowResponseDTO result = pageFollowController.followPage(cafePageId, request);
+        PageFollowResponseDTO result = pageFollowController.followPage(cafePageId, principal(userId));
 
         assertThat(result).isEqualTo(response);
-        verify(pageFollowService).followPage(cafePageId, request.getUserId());
+        verify(pageFollowService).followPage(cafePageId, userId);
     }
 
     @Test
@@ -44,7 +44,7 @@ class PageFollowControllerTest {
         UUID cafePageId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
-        pageFollowController.unfollowPage(cafePageId, userId);
+        pageFollowController.unfollowPage(cafePageId, principal(userId));
 
         verify(pageFollowService).unfollowPage(cafePageId, userId);
     }
@@ -75,17 +75,15 @@ class PageFollowControllerTest {
         verify(pageFollowService).getFollowedPagesByUserId(userId);
     }
 
-    private CafePageInteractionRequestDTO request() {
-        CafePageInteractionRequestDTO request = new CafePageInteractionRequestDTO();
-        request.setUserId(UUID.randomUUID());
-        return request;
-    }
-
     private PageFollowResponseDTO response() {
         PageFollowResponseDTO response = new PageFollowResponseDTO();
         response.setId(UUID.randomUUID());
         response.setCafePageId(UUID.randomUUID());
         response.setUserId(UUID.randomUUID());
         return response;
+    }
+
+    private AuthenticatedUserPrincipal principal(UUID userId) {
+        return new AuthenticatedUserPrincipal(userId, "tester", List.of("USER"));
     }
 }

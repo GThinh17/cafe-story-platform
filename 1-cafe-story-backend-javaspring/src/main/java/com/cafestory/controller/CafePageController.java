@@ -5,8 +5,10 @@ import com.cafestory.dto.requestDTO.CafePageUpdateDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
 import com.cafestory.dto.responseDTO.CafePageResponseDTO;
 import com.cafestory.service.serviceInterface.CafePageService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -21,6 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.UUID;
 
+import static com.cafestory.until.security.AuthenticationPrincipalUtils.requireUserId;
+
 @RestController
 @RequestMapping("/api/cafe-pages")
 public class CafePageController {
@@ -33,7 +37,10 @@ public class CafePageController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public CafePageResponseDTO createCafePage(@Valid @RequestBody CafePageCreateDTO cafePageCreateDTO) {
+    public CafePageResponseDTO createCafePage(
+            @Valid @RequestBody CafePageCreateDTO cafePageCreateDTO,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        cafePageCreateDTO.setOwnerUserId(requireUserId(principal));
         return cafePageService.createCafePage(cafePageCreateDTO);
     }
 

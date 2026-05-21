@@ -1,22 +1,22 @@
 package com.cafestory.controller;
 
-import com.cafestory.dto.requestDTO.UserFollowRequestDTO;
 import com.cafestory.dto.responseDTO.UserFollowResponseDTO;
 import com.cafestory.service.serviceInterface.UserFollowService;
-import jakarta.validation.Valid;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
+
+import static com.cafestory.until.security.AuthenticationPrincipalUtils.requireUserId;
 
 @RestController
 @RequestMapping("/api/users")
@@ -32,16 +32,16 @@ public class UserFollowController {
     @ResponseStatus(HttpStatus.CREATED)
     public UserFollowResponseDTO followUser(
             @PathVariable UUID followingUserId,
-            @Valid @RequestBody UserFollowRequestDTO request) {
-        return userFollowService.followUser(followingUserId, request.getFollowerUserId());
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return userFollowService.followUser(followingUserId, requireUserId(principal));
     }
 
     @DeleteMapping("/{followingUserId}/followers")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void unfollowUser(
             @PathVariable UUID followingUserId,
-            @RequestParam UUID followerUserId) {
-        userFollowService.unfollowUser(followingUserId, followerUserId);
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        userFollowService.unfollowUser(followingUserId, requireUserId(principal));
     }
 
     @GetMapping("/{userId}/followers")

@@ -1,8 +1,8 @@
 package com.cafestory.controller;
 
-import com.cafestory.dto.requestDTO.BlogInteractionRequestDTO;
 import com.cafestory.dto.responseDTO.BlogLikeResponseDTO;
 import com.cafestory.service.serviceInterface.BlogLikeService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -28,15 +28,15 @@ class BlogLikeControllerTest {
     @Test
     void likeBlog_success_TC001() {
         UUID blogId = UUID.randomUUID();
-        BlogInteractionRequestDTO request = request();
+        UUID userId = UUID.randomUUID();
         BlogLikeResponseDTO response = response();
 
-        when(blogLikeService.likeBlog(blogId, request.getUserId())).thenReturn(response);
+        when(blogLikeService.likeBlog(blogId, userId)).thenReturn(response);
 
-        BlogLikeResponseDTO result = blogLikeController.likeBlog(blogId, request);
+        BlogLikeResponseDTO result = blogLikeController.likeBlog(blogId, principal(userId));
 
         assertThat(result).isEqualTo(response);
-        verify(blogLikeService).likeBlog(blogId, request.getUserId());
+        verify(blogLikeService).likeBlog(blogId, userId);
     }
 
     @Test
@@ -44,7 +44,7 @@ class BlogLikeControllerTest {
         UUID blogId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
-        blogLikeController.unlikeBlog(blogId, userId);
+        blogLikeController.unlikeBlog(blogId, principal(userId));
 
         verify(blogLikeService).unlikeBlog(blogId, userId);
     }
@@ -75,17 +75,15 @@ class BlogLikeControllerTest {
         verify(blogLikeService).getLikesByUserId(userId);
     }
 
-    private BlogInteractionRequestDTO request() {
-        BlogInteractionRequestDTO request = new BlogInteractionRequestDTO();
-        request.setUserId(UUID.randomUUID());
-        return request;
-    }
-
     private BlogLikeResponseDTO response() {
         BlogLikeResponseDTO response = new BlogLikeResponseDTO();
         response.setId(UUID.randomUUID());
         response.setBlogId(UUID.randomUUID());
         response.setUserId(UUID.randomUUID());
         return response;
+    }
+
+    private AuthenticatedUserPrincipal principal(UUID userId) {
+        return new AuthenticatedUserPrincipal(userId, "tester", List.of("USER"));
     }
 }

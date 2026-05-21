@@ -10,7 +10,6 @@ import java.util.UUID;
 @Data
 public class SendMessageRequest {
 
-    @NotNull(message = "Sender id is mandatory")
     private UUID senderId;
 
     @NotNull(message = "Message type is mandatory")

@@ -1,0 +1,408 @@
+{
+  "info": {
+    "_postman_id": "33333333-3333-3333-3333-333333333333",
+    "name": "CafeStory Full API Collection - Cookie JWT",
+    "description": "Full REST API collection generated from CafeStory Spring Boot controllers. Auth uses HttpOnly cookies from /api/auth/login, not Authorization Bearer. UUID values are symbolic variables for quick testing.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": { "type": "noauth" },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('Response is not a server error', function () { pm.expect(pm.response.code).to.be.below(500); });",
+          "let json = {}; try { json = pm.response.json(); } catch (e) {}",
+          "const data = json.data || json;",
+          "function save(name, value) { if (value) pm.environment.set(name, value); }",
+          "const pathParts = (pm.request.url && pm.request.url.path) || [];",
+          "const pathText = Array.isArray(pathParts) ? pathParts.join('/') : String(pathParts);",
+          "save('user_id', data.userId || (data.user && data.user.userId));",
+          "save('blog_id', data.blogId || (pathText.includes('blogs') ? data.id : null));",
+          "save('cafe_page_id', data.cafePageId || data.pageId || (pathText.includes('cafe-pages') ? data.id : null));",
+          "save('comment_id', data.commentId || (pathText.includes('comments') ? data.id : null));",
+          "save('conversation_id', data.conversationId || (pathText.includes('conversations') ? data.id : null));",
+          "save('notification_id', data.notificationId);",
+          "save('reviewer_id', data.reviewerId);"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080" },
+    { "key": "user_id", "value": "11111111-1111-1111-1111-111111111111" },
+    { "key": "admin_id", "value": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" },
+    { "key": "member_user_id", "value": "22222222-2222-2222-2222-222222222222" },
+    { "key": "following_user_id", "value": "33333333-3333-3333-3333-333333333333" },
+    { "key": "region_id", "value": "44444444-4444-4444-4444-444444444444" },
+    { "key": "cafe_page_id", "value": "55555555-5555-5555-5555-555555555555" },
+    { "key": "blog_id", "value": "66666666-6666-6666-6666-666666666666" },
+    { "key": "comment_id", "value": "77777777-7777-7777-7777-777777777777" },
+    { "key": "conversation_id", "value": "88888888-8888-8888-8888-888888888888" },
+    { "key": "notification_id", "value": "99999999-9999-9999-9999-999999999999" },
+    { "key": "reviewer_id", "value": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" },
+    { "key": "period", "value": "2026-05" },
+    { "key": "month", "value": "2026-05" }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Auth - Register new user",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"userName\": \"auth_user_001\",\n  \"userFullName\": \"Auth User 001\",\n  \"password\": \"123456\",\n  \"userEmail\": \"auth.user.001@example.com\",\n  \"userPhone\": 901234567,\n  \"userAvatar\": \"https://example.com/avatar-auth-user.png\"\n}" },
+            "url": "{{base_url}}/api/auth/register"
+          }
+        },
+        {
+          "name": "Auth - Login and store cookies",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login success', function () { pm.expect(pm.response.code).to.be.oneOf([200, 201]); });",
+                  "const setCookie = pm.response.headers.get('Set-Cookie') || '';",
+                  "pm.test('Set-Cookie contains access_token', function () { pm.expect(setCookie).to.include('access_token'); });",
+                  "let json = {}; try { json = pm.response.json(); } catch (e) {}",
+                  "const data = json.data || json;",
+                  "if (data.user && data.user.userId) pm.environment.set('user_id', data.user.userId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"identifier\": \"auth.user.001@example.com\",\n  \"password\": \"123456\"\n}" },
+            "url": "{{base_url}}/api/auth/login"
+          }
+        },
+        { "name": "Auth - Get current user", "request": { "method": "GET", "url": "{{base_url}}/api/auth/me" } },
+        { "name": "Auth - Refresh access token cookie", "request": { "method": "POST", "url": "{{base_url}}/api/auth/refresh" } },
+        { "name": "Auth - Logout and clear cookies", "request": { "method": "POST", "url": "{{base_url}}/api/auth/logout" } }
+      ]
+    },
+    {
+      "name": "Admin Blog Ranking",
+      "item": [
+        {
+          "name": "Admin Blog Ranking - Create ranking override",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"boost_score\": 50.0,\n  \"is_pinned\": true,\n  \"reason\": \"Manual boost for campaign\",\n  \"start_at\": \"2026-05-20T09:00:00\",\n  \"end_at\": \"2026-05-23T09:00:00\"\n}" },
+            "url": "{{base_url}}/api/admin/blogs/{{blog_id}}/ranking-override"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Blogs",
+      "item": [
+        {
+          "name": "Blogs - Create blog for current user",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"pageId\": \"{{cafe_page_id}}\",\n  \"regionId\": \"{{region_id}}\",\n  \"content\": \"Review ca phe sua da va khong gian lam viec tai Cafe Story Nguyen Hue.\",\n  \"imageUrls\": [\"https://example.com/blog-1.png\"],\n  \"isPinned\": false,\n  \"allowComment\": true\n}" },
+            "url": "{{base_url}}/api/blogs"
+          }
+        },
+        { "name": "Blogs - Get all blogs", "request": { "method": "GET", "url": "{{base_url}}/api/blogs" } },
+        { "name": "Blogs - Get blogs filtered by author user id", "request": { "method": "GET", "url": "{{base_url}}/api/blogs?authorUserId={{user_id}}" } },
+        { "name": "Blogs - Get blogs by user path", "request": { "method": "GET", "url": "{{base_url}}/api/blogs/users/{{user_id}}" } },
+        { "name": "Blogs - Get blog by id", "request": { "method": "GET", "url": "{{base_url}}/api/blogs/{{blog_id}}" } },
+        {
+          "name": "Blogs - Update blog",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"content\": \"Updated blog content\",\n  \"status\": \"PUBLISHED\",\n  \"imageUrls\": [\"https://example.com/blog-updated.png\"]\n}" },
+            "url": "{{base_url}}/api/blogs/{{blog_id}}"
+          }
+        },
+        { "name": "Blogs - Delete blog", "request": { "method": "DELETE", "url": "{{base_url}}/api/blogs/{{blog_id}}" } }
+      ]
+    },
+    {
+      "name": "Blog Feed",
+      "item": [
+        { "name": "Blog Feed - Get personalized feed for current user", "request": { "method": "GET", "url": "{{base_url}}/api/blogs/feed?windowType=DAY_7&regionId={{region_id}}&page=0&size=20" } },
+        { "name": "Blog Feed - Rebuild personalized feed for current user", "request": { "method": "POST", "url": "{{base_url}}/api/blogs/feed/rebuild?windowType=DAY_7&regionId={{region_id}}" } }
+      ]
+    },
+    {
+      "name": "Blog Likes",
+      "item": [
+        { "name": "Blog Likes - Like blog as current user", "request": { "method": "POST", "url": "{{base_url}}/api/blogs/{{blog_id}}/likes" } },
+        { "name": "Blog Likes - Unlike blog as current user", "request": { "method": "DELETE", "url": "{{base_url}}/api/blogs/{{blog_id}}/likes" } },
+        { "name": "Blog Likes - Get likes by blog id", "request": { "method": "GET", "url": "{{base_url}}/api/blogs/{{blog_id}}/likes" } },
+        { "name": "Blog Likes - Get likes by user id", "request": { "method": "GET", "url": "{{base_url}}/api/blogs/likes/users/{{user_id}}" } }
+      ]
+    },
+    {
+      "name": "Blog Shares",
+      "item": [
+        {
+          "name": "Blog Shares - Share blog as current user",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"shareType\": \"PUBLIC\"\n}" },
+            "url": "{{base_url}}/api/blogs/{{blog_id}}/shares"
+          }
+        },
+        { "name": "Blog Shares - Get shares by blog id", "request": { "method": "GET", "url": "{{base_url}}/api/blogs/{{blog_id}}/shares" } },
+        { "name": "Blog Shares - Get shares by user id", "request": { "method": "GET", "url": "{{base_url}}/api/blogs/shares/users/{{user_id}}" } }
+      ]
+    },
+    {
+      "name": "Blog Trending",
+      "item": [
+        { "name": "Blog Trending - Get trending blogs", "request": { "method": "GET", "url": "{{base_url}}/api/blogs/trending?windowType=HOUR_24&page=0&size=20" } },
+        {
+          "name": "Blog Trending - Record blog event as current user",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"eventType\": \"VIEW\",\n  \"weight\": 1.0\n}" },
+            "url": "{{base_url}}/api/blogs/{{blog_id}}/events"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cafe Pages",
+      "item": [
+        {
+          "name": "Cafe Pages - Create cafe page for current user",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Cafe Story Nguyen Hue\",\n  \"address\": \"123 Nguyen Hue, District 1\",\n  \"description\": \"Cafe lam viec yen tinh\",\n  \"avatar\": \"https://example.com/cafe-avatar.png\",\n  \"coverImage\": \"https://example.com/cafe-cover.png\"\n}" },
+            "url": "{{base_url}}/api/cafe-pages"
+          }
+        },
+        { "name": "Cafe Pages - Get all cafe pages", "request": { "method": "GET", "url": "{{base_url}}/api/cafe-pages" } },
+        { "name": "Cafe Pages - Get cafe pages filtered by owner", "request": { "method": "GET", "url": "{{base_url}}/api/cafe-pages?ownerUserId={{user_id}}" } },
+        { "name": "Cafe Pages - Get cafe page by id", "request": { "method": "GET", "url": "{{base_url}}/api/cafe-pages/{{cafe_page_id}}" } },
+        { "name": "Cafe Pages - Get blogs by cafe page id", "request": { "method": "GET", "url": "{{base_url}}/api/cafe-pages/{{cafe_page_id}}/blogs" } },
+        {
+          "name": "Cafe Pages - Update cafe page",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Cafe Story Nguyen Hue Updated\",\n  \"address\": \"456 Le Loi, District 1\",\n  \"description\": \"Khong gian moi, phu hop hoc tap va lam viec\",\n  \"avatar\": \"https://example.com/cafe-avatar-updated.png\",\n  \"coverImage\": \"https://example.com/cafe-cover-updated.png\"\n}" },
+            "url": "{{base_url}}/api/cafe-pages/{{cafe_page_id}}"
+          }
+        },
+        { "name": "Cafe Pages - Delete cafe page", "request": { "method": "DELETE", "url": "{{base_url}}/api/cafe-pages/{{cafe_page_id}}" } }
+      ]
+    },
+    {
+      "name": "Chat",
+      "item": [
+        {
+          "name": "Chat - Create or get direct conversation",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"secondUserId\": \"{{member_user_id}}\"\n}" },
+            "url": "{{base_url}}/api/chat/conversations/direct"
+          }
+        },
+        {
+          "name": "Chat - Create group conversation",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"groupName\": \"Cafe planning team\",\n  \"memberIds\": [\"{{member_user_id}}\"],\n  \"imageUrl\": \"https://example.com/group.png\"\n}" },
+            "url": "{{base_url}}/api/chat/conversations/group"
+          }
+        },
+        { "name": "Chat - Get current user conversations", "request": { "method": "GET", "url": "{{base_url}}/api/chat/conversations" } },
+        { "name": "Chat - Get messages by conversation id", "request": { "method": "GET", "url": "{{base_url}}/api/chat/conversations/{{conversation_id}}/messages?page=0&size=20" } },
+        {
+          "name": "Chat - Send message as current user",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"type\": \"TEXT\",\n  \"text\": \"Hen gap o quan luc 9h nhe.\",\n  \"imageUrls\": [\"https://example.com/chat-image.png\"],\n  \"stickerUrl\": null,\n  \"stickerId\": null\n}" },
+            "url": "{{base_url}}/api/chat/conversations/{{conversation_id}}/messages"
+          }
+        },
+        {
+          "name": "Chat - Add member to conversation",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"memberUserId\": \"{{member_user_id}}\"\n}" },
+            "url": "{{base_url}}/api/chat/conversations/{{conversation_id}}/members"
+          }
+        },
+        { "name": "Chat - Remove member from conversation", "request": { "method": "DELETE", "url": "{{base_url}}/api/chat/conversations/{{conversation_id}}/members/{{member_user_id}}" } },
+        { "name": "Chat - Leave group conversation", "request": { "method": "POST", "url": "{{base_url}}/api/chat/conversations/{{conversation_id}}/leave" } },
+        {
+          "name": "Chat - Update group conversation info",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"groupName\": \"Cafe planning updated\",\n  \"imageUrl\": \"https://example.com/group-updated.png\"\n}" },
+            "url": "{{base_url}}/api/chat/conversations/{{conversation_id}}/group"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Comments",
+      "item": [
+        {
+          "name": "Comments - Create comment as current user",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"blogId\": \"{{blog_id}}\",\n  \"parentCommentId\": null,\n  \"content\": \"Quan dep, do uong on.\",\n  \"imageUrls\": [\"https://example.com/comment.png\"]\n}" },
+            "url": "{{base_url}}/api/comments"
+          }
+        },
+        { "name": "Comments - Get all comments", "request": { "method": "GET", "url": "{{base_url}}/api/comments" } },
+        { "name": "Comments - Get comments filtered by blog id", "request": { "method": "GET", "url": "{{base_url}}/api/comments?blogId={{blog_id}}" } },
+        { "name": "Comments - Get comments filtered by user id", "request": { "method": "GET", "url": "{{base_url}}/api/comments?userId={{user_id}}" } },
+        { "name": "Comments - Get comments by blog path", "request": { "method": "GET", "url": "{{base_url}}/api/comments/blogs/{{blog_id}}" } },
+        { "name": "Comments - Get comments by user path", "request": { "method": "GET", "url": "{{base_url}}/api/comments/users/{{user_id}}" } },
+        { "name": "Comments - Get replies by comment id", "request": { "method": "GET", "url": "{{base_url}}/api/comments/{{comment_id}}/replies" } },
+        { "name": "Comments - Get comment by id", "request": { "method": "GET", "url": "{{base_url}}/api/comments/{{comment_id}}" } },
+        {
+          "name": "Comments - Update comment",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"content\": \"Updated comment\",\n  \"imageUrls\": [\"https://example.com/comment-updated.png\"],\n  \"status\": \"PUBLISHED\"\n}" },
+            "url": "{{base_url}}/api/comments/{{comment_id}}"
+          }
+        },
+        { "name": "Comments - Delete comment", "request": { "method": "DELETE", "url": "{{base_url}}/api/comments/{{comment_id}}" } }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        { "name": "Notifications - Get current user notifications", "request": { "method": "GET", "url": "{{base_url}}/notifications?page=0&limit=20&isRead=false&type=COMMENT" } },
+        { "name": "Notifications - Get current user unread count", "request": { "method": "GET", "url": "{{base_url}}/notifications/unread-count" } },
+        { "name": "Notifications - Mark notification as read", "request": { "method": "PATCH", "url": "{{base_url}}/notifications/{{notification_id}}/read" } },
+        { "name": "Notifications - Mark all notifications as read", "request": { "method": "PATCH", "url": "{{base_url}}/notifications/read-all" } },
+        { "name": "Notifications - Delete notification", "request": { "method": "DELETE", "url": "{{base_url}}/notifications/{{notification_id}}" } }
+      ]
+    },
+    {
+      "name": "Page Follows",
+      "item": [
+        { "name": "Page Follows - Follow cafe page as current user", "request": { "method": "POST", "url": "{{base_url}}/api/cafe-pages/{{cafe_page_id}}/follows" } },
+        { "name": "Page Follows - Unfollow cafe page as current user", "request": { "method": "DELETE", "url": "{{base_url}}/api/cafe-pages/{{cafe_page_id}}/follows" } },
+        { "name": "Page Follows - Get followers by cafe page id", "request": { "method": "GET", "url": "{{base_url}}/api/cafe-pages/{{cafe_page_id}}/follows" } },
+        { "name": "Page Follows - Get followed pages by user id", "request": { "method": "GET", "url": "{{base_url}}/api/cafe-pages/follows/users/{{user_id}}" } }
+      ]
+    },
+    {
+      "name": "Page Likes",
+      "item": [
+        { "name": "Page Likes - Like cafe page as current user", "request": { "method": "POST", "url": "{{base_url}}/api/cafe-pages/{{cafe_page_id}}/likes" } },
+        { "name": "Page Likes - Unlike cafe page as current user", "request": { "method": "DELETE", "url": "{{base_url}}/api/cafe-pages/{{cafe_page_id}}/likes" } },
+        { "name": "Page Likes - Get likes by cafe page id", "request": { "method": "GET", "url": "{{base_url}}/api/cafe-pages/{{cafe_page_id}}/likes" } },
+        { "name": "Page Likes - Get likes by user id", "request": { "method": "GET", "url": "{{base_url}}/api/cafe-pages/likes/users/{{user_id}}" } }
+      ]
+    },
+    {
+      "name": "Page Members",
+      "item": [
+        { "name": "Page Members - Request to join cafe page as current user", "request": { "method": "POST", "url": "{{base_url}}/api/cafe-pages/{{cafe_page_id}}/members/requests" } },
+        {
+          "name": "Page Members - Add target user as page member",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"userId\": \"{{member_user_id}}\",\n  \"roleName\": \"MEMBER\"\n}" },
+            "url": "{{base_url}}/api/cafe-pages/{{cafe_page_id}}/members"
+          }
+        },
+        {
+          "name": "Page Members - Update target member status",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"ACTIVE\"\n}" },
+            "url": "{{base_url}}/api/cafe-pages/{{cafe_page_id}}/members/{{member_user_id}}/status"
+          }
+        },
+        { "name": "Page Members - Get all page members", "request": { "method": "GET", "url": "{{base_url}}/api/cafe-pages/{{cafe_page_id}}/members" } },
+        { "name": "Page Members - Get pending page members", "request": { "method": "GET", "url": "{{base_url}}/api/cafe-pages/{{cafe_page_id}}/members/pending" } }
+      ]
+    },
+    {
+      "name": "Reviewers",
+      "item": [
+        { "name": "Reviewers - Create reviewer for current user", "request": { "method": "POST", "url": "{{base_url}}/api/reviewers/create" } },
+        { "name": "Reviewers - Get reviewer by user id", "request": { "method": "GET", "url": "{{base_url}}/api/reviewers/{{user_id}}" } },
+        { "name": "Reviewers - Get all reviewers", "request": { "method": "GET", "url": "{{base_url}}/api/reviewers" } },
+        { "name": "Reviewers - Get reviewer stats", "request": { "method": "GET", "url": "{{base_url}}/api/reviewers/{{reviewer_id}}/stats?period={{period}}" } },
+        { "name": "Reviewers - Get reviewer ranking", "request": { "method": "GET", "url": "{{base_url}}/api/reviewers/ranking?period={{period}}&page=1&limit=20&city=Ho%20Chi%20Minh&province=Ho%20Chi%20Minh&area=District%201" } },
+        { "name": "Reviewers - Get reviewers by segment", "request": { "method": "GET", "url": "{{base_url}}/api/reviewers/segments?month={{month}}&segment=TOP" } },
+        { "name": "Reviewers - Get reviewer geo analytics", "request": { "method": "GET", "url": "{{base_url}}/api/reviewers/geo?period={{period}}&groupBy=city" } },
+        { "name": "Reviewers - Get reviewer payouts", "request": { "method": "GET", "url": "{{base_url}}/api/reviewers/{{reviewer_id}}/payouts" } },
+        { "name": "Reviewers - Generate monthly payouts", "request": { "method": "POST", "url": "{{base_url}}/api/reviewers/payouts/generate?month={{month}}&overwrite=false" } },
+        { "name": "Reviewers - Generate monthly badges", "request": { "method": "POST", "url": "{{base_url}}/api/reviewers/badges/generate?month={{month}}&overwrite=false" } },
+        { "name": "Reviewers - Get reviewer badges", "request": { "method": "GET", "url": "{{base_url}}/api/reviewers/{{reviewer_id}}/badges" } }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Users - Create user using legacy API",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"userName\": \"luan123\",\n  \"userFullName\": \"Nguyen Van Luan\",\n  \"userPassword\": \"123456\",\n  \"userEmail\": \"luan123@example.com\",\n  \"userPhone\": 987654321,\n  \"userAvatar\": \"https://example.com/avatar.png\",\n  \"region\": {\n    \"city\": \"Ho Chi Minh\",\n    \"province\": \"Ho Chi Minh\",\n    \"district\": \"District 1\",\n    \"ward\": \"Ben Nghe\",\n    \"street\": \"Nguyen Hue\"\n  }\n}" },
+            "url": "{{base_url}}/api/users"
+          }
+        },
+        { "name": "Users - Get all users", "request": { "method": "GET", "url": "{{base_url}}/api/users" } },
+        { "name": "Users - Get user by id", "request": { "method": "GET", "url": "{{base_url}}/api/users/{{user_id}}" } },
+        {
+          "name": "Users - Update current user",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"userFullName\": \"Nguyen Van Luan Updated\",\n  \"userPhone\": 987654322,\n  \"userAvatar\": \"https://example.com/avatar-updated.png\"\n}" },
+            "url": "{{base_url}}/api/users/me"
+          }
+        },
+        {
+          "name": "Users - Update current user region",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"city\": \"Ho Chi Minh\",\n  \"province\": \"Ho Chi Minh\",\n  \"district\": \"District 1\",\n  \"ward\": \"Ben Nghe\",\n  \"street\": \"Nguyen Hue\"\n}" },
+            "url": "{{base_url}}/api/users/me/region"
+          }
+        },
+        { "name": "Users - Delete current user", "request": { "method": "DELETE", "url": "{{base_url}}/api/users/me" } }
+      ]
+    },
+    {
+      "name": "User Follows",
+      "item": [
+        { "name": "User Follows - Follow target user as current user", "request": { "method": "POST", "url": "{{base_url}}/api/users/{{following_user_id}}/followers" } },
+        { "name": "User Follows - Unfollow target user as current user", "request": { "method": "DELETE", "url": "{{base_url}}/api/users/{{following_user_id}}/followers" } },
+        { "name": "User Follows - Get followers by user id", "request": { "method": "GET", "url": "{{base_url}}/api/users/{{user_id}}/followers" } },
+        { "name": "User Follows - Get following by user id", "request": { "method": "GET", "url": "{{base_url}}/api/users/{{user_id}}/following" } }
+      ]
+    }
+  ]
+}

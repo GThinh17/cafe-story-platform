@@ -6,8 +6,10 @@ import com.cafestory.dto.responseDTO.BlogTrendingResponse;
 import com.cafestory.entity.enums.TrendWindowType;
 import com.cafestory.service.serviceInterface.BlogEventService;
 import com.cafestory.service.serviceInterface.BlogTrendingService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,6 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
+
+import static com.cafestory.until.security.AuthenticationPrincipalUtils.requireUserId;
 
 @RestController
 @RequestMapping("/api/blogs")
@@ -46,10 +50,11 @@ public class BlogTrendingController {
     @ResponseStatus(HttpStatus.CREATED)
     public BlogEventResponse recordBlogEvent(
             @PathVariable UUID blogId,
-            @Valid @RequestBody BlogEventRequest request) {
+            @Valid @RequestBody BlogEventRequest request,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         return blogEventService.recordEvent(
                 blogId,
-                request.getUserId(),
+                requireUserId(principal),
                 request.getEventType(),
                 request.getWeight());
     }

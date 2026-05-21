@@ -5,8 +5,10 @@ import com.cafestory.dto.requestDTO.UserCreateDTO;
 import com.cafestory.dto.requestDTO.UserUpdateDTO;
 import com.cafestory.dto.responseDTO.UserResponseDTO;
 import com.cafestory.service.serviceInterface.UserService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -19,6 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
+
+import static com.cafestory.until.security.AuthenticationPrincipalUtils.requireUserId;
 
 @RestController
 @RequestMapping("/api/users")
@@ -46,23 +50,23 @@ public class UserController {
         return userService.getUserById(userId);
     }
 
-    @PatchMapping("/{userId}")
+    @PatchMapping("/me")
     public UserResponseDTO updateUser(
-            @PathVariable UUID userId,
-            @Valid @RequestBody UserUpdateDTO userUpdateDTO) {
-        return userService.updateUser(userId, userUpdateDTO);
+            @Valid @RequestBody UserUpdateDTO userUpdateDTO,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return userService.updateUser(requireUserId(principal), userUpdateDTO);
     }
 
-    @PatchMapping("/{userId}/region")
+    @PatchMapping("/me/region")
     public UserResponseDTO updateUserRegion(
-            @PathVariable UUID userId,
-            @RequestBody RegionRequestDTO regionRequestDTO) {
-        return userService.updateUserRegion(userId, regionRequestDTO);
+            @RequestBody RegionRequestDTO regionRequestDTO,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return userService.updateUserRegion(requireUserId(principal), regionRequestDTO);
     }
 
-    @DeleteMapping("/{userId}")
+    @DeleteMapping("/me")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteUser(@PathVariable UUID userId) {
-        userService.deleteUser(userId);
+    public void deleteUser(@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        userService.deleteUser(requireUserId(principal));
     }
 }

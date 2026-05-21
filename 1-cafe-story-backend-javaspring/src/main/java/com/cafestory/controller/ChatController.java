@@ -3,14 +3,15 @@ package com.cafestory.controller;
 import com.cafestory.dto.requestDTO.chat.AddMemberRequest;
 import com.cafestory.dto.requestDTO.chat.CreateDirectConversationRequest;
 import com.cafestory.dto.requestDTO.chat.CreateGroupConversationRequest;
-import com.cafestory.dto.requestDTO.chat.MemberActionRequest;
 import com.cafestory.dto.requestDTO.chat.SendMessageRequest;
 import com.cafestory.dto.requestDTO.chat.UpdateGroupInfoRequest;
 import com.cafestory.dto.responseDTO.chat.ChatMessageResponseDTO;
 import com.cafestory.dto.responseDTO.chat.ConversationResponseDTO;
 import com.cafestory.service.serviceInterface.ChatService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -25,6 +26,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.UUID;
 
+import static com.cafestory.until.security.AuthenticationPrincipalUtils.requireUserId;
+
 @RestController
 @RequestMapping("/api/chat")
 public class ChatController {
@@ -37,66 +40,76 @@ public class ChatController {
 
     @PostMapping("/conversations/direct")
     public ConversationResponseDTO createOrGetDirectConversation(
-            @Valid @RequestBody CreateDirectConversationRequest request) {
+            @Valid @RequestBody CreateDirectConversationRequest request,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        request.setFirstUserId(requireUserId(principal));
         return chatService.createOrGetDirectConversation(request);
     }
 
     @PostMapping("/conversations/group")
     @ResponseStatus(HttpStatus.CREATED)
     public ConversationResponseDTO createGroupConversation(
-            @Valid @RequestBody CreateGroupConversationRequest request) {
+            @Valid @RequestBody CreateGroupConversationRequest request,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        request.setCreatorUserId(requireUserId(principal));
         return chatService.createGroupConversation(request);
     }
 
-    @GetMapping("/users/{userId}/conversations")
-    public List<ConversationResponseDTO> getUserConversations(@PathVariable UUID userId) {
-        return chatService.getUserConversations(userId);
+    @GetMapping("/conversations")
+    public List<ConversationResponseDTO> getUserConversations(
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return chatService.getUserConversations(requireUserId(principal));
     }
 
     @GetMapping("/conversations/{conversationId}/messages")
     public List<ChatMessageResponseDTO> getMessagesByConversationId(
             @PathVariable UUID conversationId,
-            @RequestParam UUID userId,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return chatService.getMessagesByConversationId(conversationId, userId, page, size);
+        return chatService.getMessagesByConversationId(conversationId, requireUserId(principal), page, size);
     }
 
     @PostMapping("/conversations/{conversationId}/messages")
     @ResponseStatus(HttpStatus.CREATED)
     public ChatMessageResponseDTO sendMessage(
             @PathVariable UUID conversationId,
-            @Valid @RequestBody SendMessageRequest request) {
+            @Valid @RequestBody SendMessageRequest request,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        request.setSenderId(requireUserId(principal));
         return chatService.sendMessage(conversationId, request);
     }
 
     @PostMapping("/conversations/{conversationId}/members")
     public ConversationResponseDTO addMember(
             @PathVariable UUID conversationId,
-            @Valid @RequestBody AddMemberRequest request) {
-        return chatService.addMember(conversationId, request.getActorUserId(), request.getMemberUserId());
+            @Valid @RequestBody AddMemberRequest request,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return chatService.addMember(conversationId, requireUserId(principal), request.getMemberUserId());
     }
 
     @DeleteMapping("/conversations/{conversationId}/members/{memberUserId}")
     public ConversationResponseDTO removeMember(
             @PathVariable UUID conversationId,
             @PathVariable UUID memberUserId,
-            @Valid @RequestBody MemberActionRequest request) {
-        return chatService.removeMember(conversationId, request.getActorUserId(), memberUserId);
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return chatService.removeMember(conversationId, requireUserId(principal), memberUserId);
     }
 
     @PostMapping("/conversations/{conversationId}/leave")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void leaveGroup(
             @PathVariable UUID conversationId,
-            @Valid @RequestBody MemberActionRequest request) {
-        chatService.leaveGroup(conversationId, request.getActorUserId());
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        chatService.leaveGroup(conversationId, requireUserId(principal));
     }
 
     @PatchMapping("/conversations/{conversationId}/group")
     public ConversationResponseDTO updateGroupInfo(
             @PathVariable UUID conversationId,
-            @Valid @RequestBody UpdateGroupInfoRequest request) {
+            @Valid @RequestBody UpdateGroupInfoRequest request,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        request.setActorUserId(requireUserId(principal));
         return chatService.updateGroupInfo(conversationId, request);
     }
 }

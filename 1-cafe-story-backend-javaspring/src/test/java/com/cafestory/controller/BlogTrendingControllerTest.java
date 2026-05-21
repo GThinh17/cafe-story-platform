@@ -7,6 +7,7 @@ import com.cafestory.entity.enums.BlogEventType;
 import com.cafestory.entity.enums.TrendWindowType;
 import com.cafestory.service.serviceInterface.BlogEventService;
 import com.cafestory.service.serviceInterface.BlogTrendingService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -51,21 +52,22 @@ class BlogTrendingControllerTest {
     @Test
     void recordBlogEvent_success_TC002() {
         UUID blogId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         BlogEventRequest request = eventRequest();
-        BlogEventResponse response = eventResponse(blogId, request.getUserId());
+        BlogEventResponse response = eventResponse(blogId, userId);
 
         when(blogEventService.recordEvent(
                 blogId,
-                request.getUserId(),
+                userId,
                 request.getEventType(),
                 request.getWeight())).thenReturn(response);
 
-        BlogEventResponse result = blogTrendingController.recordBlogEvent(blogId, request);
+        BlogEventResponse result = blogTrendingController.recordBlogEvent(blogId, request, principal(userId));
 
         assertThat(result).isEqualTo(response);
         verify(blogEventService).recordEvent(
                 blogId,
-                request.getUserId(),
+                userId,
                 request.getEventType(),
                 request.getWeight());
     }
@@ -90,7 +92,6 @@ class BlogTrendingControllerTest {
 
     private BlogEventRequest eventRequest() {
         BlogEventRequest request = new BlogEventRequest();
-        request.setUserId(UUID.randomUUID());
         request.setEventType(BlogEventType.VIEW);
         request.setWeight(1.0);
         return request;
@@ -105,5 +106,9 @@ class BlogTrendingControllerTest {
         response.setWeight(1.0);
         response.setCreatedAt(LocalDateTime.now());
         return response;
+    }
+
+    private AuthenticatedUserPrincipal principal(UUID userId) {
+        return new AuthenticatedUserPrincipal(userId, "tester", List.of("USER"));
     }
 }

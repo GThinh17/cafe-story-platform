@@ -3,6 +3,7 @@ package com.cafestory.controller;
 import com.cafestory.dto.requestDTO.BlogRankingOverrideRequest;
 import com.cafestory.dto.responseDTO.BlogRankingOverrideResponse;
 import com.cafestory.service.serviceInterface.BlogRankingService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -10,6 +11,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,15 +30,22 @@ class AdminBlogRankingControllerTest {
     @Test
     void createRankingOverride_success_TC001() {
         UUID blogId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         BlogRankingOverrideRequest request = request();
         BlogRankingOverrideResponse response = response(blogId, request);
 
         when(blogRankingService.createOverride(blogId, request)).thenReturn(response);
 
-        BlogRankingOverrideResponse result = adminBlogRankingController.createRankingOverride(blogId, request);
+        BlogRankingOverrideResponse result =
+                adminBlogRankingController.createRankingOverride(blogId, request, principal(userId));
 
         assertThat(result).isEqualTo(response);
+        assertThat(request.getCreatedBy()).isEqualTo(userId);
         verify(blogRankingService).createOverride(blogId, request);
+    }
+
+    private AuthenticatedUserPrincipal principal(UUID userId) {
+        return new AuthenticatedUserPrincipal(userId, "tester", List.of("ADMIN"));
     }
 
     private BlogRankingOverrideRequest request() {

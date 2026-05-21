@@ -1,12 +1,13 @@
 package com.cafestory.controller;
 
 import com.cafestory.dto.requestDTO.PageMemberAddRequestDTO;
-import com.cafestory.dto.requestDTO.PageMemberJoinRequestDTO;
 import com.cafestory.dto.requestDTO.PageMemberStatusUpdateDTO;
 import com.cafestory.dto.responseDTO.PageMemberResponseDTO;
 import com.cafestory.service.serviceInterface.PageMemberService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,6 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
+
+import static com.cafestory.until.security.AuthenticationPrincipalUtils.requireUserId;
 
 @RestController
 @RequestMapping("/api/cafe-pages")
@@ -33,18 +36,19 @@ public class PageMemberController {
     @ResponseStatus(HttpStatus.CREATED)
     public PageMemberResponseDTO requestToJoinPage(
             @PathVariable UUID cafePageId,
-            @Valid @RequestBody PageMemberJoinRequestDTO request) {
-        return pageMemberService.requestToJoinPage(cafePageId, request.getUserId());
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return pageMemberService.requestToJoinPage(cafePageId, requireUserId(principal));
     }
 
     @PostMapping("/{cafePageId}/members")
     @ResponseStatus(HttpStatus.CREATED)
     public PageMemberResponseDTO addPageMember(
             @PathVariable UUID cafePageId,
-            @Valid @RequestBody PageMemberAddRequestDTO request) {
+            @Valid @RequestBody PageMemberAddRequestDTO request,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         return pageMemberService.addPageMember(
                 cafePageId,
-                request.getActorUserId(),
+                requireUserId(principal),
                 request.getUserId(),
                 request.getRoleName());
     }
@@ -53,10 +57,11 @@ public class PageMemberController {
     public PageMemberResponseDTO updatePageMemberStatus(
             @PathVariable UUID cafePageId,
             @PathVariable UUID userId,
-            @Valid @RequestBody PageMemberStatusUpdateDTO request) {
+            @Valid @RequestBody PageMemberStatusUpdateDTO request,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         return pageMemberService.updatePageMemberStatus(
                 cafePageId,
-                request.getActorUserId(),
+                requireUserId(principal),
                 userId,
                 request.getStatus());
     }
