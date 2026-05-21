@@ -27,6 +27,7 @@ For exact table/column/enum definitions, read `cafestory-schema.dbml`.
 - Admin ranking overrides live in `blog_ranking_overrides`; active `boost_score` increases ranking and active `is_pinned` prioritizes the blog.
 - Personalized feed recommendations are cached in `blog_recommendation_scores`; feed APIs should read the latest cached rows instead of recalculating every request.
 - `blog_recommendation_scores` stores explainable score components: `trending_score`, `followed_page_score`, `followed_user_score`, `same_region_score`, `freshness_score`, and `report_penalty`.
+- `same_region_score` compares `regions.city`, not `region_id`, because user/page/blog region rows can be different records for the same city.
 - Rebuild recommendation cache through the scheduled job or manual rebuild endpoint after trending scores, follows, reports, or region context changes.
 - `HIDDEN` and `REMOVED` blogs and blogs with AI moderation `VIOLATION` must not appear in trending.
 - Reports target either a blog or a comment; exactly one of `content_reports.blog_id` or `content_reports.comment_id` should be set by application validation.

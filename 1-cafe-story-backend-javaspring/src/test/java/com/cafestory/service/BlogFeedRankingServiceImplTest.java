@@ -15,6 +15,7 @@ import com.cafestory.repository.BlogRecommendationScoreRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.BlogTrendingScoreRepository;
 import com.cafestory.repository.PageFollowRepository;
+import com.cafestory.repository.RegionRepository;
 import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceImplement.BlogFeedRankingServiceImpl;
@@ -28,6 +29,7 @@ import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,6 +62,9 @@ class BlogFeedRankingServiceImplTest {
 
     @Mock
     private AiModerationResultRepository aiModerationResultRepository;
+
+    @Mock
+    private RegionRepository regionRepository;
 
     @Mock
     private UserRepository userRepository;
@@ -105,7 +110,8 @@ class BlogFeedRankingServiceImplTest {
     void rebuildRecommendationCache_success_scoresAndStoresCache_TC002() {
         User user = user();
         UUID regionId = user.getRegion().getRegionId();
-        Blog blog = blog(regionId);
+        Region blogRegion = region("Ho Chi Minh");
+        Blog blog = blog(blogRegion.getRegionId());
         BlogTrendingScore trendingScore = trendingScore(blog, 100.0);
         LocalDateTime trendingComputedAt = LocalDateTime.of(2026, 5, 19, 10, 0);
         BlogFeedRankingServiceImpl service = service();
@@ -118,6 +124,8 @@ class BlogFeedRankingServiceImplTest {
         when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(blog));
         when(aiModerationResultRepository.existsByBlogIdAndDecision(blog.getId(), ModerationDecision.VIOLATION))
                 .thenReturn(false);
+        when(regionRepository.findById(regionId)).thenReturn(java.util.Optional.of(user.getRegion()));
+        when(regionRepository.findById(blog.getRegionId())).thenReturn(java.util.Optional.of(blogRegion));
         when(pageFollowRepository.existsByUserUserIdAndCafePageId(user.getUserId(), blog.getPageId())).thenReturn(true);
         when(userFollowRepository.existsByFollowerUserIdAndFollowingUserId(user.getUserId(), blog.getAuthor().getUserId()))
                 .thenReturn(true);
@@ -182,6 +190,7 @@ class BlogFeedRankingServiceImplTest {
                 any(),
                 any(),
                 any())).thenReturn(0L);
+        lenient().when(regionRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
         return new BlogFeedRankingServiceImpl(
                 blogRepository,
                 blogTrendingScoreRepository,
@@ -190,13 +199,13 @@ class BlogFeedRankingServiceImplTest {
                 userFollowRepository,
                 blogEventRepository,
                 aiModerationResultRepository,
+                regionRepository,
                 userRepository,
                 userValidator);
     }
 
     private User user() {
-        Region region = new Region();
-        region.setRegionId(UUID.randomUUID());
+        Region region = region("Ho Chi Minh");
 
         User user = new User();
         user.setUserId(UUID.randomUUID());
@@ -204,6 +213,13 @@ class BlogFeedRankingServiceImplTest {
         user.setAccountStatus(true);
         user.setRegion(region);
         return user;
+    }
+
+    private Region region(String city) {
+        Region region = new Region();
+        region.setRegionId(UUID.randomUUID());
+        region.setCity(city);
+        return region;
     }
 
     private Blog blog(UUID regionId) {

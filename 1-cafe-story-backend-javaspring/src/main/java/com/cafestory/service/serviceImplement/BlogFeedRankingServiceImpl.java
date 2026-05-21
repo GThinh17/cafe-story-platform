@@ -4,6 +4,7 @@ import com.cafestory.dto.responseDTO.BlogFeedResponse;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogRecommendationScore;
 import com.cafestory.entity.BlogTrendingScore;
+import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.BlogEventType;
 import com.cafestory.entity.enums.ModerationDecision;
@@ -15,6 +16,7 @@ import com.cafestory.repository.BlogRecommendationScoreRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.BlogTrendingScoreRepository;
 import com.cafestory.repository.PageFollowRepository;
+import com.cafestory.repository.RegionRepository;
 import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.BlogFeedRankingService;
@@ -42,6 +44,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
     private final UserFollowRepository userFollowRepository;
     private final BlogEventRepository blogEventRepository;
     private final AiModerationResultRepository aiModerationResultRepository;
+    private final RegionRepository regionRepository;
     private final UserRepository userRepository;
     private final UserValidator userValidator;
 
@@ -53,6 +56,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             UserFollowRepository userFollowRepository,
             BlogEventRepository blogEventRepository,
             AiModerationResultRepository aiModerationResultRepository,
+            RegionRepository regionRepository,
             UserRepository userRepository,
             UserValidator userValidator) {
         this.blogRepository = blogRepository;
@@ -62,6 +66,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         this.userFollowRepository = userFollowRepository;
         this.blogEventRepository = blogEventRepository;
         this.aiModerationResultRepository = aiModerationResultRepository;
+        this.regionRepository = regionRepository;
         this.userRepository = userRepository;
         this.userValidator = userValidator;
     }
@@ -124,6 +129,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                         trendingScores.get(blog.getId()),
                         windowType,
                         contextRegionId,
+                        resolveContextCity(user, contextRegionId),
                         now))
                 .sorted(Comparator.comparing(BlogRecommendationScore::getFeedScore).reversed())
                 .toList();
@@ -177,12 +183,13 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             BlogTrendingScore trendingScore,
             TrendWindowType windowType,
             UUID contextRegionId,
+            String contextCity,
             LocalDateTime now) {
         double baseTrendingScore = trendingScore == null ? 0.0 : trendingScore.getTrendScore();
         double trendingComponent = baseTrendingScore * 0.4;
         double followedPageScore = calculateFollowedPageScore(blog, user.getUserId());
         double followedUserScore = calculateFollowedUserScore(blog, user.getUserId());
-        double sameRegionScore = calculateSameRegionScore(blog, contextRegionId);
+        double sameRegionScore = calculateSameRegionScore(blog, contextCity);
         double freshnessScore = calculateFreshnessScore(blog, now);
         double reportPenalty = calculateReportPenalty(blog, windowType, now);
         double feedScore = trendingComponent
@@ -251,11 +258,34 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                 : 0.0;
     }
 
-    private double calculateSameRegionScore(Blog blog, UUID regionId) {
-        if (regionId == null || blog.getRegionId() == null) {
+    private double calculateSameRegionScore(Blog blog, String contextCity) {
+        if (isBlank(contextCity) || blog.getRegionId() == null) {
             return 0.0;
         }
-        return regionId.equals(blog.getRegionId()) ? 15.0 : 0.0;
+        String blogCity = regionRepository.findById(blog.getRegionId())
+                .map(Region::getCity)
+                .orElse(null);
+        if (isBlank(blogCity)) {
+            return 0.0;
+        }
+        return normalizeCity(contextCity).equals(normalizeCity(blogCity)) ? 15.0 : 0.0;
+    }
+
+    private String resolveContextCity(User user, UUID contextRegionId) {
+        if (contextRegionId != null) {
+            return regionRepository.findById(contextRegionId)
+                    .map(Region::getCity)
+                    .orElse(null);
+        }
+        return user.getRegion() == null ? null : user.getRegion().getCity();
+    }
+
+    private String normalizeCity(String city) {
+        return city.trim().toLowerCase();
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     private double calculateFreshnessScore(Blog blog, LocalDateTime now) {
