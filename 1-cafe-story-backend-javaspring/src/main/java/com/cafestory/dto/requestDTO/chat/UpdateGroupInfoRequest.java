@@ -8,7 +8,6 @@ import java.util.UUID;
 @Data
 public class UpdateGroupInfoRequest {
 
-    @NotNull(message = "Actor user id is mandatory")
     private UUID actorUserId;
 
     private String groupName;

@@ -5,6 +5,7 @@ import com.cafestory.dto.requestDTO.UserCreateDTO;
 import com.cafestory.dto.requestDTO.UserUpdateDTO;
 import com.cafestory.dto.responseDTO.UserResponseDTO;
 import com.cafestory.service.serviceInterface.UserService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -76,7 +77,7 @@ class UserControllerTest {
 
         when(userService.updateUser(userId, request)).thenReturn(response);
 
-        UserResponseDTO result = userController.updateUser(userId, request);
+        UserResponseDTO result = userController.updateUser(request, principal(userId));
 
         assertThat(result.getUserFullName()).isEqualTo("Updated User");
         verify(userService).updateUser(userId, request);
@@ -95,7 +96,7 @@ class UserControllerTest {
 
         when(userService.updateUserRegion(userId, request)).thenReturn(response);
 
-        UserResponseDTO result = userController.updateUserRegion(userId, request);
+        UserResponseDTO result = userController.updateUserRegion(request, principal(userId));
 
         assertThat(result).isEqualTo(response);
         verify(userService).updateUserRegion(userId, request);
@@ -105,7 +106,7 @@ class UserControllerTest {
     void deleteUser_success_TC005() {
         UUID userId = UUID.randomUUID();
 
-        userController.deleteUser(userId);
+        userController.deleteUser(principal(userId));
 
         verify(userService).deleteUser(userId);
     }
@@ -133,5 +134,9 @@ class UserControllerTest {
         response.setUserFollower(0);
         response.setAccountStatus(true);
         return response;
+    }
+
+    private AuthenticatedUserPrincipal principal(UUID userId) {
+        return new AuthenticatedUserPrincipal(userId, "tester", List.of("USER"));
     }
 }

@@ -1,22 +1,22 @@
 package com.cafestory.controller;
 
-import com.cafestory.dto.requestDTO.BlogInteractionRequestDTO;
 import com.cafestory.dto.responseDTO.BlogLikeResponseDTO;
 import com.cafestory.service.serviceInterface.BlogLikeService;
-import jakarta.validation.Valid;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
+
+import static com.cafestory.until.security.AuthenticationPrincipalUtils.requireUserId;
 
 @RestController
 @RequestMapping("/api/blogs")
@@ -32,16 +32,16 @@ public class BlogLikeController {
     @ResponseStatus(HttpStatus.CREATED)
     public BlogLikeResponseDTO likeBlog(
             @PathVariable UUID blogId,
-            @Valid @RequestBody BlogInteractionRequestDTO request) {
-        return blogLikeService.likeBlog(blogId, request.getUserId());
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return blogLikeService.likeBlog(blogId, requireUserId(principal));
     }
 
     @DeleteMapping("/{blogId}/likes")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void unlikeBlog(
             @PathVariable UUID blogId,
-            @RequestParam UUID userId) {
-        blogLikeService.unlikeBlog(blogId, userId);
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        blogLikeService.unlikeBlog(blogId, requireUserId(principal));
     }
 
     @GetMapping("/{blogId}/likes")

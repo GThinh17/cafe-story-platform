@@ -13,7 +13,6 @@ public class CommentCreateDTO {
     @NotNull(message = "Blog id is mandatory")
     private UUID blogId;
 
-    @NotNull(message = "User id is mandatory")
     private UUID userId;
 
     private UUID parentCommentId;

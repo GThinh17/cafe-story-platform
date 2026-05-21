@@ -9,7 +9,6 @@ import java.util.UUID;
 @Data
 public class PageMemberStatusUpdateDTO {
 
-    @NotNull(message = "Actor user id is mandatory")
     private UUID actorUserId;
 
     @NotNull(message = "Status is mandatory")

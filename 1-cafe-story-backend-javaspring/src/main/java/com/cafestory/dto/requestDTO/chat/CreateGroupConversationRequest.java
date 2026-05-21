@@ -11,7 +11,6 @@ import java.util.UUID;
 @Data
 public class CreateGroupConversationRequest {
 
-    @NotNull(message = "Creator user id is mandatory")
     private UUID creatorUserId;
 
     @NotBlank(message = "Group name is mandatory")

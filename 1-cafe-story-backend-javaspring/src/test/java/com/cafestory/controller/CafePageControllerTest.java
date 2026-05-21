@@ -5,6 +5,7 @@ import com.cafestory.dto.requestDTO.CafePageUpdateDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
 import com.cafestory.dto.responseDTO.CafePageResponseDTO;
 import com.cafestory.service.serviceInterface.CafePageService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -29,14 +30,16 @@ class CafePageControllerTest {
 
     @Test
     void createCafePage_success_TC001() {
+        UUID userId = UUID.randomUUID();
         CafePageCreateDTO request = createRequest();
         CafePageResponseDTO response = response();
 
         when(cafePageService.createCafePage(request)).thenReturn(response);
 
-        CafePageResponseDTO result = cafePageController.createCafePage(request);
+        CafePageResponseDTO result = cafePageController.createCafePage(request, principal(userId));
 
         assertThat(result).isEqualTo(response);
+        assertThat(request.getOwnerUserId()).isEqualTo(userId);
         verify(cafePageService).createCafePage(request);
     }
 
@@ -116,7 +119,6 @@ class CafePageControllerTest {
 
     private CafePageCreateDTO createRequest() {
         CafePageCreateDTO request = new CafePageCreateDTO();
-        request.setOwnerUserId(UUID.randomUUID());
         request.setName("Cafe Story");
         request.setAddress("123 Nguyen Hue");
         return request;
@@ -129,5 +131,9 @@ class CafePageControllerTest {
         response.setName("Cafe Story");
         response.setAddress("123 Nguyen Hue");
         return response;
+    }
+
+    private AuthenticatedUserPrincipal principal(UUID userId) {
+        return new AuthenticatedUserPrincipal(userId, "tester", List.of("USER"));
     }
 }

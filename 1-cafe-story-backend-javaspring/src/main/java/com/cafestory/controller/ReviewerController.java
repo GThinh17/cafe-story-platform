@@ -8,6 +8,8 @@ import com.cafestory.dto.responseDTO.reviewer.ReviewerResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerSegmentResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerStatsResponseDTO;
 import com.cafestory.service.serviceInterface.ReviewerService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,6 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
+
+import static com.cafestory.until.security.AuthenticationPrincipalUtils.requireUserId;
 
 @RestController
 @RequestMapping("/api/reviewers")
@@ -28,9 +32,9 @@ public class ReviewerController {
         this.reviewerService = reviewerService;
     }
 
-    @PostMapping("/create/{userId}")
-    public ReviewerResponseDTO createReviewer(@PathVariable UUID userId) {
-        return reviewerService.createReviewer(userId);
+    @PostMapping("/create")
+    public ReviewerResponseDTO createReviewer(@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return reviewerService.createReviewer(requireUserId(principal));
     }
 
     @GetMapping("/{userId}")
@@ -46,9 +50,9 @@ public class ReviewerController {
     @GetMapping("/{reviewerId}/stats")
     public ReviewerStatsResponseDTO getReviewerStats(
             @PathVariable UUID reviewerId,
-            @RequestParam UUID requesterId,
-            @RequestParam String period) {
-        return reviewerService.countReviewerStats(requesterId, reviewerId, period);
+            @RequestParam String period,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return reviewerService.countReviewerStats(requireUserId(principal), reviewerId, period);
     }
 
     @GetMapping("/ranking")
@@ -80,31 +84,31 @@ public class ReviewerController {
     @GetMapping("/{reviewerId}/payouts")
     public List<ReviewerPayoutResponseDTO> getReviewerPayouts(
             @PathVariable UUID reviewerId,
-            @RequestParam UUID requesterId) {
-        return reviewerService.getReviewerPayoutHistory(requesterId, reviewerId);
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return reviewerService.getReviewerPayoutHistory(requireUserId(principal), reviewerId);
     }
 
     @PostMapping("/payouts/generate")
     public List<ReviewerPayoutResponseDTO> generateMonthlyPayouts(
-            @RequestParam UUID requesterId,
             @RequestParam String month,
-            @RequestParam(defaultValue = "false") boolean overwrite) {
-        return reviewerService.generateMonthlyPayouts(requesterId, month, overwrite);
+            @RequestParam(defaultValue = "false") boolean overwrite,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return reviewerService.generateMonthlyPayouts(requireUserId(principal), month, overwrite);
     }
 
     @PostMapping("/badges/generate")
     public List<ReviewerBadgeResponseDTO> generateMonthlyBadges(
-            @RequestParam UUID requesterId,
             @RequestParam String month,
-            @RequestParam(defaultValue = "false") boolean overwrite) {
-        return reviewerService.generateMonthlyBadges(requesterId, month, overwrite);
+            @RequestParam(defaultValue = "false") boolean overwrite,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return reviewerService.generateMonthlyBadges(requireUserId(principal), month, overwrite);
     }
 
     @GetMapping("/{reviewerId}/badges")
     public List<ReviewerBadgeResponseDTO> getReviewerBadges(
             @PathVariable UUID reviewerId,
-            @RequestParam UUID requesterId) {
-        return reviewerService.getReviewerBadgeHistory(requesterId, reviewerId);
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return reviewerService.getReviewerBadgeHistory(requireUserId(principal), reviewerId);
     }
 
     private String firstNonBlank(String first, String second) {

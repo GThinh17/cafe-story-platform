@@ -8,7 +8,6 @@ import java.util.UUID;
 @Data
 public class AddMemberRequest {
 
-    @NotNull(message = "Actor user id is mandatory")
     private UUID actorUserId;
 
     @NotNull(message = "Member user id is mandatory")

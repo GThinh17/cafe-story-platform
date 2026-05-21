@@ -1,8 +1,8 @@
 package com.cafestory.controller;
 
-import com.cafestory.dto.requestDTO.CafePageInteractionRequestDTO;
 import com.cafestory.dto.responseDTO.PageLikeResponseDTO;
 import com.cafestory.service.serviceInterface.PageLikeService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -28,15 +28,15 @@ class PageLikeControllerTest {
     @Test
     void likePage_success_TC001() {
         UUID cafePageId = UUID.randomUUID();
-        CafePageInteractionRequestDTO request = request();
+        UUID userId = UUID.randomUUID();
         PageLikeResponseDTO response = response();
 
-        when(pageLikeService.likePage(cafePageId, request.getUserId())).thenReturn(response);
+        when(pageLikeService.likePage(cafePageId, userId)).thenReturn(response);
 
-        PageLikeResponseDTO result = pageLikeController.likePage(cafePageId, request);
+        PageLikeResponseDTO result = pageLikeController.likePage(cafePageId, principal(userId));
 
         assertThat(result).isEqualTo(response);
-        verify(pageLikeService).likePage(cafePageId, request.getUserId());
+        verify(pageLikeService).likePage(cafePageId, userId);
     }
 
     @Test
@@ -44,7 +44,7 @@ class PageLikeControllerTest {
         UUID cafePageId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
-        pageLikeController.unlikePage(cafePageId, userId);
+        pageLikeController.unlikePage(cafePageId, principal(userId));
 
         verify(pageLikeService).unlikePage(cafePageId, userId);
     }
@@ -75,17 +75,15 @@ class PageLikeControllerTest {
         verify(pageLikeService).getLikesByUserId(userId);
     }
 
-    private CafePageInteractionRequestDTO request() {
-        CafePageInteractionRequestDTO request = new CafePageInteractionRequestDTO();
-        request.setUserId(UUID.randomUUID());
-        return request;
-    }
-
     private PageLikeResponseDTO response() {
         PageLikeResponseDTO response = new PageLikeResponseDTO();
         response.setId(UUID.randomUUID());
         response.setCafePageId(UUID.randomUUID());
         response.setUserId(UUID.randomUUID());
         return response;
+    }
+
+    private AuthenticatedUserPrincipal principal(UUID userId) {
+        return new AuthenticatedUserPrincipal(userId, "tester", List.of("USER"));
     }
 }
