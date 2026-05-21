@@ -470,6 +470,7 @@ public class ReviewerServiceImpl implements ReviewerService {
                 .orElse(null);
         response.setBadge(latestBadge == null ? ReviewerBadge.IRON : latestBadge.getBadge());
         response.setScore(latestBadge == null ? 0 : latestBadge.getScore());
+        response.setExpireDate(reviewer.getReviewerExpiresAt());
         return response;
     }
 

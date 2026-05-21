@@ -1,36 +1,55 @@
 package com.cafestory.entity;
 
+import com.cafestory.entity.enums.ExtraFeeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
 @Entity
-@Table(name = "reviewers")
-public class Reviewer {
+@Table(name = "extra_fees")
+public class ExtraFee {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "reviewer_id", updatable = false, nullable = false)
-    private UUID reviewerId;
+    @Column(name = "extra_fee_id", updatable = false, nullable = false)
+    private UUID extraFeeId;
 
     @NotNull
-    @OneToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "user_id", nullable = false, unique = true)
-    private User user;
+    @Column(name = "name", nullable = false)
+    private String name;
+
+    @Column(name = "description")
+    private String description;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "fee_type", nullable = false)
+    private ExtraFeeType feeType;
+
+    @Column(name = "price", nullable = false)
+    private long price;
+
+    @Column(name = "duration_months")
+    private Integer durationMonths;
+
+    @NotNull
+    @Column(name = "status", nullable = false)
+    @ColumnDefault("true")
+    private Boolean status = true;
 
     @NotNull
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -39,18 +58,12 @@ public class Reviewer {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    @Column(name = "reviewer_expires_at")
-    private LocalDateTime reviewerExpiresAt;
-
-    @Column(name = "reviewer_active", nullable = false)
-    private Boolean reviewerActive = false;
-
     @PrePersist
     void prePersist() {
         createdAt = LocalDateTime.now();
         updatedAt = createdAt;
-        if (reviewerActive == null) {
-            reviewerActive = false;
+        if (status == null) {
+            status = true;
         }
     }
 
