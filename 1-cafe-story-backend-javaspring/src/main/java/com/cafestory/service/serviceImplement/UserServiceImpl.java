@@ -12,6 +12,7 @@ import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.UserService;
 import com.cafestory.validation.UserValidator;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -26,12 +27,19 @@ public class UserServiceImpl implements UserService {
     private final RegionRepository regionRepository;
     private final UserMapper userMapper;
     private final UserValidator userValidator;
+    private final PasswordEncoder passwordEncoder;
 
-    public UserServiceImpl(UserRepository userRepository, RegionRepository regionRepository, UserMapper userMapper, UserValidator userValidator) {
+    public UserServiceImpl(
+            UserRepository userRepository,
+            RegionRepository regionRepository,
+            UserMapper userMapper,
+            UserValidator userValidator,
+            PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.regionRepository = regionRepository;
         this.userMapper = userMapper;
         this.userValidator = userValidator;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -41,6 +49,7 @@ public class UserServiceImpl implements UserService {
         validateUniqueUserEmail(userCreateDTO.getUserEmail(), null);
 
         User user = userMapper.toUser(userCreateDTO);
+        user.setUserPassword(passwordEncoder.encode(userCreateDTO.getUserPassword()));
         if (userCreateDTO.getRegionId() != null) {
             user.setRegion(regionRepository.findById(userCreateDTO.getRegionId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Region not found")));
@@ -78,7 +87,7 @@ public class UserServiceImpl implements UserService {
             user.setUserFullName(userUpdateDTO.getUserFullName());
         }
         if (userUpdateDTO.getUserPassword() != null) {
-            user.setUserPassword(userUpdateDTO.getUserPassword());
+            user.setUserPassword(passwordEncoder.encode(userUpdateDTO.getUserPassword()));
         }
         if (userUpdateDTO.getUserEmail() != null) {
             validateUniqueUserEmail(userUpdateDTO.getUserEmail(), userId);

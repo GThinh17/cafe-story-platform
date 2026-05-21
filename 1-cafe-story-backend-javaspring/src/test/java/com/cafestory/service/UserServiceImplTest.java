@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -45,6 +46,9 @@ class UserServiceImplTest {
     @Mock
     private UserValidator userValidator;
 
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
     @InjectMocks
     private UserServiceImpl userService;
 
@@ -60,6 +64,7 @@ class UserServiceImplTest {
         when(userRepository.findByUserName(request.getUserName())).thenReturn(Optional.empty());
         when(userRepository.findByUserEmail(request.getUserEmail())).thenReturn(Optional.empty());
         when(userMapper.toUser(request)).thenReturn(user);
+        when(passwordEncoder.encode(request.getUserPassword())).thenReturn("encoded-password");
         when(regionRepository.findById(region.getRegionId())).thenReturn(Optional.of(region));
         when(userRepository.save(user)).thenReturn(savedUser);
         when(userMapper.toUserResponseDTO(savedUser)).thenReturn(response);
@@ -67,6 +72,7 @@ class UserServiceImplTest {
         UserResponseDTO result = userService.createUser(request);
 
         assertThat(result).isEqualTo(response);
+        assertThat(user.getUserPassword()).isEqualTo("encoded-password");
         assertThat(user.getRegion()).isEqualTo(region);
         verify(userRepository).save(user);
     }
@@ -158,6 +164,7 @@ class UserServiceImplTest {
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
         when(userRepository.findByUserName(request.getUserName())).thenReturn(Optional.empty());
         when(userRepository.findByUserEmail(request.getUserEmail())).thenReturn(Optional.empty());
+        when(passwordEncoder.encode(request.getUserPassword())).thenReturn("encoded-updated-password");
         when(regionRepository.findById(region.getRegionId())).thenReturn(Optional.of(region));
         when(userRepository.save(user)).thenReturn(user);
         when(userMapper.toUserResponseDTO(user)).thenReturn(response);
@@ -170,7 +177,7 @@ class UserServiceImplTest {
         assertThat(result.getUserPhone()).isEqualTo(123456789L);
         assertThat(result.getUserAvatar()).isEqualTo("https://example.com/updated.png");
         assertThat(result.getAccountStatus()).isFalse();
-        assertThat(user.getUserPassword()).isEqualTo("updated-password");
+        assertThat(user.getUserPassword()).isEqualTo("encoded-updated-password");
         assertThat(user.getRegion()).isEqualTo(region);
         verify(userRepository).save(user);
     }
@@ -186,6 +193,7 @@ class UserServiceImplTest {
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
         when(userRepository.findByUserName(request.getUserName())).thenReturn(Optional.of(user));
         when(userRepository.findByUserEmail(request.getUserEmail())).thenReturn(Optional.of(user));
+        when(passwordEncoder.encode(request.getUserPassword())).thenReturn("encoded-updated-password");
         when(userRepository.save(user)).thenReturn(user);
         when(userMapper.toUserResponseDTO(user)).thenReturn(response);
 

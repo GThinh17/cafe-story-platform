@@ -25,6 +25,9 @@ For exact table/column/enum definitions, read `cafestory-schema.dbml`.
 - `blog_daily_metrics` has one row per `blog_id + metric_date`; update the existing row instead of creating duplicates.
 - `blog_trending_scores` stores score snapshots for `HOUR_24`, `DAY_7`, and `MONTH_1`.
 - Admin ranking overrides live in `blog_ranking_overrides`; active `boost_score` increases ranking and active `is_pinned` prioritizes the blog.
+- Personalized feed recommendations are cached in `blog_recommendation_scores`; feed APIs should read the latest cached rows instead of recalculating every request.
+- `blog_recommendation_scores` stores explainable score components: `trending_score`, `followed_page_score`, `followed_user_score`, `same_region_score`, `freshness_score`, and `report_penalty`.
+- Rebuild recommendation cache through the scheduled job or manual rebuild endpoint after trending scores, follows, reports, or region context changes.
 - `HIDDEN` and `REMOVED` blogs and blogs with AI moderation `VIOLATION` must not appear in trending.
 - Reports target either a blog or a comment; exactly one of `content_reports.blog_id` or `content_reports.comment_id` should be set by application validation.
 - User follow must reject self-follow: `follower_user_id <> following_user_id`.
@@ -37,14 +40,16 @@ For exact table/column/enum definitions, read `cafestory-schema.dbml`.
 ## Domain Groups
 
 Identity and access:
-- `users`, `roles`, `user_roles`.
+- `users`, `roles`, `user_roles`, `refresh_tokens`.
 - Default role names: `USER`, `REVIEWER`, `ADMIN`, `CAFE_PAGE`.
+- Auth uses JWT access tokens in HttpOnly cookie `access_token` and refresh tokens in HttpOnly cookie `refresh_token`.
+- Store only SHA-256 refresh token hashes in `refresh_tokens.token_hash`; never persist raw refresh tokens.
 
 Cafe pages and regions:
 - `regions`, `cafe_pages`, `page_members`.
 
 Publishing:
-- `blogs`, `blog_images`, `comments`, `comment_images`, `blog_shares`.
+- `blogs`, `blog_images`, `comments`, `comment_images`, `blog_shares`, `blog_recommendation_scores`.
 
 Reactions and follows:
 - `blog_likes`, `comment_likes`, `page_likes`, `user_follows`, `page_follows`.
