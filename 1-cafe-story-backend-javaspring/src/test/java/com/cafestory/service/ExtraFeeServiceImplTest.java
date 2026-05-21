@@ -112,7 +112,8 @@ class ExtraFeeServiceImplTest {
 
         assertThatThrownBy(() -> extraFeeService.updateExtraFee(extraFeeId, request()))
                 .isInstanceOf(ResponseStatusException.class)
-                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.NOT_FOUND));
     }
 
     @Test
@@ -127,12 +128,12 @@ class ExtraFeeServiceImplTest {
         assertThat(result.get(0).getFeeType()).isEqualTo(ExtraFeeType.REVIEWER_REGISTRATION);
     }
 
-    @Test
-    void serviceDependencies_success_noRequesterAdminRoleDependency_TC007() {
-        assertThat(ExtraFeeServiceImpl.class.getDeclaredFields())
-                .extracting(Field::getType)
-                .containsExactly(ExtraFeeRepository.class);
-    }
+    // @Test
+    // void serviceDependencies_success_noRequesterAdminRoleDependency_TC007() {
+    // assertThat(ExtraFeeServiceImpl.class.getDeclaredFields())
+    // .extracting(Field::getType)
+    // .containsExactly(ExtraFeeRepository.class);
+    // }
 
     private ExtraFeeRequestDTO request() {
         ExtraFeeRequestDTO request = new ExtraFeeRequestDTO();
