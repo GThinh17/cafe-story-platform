@@ -39,8 +39,14 @@ Enum payment_status {
   PENDING
   PAID
   FAILED
+  CANCELLED
   EXPIRED
   REFUNDED
+}
+
+Enum payment_method {
+  STRIPE_CARD
+  BANK_TRANSFER
 }
 
 Enum payout_status {
@@ -122,6 +128,11 @@ Enum reviewer_payout_status {
   CALCULATED
   PAID
   CANCELLED
+}
+
+Enum extra_fee_type {
+  REVIEWER_REGISTRATION
+  CAFE_PAGE_OPENING
 }
 
 Table users {
@@ -449,6 +460,8 @@ Table ai_moderation_results {
 Table reviewers {
   reviewer_id uuid [pk]
   user_id uuid [not null, unique]
+  reviewer_active boolean [not null, default: false]
+  reviewer_expires_at datetime
   created_at datetime [not null]
   updated_at datetime
 }
@@ -498,23 +511,46 @@ Table payment_methods {
 }
 
 Table payments {
-  id uuid [pk]
-  user_id uuid [not null]
-  page_id uuid
-  payment_method_id int [not null]
+  payment_id uuid [pk]
+  buyer_id uuid [not null]
+  extra_fee_id uuid [not null]
+  payment_method payment_method [not null]
   amount decimal(12, 2) [not null]
-  status payment_status [not null, default: "PENDING"]
-  expired_at datetime
-  paid_at datetime
+  currency varchar(10) [not null, default: "VND"]
+  payment_status payment_status [not null, default: "PENDING"]
   created_at datetime [not null]
+  updated_at datetime
+  paid_at datetime
+  expired_at datetime
+}
+
+Table payment_details {
+  payment_detail_id uuid [pk]
+  payment_id uuid [not null, unique]
+  provider_name varchar(80)
+  provider_transaction_id varchar(255)
+  provider_order_id varchar(255)
+  provider_payment_url text
+  provider_qr_code_url text
+  transfer_content varchar(255)
+  raw_response text
+  failure_code varchar(80)
+  failure_message text
+  note text
+  created_at datetime [not null]
+  updated_at datetime
 }
 
 Table extra_fees {
-  id uuid [pk]
-  payment_id uuid [not null]
-  description varchar(255) [not null]
-  amount decimal(12, 2) [not null]
+  extra_fee_id uuid [pk]
+  name varchar(255) [not null]
+  description text
+  fee_type extra_fee_type [not null]
+  price bigint [not null]
+  duration_months int
+  status boolean [not null, default: true]
   created_at datetime [not null]
+  updated_at datetime
 }
 
 Table payouts {
@@ -592,10 +628,9 @@ Ref: reviewers.user_id > users.user_id
 Ref: reviewer_badges.reviewer_id > reviewers.reviewer_id
 Ref: reviewer_payouts.reviewer_id > reviewers.reviewer_id
 
-Ref: payments.payment_method_id > payment_methods.id
-Ref: payments.user_id > users.user_id
-Ref: payments.page_id > cafe_pages.id
-Ref: extra_fees.payment_id > payments.id
+Ref: payments.buyer_id > users.user_id
+Ref: payments.extra_fee_id > extra_fees.extra_fee_id
+Ref: payment_details.payment_id > payments.payment_id
 Ref: payouts.reviewer_id > reviewers.reviewer_id
 Ref: payouts.payment_method_id > payment_methods.id
 
