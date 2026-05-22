@@ -19,6 +19,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -103,6 +104,31 @@ class PaymentControllerTest {
 
         assertThat(result).isEqualTo(response);
         verify(paymentService).getPayment(paymentId);
+    }
+
+    @Test
+    void getAllPayments_success_withoutStatusFilter_TC009() {
+        List<PaymentResponseDTO> response = List.of(response(PaymentMethod.VNPAY));
+        when(paymentService.getAllPayments(null)).thenReturn(response);
+
+        List<PaymentResponseDTO> result = paymentController.getAllPayments(null);
+
+        assertThat(result).isEqualTo(response);
+        verify(paymentService).getAllPayments(null);
+    }
+
+    @Test
+    void getAllPayments_success_withStatusFilter_TC010() throws Exception {
+        PaymentResponseDTO response = response(PaymentMethod.VNPAY);
+        response.setPaymentStatus(PaymentStatus.PENDING);
+        when(paymentService.getAllPayments(PaymentStatus.PENDING)).thenReturn(List.of(response));
+
+        mockMvc.perform(get("/api/payments")
+                        .param("paymentStatus", "PENDING"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].paymentStatus").value("PENDING"));
+
+        verify(paymentService).getAllPayments(PaymentStatus.PENDING);
     }
 
     @Test

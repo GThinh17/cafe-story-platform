@@ -4,6 +4,7 @@ import com.cafestory.dto.requestDTO.CreatePaymentRequestDTO;
 import com.cafestory.dto.responseDTO.PaymentResponseDTO;
 import com.cafestory.dto.responseDTO.VnpayIpnResponseDTO;
 import com.cafestory.dto.responseDTO.VnpayReturnResponseDTO;
+import com.cafestory.entity.enums.PaymentStatus;
 import com.cafestory.service.serviceInterface.PaymentService;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -36,6 +38,12 @@ public class PaymentController {
     @GetMapping("/{paymentId}")
     public PaymentResponseDTO getPayment(@PathVariable UUID paymentId) {
         return paymentService.getPayment(paymentId);
+    }
+
+    @GetMapping
+    public List<PaymentResponseDTO> getAllPayments(
+            @RequestParam(required = false) PaymentStatus paymentStatus) {
+        return paymentService.getAllPayments(paymentStatus);
     }
 
     @PostMapping("/{paymentId}/bank-transfer/mark-paid")
