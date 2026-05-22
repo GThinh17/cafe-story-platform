@@ -1,8 +1,8 @@
 package com.cafestory.controller;
 
-import com.cafestory.dto.requestDTO.UserFollowRequestDTO;
 import com.cafestory.dto.responseDTO.UserFollowResponseDTO;
 import com.cafestory.service.serviceInterface.UserFollowService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -28,15 +28,15 @@ class UserFollowControllerTest {
     @Test
     void followUser_success_TC001() {
         UUID followingUserId = UUID.randomUUID();
-        UserFollowRequestDTO request = request();
+        UUID followerUserId = UUID.randomUUID();
         UserFollowResponseDTO response = response();
 
-        when(userFollowService.followUser(followingUserId, request.getFollowerUserId())).thenReturn(response);
+        when(userFollowService.followUser(followingUserId, followerUserId)).thenReturn(response);
 
-        UserFollowResponseDTO result = userFollowController.followUser(followingUserId, request);
+        UserFollowResponseDTO result = userFollowController.followUser(followingUserId, principal(followerUserId));
 
         assertThat(result).isEqualTo(response);
-        verify(userFollowService).followUser(followingUserId, request.getFollowerUserId());
+        verify(userFollowService).followUser(followingUserId, followerUserId);
     }
 
     @Test
@@ -44,7 +44,7 @@ class UserFollowControllerTest {
         UUID followingUserId = UUID.randomUUID();
         UUID followerUserId = UUID.randomUUID();
 
-        userFollowController.unfollowUser(followingUserId, followerUserId);
+        userFollowController.unfollowUser(followingUserId, principal(followerUserId));
 
         verify(userFollowService).unfollowUser(followingUserId, followerUserId);
     }
@@ -75,17 +75,15 @@ class UserFollowControllerTest {
         verify(userFollowService).getFollowingByUserId(userId);
     }
 
-    private UserFollowRequestDTO request() {
-        UserFollowRequestDTO request = new UserFollowRequestDTO();
-        request.setFollowerUserId(UUID.randomUUID());
-        return request;
-    }
-
     private UserFollowResponseDTO response() {
         UserFollowResponseDTO response = new UserFollowResponseDTO();
         response.setId(UUID.randomUUID());
         response.setFollowerUserId(UUID.randomUUID());
         response.setFollowingUserId(UUID.randomUUID());
         return response;
+    }
+
+    private AuthenticatedUserPrincipal principal(UUID userId) {
+        return new AuthenticatedUserPrincipal(userId, "tester", List.of("USER"));
     }
 }

@@ -4,6 +4,7 @@ import com.cafestory.dto.requestDTO.BlogShareRequestDTO;
 import com.cafestory.dto.responseDTO.BlogShareResponseDTO;
 import com.cafestory.entity.enums.ShareType;
 import com.cafestory.service.serviceInterface.BlogShareService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -29,15 +30,16 @@ class BlogShareControllerTest {
     @Test
     void shareBlog_success_TC001() {
         UUID blogId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
         BlogShareRequestDTO request = request();
         BlogShareResponseDTO response = response();
 
-        when(blogShareService.shareBlog(blogId, request.getUserId(), request.getShareType())).thenReturn(response);
+        when(blogShareService.shareBlog(blogId, userId, request.getShareType())).thenReturn(response);
 
-        BlogShareResponseDTO result = blogShareController.shareBlog(blogId, request);
+        BlogShareResponseDTO result = blogShareController.shareBlog(blogId, request, principal(userId));
 
         assertThat(result).isEqualTo(response);
-        verify(blogShareService).shareBlog(blogId, request.getUserId(), request.getShareType());
+        verify(blogShareService).shareBlog(blogId, userId, request.getShareType());
     }
 
     @Test
@@ -68,7 +70,6 @@ class BlogShareControllerTest {
 
     private BlogShareRequestDTO request() {
         BlogShareRequestDTO request = new BlogShareRequestDTO();
-        request.setUserId(UUID.randomUUID());
         request.setShareType(ShareType.PUBLIC);
         return request;
     }
@@ -80,5 +81,9 @@ class BlogShareControllerTest {
         response.setUserId(UUID.randomUUID());
         response.setShareType(ShareType.PUBLIC);
         return response;
+    }
+
+    private AuthenticatedUserPrincipal principal(UUID userId) {
+        return new AuthenticatedUserPrincipal(userId, "tester", List.of("USER"));
     }
 }

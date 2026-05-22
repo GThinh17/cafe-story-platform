@@ -1,5 +1,6 @@
 package com.cafestory.config;
 
+import com.cafestory.dto.responseDTO.VnpayIpnResponseDTO;
 import com.cafestory.until.FormatResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,6 +46,9 @@ public class GlobalResponseAdvice implements ResponseBodyAdvice<Object> {
         // If the controller already returned a FormatResponse manually, don't wrap it
         // again
         if (body instanceof FormatResponse) {
+            return body;
+        }
+        if (body instanceof VnpayIpnResponseDTO) {
             return body;
         }
 

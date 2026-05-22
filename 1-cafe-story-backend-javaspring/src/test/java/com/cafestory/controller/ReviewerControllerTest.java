@@ -2,6 +2,7 @@ package com.cafestory.controller;
 
 import com.cafestory.dto.responseDTO.reviewer.ReviewerResponseDTO;
 import com.cafestory.service.serviceInterface.ReviewerService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -33,7 +34,7 @@ class ReviewerControllerTest {
 
         when(reviewerService.createReviewer(userId)).thenReturn(response);
 
-        ReviewerResponseDTO result = reviewerController.createReviewer(userId);
+        ReviewerResponseDTO result = reviewerController.createReviewer(principal(userId));
 
         assertThat(result).isEqualTo(response);
         verify(reviewerService).createReviewer(userId);
@@ -66,5 +67,9 @@ class ReviewerControllerTest {
 
         assertThat(result).containsExactly(response);
         verify(reviewerService).getAllReviewer();
+    }
+
+    private AuthenticatedUserPrincipal principal(UUID userId) {
+        return new AuthenticatedUserPrincipal(userId, "tester", List.of("USER"));
     }
 }

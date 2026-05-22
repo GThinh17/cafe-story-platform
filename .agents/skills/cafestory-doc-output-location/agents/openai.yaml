@@ -1,0 +1,3 @@
+display_name: CafeStory Doc Output Location
+short_description: Route generated documentation to the root documents folder.
+default_prompt: When creating or updating documentation in CafeStory, write it under the repository-root documents folder.

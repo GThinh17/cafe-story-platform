@@ -4,6 +4,7 @@ import com.cafestory.dto.responseDTO.RegionResponseDTO;
 import com.cafestory.entity.enums.ReviewerBadge;
 import lombok.Data;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Data
@@ -19,4 +20,5 @@ public class ReviewerResponseDTO {
     private int like;
     private ReviewerBadge badge;
     private long score;
+    private LocalDateTime expireDate;
 }

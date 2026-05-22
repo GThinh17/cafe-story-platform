@@ -39,10 +39,19 @@ public class Reviewer {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "reviewer_expires_at")
+    private LocalDateTime reviewerExpiresAt;
+
+    @Column(name = "reviewer_active", nullable = false)
+    private Boolean reviewerActive = false;
+
     @PrePersist
     void prePersist() {
         createdAt = LocalDateTime.now();
         updatedAt = createdAt;
+        if (reviewerActive == null) {
+            reviewerActive = false;
+        }
     }
 
     @PreUpdate

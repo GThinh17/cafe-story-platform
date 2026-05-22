@@ -4,8 +4,10 @@ import com.cafestory.dto.requestDTO.CommentCreateDTO;
 import com.cafestory.dto.requestDTO.CommentUpdateDTO;
 import com.cafestory.dto.responseDTO.CommentResponseDTO;
 import com.cafestory.service.serviceInterface.CommentService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -20,6 +22,8 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import java.util.UUID;
 
+import static com.cafestory.until.security.AuthenticationPrincipalUtils.requireUserId;
+
 @RestController
 @RequestMapping("/api/comments")
 public class CommentController {
@@ -32,7 +36,10 @@ public class CommentController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public CommentResponseDTO createComment(@Valid @RequestBody CommentCreateDTO commentCreateDTO) {
+    public CommentResponseDTO createComment(
+            @Valid @RequestBody CommentCreateDTO commentCreateDTO,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        commentCreateDTO.setUserId(requireUserId(principal));
         return commentService.createComment(commentCreateDTO);
     }
 

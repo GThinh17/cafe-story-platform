@@ -5,6 +5,7 @@ import com.cafestory.dto.requestDTO.BlogUpdateDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
 import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.service.serviceInterface.BlogService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -29,14 +30,16 @@ class BlogControllerTest {
 
     @Test
     void createBlog_success_TC001() {
+        UUID userId = UUID.randomUUID();
         BlogCreateDTO request = createBlogRequest();
         BlogResponseDTO response = blogResponse();
 
         when(blogService.createBlog(request)).thenReturn(response);
 
-        BlogResponseDTO result = blogController.createBlog(request);
+        BlogResponseDTO result = blogController.createBlog(request, principal(userId));
 
         assertThat(result).isEqualTo(response);
+        assertThat(request.getAuthorUserId()).isEqualTo(userId);
         verify(blogService).createBlog(request);
     }
 
@@ -116,7 +119,6 @@ class BlogControllerTest {
 
     private BlogCreateDTO createBlogRequest() {
         BlogCreateDTO request = new BlogCreateDTO();
-        request.setAuthorUserId(UUID.randomUUID());
         request.setPageId(UUID.randomUUID());
         request.setRegionId(UUID.randomUUID());
         request.setContent("Cafe review content");
@@ -146,5 +148,9 @@ class BlogControllerTest {
         response.setIsPinned(false);
         response.setAllowComment(true);
         return response;
+    }
+
+    private AuthenticatedUserPrincipal principal(UUID userId) {
+        return new AuthenticatedUserPrincipal(userId, "tester", List.of("USER"));
     }
 }

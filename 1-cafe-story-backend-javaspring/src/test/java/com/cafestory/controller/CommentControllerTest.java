@@ -5,6 +5,7 @@ import com.cafestory.dto.requestDTO.CommentUpdateDTO;
 import com.cafestory.dto.responseDTO.CommentResponseDTO;
 import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.service.serviceInterface.CommentService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -29,14 +30,16 @@ class CommentControllerTest {
 
     @Test
     void createComment_success_TC001() {
+        UUID userId = UUID.randomUUID();
         CommentCreateDTO request = createCommentRequest();
         CommentResponseDTO response = commentResponse();
 
         when(commentService.createComment(request)).thenReturn(response);
 
-        CommentResponseDTO result = commentController.createComment(request);
+        CommentResponseDTO result = commentController.createComment(request, principal(userId));
 
         assertThat(result).isEqualTo(response);
+        assertThat(request.getUserId()).isEqualTo(userId);
         verify(commentService).createComment(request);
     }
 
@@ -156,7 +159,6 @@ class CommentControllerTest {
     private CommentCreateDTO createCommentRequest() {
         CommentCreateDTO request = new CommentCreateDTO();
         request.setBlogId(UUID.randomUUID());
-        request.setUserId(UUID.randomUUID());
         request.setParentCommentId(UUID.randomUUID());
         request.setContent("Comment content");
         request.setImageUrls(List.of("https://example.com/comment-1.png"));
@@ -181,5 +183,9 @@ class CommentControllerTest {
         response.setImageUrls(List.of("https://example.com/comment-1.png"));
         response.setStatus(PostStatus.PUBLISHED);
         return response;
+    }
+
+    private AuthenticatedUserPrincipal principal(UUID userId) {
+        return new AuthenticatedUserPrincipal(userId, "tester", List.of("USER"));
     }
 }

@@ -166,6 +166,23 @@ Table user_roles {
   }
 }
 
+Table refresh_tokens {
+  id uuid [pk]
+  user_id uuid [not null]
+  token_hash varchar(64) [not null, unique]
+  expires_at datetime [not null]
+  revoked_at datetime
+  created_at datetime [not null]
+
+  Indexes {
+    (user_id)
+    (expires_at)
+    (revoked_at)
+  }
+
+  Note: "Stores SHA-256 hashes of refresh tokens only. Raw refresh tokens are sent to clients in HttpOnly cookie refresh_token and are never persisted."
+}
+
 Table regions {
   region_id uuid [pk]
   city varchar(255)
@@ -389,6 +406,34 @@ Table blog_ranking_overrides {
   }
 }
 
+Table blog_recommendation_scores {
+  id uuid [pk]
+  user_id uuid [not null]
+  blog_id uuid [not null]
+  window_type trend_window_type [not null]
+  context_region_id uuid
+  feed_score decimal(14, 4) [not null]
+  trending_score decimal(14, 4) [not null, default: 0]
+  followed_page_score decimal(14, 4) [not null, default: 0]
+  followed_user_score decimal(14, 4) [not null, default: 0]
+  same_region_score decimal(14, 4) [not null, default: 0]
+  freshness_score decimal(14, 4) [not null, default: 0]
+  report_penalty decimal(14, 4) [not null, default: 0]
+  rank_position int [not null]
+  reason text
+  computed_at datetime [not null]
+  created_at datetime [not null]
+
+  Indexes {
+    (user_id, blog_id, window_type, context_region_id) [unique]
+    (user_id, window_type, context_region_id, computed_at)
+    (user_id, window_type, context_region_id, rank_position)
+    (blog_id)
+  }
+
+  Note: "Cached personalized feed scores per user/window/region context. API reads this table; scheduled/manual rebuild writes it. Component columns explain why a blog is recommended."
+}
+
 Table conversations {
   id uuid [pk]
   type conversation_type [not null]
@@ -579,6 +624,7 @@ Table content_reports {
 
 Ref: user_roles.user_id > users.user_id
 Ref: user_roles.role_id > roles.id
+Ref: refresh_tokens.user_id > users.user_id
 
 Ref: cafe_pages.owner_user_id > users.user_id
 Ref: users.region_id > regions.region_id
@@ -614,6 +660,9 @@ Ref: blog_daily_metrics.blog_id > blogs.id
 Ref: blog_trending_scores.blog_id > blogs.id
 Ref: blog_ranking_overrides.blog_id > blogs.id
 Ref: blog_ranking_overrides.created_by > users.user_id
+Ref: blog_recommendation_scores.user_id > users.user_id
+Ref: blog_recommendation_scores.blog_id > blogs.id
+Ref: blog_recommendation_scores.context_region_id > regions.region_id
 
 Ref: chat_members.conversation_id > conversations.id
 Ref: chat_members.user_id > users.user_id
