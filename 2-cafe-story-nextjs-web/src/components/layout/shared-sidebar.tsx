@@ -1,6 +1,11 @@
 "use client";
 
+import { useState } from "react";
+import { ActivityList } from "@/components/notification/activity-list";
+import { CreatePostModal } from "@/components/review/create-post-modal";
 import { BrandIcon } from "@/components/ui/brand-icon";
+import { mockReviewComposer, mockReviewDraftHints } from "@/mocks/reviews";
+import { mockActivityNotifications } from "@/mocks/users";
 import { usePathname } from "next/navigation";
 
 type SidebarItem = {
@@ -73,52 +78,122 @@ function isActivePath(pathname: string, href: string) {
 
 export function SharedSidebar() {
   const pathname = usePathname();
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
 
   return (
-    <aside
-      className="group fixed inset-y-0 left-0 z-50 flex w-16 flex-col overflow-hidden border-r border-border bg-surface shadow-lg transition-[width,box-shadow] duration-200 ease-out hover:w-60 hover:shadow-2xl focus-within:w-60 focus-within:shadow-2xl sm:w-[72px]"
-      aria-label="Primary navigation"
-    >
-      <a
-        className="flex h-[72px] min-w-0 items-center gap-3 px-3 text-muted no-underline sm:px-4"
-        href="/"
-        aria-label="Cafe Story home"
+    <>
+      <aside
+        className="group fixed inset-y-0 left-0 z-50 flex w-16 flex-col overflow-hidden border-r border-border bg-surface shadow-lg transition-[width,box-shadow] duration-200 ease-out hover:w-60 hover:shadow-2xl focus-within:w-60 focus-within:shadow-2xl sm:w-[72px]"
+        aria-label="Primary navigation"
       >
-        <BrandIcon className="h-10 w-10 shadow-sm" />
-        <span className="translate-x-[-4px] whitespace-nowrap text-lg font-black text-primary-strong opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100">
-          Cafe Story
-        </span>
-      </a>
+        <a
+          className="flex h-[72px] min-w-0 items-center gap-3 px-3 text-muted no-underline sm:px-4"
+          href="/"
+          aria-label="Cafe Story home"
+          onClick={() => setIsNotificationsOpen(false)}
+        >
+          <BrandIcon className="h-10 w-10 shadow-sm" />
+          <span className="translate-x-[-4px] whitespace-nowrap text-lg font-black text-primary-strong opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100">
+            Cafe Story
+          </span>
+        </a>
 
-      <nav className="grid gap-1.5 px-2 py-2 sm:px-3">
-        {sidebarItems.map((item) => {
-          const isActive = isActivePath(pathname, item.href);
+        <nav className="grid gap-1.5 px-2 py-2 sm:px-3">
+          {sidebarItems.map((item) => {
+            const isNotificationItem = item.icon === "bell";
+            const isCreatePostItem = item.icon === "plus";
+            const isActive = isNotificationItem
+              ? isNotificationsOpen
+              : isCreatePostItem
+                ? isCreatePostOpen
+              : isActivePath(pathname, item.href);
+            const itemClassName = `flex h-12 min-w-0 items-center gap-3 rounded-md px-3 text-sm font-bold no-underline transition ${
+              item.variant === "primary"
+                ? "mt-1 bg-primary text-white hover:bg-primary-strong"
+                : isActive
+                  ? "bg-surface-muted text-primary-strong"
+                  : "text-muted hover:bg-surface-muted hover:text-primary-strong"
+            }`;
 
-          return (
-            <a
-              aria-current={isActive ? "page" : undefined}
-              aria-label={item.label}
-              className={`flex h-12 min-w-0 items-center gap-3 rounded-md px-3 text-sm font-bold no-underline transition ${
-                item.variant === "primary"
-                  ? "mt-1 bg-primary text-white hover:bg-primary-strong"
-                  : isActive
-                    ? "bg-surface-muted text-primary-strong"
-                    : "text-muted hover:bg-surface-muted hover:text-primary-strong"
-              }`}
-              href={item.href}
-              key={item.href}
-              title={item.label}
-            >
-              <span className="grid h-6 w-6 shrink-0 place-items-center">
-                <SidebarIcon name={item.icon} />
-              </span>
-              <span className="translate-x-[-4px] whitespace-nowrap opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100">
-                {item.label}
-              </span>
-            </a>
-          );
-        })}
-      </nav>
-    </aside>
+            const itemContent = (
+              <>
+                <span className="grid h-6 w-6 shrink-0 place-items-center">
+                  <SidebarIcon name={item.icon} />
+                </span>
+                <span className="translate-x-[-4px] whitespace-nowrap opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100">
+                  {item.label}
+                </span>
+              </>
+            );
+
+            if (isNotificationItem) {
+              return (
+                <button
+                  aria-expanded={isNotificationsOpen}
+                  aria-label={item.label}
+                  className={itemClassName}
+                  key={item.href}
+                  onClick={() => setIsNotificationsOpen((isOpen) => !isOpen)}
+                  title={item.label}
+                  type="button"
+                >
+                  {itemContent}
+                </button>
+              );
+            }
+
+            if (isCreatePostItem) {
+              return (
+                <button
+                  aria-expanded={isCreatePostOpen}
+                  aria-label={item.label}
+                  className={itemClassName}
+                  key={item.href}
+                  onClick={() => {
+                    setIsNotificationsOpen(false);
+                    setIsCreatePostOpen(true);
+                  }}
+                  title={item.label}
+                  type="button"
+                >
+                  {itemContent}
+                </button>
+              );
+            }
+
+            return (
+              <a
+                aria-current={isActive ? "page" : undefined}
+                aria-label={item.label}
+                className={itemClassName}
+                href={item.href}
+                key={item.href}
+                onClick={() => setIsNotificationsOpen(false)}
+                title={item.label}
+              >
+                {itemContent}
+              </a>
+            );
+          })}
+        </nav>
+      </aside>
+
+      {isNotificationsOpen ? (
+        <div className="fixed inset-y-0 left-0 z-[60] w-[min(576px,100vw)] sm:w-[576px]">
+          <ActivityList
+            items={mockActivityNotifications}
+            onClose={() => setIsNotificationsOpen(false)}
+          />
+        </div>
+      ) : null}
+
+      <CreatePostModal
+        composer={mockReviewComposer}
+        hints={mockReviewDraftHints}
+        isOpen={isCreatePostOpen}
+        onClose={() => setIsCreatePostOpen(false)}
+      />
+    </>
   );
 }

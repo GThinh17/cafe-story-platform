@@ -1,15 +1,24 @@
+import type { FormEventHandler } from "react";
 import type { ReviewComposerModel, ReviewDraftHint } from "@/types/review";
 
 type CreatePostFormProps = {
   composer: ReviewComposerModel;
   hints: ReviewDraftHint[];
+  onSubmit?: FormEventHandler<HTMLFormElement>;
 };
 
 const ratingValues = [1, 2, 3, 4, 5];
 
-export function CreatePostForm({ composer, hints }: CreatePostFormProps) {
+export function CreatePostForm({
+  composer,
+  hints,
+  onSubmit,
+}: CreatePostFormProps) {
   return (
-    <form className="overflow-hidden rounded-md border border-border bg-surface shadow-sm">
+    <form
+      className="overflow-hidden rounded-md border border-border bg-surface shadow-sm"
+      onSubmit={onSubmit}
+    >
       <header className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
         <div className="min-w-0">
           <p className="text-xs font-black uppercase tracking-[0.12em] text-primary">

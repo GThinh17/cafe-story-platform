@@ -6,18 +6,25 @@ type CafeCardProps = {
 
 export function CafeCard({ cafe }: CafeCardProps) {
   return (
-    <article className="overflow-hidden rounded-md border border-border bg-surface shadow-sm">
-      <img
-        alt={`${cafe.name} cafe`}
-        className="aspect-[16/10] w-full object-cover"
-        decoding="async"
-        loading="lazy"
-        src={cafe.image}
-      />
+    <article className="overflow-hidden rounded-md border border-border bg-surface shadow-sm transition hover:border-primary/50">
+      <a className="block no-underline" href={`/cafes/${cafe.id}`}>
+        <img
+          alt={`${cafe.name} cafe`}
+          className="aspect-[16/10] w-full object-cover"
+          decoding="async"
+          loading="lazy"
+          src={cafe.image}
+        />
+      </a>
       <div className="space-y-4 p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h2 className="truncate text-lg font-black">{cafe.name}</h2>
+            <a
+              className="truncate text-lg font-black text-foreground no-underline hover:text-primary"
+              href={`/cafes/${cafe.id}`}
+            >
+              {cafe.name}
+            </a>
             <p className="mt-1 text-sm text-muted">
               {cafe.location} - {cafe.distance}
             </p>
@@ -28,6 +35,12 @@ export function CafeCard({ cafe }: CafeCardProps) {
         </div>
 
         <p className="text-sm leading-6 text-foreground">{cafe.description}</p>
+
+        <div className="flex items-center gap-3 text-xs font-bold text-muted">
+          <span>{cafe.reviewCount} reviews</span>
+          <span>{cafe.priceLevel}</span>
+          <span>{cafe.hours}</span>
+        </div>
 
         <div className="flex flex-wrap gap-2">
           {cafe.tags.map((tag) => (

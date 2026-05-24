@@ -1,6 +1,7 @@
 import type {
   ActivityNotification,
   ProfileHighlight,
+  ReviewerProfile,
   SuggestedUser,
   UserProfile,
 } from "@/types/user";
@@ -48,40 +49,85 @@ export const mockProfileHighlights: ProfileHighlight[] = [
   },
 ];
 
+export const mockReviewerProfiles: ReviewerProfile[] = [
+  {
+    displayName: "Julianne Moore",
+    username: "julianne.moore",
+    title: "Coffee Connoisseur",
+    badge: "Gold Reviewer",
+    avatarImage: "/images/reviewers/julianne/portrait.jpg",
+    bio: "Exploring the hidden alcoves of NYC one cortado at a time. Obsessed with natural light, vintage espresso machines, and perfectly laminated pastries.",
+    location: "Brooklyn, New York",
+    stats: {
+      reviews: "142",
+      followers: "8.4k",
+      following: "612",
+    },
+    visualDiary: [
+      {
+        image: "/images/reviewers/julianne/diary-white-cup.jpg",
+        alt: "Minimalist white ceramic cup of coffee on a concrete surface",
+      },
+      {
+        image: "/images/reviewers/julianne/diary-typewriter.jpg",
+        alt: "Vintage typewriter and a glass of cold brew in a cafe corner",
+      },
+      {
+        image: "/images/reviewers/julianne/diary-latte.jpg",
+        alt: "Latte art in a teal ceramic cup on a wooden table",
+      },
+      {
+        image: "/images/reviewers/julianne/diary-facade.jpg",
+        alt: "Boutique cafe exterior with black metal framing and plants",
+      },
+      {
+        image: "/images/reviewers/julianne/diary-steam.jpg",
+        alt: "Warm light filtering through coffee steam",
+      },
+      {
+        image: "/images/reviewers/julianne/diary-espresso-bar.jpg",
+        alt: "Modern coffee bar with espresso equipment",
+      },
+    ],
+  },
+];
+
 export const mockActivityNotifications: ActivityNotification[] = [
   {
     id: "activity-1",
-    actor: "Jessica Brew",
-    avatarInitials: "JB",
-    action: "liked your review of",
-    target: "The Monolith",
-    time: "4 min",
+    section: "thisMonth",
+    actors: ["ndk21.01", "_honeybee.kittypie_"],
+    avatarImages: [
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=85",
+      "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=120&q=85",
+    ],
+    message: "đã thích tin của bạn.",
+    date: "May 06",
+    thumbnailImage:
+      "https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=160&q=85",
     unread: true,
   },
   {
     id: "activity-2",
-    actor: "Marco Explorer",
-    avatarInitials: "ME",
-    action: "saved your list",
-    target: "Quiet cafes for deep work",
-    time: "22 min",
-    unread: true,
+    section: "earlier",
+    actors: ["ndk21.01", "_honeybee.kittypie_"],
+    avatarImages: [
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=85",
+      "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=120&q=85",
+    ],
+    message: "và 2 người khác đã thích tin của bạn.",
+    date: "Apr 19",
+    thumbnailImage:
+      "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=160&q=85",
   },
   {
     id: "activity-3",
-    actor: "Batch Baby",
-    avatarInitials: "BB",
-    action: "replied to your question about",
-    target: "filter availability",
-    time: "1 hr",
-  },
-  {
-    id: "activity-4",
-    actor: "Nora Cups",
-    avatarInitials: "NC",
-    action: "started following",
-    target: "your cafe stories",
-    time: "3 hr",
+    section: "earlier",
+    actors: [],
+    avatarImages: [],
+    message: "Bạn có 1 người theo dõi mới trên Threads.",
+    date: "Mar 25",
+    iconLabel: "threads",
   },
 ];
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "CafeStory Next.js Placement"
+  short_description: "Put Next.js code in the right project folder."
+  default_prompt: "Use CafeStory Next.js placement conventions for this web change."

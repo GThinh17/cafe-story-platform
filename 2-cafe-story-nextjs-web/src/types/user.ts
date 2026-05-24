@@ -19,13 +19,34 @@ export type ProfileHighlight = {
   image: string;
 };
 
+export type ReviewerProfile = {
+  displayName: string;
+  username: string;
+  title: string;
+  badge: string;
+  avatarImage: string;
+  bio: string;
+  location: string;
+  stats: {
+    reviews: string;
+    followers: string;
+    following: string;
+  };
+  visualDiary: {
+    image: string;
+    alt: string;
+  }[];
+};
+
 export type ActivityNotification = {
   id: string;
-  actor: string;
-  avatarInitials: string;
-  action: string;
-  target: string;
-  time: string;
+  section: "thisMonth" | "earlier";
+  actors: string[];
+  avatarImages: string[];
+  message: string;
+  date: string;
+  thumbnailImage?: string;
+  iconLabel?: string;
   unread?: boolean;
 };
 

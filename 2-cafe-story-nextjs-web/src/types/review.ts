@@ -6,6 +6,11 @@ export type ReviewDraftHint = {
 export type ReviewComposerModel = {
   title: string;
   subtitle: string;
+  selectedPhotos: {
+    id: string;
+    image?: string;
+    alt: string;
+  }[];
   selectedCafe: string;
   location: string;
   previewImage: string;
@@ -13,6 +18,11 @@ export type ReviewComposerModel = {
   visitType: string;
   spend: string;
   caption: string;
+  taggedPeople: string[];
+  suggestedTags: {
+    label: string;
+    selected: boolean;
+  }[];
   aiTags: string[];
   moderation: {
     label: string;
@@ -26,4 +36,13 @@ export type ProfileReview = {
   image: string;
   rating: string;
   caption: string;
+};
+
+export type CafeReviewPost = {
+  id: string;
+  cafe: string;
+  neighborhood: string;
+  image: string;
+  rating: string;
+  excerpt: string;
 };
