@@ -1,6 +1,5 @@
 package com.cafestory.service.serviceImplement;
 
-import com.cafestory.entity.ExtraFee;
 import com.cafestory.entity.Payment;
 import com.cafestory.service.serviceInterface.VnpayPaymentClient;
 import org.slf4j.Logger;
@@ -49,7 +48,7 @@ public class VnpayPaymentClientImpl implements VnpayPaymentClient {
     }
 
     @Override
-    public String createPaymentUrl(Payment payment, ExtraFee extraFee) {
+    public String createPaymentUrl(Payment payment) {
         validateConfig();
         Map<String, String> params = new TreeMap<>();
         params.put("vnp_Version", VNPAY_VERSION);

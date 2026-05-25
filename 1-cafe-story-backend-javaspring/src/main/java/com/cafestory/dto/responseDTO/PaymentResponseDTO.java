@@ -17,6 +17,8 @@ public class PaymentResponseDTO {
 
     private UUID extraFeeId;
 
+    private UUID adFeeId;
+
     private PaymentMethod paymentMethod;
 
     private BigDecimal amount;
