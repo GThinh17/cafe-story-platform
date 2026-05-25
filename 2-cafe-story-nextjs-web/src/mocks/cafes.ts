@@ -1,4 +1,4 @@
-import type { CafeSummary } from "@/types/cafe";
+import type { CafeEditorialCollection, CafeSummary } from "@/types/cafe";
 
 export const mockCafeSummaries: CafeSummary[] = [
   {
@@ -152,3 +152,22 @@ export const mockCafeSummaries: CafeSummary[] = [
 ];
 
 export const mockFeaturedCafe = mockCafeSummaries[0];
+
+export const mockCafeEditorialCollections: CafeEditorialCollection[] = [
+  {
+    id: "rainy-day-spots",
+    eyebrow: "Featured list",
+    title: "Top 5 Rainy Day Spots",
+    ctaLabel: "Explore list",
+    image: "/images/cafes/velvet-roast/reading-table.jpg",
+    alt: "A quiet cafe table by a window on a rainy day",
+  },
+  {
+    id: "espresso-excellence",
+    eyebrow: "Awards 2026",
+    title: "Espresso Excellence",
+    ctaLabel: "Read more",
+    image: "/images/cafes/velvet-roast/pour-over.jpg",
+    alt: "Coffee being brewed with warm light and steam",
+  },
+];

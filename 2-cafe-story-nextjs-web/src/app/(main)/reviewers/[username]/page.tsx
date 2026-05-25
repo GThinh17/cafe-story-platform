@@ -1,5 +1,6 @@
+import { PageShell } from "@/components/layout/page-shell";
 import { ReviewerProfilePage } from "@/components/profile/reviewer-profile-page";
-import { mockReviewerRecentReviews } from "@/mocks/reviews";
+import { mockReviewerProfileReviews } from "@/mocks/reviews";
 import { mockReviewerProfiles } from "@/mocks/users";
 
 export function generateStaticParams() {
@@ -17,11 +18,11 @@ export default async function ReviewerProfileRoute({
     mockReviewerProfiles[0];
 
   return (
-    <main className="-ml-8 min-h-screen w-[calc(100vw-64px)] max-w-none overflow-x-clip bg-background sm:-ml-14 sm:w-[calc(100vw-72px)] xl:-ml-[248px]">
+    <PageShell>
       <ReviewerProfilePage
-        recentReviews={mockReviewerRecentReviews}
+        posts={mockReviewerProfileReviews}
         reviewer={reviewer}
       />
-    </main>
+    </PageShell>
   );
 }

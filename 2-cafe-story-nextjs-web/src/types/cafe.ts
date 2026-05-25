@@ -29,3 +29,12 @@ export type CafeSummary = {
     alt: string;
   }[];
 };
+
+export type CafeEditorialCollection = {
+  id: string;
+  eyebrow: string;
+  title: string;
+  ctaLabel: string;
+  image: string;
+  alt: string;
+};

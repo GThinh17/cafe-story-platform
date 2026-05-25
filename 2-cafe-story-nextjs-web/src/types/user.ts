@@ -33,8 +33,9 @@ export type ReviewerProfile = {
     following: string;
   };
   visualDiary: {
-    image: string;
     alt: string;
+    image: string;
+    label: string;
   }[];
 };
 

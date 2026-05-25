@@ -2,154 +2,171 @@ function SkeletonBlock({ className = "" }: { className?: string }) {
   return (
     <span
       aria-hidden="true"
-      className={`block rounded-md bg-surface-muted ${className}`}
+      className={`block animate-pulse rounded-md bg-surface-muted ${className}`}
     />
   );
 }
 
-function StoryRailSkeleton() {
+function SkeletonIcon({ className = "" }: { className?: string }) {
   return (
-    <div className="w-full overflow-x-clip">
-      <div className="grid grid-cols-[repeat(auto-fit,64px)] gap-x-4 gap-y-4">
+    <span
+      aria-hidden="true"
+      className={`grid h-5 w-5 place-items-center rounded-sm border border-espresso/80 ${className}`}
+    />
+  );
+}
+
+function TopBarSkeleton() {
+  return (
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-surface/90 px-5 backdrop-blur">
+      <div className="flex min-w-0 items-center gap-5">
+        <p className="font-serif text-2xl font-medium text-espresso">
+          Cafe Story
+        </p>
+        <label className="relative hidden h-10 w-64 items-center rounded-md border border-border bg-background px-4 md:flex">
+          <span className="sr-only">Loading search</span>
+          <SkeletonIcon className="h-4 w-4 border-0" />
+          <SkeletonBlock className="ml-3 h-3 w-28" />
+        </label>
+      </div>
+
+      <nav className="hidden items-center gap-12 text-xs font-black tracking-[0.08em] text-espresso md:flex">
+        <span className="border-b-2 border-espresso pb-2">Overview</span>
+        <span>Users</span>
+        <span>Moderation</span>
+        <span>Settings</span>
+      </nav>
+
+      <div className="flex items-center gap-5">
+        <SkeletonIcon />
+        <SkeletonIcon />
+        <SkeletonBlock className="h-8 w-8 rounded-full" />
+      </div>
+    </header>
+  );
+}
+
+function LeftRailSkeleton() {
+  const railItems = ["Overview", "Users", "Moderation", "Settings"];
+
+  return (
+    <aside className="sticky top-16 hidden h-[calc(100vh-64px)] w-64 shrink-0 border-r border-border bg-surface/60 px-6 py-8 lg:block">
+      <div className="mb-16 space-y-3">
+        <SkeletonBlock className="h-12 w-12 rounded-md" />
+        <SkeletonBlock className="h-4 w-32" />
+        <SkeletonBlock className="h-3 w-24 opacity-70" />
+      </div>
+
+      <nav className="space-y-3">
+        {railItems.map((item, index) => (
+          <div
+            className={`flex h-12 items-center gap-4 rounded-md px-4 text-sm font-semibold tracking-[0.08em] ${
+              index === 0 ? "bg-[#eadbd4] text-espresso" : "text-espresso"
+            }`}
+            key={item}
+          >
+            <SkeletonIcon className="h-4 w-4 border-espresso" />
+            <span>{item}</span>
+          </div>
+        ))}
+      </nav>
+
+      <div className="absolute bottom-10 left-10 right-10">
+        <div className="flex h-16 items-center justify-center rounded-md bg-espresso">
+          <SkeletonBlock className="h-4 w-24 bg-white/80" />
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function StorySkeleton() {
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <span className="grid h-16 w-16 place-items-center rounded-full bg-surface-muted p-1">
+        <SkeletonBlock className="h-full w-full rounded-full bg-background" />
+      </span>
+      <SkeletonBlock className="h-3 w-12" />
+    </div>
+  );
+}
+
+function StoriesSkeleton() {
+  return (
+    <section className="border-b border-border/70 pb-14">
+      <div className="flex justify-center gap-8 overflow-hidden">
         {Array.from({ length: 6 }).map((_, index) => (
           <div
-            className="grid w-16 justify-items-center text-center"
+            className={index === 0 ? "rounded-xl ring-2 ring-espresso" : ""}
             key={index}
           >
-            <span className="grid h-[64px] w-[64px] place-items-center rounded-full bg-[linear-gradient(135deg,var(--primary),var(--accent))] p-[4px] opacity-45">
-              <SkeletonBlock className="h-[56px] w-[56px] rounded-full bg-background/80" />
-            </span>
-            <SkeletonBlock className="mt-2 h-3 w-12" />
+            <StorySkeleton />
           </div>
         ))}
       </div>
-    </div>
+    </section>
   );
 }
 
 function PostCardSkeleton() {
   return (
-    <article className="overflow-hidden rounded-md border border-border bg-surface shadow-sm">
-      <div className="flex items-center justify-between px-4 py-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <SkeletonBlock className="h-11 w-11 shrink-0 rounded-full" />
-          <div className="min-w-0 space-y-2">
-            <SkeletonBlock className="h-4 w-36" />
-            <SkeletonBlock className="h-3 w-44" />
-          </div>
+    <article className="overflow-hidden rounded-md border border-line-soft bg-surface">
+      <div className="flex items-center gap-4 px-6 py-5">
+        <SkeletonBlock className="h-10 w-10 rounded-full" />
+        <div className="min-w-0 flex-1 space-y-2">
+          <SkeletonBlock className="h-4 w-36" />
+          <SkeletonBlock className="h-3 w-24 opacity-70" />
         </div>
-        <SkeletonBlock className="h-8 w-12" />
+        <span className="text-xl font-black text-espresso">...</span>
       </div>
 
-      <SkeletonBlock className="aspect-[4/5] w-full rounded-none sm:aspect-[5/4]" />
+      <SkeletonBlock className="h-[520px] w-full rounded-none bg-[linear-gradient(90deg,#eeeeee_0%,#f7f4ef_50%,#eeeeee_100%)]" />
 
-      <div className="space-y-4 px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex gap-2">
-            <SkeletonBlock className="h-9 w-14" />
-            <SkeletonBlock className="h-9 w-20" />
-            <SkeletonBlock className="h-9 w-16" />
+      <div className="space-y-5 px-6 py-5">
+        <div className="flex items-center justify-between text-espresso">
+          <div className="flex gap-5">
+            <SkeletonIcon className="h-5 w-5" />
+            <SkeletonIcon className="h-5 w-5" />
+            <SkeletonIcon className="h-5 w-5" />
           </div>
-          <SkeletonBlock className="h-9 w-14" />
+          <SkeletonIcon className="h-5 w-5" />
         </div>
 
-        <SkeletonBlock className="h-4 w-40" />
-        <div className="space-y-2">
-          <SkeletonBlock className="h-4 w-full" />
-          <SkeletonBlock className="h-4 w-4/5" />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <SkeletonBlock className="h-6 w-24" />
-          <SkeletonBlock className="h-6 w-28" />
-          <SkeletonBlock className="h-6 w-20" />
+        <div className="space-y-3">
+          <SkeletonBlock className="h-4 w-[78%]" />
+          <SkeletonBlock className="h-4 w-[52%]" />
+          <SkeletonBlock className="h-4 w-24" />
         </div>
       </div>
     </article>
   );
 }
 
-function RightRailSkeleton() {
+function FeedColumnSkeleton() {
   return (
-    <section className="space-y-7">
-      <div className="flex items-center gap-3">
-        <SkeletonBlock className="h-12 w-12 rounded-full" />
-        <div className="min-w-0 flex-1 space-y-2">
-          <SkeletonBlock className="h-4 w-28" />
-          <SkeletonBlock className="h-4 w-20" />
-        </div>
-        <SkeletonBlock className="h-3 w-10" />
-      </div>
-
-      <div>
-        <div className="mb-4 flex items-center justify-between">
-          <SkeletonBlock className="h-5 w-36" />
-          <SkeletonBlock className="h-3 w-10" />
-        </div>
-        <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div className="flex items-center gap-3" key={index}>
-              <SkeletonBlock className="h-11 w-11 rounded-full" />
-              <div className="min-w-0 flex-1 space-y-2">
-                <SkeletonBlock className="h-4 w-28" />
-                <SkeletonBlock className="h-3 w-24" />
-              </div>
-              <SkeletonBlock className="h-3 w-8" />
-            </div>
-          ))}
+    <main className="flex min-w-0 flex-1 justify-center px-4 py-10 sm:px-8">
+      <div className="w-full max-w-[600px] space-y-16">
+        <StoriesSkeleton />
+        <div className="space-y-16">
+          <PostCardSkeleton />
+          <PostCardSkeleton />
         </div>
       </div>
-
-      <div className="space-y-2">
-        <SkeletonBlock className="h-3 w-60" />
-        <SkeletonBlock className="h-3 w-44" />
-      </div>
-    </section>
-  );
-}
-
-function MessageDockSkeleton() {
-  return (
-    <div className="flex h-14 w-fit items-center gap-3 rounded-full border border-border bg-surface px-4 shadow-xl">
-      <SkeletonBlock className="h-8 w-8 rounded-full" />
-      <SkeletonBlock className="h-5 w-20" />
-      <span className="flex -space-x-2 pl-3">
-        {Array.from({ length: 3 }).map((_, index) => (
-          <SkeletonBlock
-            className="h-7 w-7 rounded-full border-2 border-surface"
-            key={index}
-          />
-        ))}
-      </span>
-    </div>
+    </main>
   );
 }
 
 export function CafeFeedSkeleton() {
   return (
-    <div className="min-h-screen w-full max-w-full overflow-x-clip bg-background text-foreground">
-      <main
-        aria-busy="true"
-        aria-label="Loading cafe feed"
-        className="grid w-full max-w-[1120px] touch-pan-y grid-cols-1 gap-14 overflow-x-clip px-4 py-8 sm:px-8 xl:ml-12 xl:grid-cols-[630px_320px] xl:px-0 2xl:ml-20"
-      >
-        <section className="w-full max-w-[630px] space-y-8">
-          <div className="animate-pulse space-y-8">
-            <StoryRailSkeleton />
-
-            <div className="space-y-6">
-              <PostCardSkeleton />
-              <PostCardSkeleton />
-            </div>
-          </div>
-        </section>
-
-        <aside className="sticky top-8 hidden h-fit w-full animate-pulse xl:block">
-          <RightRailSkeleton />
-        </aside>
-      </main>
-
-      <div className="fixed bottom-8 right-6 z-40 hidden animate-pulse xl:block 2xl:right-10">
-        <MessageDockSkeleton />
+    <div
+      aria-busy="true"
+      aria-label="Loading cafe feed"
+      className="-ml-8 min-h-screen w-[calc(100vw-64px)] max-w-none touch-pan-y overflow-x-clip bg-background text-foreground sm:-ml-14 sm:w-[calc(100vw-72px)] xl:-ml-[248px]"
+    >
+      <TopBarSkeleton />
+      <div className="flex min-h-[calc(100vh-64px)]">
+        <LeftRailSkeleton />
+        <FeedColumnSkeleton />
       </div>
     </div>
   );

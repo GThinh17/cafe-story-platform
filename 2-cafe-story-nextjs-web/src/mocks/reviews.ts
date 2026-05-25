@@ -149,3 +149,48 @@ export const mockReviewerRecentReviews: CafeReviewPost[] = [
       "Transported to Paris. The laminations on this croissant are actually illegal.",
   },
 ];
+
+export const mockReviewerProfileReviews: ProfileReview[] = [
+  {
+    id: "reviewer-post-1",
+    cafe: "The Arch Coffee",
+    image: "/images/reviewers/julianne/review-arch.jpg",
+    rating: "4.9",
+    caption: "Best oat flat white in the borough.",
+  },
+  {
+    id: "reviewer-post-2",
+    cafe: "Dark Roast Collective",
+    image: "/images/reviewers/julianne/review-dark-roast.jpg",
+    rating: "5.0",
+    caption: "Precise pour overs and a quiet morning room.",
+  },
+  {
+    id: "reviewer-post-3",
+    cafe: "L'Avenue Patisserie",
+    image: "/images/reviewers/julianne/review-croissant.jpg",
+    rating: "4.7",
+    caption: "A pastry stop worth saving.",
+  },
+  {
+    id: "reviewer-post-4",
+    cafe: "Minimal Cup",
+    image: "/images/reviewers/julianne/diary-white-cup.jpg",
+    rating: "4.6",
+    caption: "Soft light, clean cups, and a slower pace.",
+  },
+  {
+    id: "reviewer-post-5",
+    cafe: "Typewriter Table",
+    image: "/images/reviewers/julianne/diary-typewriter.jpg",
+    rating: "4.8",
+    caption: "A corner made for writing reviews.",
+  },
+  {
+    id: "reviewer-post-6",
+    cafe: "Blue Saucer",
+    image: "/images/reviewers/julianne/diary-latte.jpg",
+    rating: "4.8",
+    caption: "Balanced milk texture and a bright espresso finish.",
+  },
+];

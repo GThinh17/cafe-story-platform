@@ -67,26 +67,32 @@ export const mockReviewerProfiles: ReviewerProfile[] = [
       {
         image: "/images/reviewers/julianne/diary-white-cup.jpg",
         alt: "Minimalist white ceramic cup of coffee on a concrete surface",
+        label: "Minimal",
       },
       {
         image: "/images/reviewers/julianne/diary-typewriter.jpg",
         alt: "Vintage typewriter and a glass of cold brew in a cafe corner",
+        label: "Writing",
       },
       {
         image: "/images/reviewers/julianne/diary-latte.jpg",
         alt: "Latte art in a teal ceramic cup on a wooden table",
+        label: "Latte",
       },
       {
         image: "/images/reviewers/julianne/diary-facade.jpg",
         alt: "Boutique cafe exterior with black metal framing and plants",
+        label: "Facades",
       },
       {
         image: "/images/reviewers/julianne/diary-steam.jpg",
         alt: "Warm light filtering through coffee steam",
+        label: "Slow",
       },
       {
         image: "/images/reviewers/julianne/diary-espresso-bar.jpg",
         alt: "Modern coffee bar with espresso equipment",
+        label: "Bars",
       },
     ],
   },
