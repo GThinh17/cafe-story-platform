@@ -55,6 +55,15 @@ public class ExtraFeeServiceImpl implements ExtraFeeService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<ExtraFeeResponseDTO> getActiveExtraFees() {
+        return extraFeeRepository.findByStatusOrderByCreatedAtDesc(true)
+                .stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public void deleteExtraFee(UUID extraFeeId) {
         if (!extraFeeRepository.existsById(extraFeeId)) {

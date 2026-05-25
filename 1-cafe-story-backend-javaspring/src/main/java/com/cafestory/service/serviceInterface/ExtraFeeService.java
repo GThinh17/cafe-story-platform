@@ -14,5 +14,7 @@ public interface ExtraFeeService {
 
     List<ExtraFeeResponseDTO> getAllExtraFees();
 
+    List<ExtraFeeResponseDTO> getActiveExtraFees();
+
     void deleteExtraFee(UUID extraFeeId);
 }

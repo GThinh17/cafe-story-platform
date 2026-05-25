@@ -12,4 +12,6 @@ public interface UserRoleAssignmentRepository extends JpaRepository<UserRoleAssi
     boolean existsByUserUserIdAndRoleName(UUID userId, String roleName);
 
     List<UserRoleAssignment> findByUserUserId(UUID userId);
+
+    void deleteByUserUserId(UUID userId);
 }

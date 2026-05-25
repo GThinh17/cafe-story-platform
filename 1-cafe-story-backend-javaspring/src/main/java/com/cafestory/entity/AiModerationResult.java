@@ -1,6 +1,7 @@
 package com.cafestory.entity;
 
 import com.cafestory.entity.enums.ModerationDecision;
+import com.cafestory.entity.enums.ModerationResolveAction;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -56,11 +57,25 @@ public class AiModerationResult {
     private String modelName;
 
     @NotNull
+    @Column(name = "resolved", nullable = false)
+    private Boolean resolved = false;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "resolved_action")
+    private ModerationResolveAction resolvedAction;
+
+    @Column(name = "resolved_at")
+    private LocalDateTime resolvedAt;
+
+    @NotNull
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
     void prePersist() {
         createdAt = LocalDateTime.now();
+        if (resolved == null) {
+            resolved = false;
+        }
     }
 }
