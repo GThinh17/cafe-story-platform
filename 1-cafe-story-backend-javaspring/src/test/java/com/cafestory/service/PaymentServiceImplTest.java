@@ -194,7 +194,7 @@ class PaymentServiceImplTest {
         mockPaymentSave();
         mockPaymentDetailSave();
 
-        PaymentResponseDTO result = paymentService.createPayment(adFeeRequest(PaymentMethod.BANK_TRANSFER));
+        PaymentResponseDTO result = paymentService.createPayment(buyerId, adFeeRequest(PaymentMethod.BANK_TRANSFER));
 
         assertThat(result.getAdFeeId()).isEqualTo(adFeeId);
         assertThat(result.getExtraFeeId()).isNull();
@@ -209,7 +209,7 @@ class PaymentServiceImplTest {
         noFeeRequest.setBuyerId(buyerId);
         noFeeRequest.setPaymentMethod(PaymentMethod.BANK_TRANSFER);
 
-        assertThatThrownBy(() -> paymentService.createPayment(noFeeRequest))
+        assertThatThrownBy(() -> paymentService.createPayment(buyerId, noFeeRequest))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
                         .isEqualTo(HttpStatus.BAD_REQUEST));
@@ -217,7 +217,7 @@ class PaymentServiceImplTest {
         CreatePaymentRequestDTO bothFeesRequest = request(PaymentMethod.BANK_TRANSFER);
         bothFeesRequest.setAdFeeId(adFeeId);
 
-        assertThatThrownBy(() -> paymentService.createPayment(bothFeesRequest))
+        assertThatThrownBy(() -> paymentService.createPayment(buyerId, bothFeesRequest))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
                         .isEqualTo(HttpStatus.BAD_REQUEST));
@@ -228,7 +228,7 @@ class PaymentServiceImplTest {
         when(userRepository.findById(buyerId)).thenReturn(Optional.of(user()));
         when(adFeeRepository.findById(adFeeId)).thenReturn(Optional.of(adFee(false)));
 
-        assertThatThrownBy(() -> paymentService.createPayment(adFeeRequest(PaymentMethod.BANK_TRANSFER)))
+        assertThatThrownBy(() -> paymentService.createPayment(buyerId, adFeeRequest(PaymentMethod.BANK_TRANSFER)))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
                         .isEqualTo(HttpStatus.BAD_REQUEST));
@@ -457,6 +457,7 @@ class PaymentServiceImplTest {
         PaymentServiceImpl serviceWithWebhookSecret = new PaymentServiceImpl(
                 paymentRepository,
                 paymentDetailRepository,
+                adFeeRepository,
                 extraFeeRepository,
                 userRepository,
                 reviewerRepository,
