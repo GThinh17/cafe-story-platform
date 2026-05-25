@@ -2,21 +2,22 @@
 
 ## Overview
 
-The payment module lets a user purchase an active extra fee package. A payment is created for a buyer and an extra fee, then processed through one of the supported payment methods.
+The payment module lets an authenticated user purchase an active extra fee package. The buyer is resolved from the JWT cookie principal, then the payment is processed through one of the supported payment methods.
 
 Supported flows:
 
 - Stripe card payment through a Stripe Checkout Session.
 - Bank transfer/manual transfer, where the backend generates a transfer content string and an operator marks the payment as paid after verification.
+- VNPAY redirect payment, where VNPAY IPN confirms the payment status.
 
-When a payment becomes successful, the service activates the purchased product. In the current implementation, `REVIEWER_REGISTRATION` packages activate or renew the buyer's reviewer subscription by:
+When a payment becomes successful, the service activates the purchased product. `REVIEWER_REGISTRATION` packages activate or renew the buyer's reviewer subscription by:
 
 - creating or updating the buyer's `Reviewer` record;
 - setting `reviewerActive` to `true`;
 - setting `reviewerExpiresAt` to `now + extraFee.durationMonths`;
 - assigning the `REVIEWER` role if the user does not already have it.
 
-`CAFE_PAGE_OPENING` exists as an `ExtraFeeType`, but no product activation behavior is currently implemented for it in `PaymentServiceImpl`.
+`CAFE_PAGE_OPENING` packages activate the buyer's cafe page package without requiring cafe page data in the payment request. On successful payment, the backend creates a draft `CafePage` for the buyer if none exists, ensures the buyer has an active `OWNER` `PageMember`, and assigns the `CAFE_PAGE` role if missing.
 
 ##
 
@@ -67,9 +68,10 @@ Error responses use the same wrapper with `status` set to `Fail` and `data` set 
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `buyerId` | UUID | Yes | ID of the user purchasing the extra fee package. |
 | `extraFeeId` | UUID | Yes | ID of the extra fee package being purchased. The extra fee must exist and be active. |
-| `paymentMethod` | `PaymentMethod` | Yes | Payment method. Supported values: `STRIPE_CARD`, `BANK_TRANSFER`. |
+| `paymentMethod` | `PaymentMethod` | Yes | Payment method. Supported values: `STRIPE_CARD`, `BANK_TRANSFER`, `VNPAY`. |
+
+Do not send `buyerId` in this request. The backend uses the authenticated principal from the HttpOnly `access_token` cookie. For `CAFE_PAGE_OPENING`, do not send cafe page `name`, `address`, or other page fields in this request.
 
 ### PaymentResponseDTO
 
@@ -78,7 +80,7 @@ Error responses use the same wrapper with `status` set to `Fail` and `data` set 
 | `paymentId` | UUID | Payment ID. |
 | `buyerId` | UUID | Buyer user ID. |
 | `extraFeeId` | UUID | Purchased extra fee package ID. |
-| `paymentMethod` | `PaymentMethod` | `STRIPE_CARD` or `BANK_TRANSFER`. |
+| `paymentMethod` | `PaymentMethod` | `STRIPE_CARD`, `BANK_TRANSFER`, or `VNPAY`. |
 | `amount` | decimal | Payment amount copied from `extraFee.price`. |
 | `currency` | string | Currency code. Current implementation sets `VND`. |
 | `paymentStatus` | `PaymentStatus` | Current payment status. New payments start as `PENDING`. |
@@ -96,6 +98,7 @@ Error responses use the same wrapper with `status` set to `Fail` and `data` set 
 ```text
 STRIPE_CARD
 BANK_TRANSFER
+VNPAY
 ```
 
 `PaymentStatus`:
@@ -118,7 +121,7 @@ REVIEWER_REGISTRATION
 CAFE_PAGE_OPENING
 ```
 
-Only `REVIEWER_REGISTRATION` currently has activation logic after successful payment.
+Both `REVIEWER_REGISTRATION` and `CAFE_PAGE_OPENING` have activation logic after successful payment.
 
 ## Endpoints
 
@@ -130,11 +133,12 @@ Creates a payment for an active extra fee package.
 POST /api/payments
 ```
 
+Authentication is required. The buyer is the current authenticated user.
+
 #### Request Body
 
 ```json
 {
-  "buyerId": "11111111-1111-1111-1111-111111111111",
   "extraFeeId": "22222222-2222-2222-2222-222222222222",
   "paymentMethod": "STRIPE_CARD"
 }
@@ -144,7 +148,7 @@ POST /api/payments
 
 The service:
 
-- loads the buyer by `buyerId`;
+- loads the buyer from the authenticated principal;
 - loads the extra fee by `extraFeeId`;
 - rejects inactive extra fees;
 - creates a `payments` row with:
@@ -261,6 +265,8 @@ Gets a payment by ID.
 GET /api/payments/{paymentId}
 ```
 
+Requires authentication. The requester must be the payment buyer or an `ADMIN`.
+
 #### Path Parameters
 
 | Parameter | Type | Required | Description |
@@ -303,6 +309,27 @@ The service loads the payment by ID and fetches the matching `PaymentDetail` by 
 | `400` | `paymentId` is not a valid UUID | `paymentId must be a valid UUID` |
 | `404` | Payment does not exist | `Payment not found` |
 
+### Get Payments
+
+Gets all payments, optionally filtered by payment status.
+
+```text
+GET /api/payments
+GET /api/payments?paymentStatus=PENDING
+```
+
+Requires authenticated `ADMIN` role.
+
+#### Query Parameters
+
+| Parameter | Type | Required | Description |
+| --- | --- | --- | --- |
+| `paymentStatus` | `PaymentStatus` | No | Optional status filter. Supported values are the `PaymentStatus` enum values. |
+
+#### Behavior
+
+If `paymentStatus` is omitted, the service returns all payments ordered by `createdAt` descending. If `paymentStatus` is provided, only payments with that status are returned. Each row includes matching `PaymentDetail` provider fields when available.
+
 ### Mark Bank Transfer Paid
 
 Marks a bank transfer payment as paid after manual verification.
@@ -310,6 +337,8 @@ Marks a bank transfer payment as paid after manual verification.
 ```text
 POST /api/payments/{paymentId}/bank-transfer/mark-paid
 ```
+
+Requires authenticated `ADMIN` role.
 
 #### Path Parameters
 
@@ -330,6 +359,14 @@ The service:
 This operation is idempotent for already paid payments at the status transition level. If the payment is already `PAID`, the service returns without re-running product activation.
 
 For `REVIEWER_REGISTRATION` packages, product activation creates or updates the `Reviewer` record and assigns the `REVIEWER` role if needed.
+
+For `CAFE_PAGE_OPENING` packages, product activation is idempotent:
+
+- if the buyer has no cafe page, it creates a `DRAFT` page with name `"{userFullName}'s Cafe Page"` or `"{userName}'s Cafe Page"`, address `"Pending update"`, zero counters, `maxMembers` from the extra fee or `2`, `pageActive=true`, and the buyer's region when available;
+- if the buyer already has a cafe page, it reuses the existing page, updates `maxMembers` from the purchased package, and does not create a duplicate;
+- if `extraFee.durationMonths` is set, it extends `pageExpiresAt` from the current future expiry or from now;
+- it ensures the buyer has an active `OWNER` `PageMember`;
+- it assigns the `CAFE_PAGE` role if missing.
 
 #### Success Response
 

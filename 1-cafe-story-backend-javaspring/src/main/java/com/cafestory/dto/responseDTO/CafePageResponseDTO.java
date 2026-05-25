@@ -20,6 +20,9 @@ public class CafePageResponseDTO {
     private PageStatus status;
     private Integer likeCount;
     private Integer followerCount;
+    private Integer maxMembers;
+    private Boolean pageActive;
+    private LocalDateTime pageExpiresAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

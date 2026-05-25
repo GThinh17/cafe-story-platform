@@ -4,8 +4,10 @@ import com.cafestory.dto.requestDTO.CreatePaymentRequestDTO;
 import com.cafestory.dto.responseDTO.PaymentResponseDTO;
 import com.cafestory.dto.responseDTO.VnpayIpnResponseDTO;
 import com.cafestory.dto.responseDTO.VnpayReturnResponseDTO;
-import com.cafestory.entity.AdFee;
+import com.cafestory.entity.CafePage;
 import com.cafestory.entity.ExtraFee;
+import com.cafestory.entity.PageMember;
+import com.cafestory.entity.PageMemberId;
 import com.cafestory.entity.Payment;
 import com.cafestory.entity.PaymentDetail;
 import com.cafestory.entity.Reviewer;
@@ -13,10 +15,13 @@ import com.cafestory.entity.Role;
 import com.cafestory.entity.User;
 import com.cafestory.entity.UserRoleAssignment;
 import com.cafestory.entity.enums.ExtraFeeType;
+import com.cafestory.entity.enums.PageMemberStatus;
+import com.cafestory.entity.enums.PageStatus;
 import com.cafestory.entity.enums.PaymentMethod;
 import com.cafestory.entity.enums.PaymentStatus;
-import com.cafestory.repository.AdFeeRepository;
+import com.cafestory.repository.CafePageRepository;
 import com.cafestory.repository.ExtraFeeRepository;
+import com.cafestory.repository.PageMemberRepository;
 import com.cafestory.repository.PaymentDetailRepository;
 import com.cafestory.repository.PaymentRepository;
 import com.cafestory.repository.ReviewerRepository;
@@ -39,6 +44,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -47,6 +53,10 @@ import java.util.UUID;
 public class PaymentServiceImpl implements PaymentService {
 
     private static final String REVIEWER_ROLE = "REVIEWER";
+    private static final String CAFE_PAGE_ROLE = "CAFE_PAGE";
+    private static final String ADMIN_ROLE = "ADMIN";
+    private static final String DEFAULT_CAFE_PAGE_ADDRESS = "Pending update";
+    private static final int DEFAULT_CAFE_PAGE_MAX_MEMBERS = 2;
 
     private final PaymentRepository paymentRepository;
     private final PaymentDetailRepository paymentDetailRepository;
@@ -54,6 +64,8 @@ public class PaymentServiceImpl implements PaymentService {
     private final ExtraFeeRepository extraFeeRepository;
     private final UserRepository userRepository;
     private final ReviewerRepository reviewerRepository;
+    private final CafePageRepository cafePageRepository;
+    private final PageMemberRepository pageMemberRepository;
     private final RoleRepository roleRepository;
     private final UserRoleAssignmentRepository userRoleAssignmentRepository;
     private final StripeCheckoutClient stripeCheckoutClient;
@@ -68,6 +80,8 @@ public class PaymentServiceImpl implements PaymentService {
             ExtraFeeRepository extraFeeRepository,
             UserRepository userRepository,
             ReviewerRepository reviewerRepository,
+            CafePageRepository cafePageRepository,
+            PageMemberRepository pageMemberRepository,
             RoleRepository roleRepository,
             UserRoleAssignmentRepository userRoleAssignmentRepository,
             StripeCheckoutClient stripeCheckoutClient,
@@ -80,6 +94,8 @@ public class PaymentServiceImpl implements PaymentService {
         this.extraFeeRepository = extraFeeRepository;
         this.userRepository = userRepository;
         this.reviewerRepository = reviewerRepository;
+        this.cafePageRepository = cafePageRepository;
+        this.pageMemberRepository = pageMemberRepository;
         this.roleRepository = roleRepository;
         this.userRoleAssignmentRepository = userRoleAssignmentRepository;
         this.stripeCheckoutClient = stripeCheckoutClient;
@@ -90,8 +106,8 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public PaymentResponseDTO createPayment(CreatePaymentRequestDTO request) {
-        User buyer = userRepository.findById(request.getBuyerId())
+    public PaymentResponseDTO createPayment(UUID buyerId, CreatePaymentRequestDTO request) {
+        User buyer = userRepository.findById(buyerId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Buyer not found"));
         ProductPurchase productPurchase = resolveProductPurchase(request);
 
@@ -135,14 +151,30 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional(readOnly = true)
-    public PaymentResponseDTO getPayment(UUID paymentId) {
+    public PaymentResponseDTO getPayment(UUID requesterUserId, UUID paymentId) {
         Payment payment = validatePaymentExists(paymentId);
+        validatePaymentAccess(requesterUserId, payment);
         return toResponse(payment, paymentDetailRepository.findByPaymentPaymentId(paymentId).orElse(null));
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<PaymentResponseDTO> getAllPayments(UUID requesterUserId, PaymentStatus paymentStatus) {
+        validateAdmin(requesterUserId);
+        List<Payment> payments = paymentStatus == null
+                ? paymentRepository.findAllByOrderByCreatedAtDesc()
+                : paymentRepository.findByPaymentStatusOrderByCreatedAtDesc(paymentStatus);
+        return payments.stream()
+                .map(payment -> toResponse(payment, paymentDetailRepository
+                        .findByPaymentPaymentId(payment.getPaymentId())
+                        .orElse(null)))
+                .toList();
+    }
+
+    @Override
     @Transactional
-    public PaymentResponseDTO markBankTransferPaid(UUID paymentId) {
+    public PaymentResponseDTO markBankTransferPaid(UUID requesterUserId, UUID paymentId) {
+        validateAdmin(requesterUserId);
         Payment payment = validatePaymentExists(paymentId);
         if (payment.getPaymentMethod() != PaymentMethod.BANK_TRANSFER) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payment is not a bank transfer");
@@ -234,28 +266,19 @@ public class PaymentServiceImpl implements PaymentService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
     }
 
-    private ProductPurchase resolveProductPurchase(CreatePaymentRequestDTO request) {
-        boolean hasExtraFee = request.getExtraFeeId() != null;
-        boolean hasAdFee = request.getAdFeeId() != null;
-        if (hasExtraFee == hasAdFee) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Exactly one of extraFeeId or adFeeId is required");
+    private void validatePaymentAccess(UUID requesterUserId, Payment payment) {
+        UUID buyerId = payment.getBuyer() == null ? null : payment.getBuyer().getUserId();
+        if (requesterUserId != null && requesterUserId.equals(buyerId)) {
+            return;
         }
-        if (hasExtraFee) {
-            ExtraFee extraFee = extraFeeRepository.findById(request.getExtraFeeId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Extra fee not found"));
-            if (!Boolean.TRUE.equals(extraFee.getStatus())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Extra fee is inactive");
-            }
-            return new ProductPurchase(extraFee, null, BigDecimal.valueOf(extraFee.getPrice()), "VND");
-        }
+        validateAdmin(requesterUserId);
+    }
 
-        AdFee adFee = adFeeRepository.findById(request.getAdFeeId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ad fee not found"));
-        if (!Boolean.TRUE.equals(adFee.getStatus())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ad fee is inactive");
+    private void validateAdmin(UUID requesterUserId) {
+        if (requesterUserId == null
+                || !userRoleAssignmentRepository.existsByUserUserIdAndRoleName(requesterUserId, ADMIN_ROLE)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin role is required");
         }
-        String currency = adFee.getCurrency() == null || adFee.getCurrency().isBlank() ? "VND" : adFee.getCurrency();
-        return new ProductPurchase(null, adFee, adFee.getPrice(), currency);
     }
 
     private void markPaymentPaid(Payment payment, String providerTransactionId) {
@@ -290,6 +313,8 @@ public class PaymentServiceImpl implements PaymentService {
         }
         if (extraFee.getFeeType() == ExtraFeeType.REVIEWER_REGISTRATION) {
             activateReviewerSubscription(payment.getBuyer(), extraFee);
+        } else if (extraFee.getFeeType() == ExtraFeeType.CAFE_PAGE_OPENING) {
+            activateCafePagePackage(payment.getBuyer(), extraFee);
         }
     }
 
@@ -307,16 +332,75 @@ public class PaymentServiceImpl implements PaymentService {
                 : now;
         reviewer.setReviewerExpiresAt(baseExpireDate.plusMonths(extraFee.getDurationMonths()));
         reviewerRepository.save(reviewer);
-        assignReviewerRole(buyer);
+        assignRole(buyer, REVIEWER_ROLE);
     }
 
-    private void assignReviewerRole(User user) {
-        if (userRoleAssignmentRepository.existsByUserUserIdAndRoleName(user.getUserId(), REVIEWER_ROLE)) {
+    private void activateCafePagePackage(User buyer, ExtraFee extraFee) {
+        CafePage cafePage = cafePageRepository.findByOwnerUserId(buyer.getUserId()).stream()
+                .findFirst()
+                .orElseGet(() -> createCafePageForBuyer(buyer));
+        applyCafePagePackage(cafePage, extraFee);
+        CafePage savedCafePage = cafePageRepository.save(cafePage);
+        ensureOwnerMembership(savedCafePage, buyer);
+        assignRole(buyer, CAFE_PAGE_ROLE);
+    }
+
+    private CafePage createCafePageForBuyer(User buyer) {
+        CafePage cafePage = new CafePage();
+        cafePage.setOwner(buyer);
+        cafePage.setName(defaultCafePageName(buyer));
+        cafePage.setAddress(DEFAULT_CAFE_PAGE_ADDRESS);
+        cafePage.setStatus(PageStatus.DRAFT);
+        cafePage.setLikeCount(0);
+        cafePage.setFollowerCount(0);
+        cafePage.setRegion(buyer.getRegion());
+        return cafePage;
+    }
+
+    private void applyCafePagePackage(CafePage cafePage, ExtraFee extraFee) {
+        cafePage.setMaxMembers(extraFee.getMaxMembers() == null
+                ? DEFAULT_CAFE_PAGE_MAX_MEMBERS
+                : extraFee.getMaxMembers());
+        cafePage.setPageActive(true);
+        if (extraFee.getDurationMonths() != null) {
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime currentExpireDate = cafePage.getPageExpiresAt();
+            LocalDateTime baseExpireDate = currentExpireDate != null && currentExpireDate.isAfter(now)
+                    ? currentExpireDate
+                    : now;
+            cafePage.setPageExpiresAt(baseExpireDate.plusMonths(extraFee.getDurationMonths()));
+        }
+    }
+
+    private String defaultCafePageName(User buyer) {
+        String displayName = buyer.getUserFullName();
+        if (displayName == null || displayName.isBlank()) {
+            displayName = buyer.getUserName();
+        }
+        return displayName + "'s Cafe Page";
+    }
+
+    private void ensureOwnerMembership(CafePage cafePage, User buyer) {
+        PageMember pageMember = pageMemberRepository.findByCafePageIdAndUserUserId(cafePage.getId(), buyer.getUserId())
+                .orElseGet(() -> {
+                    PageMember newMember = new PageMember();
+                    newMember.setId(new PageMemberId(cafePage.getId(), buyer.getUserId()));
+                    newMember.setCafePage(cafePage);
+                    newMember.setUser(buyer);
+                    return newMember;
+                });
+        pageMember.setRoleName(PageMember.ROLE_OWNER);
+        pageMember.setStatus(PageMemberStatus.ACTIVE);
+        pageMemberRepository.save(pageMember);
+    }
+
+    private void assignRole(User user, String roleName) {
+        if (userRoleAssignmentRepository.existsByUserUserIdAndRoleName(user.getUserId(), roleName)) {
             return;
         }
-        Role role = roleRepository.findByName(REVIEWER_ROLE).orElseGet(() -> {
+        Role role = roleRepository.findByName(roleName).orElseGet(() -> {
             Role newRole = new Role();
-            newRole.setName(REVIEWER_ROLE);
+            newRole.setName(roleName);
             return roleRepository.save(newRole);
         });
         UserRoleAssignment assignment = new UserRoleAssignment();

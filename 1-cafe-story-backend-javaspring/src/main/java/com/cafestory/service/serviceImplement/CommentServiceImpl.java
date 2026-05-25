@@ -107,8 +107,9 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional
-    public CommentResponseDTO updateComment(UUID commentId, CommentUpdateDTO commentUpdateDTO) {
+    public CommentResponseDTO updateComment(UUID commentId, UUID actorUserId, CommentUpdateDTO commentUpdateDTO) {
         Comment comment = commentValidator.validateCommentExists(commentId);
+        validateCommentOwner(comment, actorUserId);
 
         if (commentUpdateDTO.getContent() != null) {
             comment.setContent(commentUpdateDTO.getContent());
@@ -126,10 +127,17 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional
-    public void deleteComment(UUID commentId) {
+    public void deleteComment(UUID commentId, UUID actorUserId) {
         Comment comment = commentValidator.validateCommentExists(commentId);
+        validateCommentOwner(comment, actorUserId);
         commentRepository.delete(comment);
         decrementCommentCount(comment.getBlog());
+    }
+
+    private void validateCommentOwner(Comment comment, UUID actorUserId) {
+        if (actorUserId == null || comment.getUser() == null || !actorUserId.equals(comment.getUser().getUserId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not allowed to manage this comment");
+        }
     }
 
     private void validateBlogAllowComment(Blog blog) {

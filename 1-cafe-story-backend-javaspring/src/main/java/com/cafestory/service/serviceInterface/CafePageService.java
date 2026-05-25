@@ -19,7 +19,7 @@ public interface CafePageService {
 
     List<BlogResponseDTO> getBlogsByCafePageId(UUID cafePageId);
 
-    CafePageResponseDTO updateCafePage(UUID cafePageId, CafePageUpdateDTO cafePageUpdateDTO);
+    CafePageResponseDTO updateCafePage(UUID cafePageId, UUID actorUserId, CafePageUpdateDTO cafePageUpdateDTO);
 
-    void deleteCafePage(UUID cafePageId);
+    void deleteCafePage(UUID cafePageId, UUID actorUserId);
 }

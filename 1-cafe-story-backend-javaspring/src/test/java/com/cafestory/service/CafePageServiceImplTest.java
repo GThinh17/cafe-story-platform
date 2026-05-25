@@ -168,6 +168,7 @@ class CafePageServiceImplTest {
     void updateCafePage_success_TC007() {
         UUID cafePageId = UUID.randomUUID();
         CafePage cafePage = cafePage(cafePageId, user(UUID.randomUUID()));
+        UUID actorUserId = cafePage.getOwner().getUserId();
         CafePageUpdateDTO request = new CafePageUpdateDTO();
         Region region = region();
         request.setRegionId(region.getRegionId());
@@ -181,7 +182,7 @@ class CafePageServiceImplTest {
         when(cafePageRepository.save(cafePage)).thenReturn(cafePage);
         when(cafePageMapper.toCafePageResponseDTO(cafePage)).thenReturn(response);
 
-        CafePageResponseDTO result = cafePageService.updateCafePage(cafePageId, request);
+        CafePageResponseDTO result = cafePageService.updateCafePage(cafePageId, actorUserId, request);
 
         assertThat(result).isEqualTo(response);
         assertThat(cafePage.getName()).isEqualTo("Updated Cafe");
@@ -194,10 +195,11 @@ class CafePageServiceImplTest {
     void deleteCafePage_success_TC008() {
         UUID cafePageId = UUID.randomUUID();
         CafePage cafePage = cafePage(cafePageId, user(UUID.randomUUID()));
+        UUID actorUserId = cafePage.getOwner().getUserId();
 
         when(cafePageValidator.validateCafePageExists(cafePageId)).thenReturn(cafePage);
 
-        cafePageService.deleteCafePage(cafePageId);
+        cafePageService.deleteCafePage(cafePageId, actorUserId);
 
         verify(cafePageRepository).delete(cafePage);
     }

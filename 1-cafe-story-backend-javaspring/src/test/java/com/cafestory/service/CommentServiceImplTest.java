@@ -209,13 +209,14 @@ class CommentServiceImplTest {
         UUID commentId = UUID.randomUUID();
         CommentUpdateDTO request = updateCommentRequest();
         Comment comment = comment(commentId, blog(UUID.randomUUID()), user(UUID.randomUUID()));
+        UUID actorUserId = comment.getUser().getUserId();
         CommentResponseDTO response = commentResponse(commentId, comment.getBlog().getId(), comment.getUser().getUserId(), null);
 
         when(commentValidator.validateCommentExists(commentId)).thenReturn(comment);
         when(commentRepository.save(comment)).thenReturn(comment);
         when(commentMapper.toCommentResponseDTO(comment)).thenReturn(response);
 
-        CommentResponseDTO result = commentService.updateComment(commentId, request);
+        CommentResponseDTO result = commentService.updateComment(commentId, actorUserId, request);
 
         assertThat(result).isEqualTo(response);
         assertThat(comment.getContent()).isEqualTo("Updated comment");
@@ -230,10 +231,11 @@ class CommentServiceImplTest {
         Blog blog = blog(UUID.randomUUID());
         blog.setCommentCount(2);
         Comment comment = comment(commentId, blog, user(UUID.randomUUID()));
+        UUID actorUserId = comment.getUser().getUserId();
 
         when(commentValidator.validateCommentExists(commentId)).thenReturn(comment);
 
-        commentService.deleteComment(commentId);
+        commentService.deleteComment(commentId, actorUserId);
 
         assertThat(blog.getCommentCount()).isEqualTo(1);
         verify(commentRepository).delete(comment);
@@ -245,10 +247,11 @@ class CommentServiceImplTest {
         Blog blog = blog(UUID.randomUUID());
         blog.setCommentCount(0);
         Comment comment = comment(commentId, blog, user(UUID.randomUUID()));
+        UUID actorUserId = comment.getUser().getUserId();
 
         when(commentValidator.validateCommentExists(commentId)).thenReturn(comment);
 
-        commentService.deleteComment(commentId);
+        commentService.deleteComment(commentId, actorUserId);
 
         assertThat(blog.getCommentCount()).isZero();
         verify(commentRepository).delete(comment);

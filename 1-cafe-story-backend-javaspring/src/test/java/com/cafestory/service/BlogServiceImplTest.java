@@ -240,13 +240,14 @@ class BlogServiceImplTest {
         UUID blogId = UUID.randomUUID();
         BlogUpdateDTO request = updateBlogRequest();
         Blog blog = blog();
+        UUID actorUserId = blog.getAuthor().getUserId();
         BlogResponseDTO response = blogResponse(blogId, UUID.randomUUID());
 
         when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
         when(blogRepository.save(blog)).thenReturn(blog);
         when(blogMapper.toBlogResponseDTO(blog)).thenReturn(response);
 
-        BlogResponseDTO result = blogService.updateBlog(blogId, request);
+        BlogResponseDTO result = blogService.updateBlog(blogId, actorUserId, request);
 
         assertThat(result).isEqualTo(response);
         assertThat(blog.getPageId()).isEqualTo(request.getPageId());
@@ -264,13 +265,14 @@ class BlogServiceImplTest {
         UUID blogId = UUID.randomUUID();
         BlogUpdateDTO request = new BlogUpdateDTO();
         Blog blog = blog();
+        UUID actorUserId = blog.getAuthor().getUserId();
         BlogResponseDTO response = blogResponse(blogId, UUID.randomUUID());
 
         when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
         when(blogRepository.save(blog)).thenReturn(blog);
         when(blogMapper.toBlogResponseDTO(blog)).thenReturn(response);
 
-        BlogResponseDTO result = blogService.updateBlog(blogId, request);
+        BlogResponseDTO result = blogService.updateBlog(blogId, actorUserId, request);
 
         assertThat(result).isEqualTo(response);
         verify(blogRepository).save(blog);
@@ -284,7 +286,7 @@ class BlogServiceImplTest {
         when(blogValidator.validateBlogExists(blogId))
                 .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog not found"));
 
-        assertThatThrownBy(() -> blogService.updateBlog(blogId, request))
+        assertThatThrownBy(() -> blogService.updateBlog(blogId, UUID.randomUUID(), request))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
                         .isEqualTo(HttpStatus.NOT_FOUND));
@@ -296,10 +298,11 @@ class BlogServiceImplTest {
     void deleteBlog_success_TC015() {
         UUID blogId = UUID.randomUUID();
         Blog blog = blog();
+        UUID actorUserId = blog.getAuthor().getUserId();
 
         when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
 
-        blogService.deleteBlog(blogId);
+        blogService.deleteBlog(blogId, actorUserId);
 
         verify(blogRepository).delete(blog);
     }
@@ -311,7 +314,7 @@ class BlogServiceImplTest {
         when(blogValidator.validateBlogExists(blogId))
                 .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog not found"));
 
-        assertThatThrownBy(() -> blogService.deleteBlog(blogId))
+        assertThatThrownBy(() -> blogService.deleteBlog(blogId, UUID.randomUUID()))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
                         .isEqualTo(HttpStatus.NOT_FOUND));
@@ -346,6 +349,7 @@ class BlogServiceImplTest {
     private Blog blog() {
         Blog blog = new Blog();
         blog.setId(UUID.randomUUID());
+        blog.setAuthor(user(UUID.randomUUID()));
         blog.setPageId(UUID.randomUUID());
         blog.setRegionId(UUID.randomUUID());
         blog.setContent("Cafe review content");
