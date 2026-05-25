@@ -60,6 +60,15 @@ class SecurityConfigTest {
     }
 
     @Test
+    void adminUsers_fail_userRoleCannotAccess_TC007() throws Exception {
+        String accessToken = jwtService.createAccessToken(user(), List.of("USER"));
+
+        mockMvc.perform(get("/api/admin/users")
+                        .cookie(new Cookie(JwtAuthenticationFilter.ACCESS_TOKEN_COOKIE, accessToken)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void stripeWebhook_success_noAuthorizationDoesNotReturn401_TC003() throws Exception {
         mockMvc.perform(post("/api/payments/stripe/webhook")
                         .contentType(MediaType.APPLICATION_JSON)

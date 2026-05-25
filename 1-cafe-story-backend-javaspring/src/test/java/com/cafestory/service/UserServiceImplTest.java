@@ -159,7 +159,7 @@ class UserServiceImplTest {
         response.setUserEmail(request.getUserEmail());
         response.setUserPhone(request.getUserPhone());
         response.setUserAvatar(request.getUserAvatar());
-        response.setAccountStatus(request.getAccountStatus());
+        response.setAccountStatus(true);
 
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
         when(userRepository.findByUserName(request.getUserName())).thenReturn(Optional.empty());
@@ -176,7 +176,8 @@ class UserServiceImplTest {
         assertThat(result.getUserEmail()).isEqualTo("updated@example.com");
         assertThat(result.getUserPhone()).isEqualTo(123456789L);
         assertThat(result.getUserAvatar()).isEqualTo("https://example.com/updated.png");
-        assertThat(result.getAccountStatus()).isFalse();
+        assertThat(result.getAccountStatus()).isTrue();
+        assertThat(user.getAccountStatus()).isTrue();
         assertThat(user.getUserPassword()).isEqualTo("encoded-updated-password");
         assertThat(user.getRegion()).isEqualTo(region);
         verify(userRepository).save(user);
