@@ -1,6 +1,5 @@
 package com.cafestory.service.serviceImplement;
 
-import com.cafestory.entity.ExtraFee;
 import com.cafestory.entity.Payment;
 import com.cafestory.service.serviceInterface.StripeCheckoutClient;
 import com.stripe.Stripe;
@@ -33,7 +32,7 @@ public class StripeCheckoutClientImpl implements StripeCheckoutClient {
     }
 
     @Override
-    public StripeCheckoutSession createCheckoutSession(Payment payment, ExtraFee extraFee) {
+    public StripeCheckoutSession createCheckoutSession(Payment payment) {
         validateStripeConfig(payment);
         try {
             Stripe.apiKey = secretKey;
@@ -49,8 +48,8 @@ public class StripeCheckoutClientImpl implements StripeCheckoutClient {
                                     .setCurrency(currency)
                                     .setUnitAmount(payment.getAmount().longValueExact())
                                     .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                            .setName(extraFee.getName())
-                                            .setDescription(extraFee.getDescription())
+                                            .setName(productName(payment))
+                                            .setDescription(productDescription(payment))
                                             .build())
                                     .build())
                             .build())
@@ -93,6 +92,26 @@ public class StripeCheckoutClientImpl implements StripeCheckoutClient {
         if (payment.getCurrency() == null || payment.getCurrency().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stripe payment currency is not configured");
         }
+    }
+
+    private String productName(Payment payment) {
+        if (payment.getExtraFee() != null) {
+            return payment.getExtraFee().getName();
+        }
+        if (payment.getAdFee() != null) {
+            return "CafeStory feed ad package";
+        }
+        return "CafeStory payment";
+    }
+
+    private String productDescription(Payment payment) {
+        if (payment.getExtraFee() != null) {
+            return payment.getExtraFee().getDescription();
+        }
+        if (payment.getAdFee() != null) {
+            return "Feed ad package: 10,000 impressions or 30 days, whichever comes first";
+        }
+        return null;
     }
 
     private void validateUrl(String url, String blankMessage) {

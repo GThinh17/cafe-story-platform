@@ -39,10 +39,13 @@ public class Payment {
     @JoinColumn(name = "buyer_id", nullable = false)
     private User buyer;
 
-    @NotNull
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "extra_fee_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "extra_fee_id")
     private ExtraFee extraFee;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ad_fee_id")
+    private AdFee adFee;
 
     @NotNull
     @Enumerated(EnumType.STRING)

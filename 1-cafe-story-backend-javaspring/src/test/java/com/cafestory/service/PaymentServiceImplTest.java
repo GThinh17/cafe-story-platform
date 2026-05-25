@@ -3,6 +3,7 @@ package com.cafestory.service;
 import com.cafestory.dto.requestDTO.CreatePaymentRequestDTO;
 import com.cafestory.dto.responseDTO.PaymentResponseDTO;
 import com.cafestory.dto.responseDTO.VnpayIpnResponseDTO;
+import com.cafestory.entity.AdFee;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.ExtraFee;
 import com.cafestory.entity.PageMember;
@@ -11,11 +12,13 @@ import com.cafestory.entity.PaymentDetail;
 import com.cafestory.entity.Reviewer;
 import com.cafestory.entity.Role;
 import com.cafestory.entity.User;
+import com.cafestory.entity.enums.AdFeeType;
 import com.cafestory.entity.enums.ExtraFeeType;
 import com.cafestory.entity.enums.PageMemberStatus;
 import com.cafestory.entity.enums.PageStatus;
 import com.cafestory.entity.enums.PaymentMethod;
 import com.cafestory.entity.enums.PaymentStatus;
+import com.cafestory.repository.AdFeeRepository;
 import com.cafestory.repository.CafePageRepository;
 import com.cafestory.repository.ExtraFeeRepository;
 import com.cafestory.repository.PageMemberRepository;
@@ -64,6 +67,7 @@ class PaymentServiceImplTest {
 
     private final UUID buyerId = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private final UUID extraFeeId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    private final UUID adFeeId = UUID.fromString("44444444-4444-4444-4444-444444444444");
     private final UUID paymentId = UUID.fromString("33333333-3333-3333-3333-333333333333");
 
     @Mock
@@ -71,6 +75,9 @@ class PaymentServiceImplTest {
 
     @Mock
     private PaymentDetailRepository paymentDetailRepository;
+
+    @Mock
+    private AdFeeRepository adFeeRepository;
 
     @Mock
     private ExtraFeeRepository extraFeeRepository;
@@ -106,6 +113,7 @@ class PaymentServiceImplTest {
         paymentService = new PaymentServiceImpl(
                 paymentRepository,
                 paymentDetailRepository,
+                adFeeRepository,
                 extraFeeRepository,
                 userRepository,
                 reviewerRepository,
@@ -127,7 +135,7 @@ class PaymentServiceImplTest {
         when(extraFeeRepository.findById(extraFeeId)).thenReturn(Optional.of(extraFee));
         mockPaymentSave();
         mockPaymentDetailSave();
-        when(stripeCheckoutClient.createCheckoutSession(any(Payment.class), any(ExtraFee.class)))
+        when(stripeCheckoutClient.createCheckoutSession(any(Payment.class)))
                 .thenReturn(new StripeCheckoutClient.StripeCheckoutSession("cs_test_123", "https://checkout.stripe.com/test", "{}"));
 
         PaymentResponseDTO result = paymentService.createPayment(buyerId, request(PaymentMethod.STRIPE_CARD));
@@ -165,7 +173,7 @@ class PaymentServiceImplTest {
         when(extraFeeRepository.findById(extraFeeId)).thenReturn(Optional.of(extraFee));
         mockPaymentSave();
         mockPaymentDetailSave();
-        when(vnpayPaymentClient.createPaymentUrl(any(Payment.class), any(ExtraFee.class)))
+        when(vnpayPaymentClient.createPaymentUrl(any(Payment.class)))
                 .thenReturn("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_TxnRef=" + paymentId);
 
         PaymentResponseDTO result = paymentService.createPayment(buyerId, request(PaymentMethod.VNPAY));
@@ -174,6 +182,52 @@ class PaymentServiceImplTest {
         assertThat(result.getPaymentMethod()).isEqualTo(PaymentMethod.VNPAY);
         assertThat(result.getPaymentUrl()).contains("vnp_TxnRef=" + paymentId);
         assertThat(result.getTransferContent()).isEqualTo("CAFE_VNPAY_" + paymentId);
+    }
+
+    @Test
+    void createPayment_success_adFeeUsesAdAmountAndCurrency_TC021() {
+        User buyer = user();
+        AdFee adFee = adFee(true);
+        when(userRepository.findById(buyerId)).thenReturn(Optional.of(buyer));
+        when(adFeeRepository.findById(adFeeId)).thenReturn(Optional.of(adFee));
+        mockPaymentSave();
+        mockPaymentDetailSave();
+
+        PaymentResponseDTO result = paymentService.createPayment(adFeeRequest(PaymentMethod.BANK_TRANSFER));
+
+        assertThat(result.getAdFeeId()).isEqualTo(adFeeId);
+        assertThat(result.getExtraFeeId()).isNull();
+        assertThat(result.getAmount()).isEqualByComparingTo(BigDecimal.valueOf(500000));
+        assertThat(result.getCurrency()).isEqualTo("VND");
+    }
+
+    @Test
+    void createPayment_fail_requiresExactlyOneFee_TC022() {
+        when(userRepository.findById(buyerId)).thenReturn(Optional.of(user()));
+        CreatePaymentRequestDTO noFeeRequest = new CreatePaymentRequestDTO();
+        noFeeRequest.setBuyerId(buyerId);
+        noFeeRequest.setPaymentMethod(PaymentMethod.BANK_TRANSFER);
+
+        assertThatThrownBy(() -> paymentService.createPayment(noFeeRequest))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        CreatePaymentRequestDTO bothFeesRequest = request(PaymentMethod.BANK_TRANSFER);
+        bothFeesRequest.setAdFeeId(adFeeId);
+
+        assertThatThrownBy(() -> paymentService.createPayment(bothFeesRequest))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void createPayment_fail_inactiveAdFee_TC023() {
+        when(userRepository.findById(buyerId)).thenReturn(Optional.of(user()));
+        when(adFeeRepository.findById(adFeeId)).thenReturn(Optional.of(adFee(false)));
+
+        assertThatThrownBy(() -> paymentService.createPayment(adFeeRequest(PaymentMethod.BANK_TRANSFER)))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
     }
 
     @Test
@@ -677,7 +731,7 @@ class PaymentServiceImplTest {
         Payment payment = pendingPayment(PaymentMethod.STRIPE_CARD, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
 
         assertThatThrownBy(() -> new StripeCheckoutClientImpl("", "http://localhost/success", "http://localhost/cancel")
-                .createCheckoutSession(payment, payment.getExtraFee()))
+                .createCheckoutSession(payment))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> {
                     ResponseStatusException ex = (ResponseStatusException) error;
@@ -686,7 +740,7 @@ class PaymentServiceImplTest {
                 });
 
         assertThatThrownBy(() -> new StripeCheckoutClientImpl("not-a-secret", "http://localhost/success", "http://localhost/cancel")
-                .createCheckoutSession(payment, payment.getExtraFee()))
+                .createCheckoutSession(payment))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> {
                     ResponseStatusException ex = (ResponseStatusException) error;
@@ -700,7 +754,7 @@ class PaymentServiceImplTest {
         Payment payment = pendingPayment(PaymentMethod.STRIPE_CARD, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
 
         assertThatThrownBy(() -> new StripeCheckoutClientImpl("sk_test_123", "", "http://localhost/cancel")
-                .createCheckoutSession(payment, payment.getExtraFee()))
+                .createCheckoutSession(payment))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> {
                     ResponseStatusException ex = (ResponseStatusException) error;
@@ -709,7 +763,7 @@ class PaymentServiceImplTest {
                 });
 
         assertThatThrownBy(() -> new StripeCheckoutClientImpl("sk_test_123", "http://localhost/success", "")
-                .createCheckoutSession(payment, payment.getExtraFee()))
+                .createCheckoutSession(payment))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> {
                     ResponseStatusException ex = (ResponseStatusException) error;
@@ -730,7 +784,7 @@ class PaymentServiceImplTest {
             sessionMock.when(() -> Session.create(any(SessionCreateParams.class)))
                     .thenThrow(new ApiException("No such payment method type", "req_123", "invalid_request_error", 400, null));
 
-            assertThatThrownBy(() -> client.createCheckoutSession(payment, payment.getExtraFee()))
+            assertThatThrownBy(() -> client.createCheckoutSession(payment))
                     .isInstanceOf(ResponseStatusException.class)
                     .satisfies(error -> {
                         ResponseStatusException ex = (ResponseStatusException) error;
@@ -743,6 +797,14 @@ class PaymentServiceImplTest {
     private CreatePaymentRequestDTO request(PaymentMethod method) {
         CreatePaymentRequestDTO request = new CreatePaymentRequestDTO();
         request.setExtraFeeId(extraFeeId);
+        request.setPaymentMethod(method);
+        return request;
+    }
+
+    private CreatePaymentRequestDTO adFeeRequest(PaymentMethod method) {
+        CreatePaymentRequestDTO request = new CreatePaymentRequestDTO();
+        request.setBuyerId(buyerId);
+        request.setAdFeeId(adFeeId);
         request.setPaymentMethod(method);
         return request;
     }
@@ -766,6 +828,16 @@ class PaymentServiceImplTest {
         extraFee.setDurationMonths(6);
         extraFee.setStatus(active);
         return extraFee;
+    }
+
+    private AdFee adFee(boolean active) {
+        AdFee adFee = new AdFee();
+        adFee.setAdFeeId(adFeeId);
+        adFee.setFeeType(AdFeeType.FEED_10000_IMPRESSIONS_OR_30_DAYS);
+        adFee.setPrice(BigDecimal.valueOf(500000));
+        adFee.setCurrency("VND");
+        adFee.setStatus(active);
+        return adFee;
     }
 
     private Payment pendingPayment(PaymentMethod method, ExtraFee extraFee) {

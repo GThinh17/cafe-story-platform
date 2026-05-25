@@ -60,6 +60,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentRepository paymentRepository;
     private final PaymentDetailRepository paymentDetailRepository;
+    private final AdFeeRepository adFeeRepository;
     private final ExtraFeeRepository extraFeeRepository;
     private final UserRepository userRepository;
     private final ReviewerRepository reviewerRepository;
@@ -75,6 +76,7 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentServiceImpl(
             PaymentRepository paymentRepository,
             PaymentDetailRepository paymentDetailRepository,
+            AdFeeRepository adFeeRepository,
             ExtraFeeRepository extraFeeRepository,
             UserRepository userRepository,
             ReviewerRepository reviewerRepository,
@@ -88,6 +90,7 @@ public class PaymentServiceImpl implements PaymentService {
             @Value("${stripe.webhook-secret:}") String stripeWebhookSecret) {
         this.paymentRepository = paymentRepository;
         this.paymentDetailRepository = paymentDetailRepository;
+        this.adFeeRepository = adFeeRepository;
         this.extraFeeRepository = extraFeeRepository;
         this.userRepository = userRepository;
         this.reviewerRepository = reviewerRepository;
@@ -106,18 +109,15 @@ public class PaymentServiceImpl implements PaymentService {
     public PaymentResponseDTO createPayment(UUID buyerId, CreatePaymentRequestDTO request) {
         User buyer = userRepository.findById(buyerId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Buyer not found"));
-        ExtraFee extraFee = extraFeeRepository.findById(request.getExtraFeeId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Extra fee not found"));
-        if (!Boolean.TRUE.equals(extraFee.getStatus())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Extra fee is inactive");
-        }
+        ProductPurchase productPurchase = resolveProductPurchase(request);
 
         Payment payment = new Payment();
         payment.setBuyer(buyer);
-        payment.setExtraFee(extraFee);
+        payment.setExtraFee(productPurchase.extraFee());
+        payment.setAdFee(productPurchase.adFee());
         payment.setPaymentMethod(request.getPaymentMethod());
-        payment.setAmount(BigDecimal.valueOf(extraFee.getPrice()));
-        payment.setCurrency("VND");
+        payment.setAmount(productPurchase.amount());
+        payment.setCurrency(productPurchase.currency());
         payment.setPaymentStatus(PaymentStatus.PENDING);
         payment.setExpiredAt(LocalDateTime.now().plusMinutes(30));
         Payment savedPayment = paymentRepository.save(payment);
@@ -125,7 +125,7 @@ public class PaymentServiceImpl implements PaymentService {
         PaymentDetail detail = new PaymentDetail();
         detail.setPayment(savedPayment);
         if (request.getPaymentMethod() == PaymentMethod.STRIPE_CARD) {
-            StripeCheckoutClient.StripeCheckoutSession session = stripeCheckoutClient.createCheckoutSession(savedPayment, extraFee);
+            StripeCheckoutClient.StripeCheckoutSession session = stripeCheckoutClient.createCheckoutSession(savedPayment);
             detail.setProviderName("STRIPE");
             detail.setProviderOrderId(session.sessionId());
             detail.setProviderPaymentUrl(session.paymentUrl());
@@ -135,7 +135,7 @@ public class PaymentServiceImpl implements PaymentService {
             detail.setTransferContent("CAFE_PAYMENT_" + savedPayment.getPaymentId());
             detail.setNote("Manual bank transfer payment. Mark as paid after transfer is verified.");
         } else if (request.getPaymentMethod() == PaymentMethod.VNPAY) {
-            String paymentUrl = vnpayPaymentClient.createPaymentUrl(savedPayment, extraFee);
+            String paymentUrl = vnpayPaymentClient.createPaymentUrl(savedPayment);
             detail.setProviderName("VNPAY");
             detail.setProviderOrderId(savedPayment.getPaymentId().toString());
             detail.setProviderPaymentUrl(paymentUrl);
@@ -308,6 +308,9 @@ public class PaymentServiceImpl implements PaymentService {
 
     private void activatePurchasedProduct(Payment payment) {
         ExtraFee extraFee = payment.getExtraFee();
+        if (extraFee == null) {
+            return;
+        }
         if (extraFee.getFeeType() == ExtraFeeType.REVIEWER_REGISTRATION) {
             activateReviewerSubscription(payment.getBuyer(), extraFee);
         } else if (extraFee.getFeeType() == ExtraFeeType.CAFE_PAGE_OPENING) {
@@ -435,7 +438,8 @@ public class PaymentServiceImpl implements PaymentService {
         PaymentResponseDTO response = new PaymentResponseDTO();
         response.setPaymentId(payment.getPaymentId());
         response.setBuyerId(payment.getBuyer().getUserId());
-        response.setExtraFeeId(payment.getExtraFee().getExtraFeeId());
+        response.setExtraFeeId(payment.getExtraFee() == null ? null : payment.getExtraFee().getExtraFeeId());
+        response.setAdFeeId(payment.getAdFee() == null ? null : payment.getAdFee().getAdFeeId());
         response.setPaymentMethod(payment.getPaymentMethod());
         response.setAmount(payment.getAmount());
         response.setCurrency(payment.getCurrency());
@@ -523,5 +527,8 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     private record StripeWebhookData(String type, String sessionId, String paymentIntentId) {
+    }
+
+    private record ProductPurchase(ExtraFee extraFee, AdFee adFee, BigDecimal amount, String currency) {
     }
 }

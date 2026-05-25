@@ -47,6 +47,7 @@ Enum payment_status {
 Enum payment_method {
   STRIPE_CARD
   BANK_TRANSFER
+  VNPAY
 }
 
 Enum payout_status {
@@ -133,6 +134,18 @@ Enum reviewer_payout_status {
 Enum extra_fee_type {
   REVIEWER_REGISTRATION
   CAFE_PAGE_OPENING
+}
+
+Enum ad_status {
+  DRAFT
+  ACTIVE
+  PAUSED
+  EXPIRED
+  REJECTED
+}
+
+Enum ad_fee_type {
+  FEED_10000_IMPRESSIONS_OR_30_DAYS
 }
 
 Table users {
@@ -561,7 +574,8 @@ Table payment_methods {
 Table payments {
   payment_id uuid [pk]
   buyer_id uuid [not null]
-  extra_fee_id uuid [not null]
+  extra_fee_id uuid
+  ad_fee_id uuid
   payment_method payment_method [not null]
   amount decimal(12, 2) [not null]
   currency varchar(10) [not null, default: "VND"]
@@ -570,6 +584,15 @@ Table payments {
   updated_at datetime
   paid_at datetime
   expired_at datetime
+
+  Indexes {
+    (buyer_id)
+    (extra_fee_id)
+    (ad_fee_id)
+    (payment_status)
+  }
+
+  Note: "Exactly one of extra_fee_id or ad_fee_id must be set. Extra fee payments activate existing products after PAID; ad fee payments only buy the package and campaigns are created separately."
 }
 
 Table payment_details {
@@ -601,6 +624,105 @@ Table extra_fees {
   status boolean [not null, default: true]
   created_at datetime [not null]
   updated_at datetime
+}
+
+Table ad_fees {
+  ad_fee_id uuid [pk]
+  fee_type ad_fee_type [not null, unique]
+  price decimal(12, 2) [not null]
+  currency varchar(10) [not null, default: "VND"]
+  status boolean [not null, default: true]
+  created_at datetime [not null]
+  updated_at datetime
+
+  Note: "price must be greater than 0. MVP supports only FEED_10000_IMPRESSIONS_OR_30_DAYS."
+}
+
+Table ad_campaigns {
+  ad_campaign_id uuid [pk]
+  cafe_page_id uuid [not null]
+  payment_id uuid [unique]
+  title varchar(160) [not null]
+  description text
+  image_url text
+  target_url text
+  status ad_status [not null, default: "DRAFT"]
+  start_at datetime
+  end_at datetime
+  priority int [not null, default: 1]
+  max_impressions int [not null, default: 10000]
+  served_impressions int [not null, default: 0]
+  max_duration_days int [not null, default: 30]
+  created_at datetime [not null]
+  updated_at datetime
+
+  Indexes {
+    (status, start_at, end_at)
+    (cafe_page_id)
+    (payment_id)
+    (status, served_impressions)
+  }
+
+  Note: "Feed ads only; no placement column. max_impressions must equal 10000, max_duration_days must equal 30, served_impressions must be between 0 and max_impressions. ACTIVE campaigns expire when served_impressions >= 10000, now >= start_at + 30 days, or now > end_at."
+}
+
+Table ad_target_regions {
+  ad_target_region_id uuid [pk]
+  ad_campaign_id uuid [not null]
+  province varchar(120)
+  city varchar(120)
+  area varchar(120)
+  ward varchar(120)
+  created_at datetime [not null]
+  updated_at datetime
+
+  Indexes {
+    (ad_campaign_id)
+    (province)
+    (city)
+    (area)
+    (ward)
+  }
+
+  Note: "If a campaign has no target region rows, it is global."
+}
+
+Table ad_impressions {
+  ad_impression_id uuid [pk]
+  ad_campaign_id uuid [not null]
+  user_id uuid
+  shown_at datetime [not null]
+
+  Indexes {
+    (ad_campaign_id, shown_at)
+    (user_id, ad_campaign_id, shown_at)
+  }
+}
+
+Table ad_clicks {
+  ad_click_id uuid [pk]
+  ad_campaign_id uuid [not null]
+  user_id uuid
+  clicked_at datetime [not null]
+
+  Indexes {
+    (ad_campaign_id, clicked_at)
+    (user_id, ad_campaign_id, clicked_at)
+  }
+}
+
+Table ad_daily_stats {
+  ad_daily_stat_id uuid [pk]
+  ad_campaign_id uuid [not null]
+  stat_date date [not null]
+  impressions int [not null, default: 0]
+  clicks int [not null, default: 0]
+  created_at datetime [not null]
+  updated_at datetime
+
+  Indexes {
+    (ad_campaign_id, stat_date) [unique]
+  }
 }
 
 Table payouts {
@@ -684,7 +806,16 @@ Ref: reviewer_payouts.reviewer_id > reviewers.reviewer_id
 
 Ref: payments.buyer_id > users.user_id
 Ref: payments.extra_fee_id > extra_fees.extra_fee_id
+Ref: payments.ad_fee_id > ad_fees.ad_fee_id
 Ref: payment_details.payment_id > payments.payment_id
+Ref: ad_campaigns.cafe_page_id > cafe_pages.id
+Ref: ad_campaigns.payment_id > payments.payment_id
+Ref: ad_target_regions.ad_campaign_id > ad_campaigns.ad_campaign_id
+Ref: ad_impressions.ad_campaign_id > ad_campaigns.ad_campaign_id
+Ref: ad_impressions.user_id > users.user_id
+Ref: ad_clicks.ad_campaign_id > ad_campaigns.ad_campaign_id
+Ref: ad_clicks.user_id > users.user_id
+Ref: ad_daily_stats.ad_campaign_id > ad_campaigns.ad_campaign_id
 Ref: payouts.reviewer_id > reviewers.reviewer_id
 Ref: payouts.payment_method_id > payment_methods.id
 

@@ -72,7 +72,7 @@ class VnpayPaymentClientImplTest {
 
     @Test
     void createPaymentUrl_success_containsRequiredParamsAndSecureHash_TC004() {
-        String result = client.createPaymentUrl(payment(), extraFee());
+        String result = client.createPaymentUrl(payment());
 
         assertThat(result).startsWith("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?");
         assertThat(result).contains("vnp_Amount=29900000");
@@ -89,7 +89,7 @@ class VnpayPaymentClientImplTest {
 
     @Test
     void createPaymentUrl_success_paramsSortedAndHashMatchesUnsignedQuery_TC005() {
-        String result = client.createPaymentUrl(payment(), extraFee());
+        String result = client.createPaymentUrl(payment());
         String query = result.substring(result.indexOf('?') + 1);
         String unsignedQuery = query.substring(0, query.indexOf("&vnp_SecureHash="));
 
@@ -103,7 +103,7 @@ class VnpayPaymentClientImplTest {
 
     @Test
     void createPaymentUrl_success_secureHashDoesNotIncludeUnsupportedIpnUrl_TC008() {
-        String result = client.createPaymentUrl(payment(), extraFee());
+        String result = client.createPaymentUrl(payment());
         String query = result.substring(result.indexOf('?') + 1);
         String unsignedQuery = query.substring(0, query.indexOf("&vnp_SecureHash="));
         String actualHash = query.substring(query.indexOf("&vnp_SecureHash=") + "&vnp_SecureHash=".length());
@@ -137,7 +137,7 @@ class VnpayPaymentClientImplTest {
                 " http://localhost:8080/api/payments/vnpay/return ",
                 " http://localhost:8080/api/payments/vnpay/ipn ");
 
-        String result = trimmedClient.createPaymentUrl(payment(), extraFee());
+        String result = trimmedClient.createPaymentUrl(payment());
 
         assertThat(result).contains("vnp_TmnCode=TESTCODE");
         assertThat(result).doesNotContain("vnp_TmnCode=+TESTCODE+");
