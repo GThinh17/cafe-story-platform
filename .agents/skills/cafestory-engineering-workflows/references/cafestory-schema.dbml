@@ -207,6 +207,9 @@ Table cafe_pages {
   status page_status [not null, default: "DRAFT"]
   like_count int [not null, default: 0]
   follower_count int [not null, default: 0]
+  max_members int [not null, default: 2]
+  page_active boolean [not null, default: false]
+  page_expires_at datetime
   created_at datetime [not null]
   updated_at datetime
   Note: "owner_user_id is the creator/primary owner and must be unique so one user can create only one cafe page. Use page_members for additional owners/staff."
@@ -587,12 +590,14 @@ Table payment_details {
 }
 
 Table extra_fees {
+  Note: "Successful REVIEWER_REGISTRATION payments activate/extend reviewer status. Successful CAFE_PAGE_OPENING payments activate the buyer's cafe page package, creating a draft cafe page and OWNER page_members row only when missing; payment request does not carry cafe page name/address."
   extra_fee_id uuid [pk]
   name varchar(255) [not null]
   description text
   fee_type extra_fee_type [not null]
   price bigint [not null]
   duration_months int
+  max_members int
   status boolean [not null, default: true]
   created_at datetime [not null]
   updated_at datetime

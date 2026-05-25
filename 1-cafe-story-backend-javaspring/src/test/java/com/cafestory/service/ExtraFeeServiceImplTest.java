@@ -49,6 +49,7 @@ class ExtraFeeServiceImplTest {
         assertThat(result.getFeeType()).isEqualTo(ExtraFeeType.REVIEWER_REGISTRATION);
         assertThat(result.getPrice()).isEqualTo(99000);
         assertThat(result.getDurationMonths()).isEqualTo(1);
+        assertThat(result.getMaxMembers()).isNull();
         assertThat(result.getStatus()).isFalse();
         verify(extraFeeRepository).save(any(ExtraFee.class));
     }
@@ -117,6 +118,105 @@ class ExtraFeeServiceImplTest {
     }
 
     @Test
+    void createExtraFee_success_cafePageOpeningDefaultsMaxMembers_TC007() {
+        ExtraFeeRequestDTO request = request();
+        request.setFeeType(ExtraFeeType.CAFE_PAGE_OPENING);
+        request.setMaxMembers(null);
+        mockSave();
+
+        ExtraFeeResponseDTO result = extraFeeService.createExtraFee(request);
+
+        assertThat(result.getMaxMembers()).isEqualTo(2);
+    }
+
+    @Test
+    void createExtraFee_success_cafePageOpeningUsesRequestedMaxMembers_TC008() {
+        ExtraFeeRequestDTO request = request();
+        request.setFeeType(ExtraFeeType.CAFE_PAGE_OPENING);
+        request.setMaxMembers(5);
+        mockSave();
+
+        ExtraFeeResponseDTO result = extraFeeService.createExtraFee(request);
+
+        assertThat(result.getMaxMembers()).isEqualTo(5);
+    }
+
+    @Test
+    void createExtraFee_success_reviewerMaxMembersStaysNull_TC009() {
+        ExtraFeeRequestDTO request = request();
+        request.setFeeType(ExtraFeeType.REVIEWER_REGISTRATION);
+        request.setMaxMembers(null);
+        mockSave();
+
+        ExtraFeeResponseDTO result = extraFeeService.createExtraFee(request);
+
+        assertThat(result.getMaxMembers()).isNull();
+    }
+
+    @Test
+    void createExtraFee_fail_maxMembersLessThanOne_TC010() {
+        ExtraFeeRequestDTO request = request();
+        request.setFeeType(ExtraFeeType.CAFE_PAGE_OPENING);
+        request.setMaxMembers(0);
+
+        assertThatThrownBy(() -> extraFeeService.createExtraFee(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void updateExtraFee_success_cafePageOpeningDefaultsMaxMembersWhenNull_TC011() {
+        UUID extraFeeId = UUID.randomUUID();
+        ExtraFee extraFee = extraFee(extraFeeId);
+        ExtraFeeRequestDTO request = request();
+        request.setFeeType(ExtraFeeType.CAFE_PAGE_OPENING);
+        request.setMaxMembers(null);
+        when(extraFeeRepository.findById(extraFeeId)).thenReturn(Optional.of(extraFee));
+        mockSave();
+
+        ExtraFeeResponseDTO result = extraFeeService.updateExtraFee(extraFeeId, request);
+
+        assertThat(result.getMaxMembers()).isEqualTo(2);
+    }
+
+    @Test
+    void updateExtraFee_success_usesRequestedMaxMembers_TC012() {
+        UUID extraFeeId = UUID.randomUUID();
+        ExtraFee extraFee = extraFee(extraFeeId);
+        ExtraFeeRequestDTO request = request();
+        request.setFeeType(ExtraFeeType.CAFE_PAGE_OPENING);
+        request.setMaxMembers(7);
+        when(extraFeeRepository.findById(extraFeeId)).thenReturn(Optional.of(extraFee));
+        mockSave();
+
+        ExtraFeeResponseDTO result = extraFeeService.updateExtraFee(extraFeeId, request);
+
+        assertThat(result.getMaxMembers()).isEqualTo(7);
+    }
+
+    @Test
+    void deleteExtraFee_success_TC013() {
+        UUID extraFeeId = UUID.randomUUID();
+        when(extraFeeRepository.existsById(extraFeeId)).thenReturn(true);
+
+        extraFeeService.deleteExtraFee(extraFeeId);
+
+        verify(extraFeeRepository).deleteById(extraFeeId);
+    }
+
+    @Test
+    void deleteExtraFee_fail_notFound_TC014() {
+        UUID extraFeeId = UUID.randomUUID();
+        when(extraFeeRepository.existsById(extraFeeId)).thenReturn(false);
+
+        assertThatThrownBy(() -> extraFeeService.deleteExtraFee(extraFeeId))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.NOT_FOUND));
+    }
+
+    @Test
     void getAllExtraFees_success_TC006() {
         ExtraFee extraFee = extraFee(UUID.randomUUID());
         when(extraFeeRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(extraFee));
@@ -142,6 +242,7 @@ class ExtraFeeServiceImplTest {
         request.setFeeType(ExtraFeeType.REVIEWER_REGISTRATION);
         request.setPrice(99000L);
         request.setDurationMonths(1);
+        request.setMaxMembers(null);
         request.setStatus(false);
         return request;
     }
@@ -154,6 +255,7 @@ class ExtraFeeServiceImplTest {
         extraFee.setFeeType(ExtraFeeType.REVIEWER_REGISTRATION);
         extraFee.setPrice(99000);
         extraFee.setDurationMonths(1);
+        extraFee.setMaxMembers(null);
         extraFee.setStatus(true);
         extraFee.setCreatedAt(LocalDateTime.of(2026, 5, 1, 10, 0));
         extraFee.setUpdatedAt(LocalDateTime.of(2026, 5, 1, 10, 0));

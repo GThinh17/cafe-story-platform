@@ -3,6 +3,7 @@ package com.cafestory.service.serviceImplement;
 import com.cafestory.dto.requestDTO.ExtraFeeRequestDTO;
 import com.cafestory.dto.responseDTO.ExtraFeeResponseDTO;
 import com.cafestory.entity.ExtraFee;
+import com.cafestory.entity.enums.ExtraFeeType;
 import com.cafestory.repository.ExtraFeeRepository;
 import com.cafestory.service.serviceInterface.ExtraFeeService;
 import org.springframework.http.HttpStatus;
@@ -15,6 +16,8 @@ import java.util.UUID;
 
 @Service
 public class ExtraFeeServiceImpl implements ExtraFeeService {
+
+    private static final int DEFAULT_CAFE_PAGE_MAX_MEMBERS = 2;
 
     private final ExtraFeeRepository extraFeeRepository;
 
@@ -51,12 +54,36 @@ public class ExtraFeeServiceImpl implements ExtraFeeService {
                 .toList();
     }
 
+    @Override
+    @Transactional
+    public void deleteExtraFee(UUID extraFeeId) {
+        if (!extraFeeRepository.existsById(extraFeeId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Extra fee not found");
+        }
+        extraFeeRepository.deleteById(extraFeeId);
+    }
+
     private void applyRequest(ExtraFee extraFee, ExtraFeeRequestDTO request) {
+        validateMaxMembers(request.getMaxMembers());
         extraFee.setName(request.getName());
         extraFee.setDescription(request.getDescription());
         extraFee.setFeeType(request.getFeeType());
         extraFee.setPrice(request.getPrice());
         extraFee.setDurationMonths(request.getDurationMonths());
+        extraFee.setMaxMembers(resolveMaxMembers(request.getFeeType(), request.getMaxMembers()));
+    }
+
+    private void validateMaxMembers(Integer maxMembers) {
+        if (maxMembers != null && maxMembers < 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Max members must be greater than or equal to 1");
+        }
+    }
+
+    private Integer resolveMaxMembers(ExtraFeeType feeType, Integer maxMembers) {
+        if (feeType == ExtraFeeType.CAFE_PAGE_OPENING) {
+            return maxMembers == null ? DEFAULT_CAFE_PAGE_MAX_MEMBERS : maxMembers;
+        }
+        return maxMembers;
     }
 
     private ExtraFeeResponseDTO toResponse(ExtraFee extraFee) {
@@ -67,6 +94,7 @@ public class ExtraFeeServiceImpl implements ExtraFeeService {
         response.setFeeType(extraFee.getFeeType());
         response.setPrice(extraFee.getPrice());
         response.setDurationMonths(extraFee.getDurationMonths());
+        response.setMaxMembers(extraFee.getMaxMembers());
         response.setStatus(extraFee.getStatus());
         response.setCreatedAt(extraFee.getCreatedAt());
         response.setUpdatedAt(extraFee.getUpdatedAt());

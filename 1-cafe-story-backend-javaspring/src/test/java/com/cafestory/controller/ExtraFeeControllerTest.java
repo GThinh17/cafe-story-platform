@@ -23,6 +23,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -85,6 +86,43 @@ class ExtraFeeControllerTest {
     }
 
     @Test
+    void deleteExtraFee_success_TC006() throws Exception {
+        UUID extraFeeId = UUID.randomUUID();
+
+        mockMvc.perform(delete("/api/extra-fees/{extraFeeId}", extraFeeId))
+                .andExpect(status().isNoContent());
+
+        verify(extraFeeService).deleteExtraFee(extraFeeId);
+    }
+
+    @Test
+    void deleteExtraFee_fail_notFound_TC007() throws Exception {
+        UUID extraFeeId = UUID.randomUUID();
+        org.mockito.Mockito.doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "Extra fee not found"))
+                .when(extraFeeService).deleteExtraFee(extraFeeId);
+
+        mockMvc.perform(delete("/api/extra-fees/{extraFeeId}", extraFeeId))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void createExtraFee_success_cafePageOpeningResponseHasMaxMembers_TC008() throws Exception {
+        ExtraFeeRequestDTO request = request();
+        request.setFeeType(ExtraFeeType.CAFE_PAGE_OPENING);
+        request.setMaxMembers(null);
+        ExtraFeeResponseDTO response = response();
+        response.setFeeType(ExtraFeeType.CAFE_PAGE_OPENING);
+        response.setMaxMembers(2);
+        when(extraFeeService.createExtraFee(request)).thenReturn(response);
+
+        mockMvc.perform(post("/api/extra-fees")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.data.maxMembers").value(2));
+    }
+
+    @Test
     void createExtraFee_fail_invalidRequestBody_TC004() throws Exception {
         mockMvc.perform(post("/api/extra-fees")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -112,6 +150,7 @@ class ExtraFeeControllerTest {
         request.setFeeType(ExtraFeeType.REVIEWER_REGISTRATION);
         request.setPrice(99000L);
         request.setDurationMonths(1);
+        request.setMaxMembers(null);
         request.setStatus(true);
         return request;
     }
@@ -124,6 +163,7 @@ class ExtraFeeControllerTest {
         response.setFeeType(ExtraFeeType.REVIEWER_REGISTRATION);
         response.setPrice(99000L);
         response.setDurationMonths(1);
+        response.setMaxMembers(null);
         response.setStatus(true);
         return response;
     }

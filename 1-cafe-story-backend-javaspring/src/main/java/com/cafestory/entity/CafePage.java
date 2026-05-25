@@ -71,6 +71,17 @@ public class CafePage {
     @Column(name = "follower_count", nullable = false, columnDefinition = "integer default 0")
     private Integer followerCount = 0;
 
+    @NotNull
+    @Column(name = "max_members", nullable = false, columnDefinition = "integer default 2")
+    private Integer maxMembers = 2;
+
+    @NotNull
+    @Column(name = "page_active", nullable = false, columnDefinition = "boolean default false")
+    private Boolean pageActive = false;
+
+    @Column(name = "page_expires_at")
+    private LocalDateTime pageExpiresAt;
+
     @OneToMany(mappedBy = "cafePage")
     private List<PageMember> members = new ArrayList<>();
 
@@ -93,6 +104,12 @@ public class CafePage {
         }
         if (followerCount == null) {
             followerCount = 0;
+        }
+        if (maxMembers == null) {
+            maxMembers = 2;
+        }
+        if (pageActive == null) {
+            pageActive = false;
         }
     }
 
