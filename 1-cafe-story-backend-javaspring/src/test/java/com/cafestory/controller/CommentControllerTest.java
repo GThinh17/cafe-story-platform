@@ -135,25 +135,27 @@ class CommentControllerTest {
 
     @Test
     void updateComment_success_TC009() {
+        UUID userId = UUID.randomUUID();
         UUID commentId = UUID.randomUUID();
         CommentUpdateDTO request = updateCommentRequest();
         CommentResponseDTO response = commentResponse();
 
-        when(commentService.updateComment(commentId, request)).thenReturn(response);
+        when(commentService.updateComment(commentId, userId, request)).thenReturn(response);
 
-        CommentResponseDTO result = commentController.updateComment(commentId, request);
+        CommentResponseDTO result = commentController.updateComment(commentId, request, principal(userId));
 
         assertThat(result).isEqualTo(response);
-        verify(commentService).updateComment(commentId, request);
+        verify(commentService).updateComment(commentId, userId, request);
     }
 
     @Test
     void deleteComment_success_TC010() {
+        UUID userId = UUID.randomUUID();
         UUID commentId = UUID.randomUUID();
 
-        commentController.deleteComment(commentId);
+        commentController.deleteComment(commentId, principal(userId));
 
-        verify(commentService).deleteComment(commentId);
+        verify(commentService).deleteComment(commentId, userId);
     }
 
     private CommentCreateDTO createCommentRequest() {

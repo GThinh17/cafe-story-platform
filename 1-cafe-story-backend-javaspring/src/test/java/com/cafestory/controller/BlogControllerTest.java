@@ -96,25 +96,27 @@ class BlogControllerTest {
 
     @Test
     void updateBlog_success_TC006() {
+        UUID userId = UUID.randomUUID();
         UUID blogId = UUID.randomUUID();
         BlogUpdateDTO request = updateBlogRequest();
         BlogResponseDTO response = blogResponse();
 
-        when(blogService.updateBlog(blogId, request)).thenReturn(response);
+        when(blogService.updateBlog(blogId, userId, request)).thenReturn(response);
 
-        BlogResponseDTO result = blogController.updateBlog(blogId, request);
+        BlogResponseDTO result = blogController.updateBlog(blogId, request, principal(userId));
 
         assertThat(result).isEqualTo(response);
-        verify(blogService).updateBlog(blogId, request);
+        verify(blogService).updateBlog(blogId, userId, request);
     }
 
     @Test
     void deleteBlog_success_TC007() {
+        UUID userId = UUID.randomUUID();
         UUID blogId = UUID.randomUUID();
 
-        blogController.deleteBlog(blogId);
+        blogController.deleteBlog(blogId, principal(userId));
 
-        verify(blogService).deleteBlog(blogId);
+        verify(blogService).deleteBlog(blogId, userId);
     }
 
     private BlogCreateDTO createBlogRequest() {

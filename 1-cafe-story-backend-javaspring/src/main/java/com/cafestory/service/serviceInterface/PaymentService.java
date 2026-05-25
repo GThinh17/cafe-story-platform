@@ -12,13 +12,13 @@ import java.util.UUID;
 
 public interface PaymentService {
 
-    PaymentResponseDTO createPayment(CreatePaymentRequestDTO request);
+    PaymentResponseDTO createPayment(UUID buyerId, CreatePaymentRequestDTO request);
 
-    PaymentResponseDTO getPayment(UUID paymentId);
+    PaymentResponseDTO getPayment(UUID requesterUserId, UUID paymentId);
 
-    List<PaymentResponseDTO> getAllPayments(PaymentStatus paymentStatus);
+    List<PaymentResponseDTO> getAllPayments(UUID requesterUserId, PaymentStatus paymentStatus);
 
-    PaymentResponseDTO markBankTransferPaid(UUID paymentId);
+    PaymentResponseDTO markBankTransferPaid(UUID requesterUserId, UUID paymentId);
 
     void handleStripeWebhook(String payload, String signatureHeader);
 

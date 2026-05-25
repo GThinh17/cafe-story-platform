@@ -130,7 +130,7 @@ class PaymentServiceImplTest {
         when(stripeCheckoutClient.createCheckoutSession(any(Payment.class), any(ExtraFee.class)))
                 .thenReturn(new StripeCheckoutClient.StripeCheckoutSession("cs_test_123", "https://checkout.stripe.com/test", "{}"));
 
-        PaymentResponseDTO result = paymentService.createPayment(request(PaymentMethod.STRIPE_CARD));
+        PaymentResponseDTO result = paymentService.createPayment(buyerId, request(PaymentMethod.STRIPE_CARD));
 
         assertThat(result.getPaymentId()).isEqualTo(paymentId);
         assertThat(result.getPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
@@ -149,7 +149,7 @@ class PaymentServiceImplTest {
         mockPaymentSave();
         mockPaymentDetailSave();
 
-        PaymentResponseDTO result = paymentService.createPayment(request(PaymentMethod.BANK_TRANSFER));
+        PaymentResponseDTO result = paymentService.createPayment(buyerId, request(PaymentMethod.BANK_TRANSFER));
 
         assertThat(result.getPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
         assertThat(result.getPaymentMethod()).isEqualTo(PaymentMethod.BANK_TRANSFER);
@@ -168,7 +168,7 @@ class PaymentServiceImplTest {
         when(vnpayPaymentClient.createPaymentUrl(any(Payment.class), any(ExtraFee.class)))
                 .thenReturn("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_TxnRef=" + paymentId);
 
-        PaymentResponseDTO result = paymentService.createPayment(request(PaymentMethod.VNPAY));
+        PaymentResponseDTO result = paymentService.createPayment(buyerId, request(PaymentMethod.VNPAY));
 
         assertThat(result.getPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
         assertThat(result.getPaymentMethod()).isEqualTo(PaymentMethod.VNPAY);
@@ -180,7 +180,7 @@ class PaymentServiceImplTest {
     void createPayment_fail_buyerNotFound_TC003() {
         when(userRepository.findById(buyerId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> paymentService.createPayment(request(PaymentMethod.STRIPE_CARD)))
+        assertThatThrownBy(() -> paymentService.createPayment(buyerId, request(PaymentMethod.STRIPE_CARD)))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
     }
@@ -190,13 +190,13 @@ class PaymentServiceImplTest {
         when(userRepository.findById(buyerId)).thenReturn(Optional.of(user()));
         when(extraFeeRepository.findById(extraFeeId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> paymentService.createPayment(request(PaymentMethod.STRIPE_CARD)))
+        assertThatThrownBy(() -> paymentService.createPayment(buyerId, request(PaymentMethod.STRIPE_CARD)))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
 
         when(extraFeeRepository.findById(extraFeeId)).thenReturn(Optional.of(extraFee(false, ExtraFeeType.REVIEWER_REGISTRATION)));
 
-        assertThatThrownBy(() -> paymentService.createPayment(request(PaymentMethod.STRIPE_CARD)))
+        assertThatThrownBy(() -> paymentService.createPayment(buyerId, request(PaymentMethod.STRIPE_CARD)))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
     }
@@ -206,11 +206,12 @@ class PaymentServiceImplTest {
         Payment firstPayment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING));
         Payment secondPayment = pendingPayment(PaymentMethod.BANK_TRANSFER, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
         secondPayment.setPaymentId(UUID.fromString("44444444-4444-4444-4444-444444444444"));
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "ADMIN")).thenReturn(true);
         when(paymentRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(firstPayment, secondPayment));
         when(paymentDetailRepository.findByPaymentPaymentId(firstPayment.getPaymentId())).thenReturn(Optional.of(paymentDetail(firstPayment)));
         when(paymentDetailRepository.findByPaymentPaymentId(secondPayment.getPaymentId())).thenReturn(Optional.empty());
 
-        List<PaymentResponseDTO> result = paymentService.getAllPayments(null);
+        List<PaymentResponseDTO> result = paymentService.getAllPayments(buyerId, null);
 
         assertThat(result).hasSize(2);
         assertThat(result.get(0).getPaymentId()).isEqualTo(firstPayment.getPaymentId());
@@ -222,10 +223,11 @@ class PaymentServiceImplTest {
     @Test
     void getAllPayments_success_withStatusFilter_TC032() {
         Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING));
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "ADMIN")).thenReturn(true);
         when(paymentRepository.findByPaymentStatusOrderByCreatedAtDesc(PaymentStatus.PENDING)).thenReturn(List.of(payment));
         when(paymentDetailRepository.findByPaymentPaymentId(payment.getPaymentId())).thenReturn(Optional.empty());
 
-        List<PaymentResponseDTO> result = paymentService.getAllPayments(PaymentStatus.PENDING);
+        List<PaymentResponseDTO> result = paymentService.getAllPayments(buyerId, PaymentStatus.PENDING);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
@@ -315,10 +317,11 @@ class PaymentServiceImplTest {
         mockPaymentSave();
         when(reviewerRepository.findByUserUserId(buyerId)).thenReturn(Optional.empty());
         mockReviewerSave();
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "ADMIN")).thenReturn(true);
         when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "REVIEWER")).thenReturn(false);
         when(roleRepository.findByName("REVIEWER")).thenReturn(Optional.of(role("REVIEWER")));
 
-        PaymentResponseDTO result = paymentService.markBankTransferPaid(paymentId);
+        PaymentResponseDTO result = paymentService.markBankTransferPaid(buyerId, paymentId);
 
         assertThat(result.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
         assertThat(result.getPaidAt()).isNotNull();
@@ -338,10 +341,11 @@ class PaymentServiceImplTest {
         mockCafePageSave();
         when(pageMemberRepository.findByCafePageIdAndUserUserId(any(UUID.class), any(UUID.class))).thenReturn(Optional.empty());
         mockPageMemberSave();
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "ADMIN")).thenReturn(true);
         when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "CAFE_PAGE")).thenReturn(false);
         when(roleRepository.findByName("CAFE_PAGE")).thenReturn(Optional.of(role("CAFE_PAGE")));
 
-        PaymentResponseDTO result = paymentService.markBankTransferPaid(paymentId);
+        PaymentResponseDTO result = paymentService.markBankTransferPaid(buyerId, paymentId);
 
         assertThat(result.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
         verify(cafePageRepository).save(org.mockito.ArgumentMatchers.argThat(page ->
@@ -355,10 +359,11 @@ class PaymentServiceImplTest {
         Payment payment = pendingPayment(PaymentMethod.BANK_TRANSFER, extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING));
         payment.setPaymentStatus(PaymentStatus.PAID);
         PaymentDetail detail = paymentDetail(payment);
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "ADMIN")).thenReturn(true);
         when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
         when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.of(detail));
 
-        PaymentResponseDTO result = paymentService.markBankTransferPaid(paymentId);
+        PaymentResponseDTO result = paymentService.markBankTransferPaid(buyerId, paymentId);
 
         assertThat(result.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
         verify(cafePageRepository, never()).save(any());
@@ -737,7 +742,6 @@ class PaymentServiceImplTest {
 
     private CreatePaymentRequestDTO request(PaymentMethod method) {
         CreatePaymentRequestDTO request = new CreatePaymentRequestDTO();
-        request.setBuyerId(buyerId);
         request.setExtraFeeId(extraFeeId);
         request.setPaymentMethod(method);
         return request;

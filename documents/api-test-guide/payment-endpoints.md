@@ -2,7 +2,7 @@
 
 ## Overview
 
-The payment module lets a user purchase an active extra fee package. A payment is created for a buyer and an extra fee, then processed through one of the supported payment methods.
+The payment module lets an authenticated user purchase an active extra fee package. The buyer is resolved from the JWT cookie principal, then the payment is processed through one of the supported payment methods.
 
 Supported flows:
 
@@ -68,11 +68,10 @@ Error responses use the same wrapper with `status` set to `Fail` and `data` set 
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `buyerId` | UUID | Yes | ID of the user purchasing the extra fee package. |
 | `extraFeeId` | UUID | Yes | ID of the extra fee package being purchased. The extra fee must exist and be active. |
 | `paymentMethod` | `PaymentMethod` | Yes | Payment method. Supported values: `STRIPE_CARD`, `BANK_TRANSFER`, `VNPAY`. |
 
-For `CAFE_PAGE_OPENING`, do not send cafe page `name`, `address`, or other page fields in this request.
+Do not send `buyerId` in this request. The backend uses the authenticated principal from the HttpOnly `access_token` cookie. For `CAFE_PAGE_OPENING`, do not send cafe page `name`, `address`, or other page fields in this request.
 
 ### PaymentResponseDTO
 
@@ -134,11 +133,12 @@ Creates a payment for an active extra fee package.
 POST /api/payments
 ```
 
+Authentication is required. The buyer is the current authenticated user.
+
 #### Request Body
 
 ```json
 {
-  "buyerId": "11111111-1111-1111-1111-111111111111",
   "extraFeeId": "22222222-2222-2222-2222-222222222222",
   "paymentMethod": "STRIPE_CARD"
 }
@@ -148,7 +148,7 @@ POST /api/payments
 
 The service:
 
-- loads the buyer by `buyerId`;
+- loads the buyer from the authenticated principal;
 - loads the extra fee by `extraFeeId`;
 - rejects inactive extra fees;
 - creates a `payments` row with:
@@ -265,6 +265,8 @@ Gets a payment by ID.
 GET /api/payments/{paymentId}
 ```
 
+Requires authentication. The requester must be the payment buyer or an `ADMIN`.
+
 #### Path Parameters
 
 | Parameter | Type | Required | Description |
@@ -316,6 +318,8 @@ GET /api/payments
 GET /api/payments?paymentStatus=PENDING
 ```
 
+Requires authenticated `ADMIN` role.
+
 #### Query Parameters
 
 | Parameter | Type | Required | Description |
@@ -333,6 +337,8 @@ Marks a bank transfer payment as paid after manual verification.
 ```text
 POST /api/payments/{paymentId}/bank-transfer/mark-paid
 ```
+
+Requires authenticated `ADMIN` role.
 
 #### Path Parameters
 

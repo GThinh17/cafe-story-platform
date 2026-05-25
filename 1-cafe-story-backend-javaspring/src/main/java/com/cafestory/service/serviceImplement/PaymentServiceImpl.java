@@ -54,6 +54,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     private static final String REVIEWER_ROLE = "REVIEWER";
     private static final String CAFE_PAGE_ROLE = "CAFE_PAGE";
+    private static final String ADMIN_ROLE = "ADMIN";
     private static final String DEFAULT_CAFE_PAGE_ADDRESS = "Pending update";
     private static final int DEFAULT_CAFE_PAGE_MAX_MEMBERS = 2;
 
@@ -102,8 +103,8 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public PaymentResponseDTO createPayment(CreatePaymentRequestDTO request) {
-        User buyer = userRepository.findById(request.getBuyerId())
+    public PaymentResponseDTO createPayment(UUID buyerId, CreatePaymentRequestDTO request) {
+        User buyer = userRepository.findById(buyerId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Buyer not found"));
         ExtraFee extraFee = extraFeeRepository.findById(request.getExtraFeeId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Extra fee not found"));
@@ -150,14 +151,16 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional(readOnly = true)
-    public PaymentResponseDTO getPayment(UUID paymentId) {
+    public PaymentResponseDTO getPayment(UUID requesterUserId, UUID paymentId) {
         Payment payment = validatePaymentExists(paymentId);
+        validatePaymentAccess(requesterUserId, payment);
         return toResponse(payment, paymentDetailRepository.findByPaymentPaymentId(paymentId).orElse(null));
     }
 
     @Override
     @Transactional(readOnly = true)
-    public List<PaymentResponseDTO> getAllPayments(PaymentStatus paymentStatus) {
+    public List<PaymentResponseDTO> getAllPayments(UUID requesterUserId, PaymentStatus paymentStatus) {
+        validateAdmin(requesterUserId);
         List<Payment> payments = paymentStatus == null
                 ? paymentRepository.findAllByOrderByCreatedAtDesc()
                 : paymentRepository.findByPaymentStatusOrderByCreatedAtDesc(paymentStatus);
@@ -170,7 +173,8 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
-    public PaymentResponseDTO markBankTransferPaid(UUID paymentId) {
+    public PaymentResponseDTO markBankTransferPaid(UUID requesterUserId, UUID paymentId) {
+        validateAdmin(requesterUserId);
         Payment payment = validatePaymentExists(paymentId);
         if (payment.getPaymentMethod() != PaymentMethod.BANK_TRANSFER) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payment is not a bank transfer");
@@ -260,6 +264,21 @@ public class PaymentServiceImpl implements PaymentService {
     private Payment validatePaymentExists(UUID paymentId) {
         return paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
+    }
+
+    private void validatePaymentAccess(UUID requesterUserId, Payment payment) {
+        UUID buyerId = payment.getBuyer() == null ? null : payment.getBuyer().getUserId();
+        if (requesterUserId != null && requesterUserId.equals(buyerId)) {
+            return;
+        }
+        validateAdmin(requesterUserId);
+    }
+
+    private void validateAdmin(UUID requesterUserId) {
+        if (requesterUserId == null
+                || !userRoleAssignmentRepository.existsByUserUserIdAndRoleName(requesterUserId, ADMIN_ROLE)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admin role is required");
+        }
     }
 
     private void markPaymentPaid(Payment payment, String providerTransactionId) {

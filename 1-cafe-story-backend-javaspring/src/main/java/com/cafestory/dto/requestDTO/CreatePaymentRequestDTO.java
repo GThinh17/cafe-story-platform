@@ -9,9 +9,6 @@ import java.util.UUID;
 @Data
 public class CreatePaymentRequestDTO {
 
-    @NotNull(message = "Buyer id is mandatory")
-    private UUID buyerId;
-
     @NotNull(message = "Extra fee id is mandatory")
     private UUID extraFeeId;
 

@@ -20,7 +20,7 @@ public interface CommentService {
 
     CommentResponseDTO getCommentById(UUID commentId);
 
-    CommentResponseDTO updateComment(UUID commentId, CommentUpdateDTO commentUpdateDTO);
+    CommentResponseDTO updateComment(UUID commentId, UUID actorUserId, CommentUpdateDTO commentUpdateDTO);
 
-    void deleteComment(UUID commentId);
+    void deleteComment(UUID commentId, UUID actorUserId);
 }

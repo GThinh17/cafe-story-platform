@@ -21,6 +21,7 @@ Generated from the current Spring Boot controllers, security config, DTOs, and s
 - [Page Follows](#page-follows)
 - [Page Likes](#page-likes)
 - [Page Members](#page-members)
+- [Payments](#payments)
 - [Reviewers](#reviewers)
 - [Users](#users)
 - [User Follows](#user-follows)
@@ -34,9 +35,9 @@ Generated from the current Spring Boot controllers, security config, DTOs, and s
 - OpenAPI JSON: `http://localhost:8080/v3/api-docs`
 - Database: PostgreSQL / Supabase PostgreSQL. ID fields are UUID strings.
 - Auth model: JWT in HttpOnly cookies, not `Authorization: Bearer <token>`.
-- Public REST endpoints: `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/refresh`, Swagger/OpenAPI, and `OPTIONS /**`.
+- Public REST endpoints: `POST /api/auth/register`, `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/payments/stripe/webhook`, `GET /api/payments/vnpay/return`, `GET /api/payments/vnpay/ipn`, Swagger/OpenAPI, and `OPTIONS /**`.
 - Authenticated REST endpoints: all other REST APIs require the `access_token` cookie.
-- Admin REST endpoints: `/api/admin/**`, `/api/reviewers/payouts/**`, `/api/reviewers/badges/**`, `/api/reviewers/*/payouts`, `/api/reviewers/*/badges` require role `ADMIN`.
+- Admin REST endpoints: `/api/admin/**`, `/api/reviewers/payouts/**`, `/api/reviewers/badges/**`, `/api/reviewers/*/payouts`, `/api/reviewers/*/badges` require role `ADMIN`. Payment list and manual bank-transfer approval are also ADMIN-only at service level.
 
 Headers for JSON requests:
 
@@ -111,6 +112,7 @@ Fields removed from client responsibility:
 | `followerUserId` | Follow/unfollow user | JWT principal |
 | `requesterId` | Reviewer stats/payout/badge requester | JWT principal |
 | `createdBy` / `created_by` | Admin blog ranking override | JWT principal |
+| `buyerId` | Create payment | JWT principal |
 
 If `userId` remains in a path such as `/api/users/{userId}` or `/api/comments/users/{userId}`, it is a target/filter ID, not the authenticated actor.
 
@@ -442,6 +444,110 @@ Update status body:
 ```
 
 Notes: request-to-join has no body. `actorUserId` is taken from JWT principal. Path/body `userId` is the target member.
+
+## Payments
+
+Payment APIs use the authenticated user from the `access_token` cookie. Do not send `buyerId` in create-payment request bodies.
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| `POST` | `/api/payments` | Cookie | Create payment for current user. |
+| `GET` | `/api/payments/{paymentId}` | Cookie | Get payment detail. Buyer or ADMIN only. |
+| `GET` | `/api/payments?paymentStatus=PENDING` | ADMIN cookie | Get all payments, optionally filtered by status. |
+| `POST` | `/api/payments/{paymentId}/bank-transfer/mark-paid` | ADMIN cookie | Manually mark a bank-transfer payment as paid. |
+| `POST` | `/api/payments/stripe/webhook` | Public provider callback | Stripe webhook endpoint. |
+| `GET` | `/api/payments/vnpay/return` | Public provider callback | VNPAY browser return endpoint. |
+| `GET` | `/api/payments/vnpay/ipn` | Public provider callback | VNPAY server IPN endpoint. |
+
+Create payment body:
+
+```json
+{
+  "extraFeeId": "{{extra_fee_id}}",
+  "paymentMethod": "VNPAY"
+}
+```
+
+Supported `paymentMethod` values:
+
+```text
+STRIPE_CARD
+BANK_TRANSFER
+VNPAY
+```
+
+Create payment response example:
+
+```json
+{
+  "statusCode": 200,
+  "status": "Success",
+  "message": "Request processed successfully",
+  "data": {
+    "paymentId": "{{payment_id}}",
+    "buyerId": "{{current_user_id}}",
+    "extraFeeId": "{{extra_fee_id}}",
+    "paymentMethod": "VNPAY",
+    "amount": 299000,
+    "currency": "VND",
+    "paymentStatus": "PENDING",
+    "paymentUrl": "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?...",
+    "qrCodeUrl": null,
+    "transferContent": "CAFE_VNPAY_{{payment_id}}",
+    "createdAt": "2026-05-25T10:00:00",
+    "paidAt": null,
+    "expiredAt": "2026-05-25T10:30:00"
+  }
+}
+```
+
+Bank-transfer create body:
+
+```json
+{
+  "extraFeeId": "{{extra_fee_id}}",
+  "paymentMethod": "BANK_TRANSFER"
+}
+```
+
+Bank-transfer response includes `transferContent` like:
+
+```text
+CAFE_PAYMENT_{{payment_id}}
+```
+
+Manual mark-paid request:
+
+```text
+POST /api/payments/{{payment_id}}/bank-transfer/mark-paid
+```
+
+Body: none.
+
+Required role: `ADMIN`.
+
+Common payment test flow:
+
+1. Login with `POST /api/auth/login`.
+2. Confirm Postman Cookie Jar has `access_token`.
+3. Create payment with `POST /api/payments`; do not include `buyerId`.
+4. Save `data.paymentId`.
+5. For `BANK_TRANSFER`, login as ADMIN and call `POST /api/payments/{{payment_id}}/bank-transfer/mark-paid`.
+6. For `VNPAY`, open `data.paymentUrl` in browser and let VNPAY call return/IPN.
+7. For `STRIPE_CARD`, open `data.paymentUrl`; Stripe confirms through `/api/payments/stripe/webhook`.
+
+Error notes:
+
+| HTTP Status | Condition | Message |
+| --- | --- | --- |
+| `400` | Missing `extraFeeId` or `paymentMethod` | DTO validation message. |
+| `400` | Extra fee inactive | `Extra fee is inactive` |
+| `400` | Manual mark-paid on non-bank-transfer payment | `Payment is not a bank transfer` |
+| `403` | Non-admin calls payment list or manual mark-paid | `Admin role is required` |
+| `403` | Non-buyer, non-admin reads a payment | `Admin role is required` |
+| `404` | Payment not found | `Payment not found` |
+| `404` | Extra fee not found | `Extra fee not found` |
+| `404` | Authenticated buyer not found | `Buyer not found` |
 
 ## Reviewers
 
