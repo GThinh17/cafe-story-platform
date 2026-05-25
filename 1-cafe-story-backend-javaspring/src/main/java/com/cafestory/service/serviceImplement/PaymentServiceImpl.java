@@ -4,6 +4,7 @@ import com.cafestory.dto.requestDTO.CreatePaymentRequestDTO;
 import com.cafestory.dto.responseDTO.PaymentResponseDTO;
 import com.cafestory.dto.responseDTO.VnpayIpnResponseDTO;
 import com.cafestory.dto.responseDTO.VnpayReturnResponseDTO;
+import com.cafestory.entity.AdFee;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.ExtraFee;
 import com.cafestory.entity.PageMember;
@@ -19,6 +20,7 @@ import com.cafestory.entity.enums.PageMemberStatus;
 import com.cafestory.entity.enums.PageStatus;
 import com.cafestory.entity.enums.PaymentMethod;
 import com.cafestory.entity.enums.PaymentStatus;
+import com.cafestory.repository.AdFeeRepository;
 import com.cafestory.repository.CafePageRepository;
 import com.cafestory.repository.ExtraFeeRepository;
 import com.cafestory.repository.PageMemberRepository;
@@ -125,7 +127,8 @@ public class PaymentServiceImpl implements PaymentService {
         PaymentDetail detail = new PaymentDetail();
         detail.setPayment(savedPayment);
         if (request.getPaymentMethod() == PaymentMethod.STRIPE_CARD) {
-            StripeCheckoutClient.StripeCheckoutSession session = stripeCheckoutClient.createCheckoutSession(savedPayment);
+            StripeCheckoutClient.StripeCheckoutSession session = stripeCheckoutClient
+                    .createCheckoutSession(savedPayment);
             detail.setProviderName("STRIPE");
             detail.setProviderOrderId(session.sessionId());
             detail.setProviderPaymentUrl(session.paymentUrl());
@@ -295,6 +298,31 @@ public class PaymentServiceImpl implements PaymentService {
             });
         }
         activatePurchasedProduct(payment);
+    }
+
+    private ProductPurchase resolveProductPurchase(CreatePaymentRequestDTO request) {
+        boolean hasExtraFee = request.getExtraFeeId() != null;
+        boolean hasAdFee = request.getAdFeeId() != null;
+        if (hasExtraFee == hasAdFee) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Exactly one of extraFeeId or adFeeId is required");
+        }
+        if (hasExtraFee) {
+            ExtraFee extraFee = extraFeeRepository.findById(request.getExtraFeeId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Extra fee not found"));
+            if (!Boolean.TRUE.equals(extraFee.getStatus())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Extra fee is inactive");
+            }
+            return new ProductPurchase(extraFee, null, BigDecimal.valueOf(extraFee.getPrice()), "VND");
+        }
+
+        AdFee adFee = adFeeRepository.findById(request.getAdFeeId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ad fee not found"));
+        if (!Boolean.TRUE.equals(adFee.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Ad fee is inactive");
+        }
+        String currency = adFee.getCurrency() == null || adFee.getCurrency().isBlank() ? "VND" : adFee.getCurrency();
+        return new ProductPurchase(null, adFee, adFee.getPrice(), currency);
     }
 
     private void markPaymentFailed(Payment payment, Map<String, String> params) {
@@ -483,7 +511,8 @@ public class PaymentServiceImpl implements PaymentService {
             return false;
         }
         try {
-            BigDecimal callbackAmount = new BigDecimal(vnpAmount).divide(BigDecimal.valueOf(100), 2, RoundingMode.UNNECESSARY);
+            BigDecimal callbackAmount = new BigDecimal(vnpAmount).divide(BigDecimal.valueOf(100), 2,
+                    RoundingMode.UNNECESSARY);
             return payment.getAmount().compareTo(callbackAmount) == 0;
         } catch (ArithmeticException | NumberFormatException ex) {
             return false;
