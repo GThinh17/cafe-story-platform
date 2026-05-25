@@ -1,0 +1,4 @@
+interface:
+  display_name: "CafeStory Mock Data"
+  short_description: "Keep fake UI data in src/mocks."
+  default_prompt: "Use CafeStory mock data conventions for this web change."
