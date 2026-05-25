@@ -24,5 +24,8 @@ public class ExtraFeeRequestDTO {
     @Min(value = 1, message = "Duration months must be greater than or equal to 1")
     private Integer durationMonths;
 
+    @Min(value = 1, message = "Max members must be greater than or equal to 1")
+    private Integer maxMembers;
+
     private Boolean status;
 }

@@ -145,7 +145,8 @@ public class CafePageServiceImpl implements CafePageService {
 
     @Override
     @Transactional
-    public CafePageResponseDTO updateCafePage(UUID cafePageId, CafePageUpdateDTO cafePageUpdateDTO) {
+    public CafePageResponseDTO updateCafePage(UUID cafePageId, UUID actorUserId, CafePageUpdateDTO cafePageUpdateDTO) {
+        cafePageValidator.validateUserCanManagePage(cafePageId, actorUserId);
         CafePage cafePage = cafePageValidator.validateCafePageExists(cafePageId);
 
         if (cafePageUpdateDTO.getRegionId() != null) {
@@ -177,7 +178,8 @@ public class CafePageServiceImpl implements CafePageService {
 
     @Override
     @Transactional
-    public void deleteCafePage(UUID cafePageId) {
+    public void deleteCafePage(UUID cafePageId, UUID actorUserId) {
+        cafePageValidator.validateUserCanManagePage(cafePageId, actorUserId);
         CafePage cafePage = cafePageValidator.validateCafePageExists(cafePageId);
         cafePageRepository.delete(cafePage);
     }

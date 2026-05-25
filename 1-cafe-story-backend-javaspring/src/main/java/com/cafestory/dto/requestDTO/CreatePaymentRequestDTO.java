@@ -15,6 +15,8 @@ public class CreatePaymentRequestDTO {
     @NotNull(message = "Extra fee id is mandatory")
     private UUID extraFeeId;
 
+    private UUID adFeeId;
+
     @NotNull(message = "Payment method is mandatory")
     private PaymentMethod paymentMethod;
 }

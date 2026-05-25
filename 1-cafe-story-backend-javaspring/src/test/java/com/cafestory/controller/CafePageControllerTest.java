@@ -96,25 +96,27 @@ class CafePageControllerTest {
 
     @Test
     void updateCafePage_success_TC006() {
+        UUID userId = UUID.randomUUID();
         UUID cafePageId = UUID.randomUUID();
         CafePageUpdateDTO request = new CafePageUpdateDTO();
         CafePageResponseDTO response = response();
 
-        when(cafePageService.updateCafePage(cafePageId, request)).thenReturn(response);
+        when(cafePageService.updateCafePage(cafePageId, userId, request)).thenReturn(response);
 
-        CafePageResponseDTO result = cafePageController.updateCafePage(cafePageId, request);
+        CafePageResponseDTO result = cafePageController.updateCafePage(cafePageId, request, principal(userId));
 
         assertThat(result).isEqualTo(response);
-        verify(cafePageService).updateCafePage(cafePageId, request);
+        verify(cafePageService).updateCafePage(cafePageId, userId, request);
     }
 
     @Test
     void deleteCafePage_success_TC007() {
+        UUID userId = UUID.randomUUID();
         UUID cafePageId = UUID.randomUUID();
 
-        cafePageController.deleteCafePage(cafePageId);
+        cafePageController.deleteCafePage(cafePageId, principal(userId));
 
-        verify(cafePageService).deleteCafePage(cafePageId);
+        verify(cafePageService).deleteCafePage(cafePageId, userId);
     }
 
     private CafePageCreateDTO createRequest() {
