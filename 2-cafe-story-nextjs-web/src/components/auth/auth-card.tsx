@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { ApiError } from "@/lib/api/client";
 import { login, register } from "@/lib/api/auth";
@@ -88,12 +88,45 @@ function getFields(mode: AuthMode) {
   return sharedFields;
 }
 
+function getSafeNextPath(nextPath: string | null) {
+  if (!nextPath || !nextPath.startsWith("/") || nextPath.startsWith("//")) {
+    return "/";
+  }
+
+  return nextPath;
+}
+
+function buildSwitchHref(
+  baseHref: string,
+  nextPath: string,
+  reason: string | null,
+) {
+  const params = new URLSearchParams();
+
+  if (reason) {
+    params.set("reason", reason);
+  }
+
+  if (nextPath !== "/") {
+    params.set("next", nextPath);
+  }
+
+  const query = params.toString();
+
+  return query ? `${baseHref}?${query}` : baseHref;
+}
+
 export function AuthCard({ mode }: AuthCardProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const copy = authCopy[mode];
   const fields = getFields(mode);
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const reason = searchParams.get("reason");
+  const nextPath = getSafeNextPath(searchParams.get("next"));
+  const switchHref = buildSwitchHref(copy.switchHref, nextPath, reason);
+  const shouldShowAuthNotice = reason === "auth_required";
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -124,10 +157,9 @@ export function AuthCard({ mode }: AuthCardProps) {
         });
       }
 
-      router.push("/");
+      router.push(nextPath);
       router.refresh();
     } catch (error) {
-      console.log(error);
       setErrorMessage(
         error instanceof ApiError
           ? error.message
@@ -151,6 +183,12 @@ export function AuthCard({ mode }: AuthCardProps) {
           {copy.description}
         </p>
       </div>
+
+      {shouldShowAuthNotice ? (
+        <p className="mt-6 rounded border border-primary/20 bg-primary/10 px-4 py-3 text-sm font-bold leading-6 text-primary-strong">
+          Please sign in to continue.
+        </p>
+      ) : null}
 
       <form className="mt-10 space-y-6" onSubmit={handleSubmit}>
         <div className="space-y-6">
@@ -237,7 +275,7 @@ export function AuthCard({ mode }: AuthCardProps) {
 
       <div className="mt-16 flex items-center justify-center gap-1 text-center text-base text-coffee-muted">
         <span>{copy.switchPrompt}</span>
-        <Link className="font-black text-espresso no-underline" href={copy.switchHref}>
+        <Link className="font-black text-espresso no-underline" href={switchHref}>
           {copy.switchLabel}
         </Link>
       </div>
