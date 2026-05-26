@@ -1,5 +1,6 @@
 import type {
   CafeReviewPost,
+  BlogDetailReview,
   ProfileReview,
   ReviewComposerModel,
   ReviewDraftHint,
@@ -192,5 +193,58 @@ export const mockReviewerProfileReviews: ProfileReview[] = [
     image: "/images/reviewers/julianne/diary-latte.jpg",
     rating: "4.8",
     caption: "Balanced milk texture and a bright espresso finish.",
+  },
+];
+
+export const mockBlogDetailReviews: BlogDetailReview[] = [
+  {
+    id: "velvet-brew-oak-roast",
+    cafe: "Velvet & Brew",
+    reviewerName: "Elena Thorne",
+    reviewerAvatar: "/images/reviewers/julianne/portrait.jpg",
+    date: "October 12, 2026",
+    rating: "4.5",
+    ratingMax: "5.0",
+    images: [
+      {
+        id: "espresso-machine",
+        src: "/images/cafes/velvet-roast/espresso-machine.jpg",
+        alt: "Warm espresso machine inside a quiet boutique cafe",
+      },
+      {
+        id: "reading-table",
+        src: "/images/cafes/velvet-roast/reading-table.jpg",
+        alt: "Coffee and book on a calm cafe table",
+      },
+      {
+        id: "cozy-corner",
+        src: "/images/cafes/velvet-roast/cozy-corner.jpg",
+        alt: "Cozy cafe corner with low evening light",
+      },
+    ],
+    paragraphs: [
+      "The atmosphere at Velvet & Brew is perfectly curated for anyone who likes industrial details without losing the warmth of a neighborhood cafe. I spent three slow hours here with their Signature Oak Roast and never felt rushed.",
+      "The acidity was balanced, with dark chocolate and a small stone-fruit finish. The baristas were careful without being performative, and the room stayed calm enough for notes, edits, and a second cup.",
+    ],
+    tags: ["Free WiFi", "Quiet Zone", "Artisanal Pastries"],
+    likes: "1.2k",
+    commentsCount: "42",
+    viewerAvatar: "/images/reviewers/julianne/portrait.jpg",
+    comments: [
+      {
+        id: "comment-1",
+        author: "Gia Thinh",
+        avatar: "/images/reviewers/julianne/diary-latte.jpg",
+        body: "The light in this place looks perfect for a morning review.",
+        time: "12 min",
+      },
+      {
+        id: "comment-2",
+        author: "Mina Tran",
+        avatar: "/images/cafes/velvet-roast/latte-art.jpg",
+        body: "Saving this for a quiet work session.",
+        time: "28 min",
+      },
+    ],
   },
 ];
