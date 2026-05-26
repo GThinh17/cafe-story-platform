@@ -1,6 +1,7 @@
 package com.cafestory.dto.requestDTO;
 
 import com.cafestory.entity.enums.PaymentMethod;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -9,14 +10,17 @@ import java.util.UUID;
 @Data
 public class CreatePaymentRequestDTO {
 
-    @NotNull(message = "Buyer id is mandatory")
     private UUID buyerId;
 
-    @NotNull(message = "Extra fee id is mandatory")
     private UUID extraFeeId;
 
     private UUID adFeeId;
 
     @NotNull(message = "Payment method is mandatory")
     private PaymentMethod paymentMethod;
+
+    @AssertTrue(message = "Exactly one of extraFeeId or adFeeId is required")
+    public boolean isExactlyOneFeeSelected() {
+        return (extraFeeId == null) != (adFeeId == null);
+    }
 }
