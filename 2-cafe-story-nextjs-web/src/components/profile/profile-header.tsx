@@ -1,7 +1,9 @@
+import { AvatarImage } from "@/components/ui/avatar-image";
 import type { ProfileHighlight, UserProfile } from "@/types/user";
 
 type ProfileHeaderProps = {
   highlights: ProfileHighlight[];
+  isLoading?: boolean;
   profile: UserProfile;
 };
 
@@ -11,16 +13,19 @@ const statLabels: Record<keyof UserProfile["stats"], string> = {
   followers: "followers",
 };
 
-export function ProfileHeader({ highlights, profile }: ProfileHeaderProps) {
+export function ProfileHeader({
+  highlights,
+  isLoading = false,
+  profile,
+}: ProfileHeaderProps) {
   return (
     <section className="w-full overflow-hidden border-b border-border pb-8">
       <div className="flex items-start gap-7 sm:gap-12">
         <div className="h-24 w-24 shrink-0 overflow-hidden rounded-full bg-gradient-to-tr from-rating via-accent to-primary p-[3px] sm:h-36 sm:w-36">
           <div className="h-full w-full overflow-hidden rounded-full border-4 border-background bg-surface-muted">
-            <img
+            <AvatarImage
               alt={`${profile.displayName} avatar`}
               className="aspect-square h-full w-full max-w-none rounded-full object-cover"
-              decoding="async"
               height="136"
               src={profile.avatarImage}
               width="136"
@@ -31,7 +36,7 @@ export function ProfileHeader({ highlights, profile }: ProfileHeaderProps) {
         <div className="min-w-0 flex-1 space-y-5">
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="truncate text-xl font-normal text-foreground">
-              {profile.username}
+              {isLoading ? "Loading..." : profile.username}
             </h1>
             <button
               className="h-9 rounded-md bg-surface-muted px-4 text-sm font-black transition hover:bg-border"
@@ -61,6 +66,9 @@ export function ProfileHeader({ highlights, profile }: ProfileHeaderProps) {
 
           <div className="min-w-0 space-y-1 text-sm leading-6">
             <p className="font-black">{profile.displayName}</p>
+            {profile.email ? (
+              <p className="text-muted">{profile.email}</p>
+            ) : null}
             <p className="max-w-full break-words">{profile.bio}</p>
             <p className="text-muted">{profile.location}</p>
             <a
@@ -82,10 +90,9 @@ export function ProfileHeader({ highlights, profile }: ProfileHeaderProps) {
           >
             <span className="h-16 w-16 overflow-hidden rounded-full border border-border bg-surface p-1 sm:h-20 sm:w-20">
               <span className="block h-full w-full overflow-hidden rounded-full bg-surface-muted">
-                <img
+                <AvatarImage
                   alt=""
                   className="aspect-square h-full w-full max-w-none rounded-full object-cover"
-                  decoding="async"
                   height="72"
                   loading="lazy"
                   src={highlight.image}

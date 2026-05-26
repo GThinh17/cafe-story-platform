@@ -4,6 +4,7 @@ export type UserProfile = {
   avatarInitials: string;
   avatarImage: string;
   bio: string;
+  email?: string;
   location: string;
   website: string;
   stats: {

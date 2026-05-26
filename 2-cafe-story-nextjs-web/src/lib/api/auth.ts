@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api/client";
 import { apiEndpoints } from "@/lib/api/endpoints";
+import { clearStoredAuthTokens } from "@/lib/auth";
 import type { AuthResponse, LoginRequest, RegisterRequest } from "@/types/auth";
 
 export function login(request: LoginRequest) {
@@ -25,5 +26,5 @@ export function getMe() {
 export function logout() {
   return apiFetch<void>(apiEndpoints.auth.logout, {
     method: "POST",
-  });
+  }).finally(clearStoredAuthTokens);
 }

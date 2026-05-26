@@ -1,3 +1,4 @@
+import { HomeAccountPanel } from "@/components/feed/home-account-panel";
 import { MessageDock } from "@/components/message/message-dock";
 import { PostCard } from "@/components/feed/post-card";
 import { StoryRail } from "@/components/feed/story-rail";
@@ -21,22 +22,7 @@ export default function Home() {
 
         <aside className="sticky top-8 hidden h-fit w-full xl:block">
           <section className="space-y-7">
-            <div className="flex items-center gap-3">
-              <span className="grid h-12 w-12 place-items-center rounded-full bg-surface-muted text-sm font-bold text-primary-strong">
-                GT
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-bold">
-                  gthinh_1704
-                </span>
-                <span className="block truncate text-sm text-muted">
-                  Gia Thinh
-                </span>
-              </span>
-              <a className="text-xs font-bold text-primary" href="#">
-                Switch
-              </a>
-            </div>
+            <HomeAccountPanel />
 
             <TopCafesNearby cafes={mockTopCafes} />
 
