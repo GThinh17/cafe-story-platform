@@ -1,3 +1,23 @@
+import {
+  HeartIcon,
+  MessageCircleIcon,
+  SendIcon,
+  BookmarkIcon,
+} from "lucide-react";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import type { FeedPost } from "@/types/feed";
 
 export type { FeedPost };
@@ -6,27 +26,43 @@ type PostCardProps = {
   post: FeedPost;
 };
 
-const postActions = ["Like", "Comment", "Share"];
+const postActions = [
+  {
+    label: "Like",
+    icon: HeartIcon,
+  },
+  {
+    label: "Comment",
+    icon: MessageCircleIcon,
+  },
+  {
+    label: "Share",
+    icon: SendIcon,
+  },
+];
 
 export function PostCard({ post }: PostCardProps) {
   return (
-    <article className="overflow-hidden rounded-md border border-border bg-surface shadow-sm [contain-intrinsic-size:900px] [content-visibility:auto]">
-      <div className="flex items-center justify-between px-4 py-4">
+    <Card className="mx-auto w-[85%] max-w-full overflow-hidden [contain-intrinsic-size:765px] [content-visibility:auto]">
+      <CardHeader className="flex flex-row items-center justify-between gap-4 px-4 py-4">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-surface-muted text-sm font-bold text-primary-strong">
-            {post.cafe.slice(0, 2).toUpperCase()}
-          </div>
+          <Avatar className="size-11">
+            <AvatarImage alt={`${post.author} avatar`} src={post.authorAvatar} />
+            <AvatarFallback className="font-bold text-primary-strong">
+              {post.author.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
           <div className="min-w-0">
-            <h2 className="truncate text-base font-bold">{post.cafe}</h2>
-            <p className="truncate text-xs font-medium text-muted">
+            <CardTitle className="truncate text-base font-bold">{post.cafe}</CardTitle>
+            <CardDescription className="truncate text-xs font-medium">
               {post.location} - {post.time}
-            </p>
+            </CardDescription>
           </div>
         </div>
-        <div className="rounded-md bg-[#fff4d6] px-2.5 py-1 text-sm font-bold text-rating">
+        <Badge className="text-sm font-bold" variant="rating">
           {post.rating}
-        </div>
-      </div>
+        </Badge>
+      </CardHeader>
 
       <img
         alt={`${post.cafe} cafe interior`}
@@ -36,25 +72,30 @@ export function PostCard({ post }: PostCardProps) {
         src={post.image}
       />
 
-      <div className="space-y-4 px-4 py-4">
+      <CardContent className="flex flex-col gap-4 px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex gap-2">
-            {postActions.map((action) => (
-              <button
-                className="rounded-md border border-border px-3 py-2 text-xs font-bold text-foreground transition hover:border-primary hover:text-primary"
-                key={action}
+            {postActions.map(({ icon: Icon, label }) => (
+              <Button
+                className="text-muted hover:bg-transparent data-[state=active]:bg-transparent"
+                aria-label={label}
+                key={label}
+                size="icon"
                 type="button"
+                variant="ghost"
               >
-                {action}
-              </button>
+                <Icon />
+              </Button>
             ))}
           </div>
-          <button
-            className="rounded-md px-3 py-2 text-xs font-bold text-muted transition hover:bg-surface-muted"
+          <Button
+            className="text-muted hover:bg-transparent data-[state=active]:bg-transparent"
+            size="sm"
             type="button"
+            variant="ghost"
           >
-            Save
-          </button>
+            <BookmarkIcon className="size-4" strokeWidth={2.5} />
+          </Button>
         </div>
 
         <p className="text-sm font-semibold">
@@ -65,15 +106,12 @@ export function PostCard({ post }: PostCardProps) {
         </p>
         <div className="flex flex-wrap gap-2">
           {post.tags.map((tag) => (
-            <span
-              className="rounded-md bg-surface-muted px-2.5 py-1 text-xs font-bold text-primary-strong"
-              key={tag}
-            >
+            <Badge className="font-bold" key={tag} variant="secondary">
               {tag}
-            </span>
+            </Badge>
           ))}
         </div>
-      </div>
-    </article>
+      </CardContent>
+    </Card>
   );
 }

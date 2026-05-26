@@ -1,4 +1,11 @@
 import type { ProfileHighlight, UserProfile } from "@/types/user";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
+import { MoreHorizontal } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type ProfileHeaderProps = {
   highlights: ProfileHighlight[];
@@ -13,19 +20,16 @@ const statLabels: Record<keyof UserProfile["stats"], string> = {
 
 export function ProfileHeader({ highlights, profile }: ProfileHeaderProps) {
   return (
-    <section className="w-full overflow-hidden border-b border-border pb-8">
+    <section className="w-full overflow-hidden border-border pb-6">
       <div className="flex items-start gap-7 sm:gap-12">
-        <div className="h-24 w-24 shrink-0 overflow-hidden rounded-full bg-gradient-to-tr from-rating via-accent to-primary p-[3px] sm:h-36 sm:w-36">
-          <div className="h-full w-full overflow-hidden rounded-full border-4 border-background bg-surface-muted">
-            <img
+        <div className="size-24 shrink-0 overflow-hidden rounded-full bg-gradient-to-tr from-rating via-accent to-primary p-[3px] sm:size-36">
+          <Avatar className="size-full border-4 border-background">
+            <AvatarImage
               alt={`${profile.displayName} avatar`}
-              className="aspect-square h-full w-full max-w-none rounded-full object-cover"
-              decoding="async"
-              height="136"
               src={profile.avatarImage}
-              width="136"
             />
-          </div>
+            <AvatarFallback>{profile.displayName.slice(0, 1)}</AvatarFallback>
+          </Avatar>
         </div>
 
         <div className="min-w-0 flex-1 space-y-5">
@@ -33,19 +37,16 @@ export function ProfileHeader({ highlights, profile }: ProfileHeaderProps) {
             <h1 className="truncate text-xl font-normal text-foreground">
               {profile.username}
             </h1>
-            <button
-              className="h-9 rounded-md bg-surface-muted px-4 text-sm font-black transition hover:bg-border"
-              type="button"
-            >
-              Edit profile
-            </button>
-            <button
+            
+            <Button
               aria-label="Profile settings"
-              className="grid h-9 w-9 place-items-center rounded-md bg-surface-muted text-lg font-black transition hover:bg-border"
+              className="bg-transparent text-lg font-black hover:cursor-pointer hover:bg-transparent focus:ring-0"
+              size="icon-sm"
               type="button"
+              variant="ghost"
             >
-              ...
-            </button>
+              <MoreHorizontal />
+            </Button>
           </div>
 
           <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm">
@@ -73,25 +74,21 @@ export function ProfileHeader({ highlights, profile }: ProfileHeaderProps) {
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-4 justify-items-center gap-4 sm:flex sm:justify-start sm:gap-8">
+      <div className="mt-6 grid grid-cols-4 justify-items-center gap-4 sm:flex sm:justify-start sm:gap-8">
         {highlights.map((highlight) => (
           <button
             className="grid w-20 justify-items-center gap-2 text-xs font-black"
             key={highlight.id}
             type="button"
           >
-            <span className="h-16 w-16 overflow-hidden rounded-full border border-border bg-surface p-1 sm:h-20 sm:w-20">
-              <span className="block h-full w-full overflow-hidden rounded-full bg-surface-muted">
-                <img
+            <span className="size-16 overflow-hidden rounded-full border border-border bg-surface p-1 sm:size-20">
+              <Avatar className="size-full">
+                <AvatarImage
                   alt=""
-                  className="aspect-square h-full w-full max-w-none rounded-full object-cover"
-                  decoding="async"
-                  height="72"
-                  loading="lazy"
                   src={highlight.image}
-                  width="72"
                 />
-              </span>
+                <AvatarFallback>{highlight.label.slice(0, 1)}</AvatarFallback>
+              </Avatar>
             </span>
             <span className="block w-20 truncate text-center">{highlight.label}</span>
           </button>

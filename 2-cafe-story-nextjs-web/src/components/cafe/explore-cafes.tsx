@@ -1,4 +1,9 @@
 import type { CafeEditorialCollection, CafeSummary } from "@/types/cafe";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 
 type ExploreCafesProps = {
   cafes: CafeSummary[];
@@ -62,7 +67,7 @@ function ExploreIcon({ name }: { name: ExploreIconName }) {
 
 function TrendingCafeCard({ cafe }: { cafe: CafeSummary }) {
   return (
-    <article className="group min-w-0">
+    <Card className="group min-w-0 border-0 bg-transparent shadow-none">
       <a className="block no-underline" href={`/cafes/${cafe.id}`}>
         <div className="relative mb-4 aspect-[4/5] overflow-hidden rounded-md bg-surface-muted">
           <img
@@ -72,24 +77,26 @@ function TrendingCafeCard({ cafe }: { cafe: CafeSummary }) {
             loading="lazy"
             src={cafe.image}
           />
-          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-sm bg-surface/95 px-2 py-1 text-xs font-black text-espresso shadow-sm">
+          <Badge className="absolute right-3 top-3 gap-1 rounded-sm bg-surface/95 px-2 py-1 text-xs font-black text-espresso shadow-sm" variant="outline">
             <ExploreIcon name="star" />
             {cafe.rating}
-          </span>
+          </Badge>
         </div>
 
-        <h3 className="font-serif text-2xl font-medium text-espresso transition group-hover:text-primary">
+        <CardTitle className="font-serif text-2xl font-medium text-espresso transition group-hover:text-primary">
           {cafe.name}
-        </h3>
+        </CardTitle>
       </a>
-      <p className="mt-2 min-h-12 text-sm italic leading-6 text-coffee-muted">
+      <CardContent className="p-0">
+        <p className="mt-2 min-h-12 text-sm italic leading-6 text-coffee-muted">
         "{cafe.description}"
-      </p>
-      <p className="mt-3 flex items-center gap-1 text-xs font-black uppercase tracking-[0.12em] text-muted">
+        </p>
+        <p className="mt-3 flex items-center gap-1 text-xs font-black uppercase tracking-[0.12em] text-muted">
         <ExploreIcon name="pin" />
         {cafe.location}
-      </p>
-    </article>
+        </p>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -99,7 +106,7 @@ function EditorialCollectionCard({
   collection: CafeEditorialCollection;
 }) {
   return (
-    <article className="group relative min-h-[270px] overflow-hidden rounded-md bg-espresso text-white">
+    <Card className="group relative min-h-[270px] overflow-hidden border-0 bg-espresso text-white">
       <img
         alt={collection.alt}
         className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
@@ -108,21 +115,22 @@ function EditorialCollectionCard({
         src={collection.image}
       />
       <div className="absolute inset-0 bg-gradient-to-t from-espresso/90 via-espresso/45 to-espresso/10" />
-      <div className="relative flex h-full min-h-[270px] flex-col justify-end p-8">
+      <CardContent className="relative flex h-full min-h-[270px] flex-col justify-end p-8">
         <p className="text-xs font-black uppercase tracking-[0.16em] text-white/85">
           {collection.eyebrow}
         </p>
         <h3 className="mt-2 max-w-sm font-serif text-4xl font-semibold leading-tight">
           {collection.title}
         </h3>
-        <a
+        <Button
+          asChild
           className="mt-8 inline-flex h-11 w-fit items-center justify-center border border-white px-6 text-xs font-black uppercase tracking-[0.14em] text-white no-underline transition hover:bg-white hover:text-espresso"
-          href="/explore"
+          variant="outline"
         >
-          {collection.ctaLabel}
-        </a>
-      </div>
-    </article>
+          <a href="/explore">{collection.ctaLabel}</a>
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -138,7 +146,7 @@ export function ExploreCafes({ cafes, collections }: ExploreCafesProps) {
             <span className="absolute left-5 top-1/2 -translate-y-1/2 text-muted">
               <ExploreIcon name="search" />
             </span>
-            <input
+            <Input
               className="h-16 w-full rounded-md border border-transparent bg-surface-muted pl-14 pr-5 text-base font-medium outline-none transition placeholder:italic placeholder:text-muted focus:border-primary focus:bg-surface"
               placeholder="Find your next story..."
               type="search"
@@ -149,7 +157,7 @@ export function ExploreCafes({ cafes, collections }: ExploreCafesProps) {
         <section className="space-y-14">
           <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {exploreFilters.map((filter, index) => (
-              <button
+              <Button
                 className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-full border px-5 text-xs font-black uppercase tracking-[0.14em] transition ${
                   index === 0
                     ? "border-espresso bg-espresso text-white"
@@ -157,10 +165,11 @@ export function ExploreCafes({ cafes, collections }: ExploreCafesProps) {
                 }`}
                 key={filter.label}
                 type="button"
+                variant={index === 0 ? "default" : "outline"}
               >
                 <ExploreIcon name={filter.icon} />
                 {filter.label}
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -199,7 +208,8 @@ export function ExploreCafes({ cafes, collections }: ExploreCafesProps) {
           </div>
         </section>
 
-        <footer className="border-t border-line-soft py-14 text-center">
+        <footer className="py-14 text-center">
+          <Separator className="mb-14" />
           <img
             alt=""
             className="mx-auto h-10 w-10 opacity-50"

@@ -1,4 +1,17 @@
 import type { FormEventHandler } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import type { ReviewComposerModel, ReviewDraftHint } from "@/types/review";
 
 type CreatePostFormProps = {
@@ -15,29 +28,27 @@ export function CreatePostForm({
   onSubmit,
 }: CreatePostFormProps) {
   return (
-    <form
-      className="overflow-hidden rounded-md border border-border bg-surface shadow-sm"
-      onSubmit={onSubmit}
-    >
-      <header className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
+    <Card asChild>
+      <form className="overflow-hidden" onSubmit={onSubmit}>
+      <CardHeader className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
         <div className="min-w-0">
           <p className="text-xs font-black uppercase tracking-[0.12em] text-primary">
             Reviewer
           </p>
-          <h1 className="mt-2 text-2xl font-black text-foreground">
+          <CardTitle className="mt-2 text-2xl font-black text-foreground">
             {composer.title}
-          </h1>
-          <p className="mt-1 max-w-[440px] text-sm leading-6 text-muted">
+          </CardTitle>
+          <CardDescription className="mt-1 max-w-[440px] text-sm leading-6">
             {composer.subtitle}
-          </p>
+          </CardDescription>
         </div>
-        <span className="shrink-0 rounded-md bg-surface-muted px-3 py-2 text-xs font-black text-primary-strong">
+        <Badge className="shrink-0 px-3 py-2 text-xs font-black" variant="secondary">
           Draft
-        </span>
-      </header>
+        </Badge>
+      </CardHeader>
 
-      <section className="space-y-6 p-6">
-        <div className="overflow-hidden rounded-md border border-border bg-background">
+      <CardContent className="space-y-6 p-6">
+        <Card className="overflow-hidden bg-background shadow-none">
           <img
             alt={`${composer.selectedCafe} cafe preview`}
             className="aspect-[16/10] w-full object-cover"
@@ -51,131 +62,128 @@ export function CreatePostForm({
               </p>
               <p className="text-xs text-muted">{composer.location}</p>
             </div>
-            <button
-              className="h-9 rounded-md border border-border bg-surface px-3 text-xs font-black transition hover:border-primary hover:text-primary"
+            <Button
+              className="text-xs font-black"
+              size="sm"
+              variant="outline"
               type="button"
             >
               Change photo
-            </button>
+            </Button>
           </div>
-        </div>
+        </Card>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block space-y-2 sm:col-span-2">
-            <span className="text-sm font-black">Cafe</span>
-            <input
-              className="h-12 w-full rounded-md border border-border bg-white px-4 text-sm outline-none focus:border-primary"
+        <FieldGroup className="grid gap-4 sm:grid-cols-2">
+          <Field className="sm:col-span-2">
+            <FieldLabel className="text-sm font-black">Cafe</FieldLabel>
+            <Input
               defaultValue={composer.selectedCafe}
               type="text"
             />
-          </label>
+          </Field>
 
-          <label className="block space-y-2">
-            <span className="text-sm font-black">Visit type</span>
-            <input
-              className="h-12 w-full rounded-md border border-border bg-white px-4 text-sm outline-none focus:border-primary"
+          <Field>
+            <FieldLabel className="text-sm font-black">Visit type</FieldLabel>
+            <Input
               defaultValue={composer.visitType}
               type="text"
             />
-          </label>
+          </Field>
 
-          <label className="block space-y-2">
-            <span className="text-sm font-black">Spend</span>
-            <input
-              className="h-12 w-full rounded-md border border-border bg-white px-4 text-sm outline-none focus:border-primary"
+          <Field>
+            <FieldLabel className="text-sm font-black">Spend</FieldLabel>
+            <Input
               defaultValue={composer.spend}
               type="text"
             />
-          </label>
-        </div>
+          </Field>
+        </FieldGroup>
 
         <section className="space-y-3">
           <p className="text-sm font-black">Rating</p>
           <div className="grid grid-cols-5 gap-2">
             {ratingValues.map((rating) => (
-              <button
-                className={`h-11 rounded-md border text-sm font-black transition ${
+              <Badge
+                className={`flex h-11 items-center justify-center rounded-md border text-sm font-black transition ${
                   rating <= composer.rating
-                    ? "border-rating bg-[#fff4d6] text-rating"
-                    : "border-border bg-white text-muted hover:border-rating"
+                    ? "border-rating bg-rating/15 text-rating"
+                    : "border-border bg-surface text-muted"
                 }`}
                 key={rating}
-                type="button"
+                variant="outline"
               >
                 {rating}
-              </button>
+              </Badge>
             ))}
           </div>
         </section>
 
-        <label className="block space-y-2">
-          <span className="text-sm font-black">Review</span>
-          <textarea
-            className="min-h-36 w-full resize-y rounded-md border border-border bg-white px-4 py-3 text-sm leading-6 outline-none focus:border-primary"
+        <Field>
+          <FieldLabel className="text-sm font-black">Review</FieldLabel>
+          <Textarea
+            className="min-h-36"
             defaultValue={composer.caption}
           />
-        </label>
+        </Field>
 
         <section className="space-y-3">
           <div className="flex items-center gap-2">
-            <span className="grid h-6 w-6 place-items-center rounded-md bg-primary/10 text-xs font-black text-primary">
+            <Badge className="grid size-6 place-items-center rounded-md bg-primary/10 p-0 text-xs font-black text-primary">
               AI
-            </span>
+            </Badge>
             <h2 className="text-sm font-black">AI tags</h2>
           </div>
           <div className="flex flex-wrap gap-2">
             {composer.aiTags.map((tag) => (
-              <button
-                className="rounded-md bg-surface-muted px-3 py-2 text-xs font-black text-primary-strong transition hover:bg-border"
-                key={tag}
-                type="button"
-              >
+              <Badge className="px-3 py-2 text-xs font-black" key={tag} variant="secondary">
                 {tag}
-              </button>
+              </Badge>
             ))}
           </div>
         </section>
 
-        <div className="grid grid-cols-2 gap-3">
+        <FieldGroup className="grid grid-cols-2 gap-3">
           {hints.map((hint) => (
-            <label className="block space-y-2" key={hint.label}>
-              <span className="text-xs font-black uppercase tracking-[0.08em] text-muted">
+            <Field key={hint.label}>
+              <FieldLabel className="text-xs font-black uppercase tracking-[0.08em] text-muted">
                 {hint.label}
-              </span>
-              <input
-                className="h-11 w-full rounded-md border border-border bg-white px-3 text-sm outline-none focus:border-primary"
+              </FieldLabel>
+              <Input
+                className="h-11 px-3"
                 defaultValue={hint.value}
                 type="text"
               />
-            </label>
+            </Field>
           ))}
-        </div>
+        </FieldGroup>
 
         <section className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-background px-4 py-3">
           <div className="min-w-0">
             <p className="text-sm font-black">{composer.moderation.label}</p>
             <p className="text-xs text-muted">{composer.moderation.status}</p>
           </div>
-          <span className="rounded-md bg-primary/10 px-3 py-2 text-xs font-black text-primary">
+          <Badge className="bg-primary/10 px-3 py-2 text-xs font-black text-primary">
             Public
-          </span>
+          </Badge>
         </section>
-      </section>
+      </CardContent>
 
-      <footer className="flex flex-wrap items-center justify-end gap-3 border-t border-border bg-background px-6 py-4">
-        <button
-          className="h-11 rounded-md border border-border bg-surface px-4 text-sm font-black transition hover:border-primary hover:text-primary"
+      <CardFooter className="flex flex-wrap items-center justify-end gap-3 border-t border-border bg-background px-6 py-4">
+        <Button
+          className="h-11 text-sm font-black"
+          variant="outline"
           type="button"
         >
           Save draft
-        </button>
-        <button
-          className="h-11 rounded-md bg-primary px-5 text-sm font-black text-white hover:bg-primary-strong"
+        </Button>
+        <Button
+          className="h-11 px-5 text-sm font-black"
           type="submit"
         >
           Publish review
-        </button>
-      </footer>
-    </form>
+        </Button>
+      </CardFooter>
+      </form>
+    </Card>
   );
 }

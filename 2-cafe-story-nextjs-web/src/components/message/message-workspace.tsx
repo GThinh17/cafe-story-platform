@@ -13,7 +13,7 @@ export function MessageWorkspace({
 }: MessageWorkspaceProps) {
   return (
     <main className="-ml-8 h-screen w-[calc(100vw-64px)] max-w-none overflow-hidden bg-background sm:-ml-14 sm:w-[calc(100vw-72px)] xl:-ml-[248px]">
-      <section className="grid h-screen min-h-0 w-full overflow-hidden border-l border-r border-border bg-surface lg:grid-cols-[360px_minmax(0,1fr)]">
+      <section className="grid h-screen min-h-0 w-full grid-cols-1 overflow-hidden border-l border-r border-border bg-surface lg:grid-cols-[360px_minmax(0,1fr)]">
         <ConversationList conversations={conversations} />
         <ChatPanel thread={thread} />
       </section>

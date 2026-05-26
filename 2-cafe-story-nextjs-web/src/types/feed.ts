@@ -7,6 +7,7 @@ export type FeedPost = {
   cafe: string;
   location: string;
   author: string;
+  authorAvatar?: string;
   time: string;
   rating: string;
   caption: string;

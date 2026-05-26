@@ -1,3 +1,12 @@
+import {
+  Avatar,
+  AvatarBadge,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Conversation } from "@/types/message";
 
 type ConversationListProps = {
@@ -6,37 +15,39 @@ type ConversationListProps = {
 
 export function ConversationList({ conversations }: ConversationListProps) {
   return (
-    <section className="flex h-screen min-h-0 flex-col border-r border-border bg-surface">
+    <section className="hidden h-screen min-h-0 flex-col border-r border-border bg-surface lg:flex">
       <header className="shrink-0 px-6 pb-4 pt-12">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="truncate text-2xl font-black">gthinh_1704</h1>
           </div>
-          <button
+          <Button
             aria-label="New message"
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-md text-xl font-black transition hover:bg-surface-muted"
+            className="text-xl font-black"
+            size="icon"
             type="button"
+            variant="ghost"
           >
-            ↗
-          </button>
+            +
+          </Button>
         </div>
 
         <label className="mt-5 block">
           <span className="sr-only">Search friends</span>
-          <input
-            className="h-12 w-full rounded-full border-0 bg-background px-5 text-sm outline-none transition placeholder:text-muted focus:ring-2 focus:ring-primary/20"
-            placeholder="Tìm kiếm"
+          <Input
+            className="h-12 rounded-full border-0 bg-background px-5 text-sm placeholder:text-muted focus:ring-2 focus:ring-primary/20"
+            placeholder="Tim kiem"
             type="search"
           />
         </label>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="flex items-center justify-between px-6 pb-3 pt-2">
-          <h2 className="text-lg font-black">Tin nhắn</h2>
-          <button className="text-sm font-black text-muted" type="button">
-            Tin nhắn đang chờ
-          </button>
+          <h2 className="text-lg font-black">Tin nhan</h2>
+          <Button className="text-sm font-black text-muted" type="button" variant="ghost">
+            Tin nhan dang cho
+          </Button>
         </div>
 
         {conversations.map((conversation) => (
@@ -49,18 +60,13 @@ export function ConversationList({ conversations }: ConversationListProps) {
             key={conversation.id}
             type="button"
           >
-            <span className="relative h-[68px] w-[68px] shrink-0 overflow-hidden rounded-full bg-background">
-              <img
-                alt=""
-                className="h-full w-full object-cover"
-                decoding="async"
-                loading="lazy"
-                src={conversation.avatarImage}
-              />
+            <Avatar className="size-[68px]">
+              <AvatarImage alt="" src={conversation.avatarImage} />
+              <AvatarFallback>{conversation.name.slice(0, 1)}</AvatarFallback>
               {conversation.status === "Active now" ? (
-                <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-surface bg-primary" />
+                <AvatarBadge className="size-3.5 border-2 border-surface" />
               ) : null}
-            </span>
+            </Avatar>
 
             <span className="min-w-0 flex-1">
               <span className="flex items-center justify-between gap-2">
@@ -77,11 +83,11 @@ export function ConversationList({ conversations }: ConversationListProps) {
             </span>
 
             {conversation.unread ? (
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-accent" />
+              <span className="size-2.5 shrink-0 rounded-full bg-accent" />
             ) : null}
           </button>
         ))}
-      </div>
+      </ScrollArea>
     </section>
   );
 }
