@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface ReviewerRepository extends JpaRepository<Reviewer, UUID> {
 
     Optional<Reviewer> findByUserUserId(UUID userId);
+
+    long countByReviewerActive(Boolean reviewerActive);
 }
