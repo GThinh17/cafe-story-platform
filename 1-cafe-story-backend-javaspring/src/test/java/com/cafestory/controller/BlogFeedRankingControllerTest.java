@@ -72,22 +72,25 @@ class BlogFeedRankingControllerTest {
         BlogFeedResponse response = new BlogFeedResponse();
         response.setBlogId(UUID.randomUUID());
         response.setContentPreview("Personalized cafe blog preview");
+        response.setImageUrls(List.of("/images/feed/cafe.jpg"));
+        response.setLikeCount(12);
+        response.setCommentCount(3);
+        response.setShareCount(4);
         response.setAuthorUserId(userId);
         response.setAuthorUserName("author");
+        response.setAuthorUserFullName("Author Name");
+        response.setAuthorAvatar("/images/default-avatar.svg");
         response.setPageId(UUID.randomUUID());
+        response.setPageName("Cafe Story Roastery");
+        response.setPageAddress("123 Brew Street");
+        response.setPageAvatarUrl("/images/cafe-avatar.jpg");
+        response.setPageCoverUrl("/images/cafe-cover.jpg");
         response.setRegionId(regionId);
-        response.setWindowType(TrendWindowType.DAY_7);
-        response.setFeedScore(76.0);
-        response.setTrendingScore(40.0);
-        response.setFollowedPageScore(30.0);
-        response.setFollowedUserScore(25.0);
-        response.setSameRegionScore(15.0);
-        response.setFreshnessScore(6.0);
-        response.setReportPenalty(0.0);
+        response.setRegionCity("Ho Chi Minh");
+        response.setRegionProvince("Ho Chi Minh");
+        response.setRegionArea("District 1");
         response.setRankPosition(1);
-        response.setReason("Followed page, followed author, same region");
         response.setCreatedAt(LocalDateTime.now().minusHours(4));
-        response.setComputedAt(LocalDateTime.now());
         return response;
     }
 

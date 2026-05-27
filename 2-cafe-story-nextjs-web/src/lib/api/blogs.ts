@@ -1,0 +1,68 @@
+import { apiFetch } from "@/lib/api/client";
+import { apiEndpoints } from "@/lib/api/endpoints";
+import type {
+  BlogFeedParams,
+  BlogFeedResponse,
+  BlogResponse,
+  BlogTrendingResponse,
+} from "@/types/blog";
+
+type ApiRequestOptions = {
+  headers?: HeadersInit;
+};
+
+function withQuery(path: string, params: Record<string, string | number | undefined>) {
+  const searchParams = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "") {
+      searchParams.set(key, String(value));
+    }
+  }
+
+  const query = searchParams.toString();
+
+  return query ? `${path}?${query}` : path;
+}
+
+export function getBlogFeed(
+  params: BlogFeedParams = {},
+  options: ApiRequestOptions = {},
+) {
+  return apiFetch<BlogFeedResponse[]>(
+    withQuery(apiEndpoints.blogs.feed, {
+      page: params.page,
+      regionId: params.regionId,
+      size: params.size,
+      windowType: params.windowType,
+    }),
+    {
+      headers: options.headers,
+      method: "GET",
+    },
+  );
+}
+
+export function getBlogs(options: ApiRequestOptions = {}) {
+  return apiFetch<BlogResponse[]>(apiEndpoints.blogs.list, {
+    headers: options.headers,
+    method: "GET",
+  });
+}
+
+export function getTrendingBlogs(
+  params: Omit<BlogFeedParams, "regionId"> = {},
+  options: ApiRequestOptions = {},
+) {
+  return apiFetch<BlogTrendingResponse[]>(
+    withQuery(apiEndpoints.blogs.trending, {
+      page: params.page,
+      size: params.size,
+      windowType: params.windowType,
+    }),
+    {
+      headers: options.headers,
+      method: "GET",
+    },
+  );
+}

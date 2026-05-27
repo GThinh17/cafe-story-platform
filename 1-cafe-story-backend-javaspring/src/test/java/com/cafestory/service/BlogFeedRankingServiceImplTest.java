@@ -4,6 +4,7 @@ import com.cafestory.dto.responseDTO.BlogFeedResponse;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogRecommendationScore;
 import com.cafestory.entity.BlogTrendingScore;
+import com.cafestory.entity.CafePage;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.ModerationDecision;
@@ -14,6 +15,7 @@ import com.cafestory.repository.BlogEventRepository;
 import com.cafestory.repository.BlogRecommendationScoreRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.BlogTrendingScoreRepository;
+import com.cafestory.repository.CafePageRepository;
 import com.cafestory.repository.PageFollowRepository;
 import com.cafestory.repository.RegionRepository;
 import com.cafestory.repository.UserFollowRepository;
@@ -28,6 +30,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -50,6 +53,9 @@ class BlogFeedRankingServiceImplTest {
 
     @Mock
     private BlogRecommendationScoreRepository blogRecommendationScoreRepository;
+
+    @Mock
+    private CafePageRepository cafePageRepository;
 
     @Mock
     private PageFollowRepository pageFollowRepository;
@@ -100,9 +106,15 @@ class BlogFeedRankingServiceImplTest {
                 10);
 
         assertThat(result).hasSize(1);
-        assertThat(result.getFirst().getFeedScore()).isEqualTo(91.0);
         assertThat(result.getFirst().getRankPosition()).isEqualTo(1);
-        assertThat(result.getFirst().getComputedAt()).isEqualTo(score.getComputedAt());
+        assertThat(result.getFirst().getContentPreview()).isEqualTo(blog.getContent());
+        assertThat(result.getFirst().getImageUrls()).containsExactly("/images/feed/cafe.jpg");
+        assertThat(result.getFirst().getAuthorUserName()).isEqualTo("author");
+        assertThat(result.getFirst().getAuthorUserFullName()).isEqualTo("Author Name");
+        assertThat(result.getFirst().getAuthorAvatar()).isEqualTo("/images/default-avatar.svg");
+        assertThat(result.getFirst().getLikeCount()).isEqualTo(12);
+        assertThat(result.getFirst().getCommentCount()).isEqualTo(3);
+        assertThat(result.getFirst().getShareCount()).isEqualTo(4);
         verify(userValidator).validateUserActive(user);
     }
 
@@ -137,11 +149,10 @@ class BlogFeedRankingServiceImplTest {
 
         assertThat(result).hasSize(1);
         BlogFeedResponse response = result.getFirst();
-        assertThat(response.getTrendingScore()).isEqualTo(100.0);
-        assertThat(response.getFollowedPageScore()).isEqualTo(30.0);
-        assertThat(response.getFollowedUserScore()).isEqualTo(25.0);
-        assertThat(response.getSameRegionScore()).isEqualTo(15.0);
-        assertThat(response.getFeedScore()).isGreaterThan(100.0 * 0.4 + 30 + 25 + 15);
+        assertThat(response.getPageName()).isEqualTo("Cafe Story Roastery");
+        assertThat(response.getPageAddress()).isEqualTo("123 Brew Street");
+        assertThat(response.getPageCoverUrl()).isEqualTo("/images/cafe-cover.jpg");
+        assertThat(response.getRegionCity()).isEqualTo("Ho Chi Minh");
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<BlogRecommendationScore>> scoresCaptor = ArgumentCaptor.forClass(List.class);
@@ -150,7 +161,13 @@ class BlogFeedRankingServiceImplTest {
                 TrendWindowType.HOUR_24,
                 regionId);
         verify(blogRecommendationScoreRepository).saveAll(scoresCaptor.capture());
-        assertThat(scoresCaptor.getValue().getFirst().getRankPosition()).isEqualTo(1);
+        BlogRecommendationScore cachedScore = scoresCaptor.getValue().getFirst();
+        assertThat(cachedScore.getTrendingScore()).isEqualTo(100.0);
+        assertThat(cachedScore.getFollowedPageScore()).isEqualTo(30.0);
+        assertThat(cachedScore.getFollowedUserScore()).isEqualTo(25.0);
+        assertThat(cachedScore.getSameRegionScore()).isEqualTo(15.0);
+        assertThat(cachedScore.getFeedScore()).isGreaterThan(100.0 * 0.4 + 30 + 25 + 15);
+        assertThat(cachedScore.getRankPosition()).isEqualTo(1);
     }
 
     @Test
@@ -175,13 +192,17 @@ class BlogFeedRankingServiceImplTest {
                 any(),
                 any())).thenReturn(3L);
 
-        BlogFeedResponse response = service.rebuildRecommendationCache(
+        service.rebuildRecommendationCache(
                 user.getUserId(),
                 TrendWindowType.HOUR_24,
-                null).getFirst();
+                null);
 
-        assertThat(response.getReportPenalty()).isEqualTo(30.0);
-        assertThat(response.getReason()).contains("reportPenalty=30.0");
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<BlogRecommendationScore>> scoresCaptor = ArgumentCaptor.forClass(List.class);
+        verify(blogRecommendationScoreRepository).saveAll(scoresCaptor.capture());
+        BlogRecommendationScore cachedScore = scoresCaptor.getValue().getFirst();
+        assertThat(cachedScore.getReportPenalty()).isEqualTo(30.0);
+        assertThat(cachedScore.getReason()).contains("reportPenalty=30.0");
     }
 
     private BlogFeedRankingServiceImpl service() {
@@ -191,10 +212,27 @@ class BlogFeedRankingServiceImplTest {
                 any(),
                 any())).thenReturn(0L);
         lenient().when(regionRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
+        lenient().when(cafePageRepository.findAllById(any())).thenAnswer(invocation -> {
+            Iterable<UUID> pageIds = invocation.getArgument(0);
+            List<CafePage> cafePages = new ArrayList<>();
+            pageIds.forEach(pageId -> cafePages.add(cafePage(pageId)));
+            return cafePages;
+        });
+        lenient().when(regionRepository.findAllById(any())).thenAnswer(invocation -> {
+            Iterable<UUID> regionIds = invocation.getArgument(0);
+            List<Region> regions = new ArrayList<>();
+            regionIds.forEach(regionId -> {
+                Region region = region("Ho Chi Minh");
+                region.setRegionId(regionId);
+                regions.add(region);
+            });
+            return regions;
+        });
         return new BlogFeedRankingServiceImpl(
                 blogRepository,
                 blogTrendingScoreRepository,
                 blogRecommendationScoreRepository,
+                cafePageRepository,
                 pageFollowRepository,
                 userFollowRepository,
                 blogEventRepository,
@@ -226,6 +264,8 @@ class BlogFeedRankingServiceImplTest {
         User author = new User();
         author.setUserId(UUID.randomUUID());
         author.setUserName("author");
+        author.setUserFullName("Author Name");
+        author.setUserAvatar("/images/default-avatar.svg");
 
         Blog blog = new Blog();
         blog.setId(UUID.randomUUID());
@@ -233,9 +273,25 @@ class BlogFeedRankingServiceImplTest {
         blog.setPageId(UUID.randomUUID());
         blog.setRegionId(regionId);
         blog.setContent("Cafe Story personalized feed blog");
+        blog.setImageUrls(List.of("/images/feed/cafe.jpg"));
         blog.setStatus(PostStatus.PUBLISHED);
+        blog.setIsPinned(false);
+        blog.setAllowComment(true);
+        blog.setLikeCount(12);
+        blog.setCommentCount(3);
+        blog.setShareCount(4);
         blog.setCreatedAt(LocalDateTime.now().minusHours(1));
         return blog;
+    }
+
+    private CafePage cafePage(UUID cafePageId) {
+        CafePage cafePage = new CafePage();
+        cafePage.setId(cafePageId);
+        cafePage.setName("Cafe Story Roastery");
+        cafePage.setAddress("123 Brew Street");
+        cafePage.setAvatarUrl("/images/cafe-avatar.jpg");
+        cafePage.setCoverUrl("/images/cafe-cover.jpg");
+        return cafePage;
     }
 
     private BlogTrendingScore trendingScore(Blog blog, double score) {

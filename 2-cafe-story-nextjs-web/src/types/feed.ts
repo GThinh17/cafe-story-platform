@@ -4,6 +4,7 @@ export type StoryItem = {
 };
 
 export type FeedPost = {
+  id?: string;
   cafe: string;
   location: string;
   author: string;
