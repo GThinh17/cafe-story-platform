@@ -2,13 +2,10 @@ import { cookies } from "next/headers";
 import { HomeAccountPanel } from "@/components/feed/home-account-panel";
 import { FeedPostList } from "@/components/feed/feed-post-list";
 import { MessageDock } from "@/components/message/message-dock";
-import { StoryRail } from "@/components/feed/story-rail";
-import { TopCafesNearby } from "@/components/feed/top-cafes-nearby";
 import { mapBlogFeedToFeedPosts } from "@/features/blogs/blog-feed-adapter";
 import { ApiError } from "@/lib/api/client";
 import { getBlogFeed } from "@/lib/api/blogs";
 import { ACCESS_TOKEN_COOKIE } from "@/lib/routes";
-import { mockStories, mockTopCafes } from "@/mocks/feed";
 import { mockMessageDock } from "@/mocks/messages";
 import type { FeedPost } from "@/types/feed";
 
@@ -63,8 +60,6 @@ export default async function Home() {
     <div className="min-h-screen w-full max-w-full overflow-x-clip bg-background text-foreground">
       <main className="grid w-full max-w-[1120px] touch-pan-y grid-cols-1 gap-14 overflow-x-clip px-4 py-8 sm:px-8 xl:ml-12 xl:grid-cols-[630px_320px] xl:px-0 2xl:ml-20">
         <section className="w-full max-w-[630px] space-y-8">
-          <StoryRail stories={mockStories} />
-
           <FeedPostList
             errorMessage={feedState.errorMessage}
             posts={feedState.posts}
@@ -74,8 +69,6 @@ export default async function Home() {
         <aside className="sticky top-8 hidden h-fit w-full xl:block">
           <section className="space-y-7">
             <HomeAccountPanel />
-
-            <TopCafesNearby cafes={mockTopCafes} />
 
             <p className="text-xs leading-5 text-muted">
               About - Help - Privacy - Terms - Locations
