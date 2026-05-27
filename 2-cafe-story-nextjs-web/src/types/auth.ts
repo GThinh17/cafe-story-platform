@@ -17,3 +17,32 @@ export type AuthFormCopy = {
   switchHref: string;
   switchLabel: string;
 };
+
+export type AuthUser = {
+  userId: string;
+  userName: string;
+  userFullName: string | null;
+  userEmail: string;
+  userPhone: number | null;
+  userAvatar: string | null;
+  accountStatus: boolean;
+  roles: string[];
+};
+
+export type AuthResponse = {
+  user: AuthUser;
+};
+
+export type LoginRequest = {
+  identifier: string;
+  password: string;
+};
+
+export type RegisterRequest = {
+  userName: string;
+  userFullName?: string;
+  password: string;
+  userEmail: string;
+  userPhone?: number;
+  userAvatar?: string;
+};
