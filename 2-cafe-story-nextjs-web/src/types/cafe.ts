@@ -30,6 +30,33 @@ export type CafeSummary = {
   }[];
 };
 
+export type CafePageRankingResponse = {
+  id: string;
+  ownerUserId: string | null;
+  regionId: string | null;
+  regionCity: string | null;
+  regionProvince: string | null;
+  regionArea: string | null;
+  name: string;
+  address: string;
+  description: string | null;
+  avatarUrl: string | null;
+  coverUrl: string | null;
+  status: "ACTIVE" | "DRAFT" | "SUSPENDED" | string;
+  likeCount: number | null;
+  followerCount: number | null;
+  pageActive: boolean | null;
+  rankingScore: number | null;
+  rankPosition: number | null;
+  createdAt: string | null;
+};
+
+export type CafeTopParams = {
+  city?: string;
+  regionId?: string;
+  size?: number;
+};
+
 export type CafeEditorialCollection = {
   id: string;
   eyebrow: string;

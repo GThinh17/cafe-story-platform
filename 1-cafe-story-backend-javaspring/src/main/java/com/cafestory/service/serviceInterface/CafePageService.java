@@ -3,6 +3,7 @@ package com.cafestory.service.serviceInterface;
 import com.cafestory.dto.requestDTO.CafePageCreateDTO;
 import com.cafestory.dto.requestDTO.CafePageUpdateDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
+import com.cafestory.dto.responseDTO.CafePageRankingResponseDTO;
 import com.cafestory.dto.responseDTO.CafePageResponseDTO;
 
 import java.util.List;
@@ -14,6 +15,8 @@ public interface CafePageService {
     List<CafePageResponseDTO> getAllCafePages();
 
     List<CafePageResponseDTO> getCafePagesByOwnerId(UUID ownerUserId);
+
+    List<CafePageRankingResponseDTO> getTopCafePages(UUID regionId, String city, int size);
 
     CafePageResponseDTO getCafePageById(UUID cafePageId);
 
