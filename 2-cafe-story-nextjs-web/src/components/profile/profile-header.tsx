@@ -10,6 +10,8 @@ import {
 import { useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { logout } from "@/lib/api/auth";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogClose,
@@ -35,7 +37,21 @@ export function ProfileHeader({
   isLoading = false,
   profile,
 }: ProfileHeaderProps) {
+  const router = useRouter();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    setIsLoggingOut(true);
+
+    try {
+      await logout();
+    } finally {
+      setIsSettingsOpen(false);
+      router.replace("/login");
+      router.refresh();
+    }
+  }
 
   return (
     <>
@@ -141,9 +157,11 @@ export function ProfileHeader({
             <Separator />
             <button
               className="min-h-12 px-6 text-sm font-semibold text-accent transition hover:bg-surface-muted"
+              disabled={isLoggingOut}
+              onClick={handleLogout}
               type="button"
             >
-              Log out
+              {isLoggingOut ? "Logging out..." : "Log out"}
             </button>
             <Separator />
             <DialogClose asChild>
