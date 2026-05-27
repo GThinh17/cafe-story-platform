@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { SharedSidebar } from "@/components/layout/shared-sidebar";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import "./../globals.css";
 
 export const metadata: Metadata = {
@@ -18,10 +19,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full">
-        <SharedSidebar />
-        <div className="min-h-screen w-full max-w-full overflow-x-clip pl-24 sm:pl-32 xl:pl-80">
-          {children}
-        </div>
+        <TooltipProvider>
+          <SharedSidebar />
+          <div className="min-h-screen w-full max-w-full overflow-x-clip pl-20 sm:pl-28 xl:pl-80">
+            {children}
+          </div>
+        </TooltipProvider>
       </body>
     </html>
   );

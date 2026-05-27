@@ -1,3 +1,6 @@
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import type { CafeReviewPost } from "@/types/review";
 
 type CafeRecentReviewsProps = {
@@ -41,28 +44,33 @@ export function CafeRecentReviews({ reviews }: CafeRecentReviewsProps) {
   }
 
   return (
-    <section className="space-y-6">
+    <section className="flex flex-col gap-6">
       <div className="flex items-end justify-between gap-4">
         <h2 className="font-serif text-2xl font-medium text-espresso">
           Recent Reviews
         </h2>
         <div className="flex items-center gap-5 text-xs font-medium text-coffee-muted">
-          <button
-            className="border-b border-espresso pb-1 text-espresso"
+          <Button
+            className="h-auto border-b border-espresso p-0 pb-1 text-xs font-medium text-espresso"
             type="button"
+            variant="ghost"
           >
             Feed
-          </button>
-          <button className="pb-1 transition hover:text-espresso" type="button">
+          </Button>
+          <Button
+            className="h-auto p-0 pb-1 text-xs font-medium text-coffee-muted hover:text-espresso"
+            type="button"
+            variant="ghost"
+          >
             Map View
-          </button>
+          </Button>
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
         {reviews.map((review) => (
-          <article
-            className="overflow-hidden border border-line-soft bg-white"
+          <Card
+            className="overflow-hidden border-line-soft bg-surface shadow-none"
             key={review.id}
           >
             <div className="relative">
@@ -73,13 +81,13 @@ export function CafeRecentReviews({ reviews }: CafeRecentReviewsProps) {
                 loading="lazy"
                 src={review.image}
               />
-              <span className="absolute right-3 top-3 rounded-sm bg-white px-2 py-1 text-xs font-black text-espresso shadow-sm">
-                ★ {review.rating}
-              </span>
+              <Badge className="absolute right-3 top-3 rounded-sm bg-surface px-2 py-1 text-xs font-black text-espresso shadow-sm">
+                * {review.rating}
+              </Badge>
             </div>
 
-            <div className="space-y-4 p-4">
-              <div className="space-y-1">
+            <CardContent className="flex flex-col gap-4 p-4">
+              <div className="flex flex-col gap-1">
                 <h3 className="font-serif text-base font-medium text-espresso">
                   {review.cafe}
                 </h3>
@@ -94,19 +102,34 @@ export function CafeRecentReviews({ reviews }: CafeRecentReviewsProps) {
 
               <div className="flex items-center justify-between pt-1 text-espresso">
                 <div className="flex items-center gap-4">
-                  <button aria-label="Like review" type="button">
+                  <Button
+                    aria-label="Like review"
+                    className="h-auto p-0 text-espresso"
+                    type="button"
+                    variant="ghost"
+                  >
                     <ReviewActionIcon name="heart" />
-                  </button>
-                  <button aria-label="Comment on review" type="button">
+                  </Button>
+                  <Button
+                    aria-label="Comment on review"
+                    className="h-auto p-0 text-espresso"
+                    type="button"
+                    variant="ghost"
+                  >
                     <ReviewActionIcon name="comment" />
-                  </button>
+                  </Button>
                 </div>
-                <button aria-label="Save review" type="button">
+                <Button
+                  aria-label="Save review"
+                  className="h-auto p-0 text-espresso"
+                  type="button"
+                  variant="ghost"
+                >
                   <ReviewActionIcon name="save" />
-                </button>
+                </Button>
               </div>
-            </div>
-          </article>
+            </CardContent>
+          </Card>
         ))}
       </div>
     </section>

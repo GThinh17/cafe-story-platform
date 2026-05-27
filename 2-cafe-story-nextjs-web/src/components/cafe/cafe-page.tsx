@@ -1,5 +1,15 @@
+import {
+  BookOpenIcon,
+  InfoIcon,
+  MapIcon,
+  StarIcon,
+} from "lucide-react";
 import type { CafeSummary } from "@/types/cafe";
 import { CafeRecentReviews } from "@/components/review/cafe-recent-reviews";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import type { CafeReviewPost } from "@/types/review";
 
 type CafePageProps = {
@@ -13,45 +23,6 @@ const defaultOpeningHours = [
   { day: "Sunday", time: "8:00 AM - 5:00 PM" },
 ];
 
-function CafeIcon({ name }: { name: string }) {
-  const paths: Record<string, string[]> = {
-    menu: [
-      "M5 5.5h8a3 3 0 0 1 3 3V19H8a3 3 0 0 0-3-3V5.5Z",
-      "M19 5.5h-3a3 3 0 0 0-3 3V19h3a3 3 0 0 1 3-3V5.5Z",
-    ],
-    directions: [
-      "M12 3 3 12l9 9 9-9-9-9Z",
-      "M9 12h6",
-      "m12 9 3 3-3 3",
-    ],
-    star: [
-      "m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.9 6.4 21.2 7.5 15 3 10.6l6.2-.9L12 3Z",
-    ],
-    info: [
-      "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z",
-      "M12 10v6",
-      "M12 7h.01",
-    ],
-  };
-
-  return (
-    <svg
-      aria-hidden="true"
-      className="h-4 w-4"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="1.7"
-      viewBox="0 0 24 24"
-    >
-      {paths[name].map((path) => (
-        <path d={path} key={path} />
-      ))}
-    </svg>
-  );
-}
-
 export function CafePage({ cafe, recentReviews = [] }: CafePageProps) {
   const openingHours = cafe.openingHours ?? defaultOpeningHours;
   const communityPhotos =
@@ -63,7 +34,7 @@ export function CafePage({ cafe, recentReviews = [] }: CafePageProps) {
 
   return (
     <article className="w-full space-y-10 bg-background text-espresso">
-      <section className="border-b border-line-soft pb-10 pt-2">
+      <section className="pb-10 pt-2">
         <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0 space-y-3">
             <h1 className="font-serif text-4xl font-medium leading-tight text-espresso">
@@ -72,7 +43,7 @@ export function CafePage({ cafe, recentReviews = [] }: CafePageProps) {
 
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-coffee-muted">
               <span className="flex items-center gap-1 font-black text-espresso">
-                <CafeIcon name="star" />
+                <StarIcon data-icon="inline-start" />
                 {cafe.rating}
               </span>
               <span>{cafe.type}</span>
@@ -87,52 +58,58 @@ export function CafePage({ cafe, recentReviews = [] }: CafePageProps) {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row">
-            <button
+            <Button
               className="flex h-12 items-center justify-center gap-2 rounded-sm bg-espresso px-8 text-sm font-black text-white transition hover:bg-primary-strong"
               type="button"
             >
-              <CafeIcon name="menu" />
+              <BookOpenIcon data-icon="inline-start" />
               View Menu
-            </button>
-            <button
+            </Button>
+            <Button
               className="flex h-12 items-center justify-center gap-2 rounded-sm border border-espresso bg-transparent px-8 text-sm font-black text-espresso transition hover:bg-surface-muted"
               type="button"
+              variant="outline"
             >
-              <CafeIcon name="directions" />
+              <MapIcon data-icon="inline-start" />
               Get Directions
-            </button>
+            </Button>
           </div>
         </div>
+        <Separator className="mt-10" />
       </section>
 
       <section className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
-        <div className="space-y-6 rounded-md border border-line-soft bg-surface p-6">
-          <h2 className="text-xs font-black uppercase tracking-[0.12em] text-muted">
+        <Card className="border-line-soft">
+          <CardHeader>
+            <CardTitle className="text-xs font-black uppercase tracking-[0.12em] text-muted">
             Vibe & Features
-          </h2>
+            </CardTitle>
+          </CardHeader>
 
-          <div className="flex flex-wrap gap-3">
+          <CardContent className="flex flex-col gap-6">
+            <div className="flex flex-wrap gap-3">
             {cafe.amenities.map((amenity) => (
-              <span
-                className="rounded-full border border-line-soft bg-surface-muted px-4 py-2 text-xs font-black text-espresso"
-                key={amenity}
-              >
+              <Badge className="rounded-full border-line-soft px-4 py-2 text-xs font-black text-espresso" key={amenity} variant="secondary">
                 {amenity}
-              </span>
+              </Badge>
             ))}
-          </div>
+            </div>
 
-          <p className="max-w-[720px] text-sm leading-7 text-coffee-muted">
+            <p className="max-w-[720px] text-sm leading-7 text-coffee-muted">
             {cafe.featureSummary ?? cafe.description}
-          </p>
-        </div>
+            </p>
+          </CardContent>
+        </Card>
 
-        <aside className="space-y-6 rounded-md border border-line-soft bg-surface-muted p-6">
-          <h2 className="text-xs font-black uppercase tracking-[0.12em] text-muted">
+        <Card className="border-line-soft bg-surface-muted shadow-none">
+          <CardHeader>
+            <CardTitle className="text-xs font-black uppercase tracking-[0.12em] text-muted">
             Opening Hours
-          </h2>
+            </CardTitle>
+          </CardHeader>
 
-          <ul className="space-y-4 text-sm">
+          <CardContent className="flex flex-col gap-6">
+            <ul className="flex flex-col gap-4 text-sm">
             {openingHours.map((item) => (
               <li
                 className={`flex items-center justify-between gap-4 ${
@@ -144,13 +121,14 @@ export function CafePage({ cafe, recentReviews = [] }: CafePageProps) {
                 <span>{item.time}</span>
               </li>
             ))}
-          </ul>
+            </ul>
 
-          <p className="flex items-center gap-2 pt-6 text-sm text-coffee-muted">
-            <CafeIcon name="info" />
+            <p className="flex items-center gap-2 border-t border-line-soft pt-6 text-sm text-coffee-muted">
+            <InfoIcon data-icon="inline-start" />
             {cafe.peakHours ?? "Peak hours usually 10 AM - 1 PM"}
-          </p>
-        </aside>
+            </p>
+          </CardContent>
+        </Card>
       </section>
 
       <CafeRecentReviews reviews={recentReviews} />

@@ -11,7 +11,7 @@ const authHeroImage =
 
 export function AuthLayoutShell({ children }: AuthLayoutShellProps) {
   return (
-    <main className="min-h-screen w-full overflow-x-clip bg-white text-foreground">
+    <main className="min-h-screen w-full overflow-x-clip bg-background text-foreground">
       <div className="grid min-h-screen w-full grid-cols-1 lg:grid-cols-2">
         <section className="relative min-h-[340px] overflow-hidden bg-espresso lg:min-h-screen">
           <img
@@ -26,13 +26,13 @@ export function AuthLayoutShell({ children }: AuthLayoutShellProps) {
           <div className="relative flex h-full min-h-[340px] flex-col justify-between p-6 sm:p-10 lg:min-h-screen lg:p-16">
             <Link
               aria-label="Cafe Story home"
-              className="grid h-12 w-12 place-items-center rounded-full bg-white/85 p-1 shadow-sm no-underline backdrop-blur"
+              className="grid size-12 place-items-center rounded-full bg-surface/85 p-1 shadow-sm no-underline backdrop-blur"
               href="/"
             >
-              <BrandIcon className="h-10 w-10" />
+              <BrandIcon className="size-10" />
             </Link>
 
-            <div className="max-w-[390px] space-y-3">
+            <div className="flex max-w-[390px] flex-col gap-3">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/75">
                 Est. 2026
               </p>
@@ -47,7 +47,7 @@ export function AuthLayoutShell({ children }: AuthLayoutShellProps) {
           </div>
         </section>
 
-        <section className="flex min-h-screen items-center justify-center bg-white px-5 py-12 sm:px-10 lg:px-16">
+        <section className="flex min-h-screen items-center justify-center bg-surface px-5 py-12 sm:px-10 lg:px-16">
           <div className="w-full max-w-[400px]">
             <div className="mb-12 lg:hidden">
               <p className="text-lg font-black text-espresso">Cafe Story</p>

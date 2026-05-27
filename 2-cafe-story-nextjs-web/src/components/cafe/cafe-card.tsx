@@ -1,4 +1,12 @@
 import type { CafeSummary } from "@/types/cafe";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 type CafeCardProps = {
   cafe: CafeSummary;
@@ -6,7 +14,7 @@ type CafeCardProps = {
 
 export function CafeCard({ cafe }: CafeCardProps) {
   return (
-    <article className="overflow-hidden rounded-md border border-border bg-surface shadow-sm transition hover:border-primary/50">
+    <Card className="overflow-hidden transition hover:border-primary/50">
       <a className="block no-underline" href={`/cafes/${cafe.id}`}>
         <img
           alt={`${cafe.name} cafe`}
@@ -16,24 +24,26 @@ export function CafeCard({ cafe }: CafeCardProps) {
           src={cafe.image}
         />
       </a>
-      <div className="space-y-4 p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
+      <CardHeader className="flex flex-row items-start justify-between gap-4 p-4">
+        <div className="min-w-0">
+          <CardTitle className="truncate text-lg font-black">
             <a
-              className="truncate text-lg font-black text-foreground no-underline hover:text-primary"
+              className="text-foreground no-underline hover:text-primary"
               href={`/cafes/${cafe.id}`}
             >
               {cafe.name}
             </a>
-            <p className="mt-1 text-sm text-muted">
-              {cafe.location} - {cafe.distance}
-            </p>
-          </div>
-          <span className="rounded-md bg-[#fff4d6] px-2.5 py-1 text-sm font-black text-rating">
-            {cafe.rating}
-          </span>
+          </CardTitle>
+          <CardDescription className="mt-1 text-sm">
+            {cafe.location} - {cafe.distance}
+          </CardDescription>
         </div>
+        <Badge className="text-sm font-black" variant="rating">
+          {cafe.rating}
+        </Badge>
+      </CardHeader>
 
+      <CardContent className="flex flex-col gap-4 p-4 pt-0">
         <p className="text-sm leading-6 text-foreground">{cafe.description}</p>
 
         <div className="flex items-center gap-3 text-xs font-bold text-muted">
@@ -44,15 +54,12 @@ export function CafeCard({ cafe }: CafeCardProps) {
 
         <div className="flex flex-wrap gap-2">
           {cafe.tags.map((tag) => (
-            <span
-              className="rounded-md bg-surface-muted px-2.5 py-1 text-xs font-bold text-primary-strong"
-              key={tag}
-            >
+            <Badge className="font-bold" key={tag} variant="secondary">
               {tag}
-            </span>
+            </Badge>
           ))}
         </div>
-      </div>
-    </article>
+      </CardContent>
+    </Card>
   );
 }

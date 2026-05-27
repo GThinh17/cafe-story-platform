@@ -33,6 +33,8 @@ export const mockFeedPosts: FeedPost[] = [
     cafe: "The Monolith",
     location: "Shoreditch, London",
     author: "jessica_brew",
+    authorAvatar:
+      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=160&q=80",
     time: "12 min",
     rating: "4.2",
     caption:
@@ -47,6 +49,8 @@ export const mockFeedPosts: FeedPost[] = [
     cafe: "Velvet Roast",
     location: "Le Marais, Paris",
     author: "marco_explorer",
+    authorAvatar:
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=160&q=80",
     time: "48 min",
     rating: "5.0",
     caption:
