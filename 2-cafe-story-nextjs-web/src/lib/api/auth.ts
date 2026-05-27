@@ -1,7 +1,12 @@
 import { apiFetch } from "@/lib/api/client";
 import { apiEndpoints } from "@/lib/api/endpoints";
 import { clearStoredAuthTokens } from "@/lib/auth";
-import type { AuthResponse, LoginRequest, RegisterRequest } from "@/types/auth";
+import type {
+  AuthResponse,
+  LoginRequest,
+  RegisterRequest,
+  UsernameSuggestionResponse,
+} from "@/types/auth";
 
 export async function login(request: LoginRequest) {
   const response = await apiFetch<AuthResponse>(apiEndpoints.auth.login, {
@@ -31,6 +36,16 @@ export function refreshSession() {
   return apiFetch<AuthResponse>(apiEndpoints.auth.refresh, {
     method: "POST",
   });
+}
+
+export function suggestUserNames(fullName: string, signal?: AbortSignal) {
+  return apiFetch<UsernameSuggestionResponse>(
+    apiEndpoints.auth.usernameSuggestions(fullName),
+    {
+      method: "GET",
+      signal,
+    },
+  );
 }
 
 export function logout() {

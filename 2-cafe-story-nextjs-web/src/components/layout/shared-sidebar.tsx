@@ -21,7 +21,6 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { mockReviewComposer, mockReviewDraftHints } from "@/mocks/reviews";
-import { mockActivityNotifications } from "@/mocks/users";
 import { usePathname } from "next/navigation";
 
 type SidebarItem = {
@@ -176,7 +175,7 @@ export function SharedSidebar() {
         >
           <SheetTitle className="sr-only">Notifications</SheetTitle>
           <ActivityList
-            items={mockActivityNotifications}
+            items={[]}
             onClose={() => setIsNotificationsOpen(false)}
           />
         </SheetContent>

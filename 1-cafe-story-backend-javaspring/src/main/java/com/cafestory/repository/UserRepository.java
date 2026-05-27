@@ -23,6 +23,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByUserEmailOrUserName(String userEmail, String userName);
 
+    @Query("""
+            select lower(u.userName)
+            from User u
+            where lower(u.userName) in :userNames
+            """)
+    List<String> findExistingUserNamesLowercase(@Param("userNames") List<String> userNames);
+
     List<User> findByAccountStatusTrue();
 
     long countByAccountStatus(Boolean accountStatus);

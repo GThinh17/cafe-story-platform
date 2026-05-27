@@ -73,25 +73,33 @@ function formatLocation(item: BlogFeedResponse) {
     .join(", ") || "Cafe Story";
 }
 
+function firstNonEmpty(values: Array<string | null | undefined>) {
+  return values.find((value) => value?.trim())?.trim();
+}
+
 export function mapBlogFeedToFeedPosts(feed: BlogFeedResponse[]): FeedPost[] {
-  return feed.map((item, index) => ({
-    id: item.blogId,
-    author: item.authorUserName ?? item.authorUserFullName ?? "cafestory_user",
-    authorAvatar: item.authorAvatar ?? "/images/default-avatar.svg",
-    cafe: item.pageName ?? "Cafe Story",
-    caption:
-      item.contentPreview?.trim() ||
-      "A new Cafe Story post is ready.",
-    comments: formatCount(item.commentCount),
-    image:
-      item.imageUrls?.[0] ??
-      item.pageCoverUrl ??
-      item.pageAvatarUrl ??
-      fallbackImages[index % fallbackImages.length],
-    likes: formatCount(item.likeCount),
-    location: formatLocation(item),
-    rating: item.rankPosition ? `#${item.rankPosition}` : "Feed",
-    tags: buildTags(item),
-    time: formatRelativeTime(item.createdAt),
-  }));
+  return feed.map((item, index) => {
+    const image = firstNonEmpty([
+      ...(item.imageUrls ?? []),
+      item.pageCoverUrl,
+      item.pageAvatarUrl,
+    ]);
+
+    return {
+      id: item.blogId,
+      author:
+        firstNonEmpty([item.authorUserFullName, item.authorUserName]) ??
+        "cafestory_user",
+      authorAvatar: firstNonEmpty([item.authorAvatar]) ?? "/images/default-avatar.svg",
+      cafe: firstNonEmpty([item.pageName]) ?? "Cafe Story",
+      caption: item.contentPreview?.trim() || "A new Cafe Story post is ready.",
+      comments: formatCount(item.commentCount),
+      image: image ?? fallbackImages[index % fallbackImages.length],
+      likes: formatCount(item.likeCount),
+      location: formatLocation(item),
+      rating: item.rankPosition ? `#${item.rankPosition}` : "Feed",
+      tags: buildTags(item),
+      time: formatRelativeTime(item.createdAt),
+    };
+  });
 }

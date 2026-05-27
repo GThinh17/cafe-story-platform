@@ -10,7 +10,10 @@ function CafeSkeleton({
 }: React.ComponentProps<typeof Skeleton>) {
   return (
     <Skeleton
-      className={cn("bg-surface-muted", className)}
+      className={cn(
+        "border border-border/40 from-surface-muted via-rating/10 to-surface-muted",
+        className,
+      )}
       {...props}
     />
   );

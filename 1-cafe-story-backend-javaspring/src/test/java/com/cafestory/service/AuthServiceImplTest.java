@@ -3,6 +3,7 @@ package com.cafestory.service;
 import com.cafestory.dto.requestDTO.LoginRequest;
 import com.cafestory.dto.requestDTO.RegisterRequest;
 import com.cafestory.dto.responseDTO.AuthResponse;
+import com.cafestory.dto.responseDTO.UsernameSuggestionResponse;
 import com.cafestory.entity.RefreshToken;
 import com.cafestory.entity.Role;
 import com.cafestory.entity.User;
@@ -32,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -182,6 +184,84 @@ class AuthServiceImplTest {
         verify(refreshTokenService).revokeRefreshToken("refresh-token");
     }
 
+    @Test
+    void suggestUserNames_vietnameseDiacritics_returnsNormalizedAvailableSuggestions_TC008() {
+        when(userRepository.findExistingUserNamesLowercase(any())).thenReturn(List.of());
+
+        UsernameSuggestionResponse response = service().suggestUserNames("Phạm Thanh Vũ");
+
+        assertThat(response.getSuggestions()).contains("thanh.vu", "pham.vu", "phamvu");
+        assertThat(response.getSuggestions()).hasSizeBetween(4, 7);
+        assertThat(response.getSuggestions()).allMatch(this::isValidSuggestion);
+        verify(userRepository, times(1)).findExistingUserNamesLowercase(any());
+    }
+
+    @Test
+    void suggestUserNames_shortName_returnsReadableSuggestions_TC009() {
+        when(userRepository.findExistingUserNamesLowercase(any())).thenReturn(List.of());
+
+        UsernameSuggestionResponse response = service().suggestUserNames("Kiều Mị");
+
+        assertThat(response.getSuggestions()).contains("kieumi", "kieu.mi");
+        assertThat(response.getSuggestions()).hasSizeBetween(4, 7);
+        assertThat(response.getSuggestions()).allMatch(this::isValidSuggestion);
+    }
+
+    @Test
+    void suggestUserNames_fiveTokenName_prefersFirstLastAndPenultimateLast_TC010() {
+        when(userRepository.findExistingUserNamesLowercase(any())).thenReturn(List.of());
+
+        UsernameSuggestionResponse response = service().suggestUserNames("Nguyễn Thị Minh Thanh Vũ");
+
+        assertThat(response.getSuggestions()).contains("nguyen.vu", "thanh.vu");
+        assertThat(response.getSuggestions()).doesNotContain("thi.vu");
+        assertThat(response.getSuggestions()).hasSizeBetween(4, 7);
+        assertThat(response.getSuggestions()).allMatch(this::isValidSuggestion);
+    }
+
+    @Test
+    void suggestUserNames_existingUsername_filtersExistingCandidate_TC011() {
+        when(userRepository.findExistingUserNamesLowercase(any())).thenReturn(List.of("thanh.vu"));
+
+        UsernameSuggestionResponse response = service().suggestUserNames("Phạm Thanh Vũ");
+
+        assertThat(response.getSuggestions()).doesNotContain("thanh.vu");
+        assertThat(response.getSuggestions()).hasSizeBetween(4, 7);
+        verify(userRepository, times(1)).findExistingUserNamesLowercase(any());
+    }
+
+    @Test
+    void suggestUserNames_reservedUsername_filtersReservedCandidate_TC012() {
+        when(userRepository.findExistingUserNamesLowercase(any())).thenReturn(List.of());
+
+        UsernameSuggestionResponse response = service().suggestUserNames("admin");
+
+        assertThat(response.getSuggestions()).doesNotContain("admin");
+        assertThat(response.getSuggestions()).hasSizeBetween(4, 7);
+        assertThat(response.getSuggestions()).allMatch(this::isValidSuggestion);
+    }
+
+    @Test
+    void suggestUserNames_invalidSeparators_filtersInvalidCandidates_TC013() {
+        when(userRepository.findExistingUserNamesLowercase(any())).thenReturn(List.of());
+
+        UsernameSuggestionResponse response = service().suggestUserNames("A.. B__");
+
+        assertThat(response.getSuggestions()).allMatch(this::isValidSuggestion);
+        assertThat(response.getSuggestions()).noneMatch(candidate -> candidate.contains("..") || candidate.contains("__"));
+    }
+
+    @Test
+    void suggestUserNames_blankFullName_throwsBadRequest_TC014() {
+        assertThatThrownBy(() -> service().suggestUserNames("   "))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST))
+                .hasMessageContaining("Full name is required");
+
+        verify(userRepository, never()).findExistingUserNamesLowercase(any());
+    }
+
     private AuthServiceImpl service() {
         return new AuthServiceImpl(
                 userRepository,
@@ -234,5 +314,9 @@ class AuthServiceImplTest {
         assignment.setUser(user);
         assignment.setRole(role);
         return assignment;
+    }
+
+    private boolean isValidSuggestion(String suggestion) {
+        return suggestion.matches("^[a-z0-9](?!.*[._]{2})[a-z0-9._]{3,8}[a-z0-9]$");
     }
 }

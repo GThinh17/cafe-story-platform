@@ -9,6 +9,8 @@ export const apiEndpoints = {
     me: "/api/auth/me",
     logout: "/api/auth/logout",
     refresh: "/api/auth/refresh",
+    usernameSuggestions: (fullName: string) =>
+      `/api/auth/usernames/suggestions?fullName=${encodeURIComponent(fullName)}`,
   },
   blogs: {
     list: "/api/blogs",

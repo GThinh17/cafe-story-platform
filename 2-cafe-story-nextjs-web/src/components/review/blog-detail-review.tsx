@@ -1,5 +1,5 @@
 import type { BlogDetailReview as BlogDetailReviewModel } from "@/types/review";
-
+import {AvatarImage} from "@/components/ui/avatar-image"; 
 type BlogDetailReviewProps = {
   review: BlogDetailReviewModel;
 };
@@ -8,7 +8,7 @@ type ReviewIconName =
   | "bookmark"
   | "chevronLeft"
   | "chevronRight"
-  | "heart"
+  | "heart" 
   | "message"
   | "send"
   | "star";

@@ -4,6 +4,7 @@ import com.cafestory.dto.requestDTO.LoginRequest;
 import com.cafestory.dto.requestDTO.RegisterRequest;
 import com.cafestory.dto.responseDTO.AuthResponse;
 import com.cafestory.dto.responseDTO.AuthUserResponse;
+import com.cafestory.dto.responseDTO.UsernameSuggestionResponse;
 import com.cafestory.service.serviceInterface.AuthService;
 import com.cafestory.service.serviceInterface.RefreshTokenService;
 import com.cafestory.until.security.AuthenticatedUserPrincipal;
@@ -90,6 +91,19 @@ class AuthControllerTest {
 
         assertThat(result).isEqualTo(response);
         verify(authService).getCurrentUser(userId);
+    }
+
+    @Test
+    void suggestUserNames_success_TC006() {
+        UsernameSuggestionResponse response = new UsernameSuggestionResponse();
+        response.setSuggestions(List.of("thanh.vu", "thanhvu_7"));
+
+        when(authService.suggestUserNames("Phạm Thanh Vũ")).thenReturn(response);
+
+        UsernameSuggestionResponse result = authController.suggestUserNames("Phạm Thanh Vũ");
+
+        assertThat(result).isEqualTo(response);
+        verify(authService).suggestUserNames("Phạm Thanh Vũ");
     }
 
     @Test
