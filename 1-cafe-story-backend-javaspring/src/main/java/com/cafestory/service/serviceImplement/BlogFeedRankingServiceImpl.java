@@ -4,6 +4,7 @@ import com.cafestory.dto.responseDTO.BlogFeedResponse;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogRecommendationScore;
 import com.cafestory.entity.BlogTrendingScore;
+import com.cafestory.entity.CafePage;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.BlogEventType;
@@ -15,6 +16,7 @@ import com.cafestory.repository.BlogEventRepository;
 import com.cafestory.repository.BlogRecommendationScoreRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.BlogTrendingScoreRepository;
+import com.cafestory.repository.CafePageRepository;
 import com.cafestory.repository.PageFollowRepository;
 import com.cafestory.repository.RegionRepository;
 import com.cafestory.repository.UserFollowRepository;
@@ -40,6 +42,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
     private final BlogRepository blogRepository;
     private final BlogTrendingScoreRepository blogTrendingScoreRepository;
     private final BlogRecommendationScoreRepository blogRecommendationScoreRepository;
+    private final CafePageRepository cafePageRepository;
     private final PageFollowRepository pageFollowRepository;
     private final UserFollowRepository userFollowRepository;
     private final BlogEventRepository blogEventRepository;
@@ -52,6 +55,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             BlogRepository blogRepository,
             BlogTrendingScoreRepository blogTrendingScoreRepository,
             BlogRecommendationScoreRepository blogRecommendationScoreRepository,
+            CafePageRepository cafePageRepository,
             PageFollowRepository pageFollowRepository,
             UserFollowRepository userFollowRepository,
             BlogEventRepository blogEventRepository,
@@ -62,6 +66,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         this.blogRepository = blogRepository;
         this.blogTrendingScoreRepository = blogTrendingScoreRepository;
         this.blogRecommendationScoreRepository = blogRecommendationScoreRepository;
+        this.cafePageRepository = cafePageRepository;
         this.pageFollowRepository = pageFollowRepository;
         this.userFollowRepository = userFollowRepository;
         this.blogEventRepository = blogEventRepository;
@@ -96,15 +101,13 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             return List.of();
         }
 
-        return blogRecommendationScoreRepository.findLatestPage(
+        List<BlogRecommendationScore> scores = blogRecommendationScoreRepository.findLatestPage(
                         userId,
                         windowType,
                         contextRegionId,
                         latestComputedAt,
-                        PageRequest.of(safePage, safeSize))
-                .stream()
-                .map(this::toFeedResponse)
-                .toList();
+                        PageRequest.of(safePage, safeSize));
+        return toFeedResponses(scores);
     }
 
     @Override
@@ -140,7 +143,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
 
         blogRecommendationScoreRepository.deleteByUserWindowAndContextRegion(userId, windowType, contextRegionId);
         blogRecommendationScoreRepository.saveAll(scores);
-        return scores.stream().map(this::toFeedResponse).toList();
+        return toFeedResponses(scores);
     }
 
     @Override
@@ -218,27 +221,63 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         return score;
     }
 
-    private BlogFeedResponse toFeedResponse(BlogRecommendationScore score) {
+    private List<BlogFeedResponse> toFeedResponses(List<BlogRecommendationScore> scores) {
+        List<UUID> pageIds = scores.stream()
+                .map(score -> score.getBlog().getPageId())
+                .filter(pageId -> pageId != null)
+                .distinct()
+                .toList();
+        Map<UUID, CafePage> cafePagesById = cafePageRepository.findAllById(pageIds)
+                .stream()
+                .collect(Collectors.toMap(CafePage::getId, Function.identity()));
+        List<UUID> regionIds = scores.stream()
+                .map(score -> score.getBlog().getRegionId())
+                .filter(regionId -> regionId != null)
+                .distinct()
+                .toList();
+        Map<UUID, Region> regionsById = regionRepository.findAllById(regionIds)
+                .stream()
+                .collect(Collectors.toMap(Region::getRegionId, Function.identity()));
+
+        return scores.stream()
+                .map(score -> toFeedResponse(score, cafePagesById, regionsById))
+                .toList();
+    }
+
+    private BlogFeedResponse toFeedResponse(
+            BlogRecommendationScore score,
+            Map<UUID, CafePage> cafePagesById,
+            Map<UUID, Region> regionsById) {
         Blog blog = score.getBlog();
+        User author = blog.getAuthor();
+        CafePage cafePage = blog.getPageId() == null ? null : cafePagesById.get(blog.getPageId());
+        Region region = blog.getRegionId() == null ? null : regionsById.get(blog.getRegionId());
         BlogFeedResponse response = new BlogFeedResponse();
         response.setBlogId(blog.getId());
         response.setContentPreview(toPreview(blog.getContent()));
-        response.setAuthorUserId(blog.getAuthor().getUserId());
-        response.setAuthorUserName(blog.getAuthor().getUserName());
+        response.setImageUrls(blog.getImageUrls());
+        response.setLikeCount(blog.getLikeCount());
+        response.setCommentCount(blog.getCommentCount());
+        response.setShareCount(blog.getShareCount());
+        response.setAuthorUserId(author.getUserId());
+        response.setAuthorUserName(author.getUserName());
+        response.setAuthorUserFullName(author.getUserFullName());
+        response.setAuthorAvatar(author.getUserAvatar());
         response.setPageId(blog.getPageId());
+        if (cafePage != null) {
+            response.setPageName(cafePage.getName());
+            response.setPageAddress(cafePage.getAddress());
+            response.setPageAvatarUrl(cafePage.getAvatarUrl());
+            response.setPageCoverUrl(cafePage.getCoverUrl());
+        }
         response.setRegionId(blog.getRegionId());
-        response.setWindowType(score.getWindowType());
-        response.setFeedScore(score.getFeedScore());
-        response.setTrendingScore(score.getTrendingScore());
-        response.setFollowedPageScore(score.getFollowedPageScore());
-        response.setFollowedUserScore(score.getFollowedUserScore());
-        response.setSameRegionScore(score.getSameRegionScore());
-        response.setFreshnessScore(score.getFreshnessScore());
-        response.setReportPenalty(score.getReportPenalty());
+        if (region != null) {
+            response.setRegionCity(region.getCity());
+            response.setRegionProvince(region.getProvince());
+            response.setRegionArea(region.getArea());
+        }
         response.setRankPosition(score.getRankPosition());
-        response.setReason(score.getReason());
         response.setCreatedAt(blog.getCreatedAt());
-        response.setComputedAt(score.getComputedAt());
         return response;
     }
 
