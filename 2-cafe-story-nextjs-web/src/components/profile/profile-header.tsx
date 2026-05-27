@@ -1,3 +1,4 @@
+import { AvatarImage } from "@/components/ui/avatar-image";
 import type { ProfileHighlight, UserProfile } from "@/types/user";
 import {
   Avatar,
@@ -9,6 +10,7 @@ import { Button } from "@/components/ui/button";
 
 type ProfileHeaderProps = {
   highlights: ProfileHighlight[];
+  isLoading?: boolean;
   profile: UserProfile;
 };
 
@@ -18,7 +20,11 @@ const statLabels: Record<keyof UserProfile["stats"], string> = {
   followers: "followers",
 };
 
-export function ProfileHeader({ highlights, profile }: ProfileHeaderProps) {
+export function ProfileHeader({
+  highlights,
+  isLoading = false,
+  profile,
+}: ProfileHeaderProps) {
   return (
     <section className="w-full overflow-hidden border-border pb-6">
       <div className="flex items-start gap-7 sm:gap-12">
@@ -35,7 +41,7 @@ export function ProfileHeader({ highlights, profile }: ProfileHeaderProps) {
         <div className="min-w-0 flex-1 space-y-5">
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="truncate text-xl font-normal text-foreground">
-              {profile.username}
+              {isLoading ? "Loading..." : profile.username}
             </h1>
             
             <Button
@@ -62,6 +68,9 @@ export function ProfileHeader({ highlights, profile }: ProfileHeaderProps) {
 
           <div className="min-w-0 space-y-1 text-sm leading-6">
             <p className="font-black">{profile.displayName}</p>
+            {profile.email ? (
+              <p className="text-muted">{profile.email}</p>
+            ) : null}
             <p className="max-w-full break-words">{profile.bio}</p>
             <p className="text-muted">{profile.location}</p>
             <a

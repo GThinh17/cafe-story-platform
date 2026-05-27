@@ -46,3 +46,32 @@ export type CafeReviewPost = {
   rating: string;
   excerpt: string;
 };
+
+export type BlogDetailComment = {
+  id: string;
+  author: string;
+  avatar: string;
+  body: string;
+  time: string;
+};
+
+export type BlogDetailReview = {
+  id: string;
+  cafe: string;
+  reviewerName: string;
+  reviewerAvatar: string;
+  date: string;
+  rating: string;
+  ratingMax: string;
+  images: {
+    id: string;
+    src: string;
+    alt: string;
+  }[];
+  paragraphs: string[];
+  tags: string[];
+  likes: string;
+  commentsCount: string;
+  viewerAvatar: string;
+  comments: BlogDetailComment[];
+};
