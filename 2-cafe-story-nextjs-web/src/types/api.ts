@@ -8,5 +8,11 @@ export type ApiEnvelope<T> = {
 };
 
 export type ApiErrorPayload = ApiEnvelope<null> | {
+  detail?: string;
+  error?: string;
   message?: string;
+  path?: string;
+  status?: number | string;
+  timestamp?: string;
+  title?: string;
 };

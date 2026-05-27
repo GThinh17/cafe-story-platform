@@ -47,6 +47,10 @@ function isJsonBody(body: ApiFetchOptions["body"]) {
   );
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 async function parseJson<T>(response: Response): Promise<T | null> {
   const text = await response.text();
 
@@ -54,7 +58,38 @@ async function parseJson<T>(response: Response): Promise<T | null> {
     return null;
   }
 
-  return JSON.parse(text) as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return null;
+  }
+}
+
+function getErrorMessage(payload: ApiErrorPayload | null) {
+  if (!payload) {
+    return "API request failed";
+  }
+
+  if (isRecord(payload)) {
+    const errorPayload = payload as Record<string, unknown>;
+    const message = errorPayload.message;
+    const detail = errorPayload.detail;
+    const error = errorPayload.error;
+
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+
+    if (typeof detail === "string" && detail.trim()) {
+      return detail;
+    }
+
+    if (typeof error === "string" && error.trim()) {
+      return error;
+    }
+  }
+
+  return "API request failed";
 }
 
 export async function apiFetch<T>(
@@ -85,15 +120,10 @@ export async function apiFetch<T>(
   const payload = await parseJson<ApiEnvelope<T> | ApiErrorPayload>(response);
 
   if (!response.ok) {
-    const message =
-      payload && "message" in payload && payload.message
-        ? payload.message
-        : "API request failed";
-
-    throw new ApiError(message, response.status, payload);
+    throw new ApiError(getErrorMessage(payload), response.status, payload);
   }
 
-  if (payload && "data" in payload) {
+  if (isRecord(payload) && "data" in payload) {
     return payload.data as T;
   }
 

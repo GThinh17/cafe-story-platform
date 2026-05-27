@@ -3,11 +3,15 @@ import { apiEndpoints } from "@/lib/api/endpoints";
 import { clearStoredAuthTokens } from "@/lib/auth";
 import type { AuthResponse, LoginRequest, RegisterRequest } from "@/types/auth";
 
-export function login(request: LoginRequest) {
-  return apiFetch<AuthResponse>(apiEndpoints.auth.login, {
+export async function login(request: LoginRequest) {
+  const response = await apiFetch<AuthResponse>(apiEndpoints.auth.login, {
     method: "POST",
     body: request,
   });
+
+  clearStoredAuthTokens();
+
+  return response;
 }
 
 export function register(request: RegisterRequest) {
@@ -20,6 +24,12 @@ export function register(request: RegisterRequest) {
 export function getMe() {
   return apiFetch<AuthResponse>(apiEndpoints.auth.me, {
     method: "GET",
+  });
+}
+
+export function refreshSession() {
+  return apiFetch<AuthResponse>(apiEndpoints.auth.refresh, {
+    method: "POST",
   });
 }
 
