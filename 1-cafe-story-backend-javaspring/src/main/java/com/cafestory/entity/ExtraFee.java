@@ -46,6 +46,9 @@ public class ExtraFee {
     @Column(name = "duration_months")
     private Integer durationMonths;
 
+    @Column(name = "max_members")
+    private Integer maxMembers;
+
     @NotNull
     @Column(name = "status", nullable = false)
     @ColumnDefault("true")

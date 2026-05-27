@@ -21,6 +21,8 @@ public class ExtraFeeResponseDTO {
 
     private Integer durationMonths;
 
+    private Integer maxMembers;
+
     private Boolean status;
 
     private LocalDateTime createdAt;

@@ -11,8 +11,10 @@ import com.cafestory.service.serviceInterface.BlogService;
 import com.cafestory.validation.BlogValidator;
 import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.UserValidator;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
@@ -93,10 +95,12 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     @Transactional
-    public BlogResponseDTO updateBlog(UUID blogId, BlogUpdateDTO blogUpdateDTO) {
+    public BlogResponseDTO updateBlog(UUID blogId, UUID actorUserId, BlogUpdateDTO blogUpdateDTO) {
         Blog blog = blogValidator.validateBlogExists(blogId);
+        validateBlogOwner(blog, actorUserId);
 
         if (blogUpdateDTO.getPageId() != null) {
+            cafePageValidator.validateUserCanCreateBlogOnPage(blogUpdateDTO.getPageId(), actorUserId);
             blog.setPageId(blogUpdateDTO.getPageId());
         }
         if (blogUpdateDTO.getRegionId() != null) {
@@ -124,8 +128,15 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     @Transactional
-    public void deleteBlog(UUID blogId) {
+    public void deleteBlog(UUID blogId, UUID actorUserId) {
         Blog blog = blogValidator.validateBlogExists(blogId);
+        validateBlogOwner(blog, actorUserId);
         blogRepository.delete(blog);
+    }
+
+    private void validateBlogOwner(Blog blog, UUID actorUserId) {
+        if (actorUserId == null || blog.getAuthor() == null || !actorUserId.equals(blog.getAuthor().getUserId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not allowed to manage this blog");
+        }
     }
 }

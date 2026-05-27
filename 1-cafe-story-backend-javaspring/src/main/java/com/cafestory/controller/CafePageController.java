@@ -65,13 +65,16 @@ public class CafePageController {
     @PatchMapping("/{cafePageId}")
     public CafePageResponseDTO updateCafePage(
             @PathVariable UUID cafePageId,
-            @Valid @RequestBody CafePageUpdateDTO cafePageUpdateDTO) {
-        return cafePageService.updateCafePage(cafePageId, cafePageUpdateDTO);
+            @Valid @RequestBody CafePageUpdateDTO cafePageUpdateDTO,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return cafePageService.updateCafePage(cafePageId, requireUserId(principal), cafePageUpdateDTO);
     }
 
     @DeleteMapping("/{cafePageId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteCafePage(@PathVariable UUID cafePageId) {
-        cafePageService.deleteCafePage(cafePageId);
+    public void deleteCafePage(
+            @PathVariable UUID cafePageId,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        cafePageService.deleteCafePage(cafePageId, requireUserId(principal));
     }
 }

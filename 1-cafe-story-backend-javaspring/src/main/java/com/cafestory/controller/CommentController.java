@@ -79,13 +79,16 @@ public class CommentController {
     @PatchMapping("/{commentId}")
     public CommentResponseDTO updateComment(
             @PathVariable UUID commentId,
-            @Valid @RequestBody CommentUpdateDTO commentUpdateDTO) {
-        return commentService.updateComment(commentId, commentUpdateDTO);
+            @Valid @RequestBody CommentUpdateDTO commentUpdateDTO,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return commentService.updateComment(commentId, requireUserId(principal), commentUpdateDTO);
     }
 
     @DeleteMapping("/{commentId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteComment(@PathVariable UUID commentId) {
-        commentService.deleteComment(commentId);
+    public void deleteComment(
+            @PathVariable UUID commentId,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        commentService.deleteComment(commentId, requireUserId(principal));
     }
 }

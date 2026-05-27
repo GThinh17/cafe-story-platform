@@ -3,16 +3,25 @@ package com.cafestory.service;
 import com.cafestory.dto.requestDTO.CreatePaymentRequestDTO;
 import com.cafestory.dto.responseDTO.PaymentResponseDTO;
 import com.cafestory.dto.responseDTO.VnpayIpnResponseDTO;
+import com.cafestory.entity.AdFee;
+import com.cafestory.entity.CafePage;
 import com.cafestory.entity.ExtraFee;
+import com.cafestory.entity.PageMember;
 import com.cafestory.entity.Payment;
 import com.cafestory.entity.PaymentDetail;
 import com.cafestory.entity.Reviewer;
 import com.cafestory.entity.Role;
 import com.cafestory.entity.User;
+import com.cafestory.entity.enums.AdFeeType;
 import com.cafestory.entity.enums.ExtraFeeType;
+import com.cafestory.entity.enums.PageMemberStatus;
+import com.cafestory.entity.enums.PageStatus;
 import com.cafestory.entity.enums.PaymentMethod;
 import com.cafestory.entity.enums.PaymentStatus;
+import com.cafestory.repository.AdFeeRepository;
+import com.cafestory.repository.CafePageRepository;
 import com.cafestory.repository.ExtraFeeRepository;
+import com.cafestory.repository.PageMemberRepository;
 import com.cafestory.repository.PaymentDetailRepository;
 import com.cafestory.repository.PaymentRepository;
 import com.cafestory.repository.ReviewerRepository;
@@ -39,6 +48,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -57,6 +67,7 @@ class PaymentServiceImplTest {
 
     private final UUID buyerId = UUID.fromString("11111111-1111-1111-1111-111111111111");
     private final UUID extraFeeId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    private final UUID adFeeId = UUID.fromString("44444444-4444-4444-4444-444444444444");
     private final UUID paymentId = UUID.fromString("33333333-3333-3333-3333-333333333333");
 
     @Mock
@@ -66,6 +77,9 @@ class PaymentServiceImplTest {
     private PaymentDetailRepository paymentDetailRepository;
 
     @Mock
+    private AdFeeRepository adFeeRepository;
+
+    @Mock
     private ExtraFeeRepository extraFeeRepository;
 
     @Mock
@@ -73,6 +87,12 @@ class PaymentServiceImplTest {
 
     @Mock
     private ReviewerRepository reviewerRepository;
+
+    @Mock
+    private CafePageRepository cafePageRepository;
+
+    @Mock
+    private PageMemberRepository pageMemberRepository;
 
     @Mock
     private RoleRepository roleRepository;
@@ -93,9 +113,12 @@ class PaymentServiceImplTest {
         paymentService = new PaymentServiceImpl(
                 paymentRepository,
                 paymentDetailRepository,
+                adFeeRepository,
                 extraFeeRepository,
                 userRepository,
                 reviewerRepository,
+                cafePageRepository,
+                pageMemberRepository,
                 roleRepository,
                 userRoleAssignmentRepository,
                 stripeCheckoutClient,
@@ -112,10 +135,10 @@ class PaymentServiceImplTest {
         when(extraFeeRepository.findById(extraFeeId)).thenReturn(Optional.of(extraFee));
         mockPaymentSave();
         mockPaymentDetailSave();
-        when(stripeCheckoutClient.createCheckoutSession(any(Payment.class), any(ExtraFee.class)))
+        when(stripeCheckoutClient.createCheckoutSession(any(Payment.class)))
                 .thenReturn(new StripeCheckoutClient.StripeCheckoutSession("cs_test_123", "https://checkout.stripe.com/test", "{}"));
 
-        PaymentResponseDTO result = paymentService.createPayment(request(PaymentMethod.STRIPE_CARD));
+        PaymentResponseDTO result = paymentService.createPayment(buyerId, request(PaymentMethod.STRIPE_CARD));
 
         assertThat(result.getPaymentId()).isEqualTo(paymentId);
         assertThat(result.getPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
@@ -134,7 +157,7 @@ class PaymentServiceImplTest {
         mockPaymentSave();
         mockPaymentDetailSave();
 
-        PaymentResponseDTO result = paymentService.createPayment(request(PaymentMethod.BANK_TRANSFER));
+        PaymentResponseDTO result = paymentService.createPayment(buyerId, request(PaymentMethod.BANK_TRANSFER));
 
         assertThat(result.getPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
         assertThat(result.getPaymentMethod()).isEqualTo(PaymentMethod.BANK_TRANSFER);
@@ -150,10 +173,10 @@ class PaymentServiceImplTest {
         when(extraFeeRepository.findById(extraFeeId)).thenReturn(Optional.of(extraFee));
         mockPaymentSave();
         mockPaymentDetailSave();
-        when(vnpayPaymentClient.createPaymentUrl(any(Payment.class), any(ExtraFee.class)))
+        when(vnpayPaymentClient.createPaymentUrl(any(Payment.class)))
                 .thenReturn("https://sandbox.vnpayment.vn/paymentv2/vpcpay.html?vnp_TxnRef=" + paymentId);
 
-        PaymentResponseDTO result = paymentService.createPayment(request(PaymentMethod.VNPAY));
+        PaymentResponseDTO result = paymentService.createPayment(buyerId, request(PaymentMethod.VNPAY));
 
         assertThat(result.getPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
         assertThat(result.getPaymentMethod()).isEqualTo(PaymentMethod.VNPAY);
@@ -162,10 +185,56 @@ class PaymentServiceImplTest {
     }
 
     @Test
+    void createPayment_success_adFeeUsesAdAmountAndCurrency_TC021() {
+        User buyer = user();
+        AdFee adFee = adFee(true);
+        when(userRepository.findById(buyerId)).thenReturn(Optional.of(buyer));
+        when(adFeeRepository.findById(adFeeId)).thenReturn(Optional.of(adFee));
+        mockPaymentSave();
+        mockPaymentDetailSave();
+
+        PaymentResponseDTO result = paymentService.createPayment(adFeeRequest(PaymentMethod.BANK_TRANSFER));
+
+        assertThat(result.getAdFeeId()).isEqualTo(adFeeId);
+        assertThat(result.getExtraFeeId()).isNull();
+        assertThat(result.getAmount()).isEqualByComparingTo(BigDecimal.valueOf(500000));
+        assertThat(result.getCurrency()).isEqualTo("VND");
+    }
+
+    @Test
+    void createPayment_fail_requiresExactlyOneFee_TC022() {
+        when(userRepository.findById(buyerId)).thenReturn(Optional.of(user()));
+        CreatePaymentRequestDTO noFeeRequest = new CreatePaymentRequestDTO();
+        noFeeRequest.setBuyerId(buyerId);
+        noFeeRequest.setPaymentMethod(PaymentMethod.BANK_TRANSFER);
+
+        assertThatThrownBy(() -> paymentService.createPayment(noFeeRequest))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        CreatePaymentRequestDTO bothFeesRequest = request(PaymentMethod.BANK_TRANSFER);
+        bothFeesRequest.setAdFeeId(adFeeId);
+
+        assertThatThrownBy(() -> paymentService.createPayment(bothFeesRequest))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void createPayment_fail_inactiveAdFee_TC023() {
+        when(userRepository.findById(buyerId)).thenReturn(Optional.of(user()));
+        when(adFeeRepository.findById(adFeeId)).thenReturn(Optional.of(adFee(false)));
+
+        assertThatThrownBy(() -> paymentService.createPayment(adFeeRequest(PaymentMethod.BANK_TRANSFER)))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
     void createPayment_fail_buyerNotFound_TC003() {
         when(userRepository.findById(buyerId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> paymentService.createPayment(request(PaymentMethod.STRIPE_CARD)))
+        assertThatThrownBy(() -> paymentService.createPayment(buyerId, request(PaymentMethod.STRIPE_CARD)))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
     }
@@ -175,15 +244,48 @@ class PaymentServiceImplTest {
         when(userRepository.findById(buyerId)).thenReturn(Optional.of(user()));
         when(extraFeeRepository.findById(extraFeeId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> paymentService.createPayment(request(PaymentMethod.STRIPE_CARD)))
+        assertThatThrownBy(() -> paymentService.createPayment(buyerId, request(PaymentMethod.STRIPE_CARD)))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
 
         when(extraFeeRepository.findById(extraFeeId)).thenReturn(Optional.of(extraFee(false, ExtraFeeType.REVIEWER_REGISTRATION)));
 
-        assertThatThrownBy(() -> paymentService.createPayment(request(PaymentMethod.STRIPE_CARD)))
+        assertThatThrownBy(() -> paymentService.createPayment(buyerId, request(PaymentMethod.STRIPE_CARD)))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void getAllPayments_success_withoutStatusFilter_TC031() {
+        Payment firstPayment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING));
+        Payment secondPayment = pendingPayment(PaymentMethod.BANK_TRANSFER, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
+        secondPayment.setPaymentId(UUID.fromString("44444444-4444-4444-4444-444444444444"));
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "ADMIN")).thenReturn(true);
+        when(paymentRepository.findAllByOrderByCreatedAtDesc()).thenReturn(List.of(firstPayment, secondPayment));
+        when(paymentDetailRepository.findByPaymentPaymentId(firstPayment.getPaymentId())).thenReturn(Optional.of(paymentDetail(firstPayment)));
+        when(paymentDetailRepository.findByPaymentPaymentId(secondPayment.getPaymentId())).thenReturn(Optional.empty());
+
+        List<PaymentResponseDTO> result = paymentService.getAllPayments(buyerId, null);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getPaymentId()).isEqualTo(firstPayment.getPaymentId());
+        assertThat(result.get(0).getPaymentUrl()).isEqualTo("https://checkout.stripe.com/test");
+        assertThat(result.get(1).getPaymentId()).isEqualTo(secondPayment.getPaymentId());
+        verify(paymentRepository).findAllByOrderByCreatedAtDesc();
+    }
+
+    @Test
+    void getAllPayments_success_withStatusFilter_TC032() {
+        Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING));
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "ADMIN")).thenReturn(true);
+        when(paymentRepository.findByPaymentStatusOrderByCreatedAtDesc(PaymentStatus.PENDING)).thenReturn(List.of(payment));
+        when(paymentDetailRepository.findByPaymentPaymentId(payment.getPaymentId())).thenReturn(Optional.empty());
+
+        List<PaymentResponseDTO> result = paymentService.getAllPayments(buyerId, PaymentStatus.PENDING);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
+        verify(paymentRepository).findByPaymentStatusOrderByCreatedAtDesc(PaymentStatus.PENDING);
     }
 
     @Test
@@ -197,7 +299,7 @@ class PaymentServiceImplTest {
         when(reviewerRepository.findByUserUserId(buyerId)).thenReturn(Optional.empty());
         mockReviewerSave();
         when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "REVIEWER")).thenReturn(false);
-        when(roleRepository.findByName("REVIEWER")).thenReturn(Optional.of(role()));
+        when(roleRepository.findByName("REVIEWER")).thenReturn(Optional.of(role("REVIEWER")));
 
         paymentService.handleStripeWebhook(stripePayload(), null);
 
@@ -269,15 +371,58 @@ class PaymentServiceImplTest {
         mockPaymentSave();
         when(reviewerRepository.findByUserUserId(buyerId)).thenReturn(Optional.empty());
         mockReviewerSave();
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "ADMIN")).thenReturn(true);
         when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "REVIEWER")).thenReturn(false);
-        when(roleRepository.findByName("REVIEWER")).thenReturn(Optional.of(role()));
+        when(roleRepository.findByName("REVIEWER")).thenReturn(Optional.of(role("REVIEWER")));
 
-        PaymentResponseDTO result = paymentService.markBankTransferPaid(paymentId);
+        PaymentResponseDTO result = paymentService.markBankTransferPaid(buyerId, paymentId);
 
         assertThat(result.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
         assertThat(result.getPaidAt()).isNotNull();
         verify(reviewerRepository).save(any(Reviewer.class));
         verify(userRoleAssignmentRepository).save(any());
+    }
+
+    @Test
+    void markBankTransferPaid_success_cafePageOpeningCreatesDraftCafePage_TC026() {
+        Payment payment = pendingPayment(PaymentMethod.BANK_TRANSFER, extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING));
+        payment.getExtraFee().setMaxMembers(5);
+        PaymentDetail detail = paymentDetail(payment);
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.of(detail));
+        mockPaymentSave();
+        when(cafePageRepository.findByOwnerUserId(buyerId)).thenReturn(List.of());
+        mockCafePageSave();
+        when(pageMemberRepository.findByCafePageIdAndUserUserId(any(UUID.class), any(UUID.class))).thenReturn(Optional.empty());
+        mockPageMemberSave();
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "ADMIN")).thenReturn(true);
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "CAFE_PAGE")).thenReturn(false);
+        when(roleRepository.findByName("CAFE_PAGE")).thenReturn(Optional.of(role("CAFE_PAGE")));
+
+        PaymentResponseDTO result = paymentService.markBankTransferPaid(buyerId, paymentId);
+
+        assertThat(result.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
+        verify(cafePageRepository).save(org.mockito.ArgumentMatchers.argThat(page ->
+                page.getMaxMembers() == 5 && Boolean.TRUE.equals(page.getPageActive())));
+        verify(pageMemberRepository).save(any(PageMember.class));
+        verify(userRoleAssignmentRepository).save(any());
+    }
+
+    @Test
+    void markBankTransferPaid_success_duplicateAlreadyPaidDoesNotCreateDuplicateCafePage_TC027() {
+        Payment payment = pendingPayment(PaymentMethod.BANK_TRANSFER, extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING));
+        payment.setPaymentStatus(PaymentStatus.PAID);
+        PaymentDetail detail = paymentDetail(payment);
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "ADMIN")).thenReturn(true);
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.of(detail));
+
+        PaymentResponseDTO result = paymentService.markBankTransferPaid(buyerId, paymentId);
+
+        assertThat(result.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
+        verify(cafePageRepository, never()).save(any());
+        verify(pageMemberRepository, never()).save(any());
+        verify(userRoleAssignmentRepository, never()).save(any());
     }
 
     @Test
@@ -295,6 +440,35 @@ class PaymentServiceImplTest {
     }
 
     @Test
+    void handleStripeWebhook_fail_invalidSignatureRejectedByService_TC030() {
+        PaymentServiceImpl serviceWithWebhookSecret = new PaymentServiceImpl(
+                paymentRepository,
+                paymentDetailRepository,
+                extraFeeRepository,
+                userRepository,
+                reviewerRepository,
+                cafePageRepository,
+                pageMemberRepository,
+                roleRepository,
+                userRoleAssignmentRepository,
+                stripeCheckoutClient,
+                vnpayPaymentClient,
+                new ObjectMapper(),
+                "whsec_test_secret");
+
+        assertThatThrownBy(() -> serviceWithWebhookSecret.handleStripeWebhook(stripePayload(), "invalid-signature"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> {
+                    ResponseStatusException ex = (ResponseStatusException) error;
+                    assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(ex.getReason()).isEqualTo("Invalid Stripe signature");
+                });
+
+        verify(paymentDetailRepository, never()).findByProviderOrderId(any());
+        verify(paymentRepository, never()).save(any());
+    }
+
+    @Test
     void handleVnpayIpn_success_updatesPayment_TC013() {
         Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING));
         PaymentDetail detail = paymentDetail(payment);
@@ -303,6 +477,12 @@ class PaymentServiceImplTest {
         when(vnpayPaymentClient.verifySignature(params)).thenReturn(true);
         when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
         when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.of(detail));
+        when(cafePageRepository.findByOwnerUserId(buyerId)).thenReturn(List.of());
+        mockCafePageSave();
+        when(pageMemberRepository.findByCafePageIdAndUserUserId(any(UUID.class), any(UUID.class))).thenReturn(Optional.empty());
+        mockPageMemberSave();
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "CAFE_PAGE")).thenReturn(false);
+        when(roleRepository.findByName("CAFE_PAGE")).thenReturn(Optional.of(role("CAFE_PAGE")));
 
         VnpayIpnResponseDTO result = paymentService.handleVnpayIpn(params);
 
@@ -312,6 +492,9 @@ class PaymentServiceImplTest {
         assertThat(detail.getProviderTransactionId()).isEqualTo("14123456");
         verify(paymentRepository).save(payment);
         verify(paymentDetailRepository).save(detail);
+        verify(cafePageRepository).save(any(CafePage.class));
+        verify(pageMemberRepository).save(any(PageMember.class));
+        verify(userRoleAssignmentRepository).save(any());
     }
 
     @Test
@@ -328,6 +511,149 @@ class PaymentServiceImplTest {
         assertThat(result.getMessage()).isEqualTo("Order already confirmed");
         verify(paymentRepository, never()).save(any());
         verify(paymentDetailRepository, never()).save(any());
+        verify(cafePageRepository, never()).save(any());
+        verify(pageMemberRepository, never()).save(any());
+    }
+
+    @Test
+    void handleVnpayIpn_success_cafePageOpeningCreatesDraftCafePageForBuyer_TC021() {
+        Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING));
+        payment.getExtraFee().setMaxMembers(5);
+        payment.getBuyer().setUserFullName("Nguyen Van A");
+        PaymentDetail detail = paymentDetail(payment);
+        Map<String, String> params = vnpayParams("00", "00", "29900000", paymentId.toString());
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(true);
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.of(detail));
+        when(cafePageRepository.findByOwnerUserId(buyerId)).thenReturn(List.of());
+        mockCafePageSave();
+        when(pageMemberRepository.findByCafePageIdAndUserUserId(any(UUID.class), any(UUID.class))).thenReturn(Optional.empty());
+        mockPageMemberSave();
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "CAFE_PAGE")).thenReturn(false);
+        when(roleRepository.findByName("CAFE_PAGE")).thenReturn(Optional.of(role("CAFE_PAGE")));
+
+        paymentService.handleVnpayIpn(params);
+
+        verify(cafePageRepository).save(org.mockito.ArgumentMatchers.argThat(page ->
+                page.getOwner().equals(payment.getBuyer())
+                        && page.getName().equals("Nguyen Van A's Cafe Page")
+                        && page.getAddress().equals("Pending update")
+                        && page.getStatus() == PageStatus.DRAFT
+                        && page.getLikeCount() == 0
+                        && page.getFollowerCount() == 0
+                        && page.getMaxMembers() == 5
+                        && Boolean.TRUE.equals(page.getPageActive())));
+    }
+
+    @Test
+    void handleVnpayIpn_success_cafePageOpeningDefaultsCafePageMaxMembers_TC028() {
+        Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING));
+        payment.getExtraFee().setMaxMembers(null);
+        PaymentDetail detail = paymentDetail(payment);
+        Map<String, String> params = vnpayParams("00", "00", "29900000", paymentId.toString());
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(true);
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.of(detail));
+        when(cafePageRepository.findByOwnerUserId(buyerId)).thenReturn(List.of());
+        mockCafePageSave();
+        when(pageMemberRepository.findByCafePageIdAndUserUserId(any(UUID.class), any(UUID.class))).thenReturn(Optional.empty());
+        mockPageMemberSave();
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "CAFE_PAGE")).thenReturn(true);
+
+        paymentService.handleVnpayIpn(params);
+
+        verify(cafePageRepository).save(org.mockito.ArgumentMatchers.argThat(page -> page.getMaxMembers() == 2));
+    }
+
+    @Test
+    void handleVnpayIpn_success_existingCafePageReusedNoDuplicate_TC022() {
+        CafePage existingPage = cafePage(user());
+        Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING));
+        payment.getExtraFee().setMaxMembers(6);
+        PaymentDetail detail = paymentDetail(payment);
+        Map<String, String> params = vnpayParams("00", "00", "29900000", paymentId.toString());
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(true);
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.of(detail));
+        when(cafePageRepository.findByOwnerUserId(buyerId)).thenReturn(List.of(existingPage));
+        mockCafePageSave();
+        when(pageMemberRepository.findByCafePageIdAndUserUserId(existingPage.getId(), buyerId)).thenReturn(Optional.empty());
+        mockPageMemberSave();
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "CAFE_PAGE")).thenReturn(true);
+
+        paymentService.handleVnpayIpn(params);
+
+        assertThat(existingPage.getMaxMembers()).isEqualTo(6);
+        verify(cafePageRepository).save(existingPage);
+        verify(pageMemberRepository).save(any(PageMember.class));
+    }
+
+    @Test
+    void handleVnpayIpn_success_existingCafePageMaxMembersUpdatedFromPackage_TC029() {
+        CafePage existingPage = cafePage(user());
+        existingPage.setMaxMembers(2);
+        Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING));
+        payment.getExtraFee().setMaxMembers(8);
+        PaymentDetail detail = paymentDetail(payment);
+        Map<String, String> params = vnpayParams("00", "00", "29900000", paymentId.toString());
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(true);
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.of(detail));
+        when(cafePageRepository.findByOwnerUserId(buyerId)).thenReturn(List.of(existingPage));
+        mockCafePageSave();
+        when(pageMemberRepository.findByCafePageIdAndUserUserId(existingPage.getId(), buyerId)).thenReturn(Optional.empty());
+        mockPageMemberSave();
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "CAFE_PAGE")).thenReturn(true);
+
+        paymentService.handleVnpayIpn(params);
+
+        assertThat(existingPage.getMaxMembers()).isEqualTo(8);
+        verify(cafePageRepository).save(existingPage);
+    }
+
+    @Test
+    void handleVnpayIpn_success_ownerPageMemberIsCreated_TC023() {
+        CafePage existingPage = cafePage(user());
+        Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING));
+        PaymentDetail detail = paymentDetail(payment);
+        Map<String, String> params = vnpayParams("00", "00", "29900000", paymentId.toString());
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(true);
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.of(detail));
+        when(cafePageRepository.findByOwnerUserId(buyerId)).thenReturn(List.of(existingPage));
+        mockCafePageSave();
+        when(pageMemberRepository.findByCafePageIdAndUserUserId(existingPage.getId(), buyerId)).thenReturn(Optional.empty());
+        mockPageMemberSave();
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "CAFE_PAGE")).thenReturn(true);
+
+        paymentService.handleVnpayIpn(params);
+
+        verify(pageMemberRepository).save(org.mockito.ArgumentMatchers.argThat(member ->
+                member.getCafePage().equals(existingPage)
+                        && member.getUser().getUserId().equals(buyerId)
+                        && PageMember.ROLE_OWNER.equals(member.getRoleName())
+                        && member.getStatus() == PageMemberStatus.ACTIVE));
+    }
+
+    @Test
+    void handleVnpayIpn_success_cafePageRoleAssignedIfMissing_TC024() {
+        CafePage existingPage = cafePage(user());
+        Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING));
+        PaymentDetail detail = paymentDetail(payment);
+        Map<String, String> params = vnpayParams("00", "00", "29900000", paymentId.toString());
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(true);
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.of(detail));
+        when(cafePageRepository.findByOwnerUserId(buyerId)).thenReturn(List.of(existingPage));
+        mockCafePageSave();
+        when(pageMemberRepository.findByCafePageIdAndUserUserId(existingPage.getId(), buyerId)).thenReturn(Optional.empty());
+        mockPageMemberSave();
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "CAFE_PAGE")).thenReturn(false);
+        when(roleRepository.findByName("CAFE_PAGE")).thenReturn(Optional.of(role("CAFE_PAGE")));
+
+        paymentService.handleVnpayIpn(params);
+
+        verify(userRoleAssignmentRepository).save(any());
     }
 
     @Test
@@ -405,7 +731,7 @@ class PaymentServiceImplTest {
         Payment payment = pendingPayment(PaymentMethod.STRIPE_CARD, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
 
         assertThatThrownBy(() -> new StripeCheckoutClientImpl("", "http://localhost/success", "http://localhost/cancel")
-                .createCheckoutSession(payment, payment.getExtraFee()))
+                .createCheckoutSession(payment))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> {
                     ResponseStatusException ex = (ResponseStatusException) error;
@@ -414,7 +740,7 @@ class PaymentServiceImplTest {
                 });
 
         assertThatThrownBy(() -> new StripeCheckoutClientImpl("not-a-secret", "http://localhost/success", "http://localhost/cancel")
-                .createCheckoutSession(payment, payment.getExtraFee()))
+                .createCheckoutSession(payment))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> {
                     ResponseStatusException ex = (ResponseStatusException) error;
@@ -428,7 +754,7 @@ class PaymentServiceImplTest {
         Payment payment = pendingPayment(PaymentMethod.STRIPE_CARD, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
 
         assertThatThrownBy(() -> new StripeCheckoutClientImpl("sk_test_123", "", "http://localhost/cancel")
-                .createCheckoutSession(payment, payment.getExtraFee()))
+                .createCheckoutSession(payment))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> {
                     ResponseStatusException ex = (ResponseStatusException) error;
@@ -437,7 +763,7 @@ class PaymentServiceImplTest {
                 });
 
         assertThatThrownBy(() -> new StripeCheckoutClientImpl("sk_test_123", "http://localhost/success", "")
-                .createCheckoutSession(payment, payment.getExtraFee()))
+                .createCheckoutSession(payment))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> {
                     ResponseStatusException ex = (ResponseStatusException) error;
@@ -458,7 +784,7 @@ class PaymentServiceImplTest {
             sessionMock.when(() -> Session.create(any(SessionCreateParams.class)))
                     .thenThrow(new ApiException("No such payment method type", "req_123", "invalid_request_error", 400, null));
 
-            assertThatThrownBy(() -> client.createCheckoutSession(payment, payment.getExtraFee()))
+            assertThatThrownBy(() -> client.createCheckoutSession(payment))
                     .isInstanceOf(ResponseStatusException.class)
                     .satisfies(error -> {
                         ResponseStatusException ex = (ResponseStatusException) error;
@@ -470,8 +796,15 @@ class PaymentServiceImplTest {
 
     private CreatePaymentRequestDTO request(PaymentMethod method) {
         CreatePaymentRequestDTO request = new CreatePaymentRequestDTO();
-        request.setBuyerId(buyerId);
         request.setExtraFeeId(extraFeeId);
+        request.setPaymentMethod(method);
+        return request;
+    }
+
+    private CreatePaymentRequestDTO adFeeRequest(PaymentMethod method) {
+        CreatePaymentRequestDTO request = new CreatePaymentRequestDTO();
+        request.setBuyerId(buyerId);
+        request.setAdFeeId(adFeeId);
         request.setPaymentMethod(method);
         return request;
     }
@@ -495,6 +828,16 @@ class PaymentServiceImplTest {
         extraFee.setDurationMonths(6);
         extraFee.setStatus(active);
         return extraFee;
+    }
+
+    private AdFee adFee(boolean active) {
+        AdFee adFee = new AdFee();
+        adFee.setAdFeeId(adFeeId);
+        adFee.setFeeType(AdFeeType.FEED_10000_IMPRESSIONS_OR_30_DAYS);
+        adFee.setPrice(BigDecimal.valueOf(500000));
+        adFee.setCurrency("VND");
+        adFee.setStatus(active);
+        return adFee;
     }
 
     private Payment pendingPayment(PaymentMethod method, ExtraFee extraFee) {
@@ -521,10 +864,22 @@ class PaymentServiceImplTest {
         return detail;
     }
 
-    private Role role() {
+    private CafePage cafePage(User owner) {
+        CafePage cafePage = new CafePage();
+        cafePage.setId(UUID.randomUUID());
+        cafePage.setOwner(owner);
+        cafePage.setName("Existing Cafe Page");
+        cafePage.setAddress("Existing address");
+        cafePage.setStatus(PageStatus.DRAFT);
+        cafePage.setLikeCount(0);
+        cafePage.setFollowerCount(0);
+        return cafePage;
+    }
+
+    private Role role(String roleName) {
         Role role = new Role();
         role.setId(2);
-        role.setName("REVIEWER");
+        role.setName(roleName);
         return role;
     }
 
@@ -584,5 +939,20 @@ class PaymentServiceImplTest {
             }
             return reviewer;
         }).when(reviewerRepository).save(any(Reviewer.class));
+    }
+
+    private void mockCafePageSave() {
+        doAnswer(invocation -> {
+            CafePage cafePage = invocation.getArgument(0);
+            if (cafePage.getId() == null) {
+                cafePage.setId(UUID.randomUUID());
+            }
+            return cafePage;
+        }).when(cafePageRepository).save(any(CafePage.class));
+    }
+
+    private void mockPageMemberSave() {
+        doAnswer(invocation -> invocation.getArgument(0))
+                .when(pageMemberRepository).save(any(PageMember.class));
     }
 }

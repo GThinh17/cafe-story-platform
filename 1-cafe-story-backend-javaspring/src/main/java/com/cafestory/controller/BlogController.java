@@ -64,13 +64,16 @@ public class BlogController {
     @PatchMapping("/{blogId}")
     public BlogResponseDTO updateBlog(
             @PathVariable UUID blogId,
-            @Valid @RequestBody BlogUpdateDTO blogUpdateDTO) {
-        return blogService.updateBlog(blogId, blogUpdateDTO);
+            @Valid @RequestBody BlogUpdateDTO blogUpdateDTO,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return blogService.updateBlog(blogId, requireUserId(principal), blogUpdateDTO);
     }
 
     @DeleteMapping("/{blogId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deleteBlog(@PathVariable UUID blogId) {
-        blogService.deleteBlog(blogId);
+    public void deleteBlog(
+            @PathVariable UUID blogId,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        blogService.deleteBlog(blogId, requireUserId(principal));
     }
 }

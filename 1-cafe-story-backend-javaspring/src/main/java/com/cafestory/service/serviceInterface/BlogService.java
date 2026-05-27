@@ -18,7 +18,7 @@ public interface BlogService {
 
     BlogResponseDTO getBlogById(UUID blogId);
 
-    BlogResponseDTO updateBlog(UUID blogId, BlogUpdateDTO blogUpdateDTO);
+    BlogResponseDTO updateBlog(UUID blogId, UUID actorUserId, BlogUpdateDTO blogUpdateDTO);
 
-    void deleteBlog(UUID blogId);
+    void deleteBlog(UUID blogId, UUID actorUserId);
 }
