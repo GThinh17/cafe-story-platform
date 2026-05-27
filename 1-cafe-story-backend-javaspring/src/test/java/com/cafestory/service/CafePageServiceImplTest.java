@@ -3,6 +3,7 @@ package com.cafestory.service;
 import com.cafestory.dto.requestDTO.CafePageCreateDTO;
 import com.cafestory.dto.requestDTO.CafePageUpdateDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
+import com.cafestory.dto.responseDTO.CafePageRankingResponseDTO;
 import com.cafestory.dto.responseDTO.CafePageResponseDTO;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.CafePage;
@@ -24,6 +25,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -135,7 +137,44 @@ class CafePageServiceImplTest {
     }
 
     @Test
-    void getCafePageById_success_TC005() {
+    void getTopCafePages_success_sortsByScoreAndAssignsRank_TC005() {
+        UUID regionId = UUID.randomUUID();
+        CafePage firstCafe = cafePage(UUID.randomUUID(), user(UUID.randomUUID()));
+        firstCafe.setName("Popular Cafe");
+        firstCafe.setFollowerCount(12);
+        firstCafe.setLikeCount(20);
+        firstCafe.setPageActive(true);
+        firstCafe.setStatus(PageStatus.ACTIVE);
+        firstCafe.setRegion(region(regionId, "Ho Chi Minh"));
+        firstCafe.setCreatedAt(LocalDateTime.now().minusDays(5));
+        CafePage secondCafe = cafePage(UUID.randomUUID(), user(UUID.randomUUID()));
+        secondCafe.setName("Quiet Cafe");
+        secondCafe.setFollowerCount(2);
+        secondCafe.setLikeCount(5);
+        secondCafe.setPageActive(true);
+        secondCafe.setStatus(PageStatus.ACTIVE);
+        secondCafe.setRegion(region(regionId, "Ho Chi Minh"));
+        secondCafe.setCreatedAt(LocalDateTime.now().minusDays(1));
+
+        when(cafePageRepository.findActiveCafePagesForRegionalRanking(regionId, "Ho Chi Minh"))
+                .thenReturn(List.of(secondCafe, firstCafe));
+
+        List<CafePageRankingResponseDTO> result = cafePageService.getTopCafePages(
+                regionId,
+                " Ho Chi Minh ",
+                10);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getId()).isEqualTo(firstCafe.getId());
+        assertThat(result.get(0).getRankPosition()).isEqualTo(1);
+        assertThat(result.get(0).getRegionCity()).isEqualTo("Ho Chi Minh");
+        assertThat(result.get(0).getRankingScore()).isGreaterThan(result.get(1).getRankingScore());
+        assertThat(result.get(1).getId()).isEqualTo(secondCafe.getId());
+        assertThat(result.get(1).getRankPosition()).isEqualTo(2);
+    }
+
+    @Test
+    void getCafePageById_success_TC006() {
         CafePage cafePage = cafePage(UUID.randomUUID(), user(UUID.randomUUID()));
         CafePageResponseDTO response = response(cafePage.getId(), cafePage.getOwner().getUserId());
 
@@ -148,7 +187,7 @@ class CafePageServiceImplTest {
     }
 
     @Test
-    void getBlogsByCafePageId_success_TC006() {
+    void getBlogsByCafePageId_success_TC007() {
         UUID cafePageId = UUID.randomUUID();
         Blog blog = blog(UUID.randomUUID(), cafePageId);
         BlogResponseDTO response = new BlogResponseDTO();
@@ -165,7 +204,7 @@ class CafePageServiceImplTest {
     }
 
     @Test
-    void updateCafePage_success_TC007() {
+    void updateCafePage_success_TC008() {
         UUID cafePageId = UUID.randomUUID();
         CafePage cafePage = cafePage(cafePageId, user(UUID.randomUUID()));
         UUID actorUserId = cafePage.getOwner().getUserId();
@@ -192,7 +231,7 @@ class CafePageServiceImplTest {
     }
 
     @Test
-    void deleteCafePage_success_TC008() {
+    void deleteCafePage_success_TC009() {
         UUID cafePageId = UUID.randomUUID();
         CafePage cafePage = cafePage(cafePageId, user(UUID.randomUUID()));
         UUID actorUserId = cafePage.getOwner().getUserId();
@@ -257,9 +296,13 @@ class CafePageServiceImplTest {
     }
 
     private Region region() {
+        return region(UUID.randomUUID(), "HCM");
+    }
+
+    private Region region(UUID regionId, String city) {
         Region region = new Region();
-        region.setRegionId(UUID.randomUUID());
-        region.setCity("HCM");
+        region.setRegionId(regionId);
+        region.setCity(city);
         region.setProvince("HCM");
         region.setArea("D1");
         region.setWard("Ben Nghe");

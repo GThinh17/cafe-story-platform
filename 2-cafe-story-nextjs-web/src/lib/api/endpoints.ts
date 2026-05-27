@@ -24,6 +24,7 @@ export const apiEndpoints = {
   },
   cafes: {
     list: "/api/cafe-pages",
+    top: "/api/cafe-pages/top",
     byId: (cafePageId: string) => `/api/cafe-pages/${pathId(cafePageId)}`,
     blogs: (cafePageId: string) => `/api/cafe-pages/${pathId(cafePageId)}/blogs`,
     likes: (cafePageId: string) => `/api/cafe-pages/${pathId(cafePageId)}/likes`,
