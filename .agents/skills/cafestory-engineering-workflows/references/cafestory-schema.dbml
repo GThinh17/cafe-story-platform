@@ -29,6 +29,13 @@ Enum report_status {
   REJECTED
 }
 
+Enum report_target_type {
+  BLOG
+  COMMENT
+  USER
+  CAFE_PAGE
+}
+
 Enum moderation_decision {
   SAFE
   NEEDS_REVIEW
@@ -738,15 +745,18 @@ Table payouts {
 Table content_reports {
   id uuid [pk]
   reporter_user_id uuid [not null]
+  target_type report_target_type [not null]
   blog_id uuid
   comment_id uuid
+  reported_user_id uuid
+  cafe_page_id uuid
   reason varchar(160) [not null]
   description text
   status report_status [not null, default: "OPEN"]
   created_at datetime [not null]
   resolved_at datetime
 
-  Note: "Use either blog_id or comment_id depending on what is reported."
+  Note: "Use target_type with exactly one matching target FK: blog_id, comment_id, reported_user_id, or cafe_page_id."
 }
 
 Ref: user_roles.user_id > users.user_id
@@ -822,5 +832,7 @@ Ref: payouts.payment_method_id > payment_methods.id
 Ref: content_reports.reporter_user_id > users.user_id
 Ref: content_reports.blog_id > blogs.id
 Ref: content_reports.comment_id > comments.id
+Ref: content_reports.reported_user_id > users.user_id
+Ref: content_reports.cafe_page_id > cafe_pages.id
 Ref: ai_moderation_results.blog_id > blogs.id
 Ref: ai_moderation_results.comment_id > comments.id

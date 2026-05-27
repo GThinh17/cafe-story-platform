@@ -30,7 +30,7 @@ For exact table/column/enum definitions, read `cafestory-schema.dbml`.
 - `same_region_score` compares `regions.city`, not `region_id`, because user/page/blog region rows can be different records for the same city.
 - Rebuild recommendation cache through the scheduled job or manual rebuild endpoint after trending scores, follows, reports, or region context changes.
 - `HIDDEN` and `REMOVED` blogs and blogs with AI moderation `VIOLATION` must not appear in trending.
-- Reports target either a blog or a comment; exactly one of `content_reports.blog_id` or `content_reports.comment_id` should be set by application validation.
+- Reports use `content_reports.target_type` and target exactly one of `blog_id`, `comment_id`, `reported_user_id`, or `cafe_page_id` by application validation.
 - User follow must reject self-follow: `follower_user_id <> following_user_id`.
 - Page ownership starts with `cafe_pages.owner_user_id`; this primary owner/creator is unique, so one user can create only one cafe page.
 - `page_members` stores page owners/co-owners/members with `status`: `PENDING`, `ACTIVE`, `REJECTED`.
@@ -73,6 +73,7 @@ Payments:
 - `page_status`: `DRAFT`, `ACTIVE`, `SUSPENDED`
 - `post_status`: `DRAFT`, `PUBLISHED`, `HIDDEN`, `REMOVED`
 - `report_status`: `OPEN`, `REVIEWING`, `RESOLVED`, `REJECTED`
+- `report_target_type`: `BLOG`, `COMMENT`, `USER`, `CAFE_PAGE`
 - `moderation_decision`: `SAFE`, `NEEDS_REVIEW`, `VIOLATION`
 - `payment_status`: `PENDING`, `PAID`, `FAILED`, `EXPIRED`, `REFUNDED`
 - `payout_status`: `PENDING`, `APPROVED`, `REJECTED`, `PAID`
