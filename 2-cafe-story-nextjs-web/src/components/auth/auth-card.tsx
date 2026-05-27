@@ -194,8 +194,6 @@ export function AuthCard({ mode }: AuthCardProps) {
         </p>
       </div>
 
-      <form className="mt-10 flex flex-col gap-6">
-        <FieldGroup>
       {shouldShowAuthNotice ? (
         <p className="mt-6 rounded border border-primary/20 bg-primary/10 px-4 py-3 text-sm font-bold leading-6 text-primary-strong">
           Please sign in to continue.
@@ -203,7 +201,7 @@ export function AuthCard({ mode }: AuthCardProps) {
       ) : null}
 
       <form className="mt-10 space-y-6" onSubmit={handleSubmit}>
-        <div className="space-y-6">
+        <FieldGroup>
           {fields.map((field) => (
             <Field key={field.name}>
               <div className="flex items-center justify-between gap-3">
@@ -211,7 +209,7 @@ export function AuthCard({ mode }: AuthCardProps) {
                   className="text-xs font-black uppercase tracking-[0.08em] text-coffee-muted"
                   htmlFor={field.name}
                 >
-                {field.label}
+                  {field.label}
                 </FieldLabel>
                 {mode === "login" && field.name === "password" ? (
                   <a
@@ -250,15 +248,13 @@ export function AuthCard({ mode }: AuthCardProps) {
           </Field>
         ) : null}
 
-        <Button
-          className="mt-2 flex h-[62px] w-full items-center justify-center gap-3 rounded bg-espresso px-10 text-sm font-black uppercase tracking-[0.08em] text-white shadow-[0_20px_25px_-5px_rgba(39,19,16,0.05),0_8px_10px_-6px_rgba(39,19,16,0.05)] transition hover:bg-[#3a201b] focus:outline-none focus:ring-4 focus:ring-espresso/15"
         {errorMessage ? (
           <p className="rounded border border-accent/25 bg-accent/10 px-4 py-3 text-sm font-medium text-espresso">
             {errorMessage}
           </p>
         ) : null}
 
-        <button
+        <Button
           className="mt-2 flex h-[62px] w-full items-center justify-center gap-3 rounded bg-espresso px-10 text-sm font-black uppercase tracking-[0.08em] text-white shadow-[0_20px_25px_-5px_rgba(39,19,16,0.05),0_8px_10px_-6px_rgba(39,19,16,0.05)] transition hover:bg-[#3a201b] focus:outline-none focus:ring-4 focus:ring-espresso/15 disabled:cursor-not-allowed disabled:opacity-65"
           disabled={isSubmitting}
           type="submit"

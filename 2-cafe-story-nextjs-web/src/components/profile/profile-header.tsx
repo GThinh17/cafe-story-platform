@@ -3,7 +3,6 @@ import type { ProfileHighlight, UserProfile } from "@/types/user";
 import {
   Avatar,
   AvatarFallback,
-  AvatarImage,
 } from "@/components/ui/avatar";
 import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
