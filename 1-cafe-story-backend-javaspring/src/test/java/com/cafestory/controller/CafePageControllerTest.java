@@ -2,6 +2,7 @@ package com.cafestory.controller;
 
 import com.cafestory.dto.requestDTO.CafePageCreateDTO;
 import com.cafestory.dto.requestDTO.CafePageUpdateDTO;
+import com.cafestory.dto.responseDTO.BlogCursorPageResponseDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
 import com.cafestory.dto.responseDTO.CafePageRankingResponseDTO;
 import com.cafestory.dto.responseDTO.CafePageResponseDTO;
@@ -101,14 +102,16 @@ class CafePageControllerTest {
     @Test
     void getBlogsByCafePageId_success_TC006() {
         UUID cafePageId = UUID.randomUUID();
-        List<BlogResponseDTO> response = List.of(new BlogResponseDTO());
+        BlogCursorPageResponseDTO response = new BlogCursorPageResponseDTO();
+        response.setItems(List.of());
+        response.setHasMore(false);
 
-        when(cafePageService.getBlogsByCafePageId(cafePageId)).thenReturn(response);
+        when(cafePageService.getBlogsByCafePageId(cafePageId, "cursor-token", 10)).thenReturn(response);
 
-        List<BlogResponseDTO> result = cafePageController.getBlogsByCafePageId(cafePageId);
+        BlogCursorPageResponseDTO result = cafePageController.getBlogsByCafePageId(cafePageId, "cursor-token", 10);
 
         assertThat(result).isEqualTo(response);
-        verify(cafePageService).getBlogsByCafePageId(cafePageId);
+        verify(cafePageService).getBlogsByCafePageId(cafePageId, "cursor-token", 10);
     }
 
     @Test

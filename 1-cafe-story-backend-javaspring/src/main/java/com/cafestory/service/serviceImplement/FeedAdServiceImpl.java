@@ -2,6 +2,7 @@ package com.cafestory.service.serviceImplement;
 
 import com.cafestory.dto.responseDTO.BlogFeedResponse;
 import com.cafestory.dto.responseDTO.FeedItemResponseDTO;
+import com.cafestory.dto.responseDTO.SponsoredCafeResponseDTO;
 import com.cafestory.entity.AdCampaign;
 import com.cafestory.entity.AdDailyStat;
 import com.cafestory.entity.AdImpression;
@@ -9,6 +10,7 @@ import com.cafestory.entity.AdTargetRegion;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.AdStatus;
+import com.cafestory.entity.enums.FeedItemType;
 import com.cafestory.mapper.AdCampaignMapper;
 import com.cafestory.repository.AdCampaignRepository;
 import com.cafestory.repository.AdDailyStatRepository;
@@ -71,14 +73,14 @@ public class FeedAdServiceImpl implements FeedAdService {
         int nextAdSlotAfter = nextOrganicGap();
         int organicSinceAd = 0;
         for (BlogFeedResponse organicPost : organicPosts) {
-            result.add(blogItem(organicPost));
+            result.add(blogItem(organicPost, result.size()));
             organicSinceAd++;
             if (organicSinceAd >= nextAdSlotAfter) {
                 Optional<AdCampaign> selected = selectCampaign(candidates, userRegion, lastAdCampaignId, now);
                 if (selected.isPresent()) {
                     AdCampaign campaign = selected.get();
                     recordImpression(campaign, user, now);
-                    result.add(adItem(campaign));
+                    result.add(adItem(campaign, result.size()));
                     lastAdCampaignId = campaign.getAdCampaignId();
                 }
                 organicSinceAd = 0;
@@ -243,18 +245,38 @@ public class FeedAdServiceImpl implements FeedAdService {
         return false;
     }
 
-    private FeedItemResponseDTO blogItem(BlogFeedResponse blog) {
+    private FeedItemResponseDTO blogItem(BlogFeedResponse blog, int position) {
         FeedItemResponseDTO item = new FeedItemResponseDTO();
-        item.setItemType("BLOG");
+        item.setItemType(blog.getPageId() == null ? FeedItemType.USER_BLOG : FeedItemType.CAFE_PAGE_BLOG);
         item.setBlog(blog);
+        item.setPosition(position);
         return item;
     }
 
-    private FeedItemResponseDTO adItem(AdCampaign campaign) {
+    private FeedItemResponseDTO adItem(AdCampaign campaign, int position) {
         FeedItemResponseDTO item = new FeedItemResponseDTO();
-        item.setItemType("AD");
-        item.setAd(adCampaignMapper.toResponse(campaign));
+        item.setItemType(FeedItemType.SPONSORED_CAFE);
+        item.setAd(toSponsoredCafeResponse(campaign));
+        item.setPosition(position);
+        item.setTrackingToken(campaign.getAdCampaignId().toString());
         return item;
+    }
+
+    private SponsoredCafeResponseDTO toSponsoredCafeResponse(AdCampaign campaign) {
+        SponsoredCafeResponseDTO response = new SponsoredCafeResponseDTO();
+        response.setCampaignId(campaign.getAdCampaignId());
+        if (campaign.getCafePage() != null) {
+            response.setCafePageId(campaign.getCafePage().getId());
+            response.setCafeName(campaign.getCafePage().getName());
+            response.setCafeAvatarUrl(campaign.getCafePage().getAvatarUrl());
+            response.setCafeCoverUrl(campaign.getCafePage().getCoverUrl());
+        }
+        response.setHeadline(campaign.getTitle());
+        response.setDescription(campaign.getDescription());
+        response.setCtaLabel("View cafe");
+        response.setTargetUrl(campaign.getTargetUrl());
+        response.setTrackingToken(campaign.getAdCampaignId().toString());
+        return response;
     }
 
     private int nextOrganicGap() {

@@ -4,6 +4,7 @@ import com.cafestory.dto.requestDTO.BlogCreateDTO;
 import com.cafestory.dto.requestDTO.BlogUpdateDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
 import com.cafestory.entity.Blog;
+import com.cafestory.entity.CafePage;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.mapper.BlogMapper;
@@ -54,23 +55,31 @@ class BlogServiceImplTest {
     @Test
     void createBlog_success_TC001() {
         BlogCreateDTO request = createBlogRequest();
-        User author = user(request.getAuthorUserId());
+        UUID actorUserId = UUID.randomUUID();
+        request.setAuthorUserId(UUID.randomUUID());
+        User author = user(actorUserId);
+        CafePage page = cafePage(request.getPageId());
         Blog blog = blog();
         Blog savedBlog = blog();
-        BlogResponseDTO response = blogResponse(savedBlog.getId(), request.getAuthorUserId());
+        BlogResponseDTO response = blogResponse(savedBlog.getId(), actorUserId);
 
-        when(userValidator.validateUserExists(request.getAuthorUserId())).thenReturn(author);
+        when(userValidator.validateUserExists(actorUserId)).thenReturn(author);
+        when(cafePageValidator.validateUserCanCreateBlogOnPage(request.getPageId(), actorUserId))
+                .thenReturn(page);
         when(blogMapper.toBlog(request)).thenReturn(blog);
         when(blogRepository.save(blog)).thenReturn(savedBlog);
         when(blogMapper.toBlogResponseDTO(savedBlog)).thenReturn(response);
 
-        BlogResponseDTO result = blogService.createBlog(request);
+        BlogResponseDTO result = blogService.createBlog(request, actorUserId);
 
         assertThat(result).isEqualTo(response);
         assertThat(blog.getAuthor()).isEqualTo(author);
+        assertThat(blog.getPage()).isEqualTo(page);
+        assertThat(blog.getPageId()).isEqualTo(request.getPageId());
         assertThat(blog.getIsPinned()).isTrue();
         assertThat(blog.getAllowComment()).isFalse();
-        verify(cafePageValidator).validateUserCanCreateBlogOnPage(request.getPageId(), request.getAuthorUserId());
+        verify(userValidator).validateUserActive(author);
+        verify(cafePageValidator).validateUserCanCreateBlogOnPage(request.getPageId(), actorUserId);
         verify(blogRepository).save(blog);
     }
 
@@ -80,37 +89,41 @@ class BlogServiceImplTest {
         request.setPageId(null);
         request.setIsPinned(null);
         request.setAllowComment(null);
-        User author = user(request.getAuthorUserId());
+        UUID actorUserId = UUID.randomUUID();
+        User author = user(actorUserId);
         Blog blog = blog();
         blog.setIsPinned(false);
         blog.setAllowComment(true);
-        BlogResponseDTO response = blogResponse(blog.getId(), request.getAuthorUserId());
+        BlogResponseDTO response = blogResponse(blog.getId(), actorUserId);
 
-        when(userValidator.validateUserExists(request.getAuthorUserId())).thenReturn(author);
+        when(userValidator.validateUserExists(actorUserId)).thenReturn(author);
         when(blogMapper.toBlog(request)).thenReturn(blog);
         when(blogRepository.save(blog)).thenReturn(blog);
         when(blogMapper.toBlogResponseDTO(blog)).thenReturn(response);
 
-        BlogResponseDTO result = blogService.createBlog(request);
+        BlogResponseDTO result = blogService.createBlog(request, actorUserId);
 
         assertThat(result).isEqualTo(response);
         assertThat(blog.getIsPinned()).isFalse();
         assertThat(blog.getAllowComment()).isTrue();
+        verify(userValidator).validateUserActive(author);
+        verify(cafePageValidator, never()).validateUserCanCreateBlogOnPage(any(), any());
     }
 
     @Test
     void createBlog_fail_authorNotAllowedOnPage_TC003() {
         BlogCreateDTO request = createBlogRequest();
-        User author = user(request.getAuthorUserId());
+        UUID actorUserId = UUID.randomUUID();
+        User author = user(actorUserId);
 
-        when(userValidator.validateUserExists(request.getAuthorUserId())).thenReturn(author);
+        when(userValidator.validateUserExists(actorUserId)).thenReturn(author);
         org.mockito.Mockito.doThrow(new ResponseStatusException(
                         HttpStatus.FORBIDDEN,
                         "User is not allowed to create blog on this cafe page"))
                 .when(cafePageValidator)
-                .validateUserCanCreateBlogOnPage(request.getPageId(), request.getAuthorUserId());
+                .validateUserCanCreateBlogOnPage(request.getPageId(), actorUserId);
 
-        assertThatThrownBy(() -> blogService.createBlog(request))
+        assertThatThrownBy(() -> blogService.createBlog(request, actorUserId))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
                         .isEqualTo(HttpStatus.FORBIDDEN));
@@ -121,11 +134,12 @@ class BlogServiceImplTest {
     @Test
     void createBlog_fail_authorNotFound_TC004() {
         BlogCreateDTO request = createBlogRequest();
+        UUID actorUserId = UUID.randomUUID();
 
-        when(userValidator.validateUserExists(request.getAuthorUserId()))
+        when(userValidator.validateUserExists(actorUserId))
                 .thenThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
-        assertThatThrownBy(() -> blogService.createBlog(request))
+        assertThatThrownBy(() -> blogService.createBlog(request, actorUserId))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
                         .isEqualTo(HttpStatus.NOT_FOUND));
@@ -244,6 +258,8 @@ class BlogServiceImplTest {
         BlogResponseDTO response = blogResponse(blogId, UUID.randomUUID());
 
         when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
+        when(cafePageValidator.validateUserCanCreateBlogOnPage(request.getPageId(), actorUserId))
+                .thenReturn(cafePage(request.getPageId()));
         when(blogRepository.save(blog)).thenReturn(blog);
         when(blogMapper.toBlogResponseDTO(blog)).thenReturn(response);
 
@@ -251,6 +267,7 @@ class BlogServiceImplTest {
 
         assertThat(result).isEqualTo(response);
         assertThat(blog.getPageId()).isEqualTo(request.getPageId());
+        assertThat(blog.getPage()).isNotNull();
         assertThat(blog.getRegionId()).isEqualTo(request.getRegionId());
         assertThat(blog.getContent()).isEqualTo("Updated blog content");
         assertThat(blog.getImageUrls()).containsExactly("https://example.com/updated-1.png");
@@ -369,6 +386,14 @@ class BlogServiceImplTest {
         user.setUserEmail("luan123@example.com");
         user.setAccountStatus(true);
         return user;
+    }
+
+    private CafePage cafePage(UUID pageId) {
+        CafePage cafePage = new CafePage();
+        cafePage.setId(pageId);
+        cafePage.setName("Cafe Story Roastery");
+        cafePage.setAvatarUrl("https://example.com/cafe-avatar.png");
+        return cafePage;
     }
 
     private BlogResponseDTO blogResponse(UUID blogId, UUID authorUserId) {

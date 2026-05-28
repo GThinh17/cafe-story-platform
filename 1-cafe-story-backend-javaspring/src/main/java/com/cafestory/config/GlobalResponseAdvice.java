@@ -43,6 +43,10 @@ public class GlobalResponseAdvice implements ResponseBodyAdvice<Object> {
             Class<? extends HttpMessageConverter<?>> selectedConverterType,
             ServerHttpRequest request, ServerHttpResponse response) {
 
+        if (isOpenApiRequest(request)) {
+            return body;
+        }
+
         // If the controller already returned a FormatResponse manually, don't wrap it
         // again
         if (body instanceof FormatResponse) {
@@ -77,6 +81,13 @@ public class GlobalResponseAdvice implements ResponseBodyAdvice<Object> {
         }
 
         return formatResponse;
+    }
+
+    private boolean isOpenApiRequest(ServerHttpRequest request) {
+        String path = request.getURI().getPath();
+        return path.startsWith("/v3/api-docs")
+                || path.startsWith("/swagger-ui")
+                || path.equals("/swagger-ui.html");
     }
 
     // This handles any uncaught exceptions thrown in your app and formats them as a

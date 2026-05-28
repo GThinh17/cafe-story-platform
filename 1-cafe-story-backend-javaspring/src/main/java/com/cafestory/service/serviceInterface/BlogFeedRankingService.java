@@ -1,12 +1,15 @@
 package com.cafestory.service.serviceInterface;
 
 import com.cafestory.dto.responseDTO.BlogFeedResponse;
+import com.cafestory.dto.responseDTO.FeedResponseDTO;
 import com.cafestory.entity.enums.TrendWindowType;
 
 import java.util.List;
 import java.util.UUID;
 
 public interface BlogFeedRankingService {
+    FeedResponseDTO getOrganicFeed(String cursor, int size);
+
     List<BlogFeedResponse> getPersonalizedFeed(
             UUID userId,
             TrendWindowType windowType,

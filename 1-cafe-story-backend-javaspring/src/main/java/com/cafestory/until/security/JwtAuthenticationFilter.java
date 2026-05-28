@@ -19,6 +19,7 @@ import java.util.List;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     public static final String ACCESS_TOKEN_COOKIE = "access_token";
+    private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtService jwtService;
 
@@ -31,7 +32,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletRequest request,
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
-        String token = readCookie(request, ACCESS_TOKEN_COOKIE);
+        String token = readBearerToken(request);
+        if (token == null) {
+            token = readCookie(request, ACCESS_TOKEN_COOKIE);
+        }
         if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
                 JwtClaims claims = jwtService.validateAccessToken(token);
@@ -55,6 +59,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private String readBearerToken(HttpServletRequest request) {
+        String authorization = request.getHeader("Authorization");
+        if (authorization == null || !authorization.startsWith(BEARER_PREFIX)) {
+            return null;
+        }
+        String token = authorization.substring(BEARER_PREFIX.length()).trim();
+        return token.isBlank() ? null : token;
     }
 
     private String readCookie(HttpServletRequest request, String cookieName) {

@@ -2,6 +2,7 @@ package com.cafestory.controller;
 
 import com.cafestory.dto.requestDTO.CafePageCreateDTO;
 import com.cafestory.dto.requestDTO.CafePageUpdateDTO;
+import com.cafestory.dto.responseDTO.BlogCursorPageResponseDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
 import com.cafestory.dto.responseDTO.CafePageRankingResponseDTO;
 import com.cafestory.dto.responseDTO.CafePageResponseDTO;
@@ -67,8 +68,11 @@ public class CafePageController {
     }
 
     @GetMapping("/{cafePageId}/blogs")
-    public List<BlogResponseDTO> getBlogsByCafePageId(@PathVariable UUID cafePageId) {
-        return cafePageService.getBlogsByCafePageId(cafePageId);
+    public BlogCursorPageResponseDTO getBlogsByCafePageId(
+            @PathVariable UUID cafePageId,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "20") int size) {
+        return cafePageService.getBlogsByCafePageId(cafePageId, cursor, size);
     }
 
     @PatchMapping("/{cafePageId}")

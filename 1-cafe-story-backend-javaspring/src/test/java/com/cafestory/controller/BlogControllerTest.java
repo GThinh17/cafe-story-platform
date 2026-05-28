@@ -34,13 +34,13 @@ class BlogControllerTest {
         BlogCreateDTO request = createBlogRequest();
         BlogResponseDTO response = blogResponse();
 
-        when(blogService.createBlog(request)).thenReturn(response);
+        when(blogService.createBlog(request, userId)).thenReturn(response);
 
         BlogResponseDTO result = blogController.createBlog(request, principal(userId));
 
         assertThat(result).isEqualTo(response);
-        assertThat(request.getAuthorUserId()).isEqualTo(userId);
-        verify(blogService).createBlog(request);
+        assertThat(request.getAuthorUserId()).isNull();
+        verify(blogService).createBlog(request, userId);
     }
 
     @Test

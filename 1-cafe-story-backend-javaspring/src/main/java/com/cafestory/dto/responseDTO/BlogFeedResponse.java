@@ -18,11 +18,15 @@ public class BlogFeedResponse {
     private String authorUserName;
     private String authorUserFullName;
     private String authorAvatar;
+    private String authorUserAvatar;
     private UUID pageId;
     private String pageName;
     private String pageAddress;
     private String pageAvatarUrl;
     private String pageCoverUrl;
+    private BlogDisplayAuthorType displayAuthorType;
+    private String displayName;
+    private String displayAvatarUrl;
     private UUID regionId;
     private String regionCity;
     private String regionProvince;

@@ -4,6 +4,7 @@ import com.cafestory.dto.requestDTO.BlogCreateDTO;
 import com.cafestory.dto.requestDTO.BlogUpdateDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
 import com.cafestory.entity.Blog;
+import com.cafestory.entity.CafePage;
 import com.cafestory.entity.User;
 import com.cafestory.mapper.BlogMapper;
 import com.cafestory.repository.BlogRepository;
@@ -43,14 +44,17 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     @Transactional
-    public BlogResponseDTO createBlog(BlogCreateDTO blogCreateDTO) {
-        User author = userValidator.validateUserExists(blogCreateDTO.getAuthorUserId());
+    public BlogResponseDTO createBlog(BlogCreateDTO blogCreateDTO, UUID actorUserId) {
+        User author = userValidator.validateUserExists(actorUserId);
+        userValidator.validateUserActive(author);
+        CafePage page = null;
         if (blogCreateDTO.getPageId() != null) {
-            cafePageValidator.validateUserCanCreateBlogOnPage(blogCreateDTO.getPageId(), author.getUserId());
+            page = cafePageValidator.validateUserCanCreateBlogOnPage(blogCreateDTO.getPageId(), author.getUserId());
         }
 
         Blog blog = blogMapper.toBlog(blogCreateDTO);
         blog.setAuthor(author);
+        blog.setPage(page);
         if (blogCreateDTO.getIsPinned() != null) {
             blog.setIsPinned(blogCreateDTO.getIsPinned());
         }
@@ -100,8 +104,8 @@ public class BlogServiceImpl implements BlogService {
         validateBlogOwner(blog, actorUserId);
 
         if (blogUpdateDTO.getPageId() != null) {
-            cafePageValidator.validateUserCanCreateBlogOnPage(blogUpdateDTO.getPageId(), actorUserId);
-            blog.setPageId(blogUpdateDTO.getPageId());
+            CafePage page = cafePageValidator.validateUserCanCreateBlogOnPage(blogUpdateDTO.getPageId(), actorUserId);
+            blog.setPage(page);
         }
         if (blogUpdateDTO.getRegionId() != null) {
             blog.setRegionId(blogUpdateDTO.getRegionId());
