@@ -1,6 +1,7 @@
 package com.cafestory.service.serviceImplement;
 
 import com.cafestory.dto.responseDTO.BlogFeedResponse;
+import com.cafestory.dto.responseDTO.BlogDisplayAuthorType;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogRecommendationScore;
 import com.cafestory.entity.BlogTrendingScore;
@@ -263,6 +264,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         response.setAuthorUserName(author.getUserName());
         response.setAuthorUserFullName(author.getUserFullName());
         response.setAuthorAvatar(author.getUserAvatar());
+        response.setAuthorUserAvatar(author.getUserAvatar());
         response.setPageId(blog.getPageId());
         if (cafePage != null) {
             response.setPageName(cafePage.getName());
@@ -270,6 +272,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             response.setPageAvatarUrl(cafePage.getAvatarUrl());
             response.setPageCoverUrl(cafePage.getCoverUrl());
         }
+        applyDisplayAuthor(response, author, cafePage);
         response.setRegionId(blog.getRegionId());
         if (region != null) {
             response.setRegionCity(region.getCity());
@@ -279,6 +282,27 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         response.setRankPosition(score.getRankPosition());
         response.setCreatedAt(blog.getCreatedAt());
         return response;
+    }
+
+    private void applyDisplayAuthor(BlogFeedResponse response, User author, CafePage cafePage) {
+        if (cafePage != null) {
+            response.setDisplayAuthorType(BlogDisplayAuthorType.CAFE_PAGE);
+            response.setDisplayName(cafePage.getName());
+            response.setDisplayAvatarUrl(cafePage.getAvatarUrl());
+            return;
+        }
+
+        response.setDisplayAuthorType(BlogDisplayAuthorType.USER);
+        response.setDisplayName(firstNonBlank(author.getUserFullName(), author.getUserName()));
+        response.setDisplayAvatarUrl(author.getUserAvatar());
+    }
+
+    private String firstNonBlank(String first, String fallback) {
+        if (first != null && !first.isBlank()) {
+            return first;
+        }
+
+        return fallback;
     }
 
     private double calculateFollowedPageScore(Blog blog, UUID userId) {

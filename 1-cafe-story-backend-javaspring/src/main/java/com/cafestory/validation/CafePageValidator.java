@@ -37,17 +37,17 @@ public class CafePageValidator {
         }
     }
 
-    public void validateUserCanCreateBlogOnPage(UUID cafePageId, UUID userId) {
+    public CafePage validateUserCanCreateBlogOnPage(UUID cafePageId, UUID userId) {
         CafePage cafePage = validateCafePageExists(cafePageId);
         if (cafePage.getOwner() != null && userId.equals(cafePage.getOwner().getUserId())) {
-            return;
+            return cafePage;
         }
         if (pageMemberRepository.existsByCafePageIdAndUserUserIdAndStatusAndRoleNameIn(
                 cafePageId,
                 userId,
                 PageMemberStatus.ACTIVE,
                 List.of(PageMember.ROLE_OWNER, PageMember.ROLE_CO_OWNER))) {
-            return;
+            return cafePage;
         }
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not allowed to create blog on this cafe page");
     }

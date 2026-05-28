@@ -1,6 +1,7 @@
 package com.cafestory.service;
 
 import com.cafestory.dto.responseDTO.BlogFeedResponse;
+import com.cafestory.dto.responseDTO.BlogDisplayAuthorType;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogRecommendationScore;
 import com.cafestory.entity.BlogTrendingScore;
@@ -112,6 +113,10 @@ class BlogFeedRankingServiceImplTest {
         assertThat(result.getFirst().getAuthorUserName()).isEqualTo("author");
         assertThat(result.getFirst().getAuthorUserFullName()).isEqualTo("Author Name");
         assertThat(result.getFirst().getAuthorAvatar()).isEqualTo("/images/default-avatar.svg");
+        assertThat(result.getFirst().getAuthorUserAvatar()).isEqualTo("/images/default-avatar.svg");
+        assertThat(result.getFirst().getDisplayAuthorType()).isEqualTo(BlogDisplayAuthorType.CAFE_PAGE);
+        assertThat(result.getFirst().getDisplayName()).isEqualTo("Cafe Story Roastery");
+        assertThat(result.getFirst().getDisplayAvatarUrl()).isEqualTo("/images/cafe-avatar.jpg");
         assertThat(result.getFirst().getLikeCount()).isEqualTo(12);
         assertThat(result.getFirst().getCommentCount()).isEqualTo(3);
         assertThat(result.getFirst().getShareCount()).isEqualTo(4);
@@ -152,6 +157,9 @@ class BlogFeedRankingServiceImplTest {
         assertThat(response.getPageName()).isEqualTo("Cafe Story Roastery");
         assertThat(response.getPageAddress()).isEqualTo("123 Brew Street");
         assertThat(response.getPageCoverUrl()).isEqualTo("/images/cafe-cover.jpg");
+        assertThat(response.getDisplayAuthorType()).isEqualTo(BlogDisplayAuthorType.CAFE_PAGE);
+        assertThat(response.getDisplayName()).isEqualTo("Cafe Story Roastery");
+        assertThat(response.getDisplayAvatarUrl()).isEqualTo("/images/cafe-avatar.jpg");
         assertThat(response.getRegionCity()).isEqualTo("Ho Chi Minh");
 
         @SuppressWarnings("unchecked")

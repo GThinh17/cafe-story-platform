@@ -4,6 +4,7 @@ import com.cafestory.dto.requestDTO.BlogCreateDTO;
 import com.cafestory.dto.requestDTO.BlogUpdateDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
 import com.cafestory.entity.Blog;
+import com.cafestory.entity.CafePage;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.mapper.BlogMapper;
@@ -55,11 +56,14 @@ class BlogServiceImplTest {
     void createBlog_success_TC001() {
         BlogCreateDTO request = createBlogRequest();
         User author = user(request.getAuthorUserId());
+        CafePage page = cafePage(request.getPageId());
         Blog blog = blog();
         Blog savedBlog = blog();
         BlogResponseDTO response = blogResponse(savedBlog.getId(), request.getAuthorUserId());
 
         when(userValidator.validateUserExists(request.getAuthorUserId())).thenReturn(author);
+        when(cafePageValidator.validateUserCanCreateBlogOnPage(request.getPageId(), request.getAuthorUserId()))
+                .thenReturn(page);
         when(blogMapper.toBlog(request)).thenReturn(blog);
         when(blogRepository.save(blog)).thenReturn(savedBlog);
         when(blogMapper.toBlogResponseDTO(savedBlog)).thenReturn(response);
@@ -68,6 +72,8 @@ class BlogServiceImplTest {
 
         assertThat(result).isEqualTo(response);
         assertThat(blog.getAuthor()).isEqualTo(author);
+        assertThat(blog.getPage()).isEqualTo(page);
+        assertThat(blog.getPageId()).isEqualTo(request.getPageId());
         assertThat(blog.getIsPinned()).isTrue();
         assertThat(blog.getAllowComment()).isFalse();
         verify(cafePageValidator).validateUserCanCreateBlogOnPage(request.getPageId(), request.getAuthorUserId());
@@ -244,6 +250,8 @@ class BlogServiceImplTest {
         BlogResponseDTO response = blogResponse(blogId, UUID.randomUUID());
 
         when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
+        when(cafePageValidator.validateUserCanCreateBlogOnPage(request.getPageId(), actorUserId))
+                .thenReturn(cafePage(request.getPageId()));
         when(blogRepository.save(blog)).thenReturn(blog);
         when(blogMapper.toBlogResponseDTO(blog)).thenReturn(response);
 
@@ -251,6 +259,7 @@ class BlogServiceImplTest {
 
         assertThat(result).isEqualTo(response);
         assertThat(blog.getPageId()).isEqualTo(request.getPageId());
+        assertThat(blog.getPage()).isNotNull();
         assertThat(blog.getRegionId()).isEqualTo(request.getRegionId());
         assertThat(blog.getContent()).isEqualTo("Updated blog content");
         assertThat(blog.getImageUrls()).containsExactly("https://example.com/updated-1.png");
@@ -369,6 +378,14 @@ class BlogServiceImplTest {
         user.setUserEmail("luan123@example.com");
         user.setAccountStatus(true);
         return user;
+    }
+
+    private CafePage cafePage(UUID pageId) {
+        CafePage cafePage = new CafePage();
+        cafePage.setId(pageId);
+        cafePage.setName("Cafe Story Roastery");
+        cafePage.setAvatarUrl("https://example.com/cafe-avatar.png");
+        return cafePage;
     }
 
     private BlogResponseDTO blogResponse(UUID blogId, UUID authorUserId) {

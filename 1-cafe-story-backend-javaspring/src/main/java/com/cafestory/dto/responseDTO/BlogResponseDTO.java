@@ -11,7 +11,12 @@ import java.util.UUID;
 public class BlogResponseDTO {
     private UUID id;
     private UUID authorUserId;
+    private String authorUserName;
+    private String authorUserFullName;
+    private String authorUserAvatar;
     private UUID pageId;
+    private String pageName;
+    private String pageAvatarUrl;
     private UUID regionId;
     private String content;
     private List<String> imageUrls;
@@ -20,6 +25,10 @@ public class BlogResponseDTO {
     private Boolean allowComment;
     private Integer likeCount;
     private Integer shareCount;
+    private Integer commentCount;
+    private BlogDisplayAuthorType displayAuthorType;
+    private String displayName;
+    private String displayAvatarUrl;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
