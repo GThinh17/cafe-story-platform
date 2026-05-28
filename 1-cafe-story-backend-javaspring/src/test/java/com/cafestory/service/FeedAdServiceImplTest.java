@@ -88,7 +88,7 @@ class FeedAdServiceImplTest {
         List<FeedItemResponseDTO> result = feedAdService.insertAdsIntoFeed(userId, organicPosts(10));
 
         assertThat(result).anyMatch(item -> item.getItemType() == FeedItemType.SPONSORED_CAFE
-                && campaignId.equals(item.getAd().getAdCampaignId())
+                && campaignId.equals(item.getAd().getCampaignId())
                 && item.getTrackingToken() != null);
         assertThat(campaign.getServedImpressions()).isEqualTo(1);
         assertThat(stat.getImpressions()).isEqualTo(5);

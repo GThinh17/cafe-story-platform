@@ -2,6 +2,7 @@ package com.cafestory.service.serviceImplement;
 
 import com.cafestory.dto.responseDTO.BlogFeedResponse;
 import com.cafestory.dto.responseDTO.FeedItemResponseDTO;
+import com.cafestory.dto.responseDTO.SponsoredCafeResponseDTO;
 import com.cafestory.entity.AdCampaign;
 import com.cafestory.entity.AdDailyStat;
 import com.cafestory.entity.AdImpression;
@@ -255,10 +256,27 @@ public class FeedAdServiceImpl implements FeedAdService {
     private FeedItemResponseDTO adItem(AdCampaign campaign, int position) {
         FeedItemResponseDTO item = new FeedItemResponseDTO();
         item.setItemType(FeedItemType.SPONSORED_CAFE);
-        item.setAd(adCampaignMapper.toResponse(campaign));
+        item.setAd(toSponsoredCafeResponse(campaign));
         item.setPosition(position);
         item.setTrackingToken(campaign.getAdCampaignId().toString());
         return item;
+    }
+
+    private SponsoredCafeResponseDTO toSponsoredCafeResponse(AdCampaign campaign) {
+        SponsoredCafeResponseDTO response = new SponsoredCafeResponseDTO();
+        response.setCampaignId(campaign.getAdCampaignId());
+        if (campaign.getCafePage() != null) {
+            response.setCafePageId(campaign.getCafePage().getId());
+            response.setCafeName(campaign.getCafePage().getName());
+            response.setCafeAvatarUrl(campaign.getCafePage().getAvatarUrl());
+            response.setCafeCoverUrl(campaign.getCafePage().getCoverUrl());
+        }
+        response.setHeadline(campaign.getTitle());
+        response.setDescription(campaign.getDescription());
+        response.setCtaLabel("View cafe");
+        response.setTargetUrl(campaign.getTargetUrl());
+        response.setTrackingToken(campaign.getAdCampaignId().toString());
+        return response;
     }
 
     private int nextOrganicGap() {

@@ -7,7 +7,7 @@ import lombok.Data;
 public class FeedItemResponseDTO {
     private FeedItemType itemType;
     private BlogFeedResponse blog;
-    private AdCampaignResponseDTO ad;
+    private SponsoredCafeResponseDTO ad;
     private Integer position;
     private String trackingToken;
 }
