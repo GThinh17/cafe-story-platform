@@ -29,6 +29,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -65,6 +66,23 @@ class SecurityConfigTest {
 
         mockMvc.perform(get("/api/admin/users")
                         .cookie(new Cookie(JwtAuthenticationFilter.ACCESS_TOKEN_COOKIE, accessToken)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void swaggerDocs_success_noAuthorizationReturnsOpenApiDocument_TC008() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.openapi").exists())
+                .andExpect(jsonPath("$.paths['/api/auth/login']").exists());
+    }
+
+    @Test
+    void adminUsers_fail_bearerUserRoleCannotAccess_TC009() throws Exception {
+        String accessToken = jwtService.createAccessToken(user(), List.of("USER"));
+
+        mockMvc.perform(get("/api/admin/users")
+                        .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isForbidden());
     }
 
