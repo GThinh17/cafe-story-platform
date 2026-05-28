@@ -9,6 +9,8 @@ export const apiEndpoints = {
     me: "/api/auth/me",
     logout: "/api/auth/logout",
     refresh: "/api/auth/refresh",
+    usernameSuggestions: (fullName: string) =>
+      `/api/auth/usernames/suggestions?fullName=${encodeURIComponent(fullName)}`,
   },
   blogs: {
     list: "/api/blogs",
@@ -24,6 +26,7 @@ export const apiEndpoints = {
   },
   cafes: {
     list: "/api/cafe-pages",
+    top: "/api/cafe-pages/top",
     byId: (cafePageId: string) => `/api/cafe-pages/${pathId(cafePageId)}`,
     blogs: (cafePageId: string) => `/api/cafe-pages/${pathId(cafePageId)}/blogs`,
     likes: (cafePageId: string) => `/api/cafe-pages/${pathId(cafePageId)}/likes`,

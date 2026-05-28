@@ -3,6 +3,8 @@ package com.cafestory.controller;
 import com.cafestory.dto.requestDTO.CafePageCreateDTO;
 import com.cafestory.dto.requestDTO.CafePageUpdateDTO;
 import com.cafestory.dto.responseDTO.BlogCursorPageResponseDTO;
+import com.cafestory.dto.responseDTO.BlogResponseDTO;
+import com.cafestory.dto.responseDTO.CafePageRankingResponseDTO;
 import com.cafestory.dto.responseDTO.CafePageResponseDTO;
 import com.cafestory.service.serviceInterface.CafePageService;
 import com.cafestory.until.security.AuthenticatedUserPrincipal;
@@ -69,7 +71,23 @@ class CafePageControllerTest {
     }
 
     @Test
-    void getCafePageById_success_TC004() {
+    void getTopCafePages_success_TC004() {
+        UUID regionId = UUID.randomUUID();
+        List<CafePageRankingResponseDTO> response = List.of(new CafePageRankingResponseDTO());
+
+        when(cafePageService.getTopCafePages(regionId, "Ho Chi Minh", 10)).thenReturn(response);
+
+        List<CafePageRankingResponseDTO> result = cafePageController.getTopCafePages(
+                regionId,
+                "Ho Chi Minh",
+                10);
+
+        assertThat(result).isEqualTo(response);
+        verify(cafePageService).getTopCafePages(regionId, "Ho Chi Minh", 10);
+    }
+
+    @Test
+    void getCafePageById_success_TC005() {
         UUID cafePageId = UUID.randomUUID();
         CafePageResponseDTO response = response();
 
@@ -82,7 +100,7 @@ class CafePageControllerTest {
     }
 
     @Test
-    void getBlogsByCafePageId_success_TC005() {
+    void getBlogsByCafePageId_success_TC006() {
         UUID cafePageId = UUID.randomUUID();
         BlogCursorPageResponseDTO response = new BlogCursorPageResponseDTO();
         response.setItems(List.of());
@@ -97,7 +115,7 @@ class CafePageControllerTest {
     }
 
     @Test
-    void updateCafePage_success_TC006() {
+    void updateCafePage_success_TC007() {
         UUID userId = UUID.randomUUID();
         UUID cafePageId = UUID.randomUUID();
         CafePageUpdateDTO request = new CafePageUpdateDTO();
@@ -112,7 +130,7 @@ class CafePageControllerTest {
     }
 
     @Test
-    void deleteCafePage_success_TC007() {
+    void deleteCafePage_success_TC008() {
         UUID userId = UUID.randomUUID();
         UUID cafePageId = UUID.randomUUID();
 

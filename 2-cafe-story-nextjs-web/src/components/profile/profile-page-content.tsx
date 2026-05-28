@@ -11,26 +11,26 @@ import {
   getUserInitials,
 } from "@/lib/avatar";
 import { mockProfileReviews } from "@/mocks/reviews";
-import { mockProfileHighlights, mockUserProfile } from "@/mocks/users";
 import type { AuthUser } from "@/types/auth";
 import type { UserProfile } from "@/types/user";
 
 function mapAuthUserToProfile(user: AuthUser | null): UserProfile {
-  if (!user) {
-    return mockUserProfile;
-  }
-
   const handle = getUserHandle(user);
   const displayName = getUserDisplayName(user);
   const email = getUserEmail(user);
 
   return {
-    ...mockUserProfile,
     avatarImage: getUserAvatarImage(user),
     avatarInitials: getUserInitials(user),
-    bio: email ? `Email: ${email}` : mockUserProfile.bio,
+    bio: email ? `Email: ${email}` : "",
     displayName,
     email,
+    location: "",
+    stats: {
+      posts: "0",
+      cafes: "0",
+      followers: "0",
+    },
     username: handle,
     website: `cafestory.vn/${handle}`,
   };
@@ -43,7 +43,7 @@ export function ProfilePageContent() {
   return (
     <>
       <ProfileHeader
-        highlights={mockProfileHighlights}
+        highlights={[]}
         isLoading={isLoading}
         profile={profile}
       />

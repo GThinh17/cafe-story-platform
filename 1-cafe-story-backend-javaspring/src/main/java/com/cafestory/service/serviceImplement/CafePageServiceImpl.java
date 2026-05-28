@@ -4,11 +4,13 @@ import com.cafestory.dto.requestDTO.CafePageCreateDTO;
 import com.cafestory.dto.requestDTO.CafePageUpdateDTO;
 import com.cafestory.dto.responseDTO.BlogCursorPageResponseDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
+import com.cafestory.dto.responseDTO.CafePageRankingResponseDTO;
 import com.cafestory.dto.responseDTO.CafePageResponseDTO;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.PageMember;
 import com.cafestory.entity.PageMemberId;
+import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.PageMemberStatus;
 import com.cafestory.mapper.BlogMapper;
@@ -34,6 +36,10 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Base64;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -142,6 +148,32 @@ public class CafePageServiceImpl implements CafePageService {
                 .stream()
                 .map(cafePageMapper::toCafePageResponseDTO)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CafePageRankingResponseDTO> getTopCafePages(UUID regionId, String city, int size) {
+        String normalizedCity = normalizeCity(city);
+        int safeSize = Math.min(Math.max(1, size), 50);
+        LocalDateTime now = LocalDateTime.now();
+        List<CafePageRankingCandidate> candidates = cafePageRepository.findActiveCafePagesForRegionalRanking(
+                        regionId,
+                        normalizedCity)
+                .stream()
+                .map(cafePage -> new CafePageRankingCandidate(cafePage, calculateRankingScore(cafePage, now)))
+                .sorted(Comparator.comparing(CafePageRankingCandidate::score).reversed()
+                        .thenComparing(candidate -> safe(candidate.cafePage().getFollowerCount()), Comparator.reverseOrder())
+                        .thenComparing(candidate -> safe(candidate.cafePage().getLikeCount()), Comparator.reverseOrder())
+                        .thenComparing(candidate -> candidate.cafePage().getCreatedAt(), Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(safeSize)
+                .toList();
+
+        List<CafePageRankingResponseDTO> responses = new ArrayList<>();
+        for (int index = 0; index < candidates.size(); index++) {
+            CafePageRankingCandidate candidate = candidates.get(index);
+            responses.add(toRankingResponse(candidate.cafePage(), candidate.score(), index + 1));
+        }
+        return responses;
     }
 
     @Override
@@ -272,5 +304,55 @@ public class CafePageServiceImpl implements CafePageService {
     }
 
     private record CafePageBlogCursorPayload(String afterCreatedAt, UUID afterId, int version) {
+    private double calculateRankingScore(CafePage cafePage, LocalDateTime now) {
+        return safe(cafePage.getFollowerCount()) * 3.0
+                + safe(cafePage.getLikeCount()) * 2.0
+                + freshnessScore(cafePage.getCreatedAt(), now);
+    }
+
+    private double freshnessScore(LocalDateTime createdAt, LocalDateTime now) {
+        if (createdAt == null) {
+            return 0.0;
+        }
+        double ageDays = Math.max(0, Duration.between(createdAt, now).toHours() / 24.0);
+        return Math.exp(-ageDays / 90.0) * 10.0;
+    }
+
+    private int safe(Integer value) {
+        return value == null ? 0 : value;
+    }
+
+    private String normalizeCity(String city) {
+        if (city == null || city.isBlank()) {
+            return null;
+        }
+        return city.trim();
+    }
+
+    private CafePageRankingResponseDTO toRankingResponse(CafePage cafePage, double rankingScore, int rankPosition) {
+        Region region = cafePage.getRegion();
+        CafePageRankingResponseDTO response = new CafePageRankingResponseDTO();
+        response.setId(cafePage.getId());
+        response.setOwnerUserId(cafePage.getOwner() == null ? null : cafePage.getOwner().getUserId());
+        response.setRegionId(region == null ? null : region.getRegionId());
+        response.setRegionCity(region == null ? null : region.getCity());
+        response.setRegionProvince(region == null ? null : region.getProvince());
+        response.setRegionArea(region == null ? null : region.getArea());
+        response.setName(cafePage.getName());
+        response.setAddress(cafePage.getAddress());
+        response.setDescription(cafePage.getDescription());
+        response.setAvatarUrl(cafePage.getAvatarUrl());
+        response.setCoverUrl(cafePage.getCoverUrl());
+        response.setStatus(cafePage.getStatus());
+        response.setLikeCount(cafePage.getLikeCount());
+        response.setFollowerCount(cafePage.getFollowerCount());
+        response.setPageActive(cafePage.getPageActive());
+        response.setRankingScore(rankingScore);
+        response.setRankPosition(rankPosition);
+        response.setCreatedAt(cafePage.getCreatedAt());
+        return response;
+    }
+
+    private record CafePageRankingCandidate(CafePage cafePage, double score) {
     }
 }

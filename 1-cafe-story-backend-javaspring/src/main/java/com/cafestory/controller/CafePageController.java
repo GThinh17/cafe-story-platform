@@ -3,6 +3,8 @@ package com.cafestory.controller;
 import com.cafestory.dto.requestDTO.CafePageCreateDTO;
 import com.cafestory.dto.requestDTO.CafePageUpdateDTO;
 import com.cafestory.dto.responseDTO.BlogCursorPageResponseDTO;
+import com.cafestory.dto.responseDTO.BlogResponseDTO;
+import com.cafestory.dto.responseDTO.CafePageRankingResponseDTO;
 import com.cafestory.dto.responseDTO.CafePageResponseDTO;
 import com.cafestory.service.serviceInterface.CafePageService;
 import com.cafestory.until.security.AuthenticatedUserPrincipal;
@@ -50,6 +52,14 @@ public class CafePageController {
             return cafePageService.getCafePagesByOwnerId(ownerUserId);
         }
         return cafePageService.getAllCafePages();
+    }
+
+    @GetMapping("/top")
+    public List<CafePageRankingResponseDTO> getTopCafePages(
+            @RequestParam(required = false) UUID regionId,
+            @RequestParam(required = false) String city,
+            @RequestParam(defaultValue = "10") int size) {
+        return cafePageService.getTopCafePages(regionId, city, size);
     }
 
     @GetMapping("/{cafePageId}")

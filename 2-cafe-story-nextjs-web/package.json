@@ -15,6 +15,7 @@
     "cloudinary": "^2.10.0",
     "clsx": "^2.1.1",
     "lucide-react": "^1.16.0",
+    "new-vn-provinces": "^3.0.4",
     "next": "^16.2.6",
     "radix-ui": "^1.4.3",
     "react": "19.2.4",

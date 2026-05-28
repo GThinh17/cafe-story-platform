@@ -3,6 +3,7 @@ package com.cafestory.controller;
 import com.cafestory.dto.requestDTO.LoginRequest;
 import com.cafestory.dto.requestDTO.RegisterRequest;
 import com.cafestory.dto.responseDTO.AuthResponse;
+import com.cafestory.dto.responseDTO.UsernameSuggestionResponse;
 import com.cafestory.service.serviceInterface.AuthService;
 import com.cafestory.service.serviceInterface.RefreshTokenService;
 import com.cafestory.until.security.AuthenticatedUserPrincipal;
@@ -19,6 +20,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -72,6 +74,11 @@ public class AuthController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication is required");
         }
         return authService.getCurrentUser(principal.userId());
+    }
+
+    @GetMapping("/usernames/suggestions")
+    public UsernameSuggestionResponse suggestUserNames(@RequestParam String fullName) {
+        return authService.suggestUserNames(fullName);
     }
 
     @PostMapping("/refresh")

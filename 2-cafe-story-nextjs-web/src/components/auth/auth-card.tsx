@@ -12,10 +12,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/api/client";
-import { login, register } from "@/lib/api/auth";
+import { login, register, suggestUserNames } from "@/lib/api/auth";
 import type { AuthField, AuthFormCopy, AuthMode } from "@/types/auth";
+import { cn } from "@/lib/utils";
 
 type AuthCardProps = {
   mode: AuthMode;
@@ -132,11 +133,81 @@ export function AuthCard({ mode }: AuthCardProps) {
   const copy = authCopy[mode];
   const fields = getFields(mode);
   const [errorMessage, setErrorMessage] = useState("");
+  const [fullName, setFullName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [selectedSuggestion, setSelectedSuggestion] = useState("");
+  const [suggestionError, setSuggestionError] = useState("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [userName, setUserName] = useState("");
+  const suggestionRequestIdRef = useRef(0);
   const reason = searchParams.get("reason");
   const nextPath = getSafeNextPath(searchParams.get("next"));
   const switchHref = buildSwitchHref(copy.switchHref, nextPath, reason);
   const shouldShowAuthNotice = reason === "auth_required";
+
+  useEffect(() => {
+    if (mode !== "register") {
+      return;
+    }
+
+    const trimmedFullName = fullName.trim();
+
+    if (trimmedFullName.length < 2) {
+      setSuggestions([]);
+      setSelectedSuggestion("");
+      setSuggestionError("");
+      setIsLoadingSuggestions(false);
+      return;
+    }
+
+    const requestId = suggestionRequestIdRef.current + 1;
+    suggestionRequestIdRef.current = requestId;
+    const abortController = new AbortController();
+    const timeoutId = window.setTimeout(async () => {
+      setIsLoadingSuggestions(true);
+      setSuggestionError("");
+
+      try {
+        const response = await suggestUserNames(trimmedFullName, abortController.signal);
+
+        if (suggestionRequestIdRef.current !== requestId) {
+          return;
+        }
+
+        setSuggestions(response.suggestions);
+      } catch (error) {
+        if (abortController.signal.aborted || suggestionRequestIdRef.current !== requestId) {
+          return;
+        }
+
+        setSuggestions([]);
+        setSuggestionError("Suggestions unavailable");
+      } finally {
+        if (suggestionRequestIdRef.current === requestId) {
+          setIsLoadingSuggestions(false);
+        }
+      }
+    }, 400);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      abortController.abort();
+    };
+  }, [fullName, mode]);
+
+  function handleFullNameChange(value: string) {
+    setFullName(value);
+    setUserName("");
+    setSelectedSuggestion("");
+    setSuggestions([]);
+    setSuggestionError("");
+  }
+
+  function handleSuggestionClick(suggestion: string) {
+    setUserName(suggestion);
+    setSelectedSuggestion(suggestion);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -202,35 +273,85 @@ export function AuthCard({ mode }: AuthCardProps) {
 
       <form className="mt-10 space-y-6" onSubmit={handleSubmit}>
         <FieldGroup>
-          {fields.map((field) => (
-            <Field key={field.name}>
-              <div className="flex items-center justify-between gap-3">
-                <FieldLabel
-                  className="text-xs font-black uppercase tracking-[0.08em] text-coffee-muted"
-                  htmlFor={field.name}
-                >
-                  {field.label}
-                </FieldLabel>
-                {mode === "login" && field.name === "password" ? (
-                  <a
-                    className="text-xs font-bold normal-case tracking-normal text-coffee-muted no-underline transition hover:text-espresso"
-                    href="#"
+          {fields.map((field) => {
+            const isFullNameField = mode === "register" && field.name === "userFullName";
+            const isUserNameField = mode === "register" && field.name === "userName";
+
+            return (
+              <Field key={field.name}>
+                <div className="flex items-center justify-between gap-3">
+                  <FieldLabel
+                    className="text-xs font-black uppercase tracking-[0.08em] text-coffee-muted"
+                    htmlFor={field.name}
                   >
-                    Forgot Password?
-                  </a>
+                    {field.label}
+                  </FieldLabel>
+                  {mode === "login" && field.name === "password" ? (
+                    <a
+                      className="text-xs font-bold normal-case tracking-normal text-coffee-muted no-underline transition hover:text-espresso"
+                      href="#"
+                    >
+                      Forgot Password?
+                    </a>
+                  ) : null}
+                </div>
+                <Input
+                  autoComplete={field.autoComplete}
+                  className="rounded-none border-0 border-b border-line-soft bg-transparent px-0 text-base text-espresso placeholder:text-line-soft focus:border-espresso"
+                  id={field.name}
+                  name={field.name}
+                  onChange={
+                    isFullNameField
+                      ? (event) => handleFullNameChange(event.target.value)
+                      : undefined
+                  }
+                  placeholder={field.placeholder}
+                  readOnly={isUserNameField}
+                  required
+                  type={field.type}
+                  value={
+                    isFullNameField
+                      ? fullName
+                      : isUserNameField
+                        ? userName
+                        : undefined
+                  }
+                />
+
+                {isFullNameField &&
+                (isLoadingSuggestions || suggestions.length > 0 || suggestionError) ? (
+                  <div className="flex min-h-9 flex-wrap items-center gap-2 pt-1">
+                    {isLoadingSuggestions ? (
+                      <span className="text-xs font-semibold text-coffee-muted">
+                        Finding usernames...
+                      </span>
+                    ) : null}
+                    {!isLoadingSuggestions && suggestionError ? (
+                      <span className="text-xs font-semibold text-coffee-muted">
+                        {suggestionError}
+                      </span>
+                    ) : null}
+                    {!isLoadingSuggestions
+                      ? suggestions.map((suggestion) => (
+                          <button
+                            className={cn(
+                              "min-h-8 rounded border border-line-soft bg-surface px-3 text-xs font-black text-espresso transition hover:border-espresso",
+                              selectedSuggestion === suggestion &&
+                                "border-espresso bg-espresso text-white",
+                            )}
+                            key={suggestion}
+                            onClick={() => handleSuggestionClick(suggestion)}
+                            type="button"
+                          >
+                            {suggestion}
+                          </button>
+                        ))
+                      : null}
+                  </div>
                 ) : null}
-              </div>
-              <Input
-                autoComplete={field.autoComplete}
-                className="rounded-none border-0 border-b border-line-soft bg-transparent px-0 text-base text-espresso placeholder:text-line-soft focus:border-espresso"
-                id={field.name}
-                name={field.name}
-                placeholder={field.placeholder}
-                required
-                type={field.type}
-              />
-            </Field>
-          ))}
+              </Field>
+            );
+          })}
         </FieldGroup>
 
         {mode === "register" ? (

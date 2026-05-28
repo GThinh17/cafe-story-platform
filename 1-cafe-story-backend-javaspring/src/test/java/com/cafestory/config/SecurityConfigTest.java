@@ -2,8 +2,10 @@ package com.cafestory.config;
 
 import com.cafestory.dto.responseDTO.VnpayIpnResponseDTO;
 import com.cafestory.dto.responseDTO.VnpayReturnResponseDTO;
+import com.cafestory.dto.responseDTO.UsernameSuggestionResponse;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.PaymentStatus;
+import com.cafestory.service.serviceInterface.AuthService;
 import com.cafestory.service.serviceInterface.PaymentService;
 import com.cafestory.until.security.JwtAuthenticationFilter;
 import com.cafestory.until.security.JwtService;
@@ -44,6 +46,9 @@ class SecurityConfigTest {
 
     @MockBean
     private PaymentService paymentService;
+
+    @MockBean
+    private AuthService authService;
 
     @Test
     void me_fail_withoutAccessToken_TC001() throws Exception {
@@ -91,6 +96,17 @@ class SecurityConfigTest {
         mockMvc.perform(post("/api/payments/stripe/webhook")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void usernameSuggestions_success_noAuthorizationDoesNotReturn401_TC008() throws Exception {
+        UsernameSuggestionResponse response = new UsernameSuggestionResponse();
+        response.setSuggestions(List.of("thanh.vu", "thanhvu_7"));
+        when(authService.suggestUserNames("Phạm Thanh Vũ")).thenReturn(response);
+
+        mockMvc.perform(get("/api/auth/usernames/suggestions")
+                        .param("fullName", "Phạm Thanh Vũ"))
                 .andExpect(status().isOk());
     }
 

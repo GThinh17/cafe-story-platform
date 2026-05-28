@@ -4,11 +4,6 @@ import {
   SendIcon,
   BookmarkIcon,
 } from "lucide-react";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import type { FeedPost } from "@/types/feed";
+import { DEFAULT_AVATAR_IMAGE } from "@/lib/avatar";
 
 export type { FeedPost };
 
@@ -42,20 +38,27 @@ const postActions = [
 ];
 
 export function PostCard({ post }: PostCardProps) {
+  const authorAvatar = post.authorAvatar?.trim() || DEFAULT_AVATAR_IMAGE;
+
   return (
     <Card className="mx-auto w-[85%] max-w-full overflow-hidden [contain-intrinsic-size:765px] [content-visibility:auto]">
       <CardHeader className="flex flex-row items-center justify-between gap-4 px-4 py-4">
         <div className="flex min-w-0 items-center gap-3">
-          <Avatar className="size-11">
-            <AvatarImage alt={`${post.author} avatar`} src={post.authorAvatar} />
-            <AvatarFallback className="font-bold text-primary-strong">
-              {post.author.slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+          <span className="block size-11 shrink-0 overflow-hidden rounded-full border border-border/40 bg-surface-muted shadow-[inset_0_0_0_999px_rgba(217,119,6,0.10)]">
+            <img
+              alt={`${post.author} avatar`}
+              className="block size-full max-w-none rounded-full object-cover object-center"
+              decoding="async"
+              loading="lazy"
+              src={authorAvatar}
+            />
+          </span>
           <div className="min-w-0">
-            <CardTitle className="truncate text-base font-bold">{post.cafe}</CardTitle>
+            <CardTitle className="truncate text-base font-bold">
+              {post.author}
+            </CardTitle>
             <CardDescription className="truncate text-xs font-medium">
-              {post.location} - {post.time}
+              {post.cafe} - {post.location} - {post.time}
             </CardDescription>
           </div>
         </div>
