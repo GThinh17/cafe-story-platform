@@ -39,8 +39,7 @@ public class BlogController {
     public BlogResponseDTO createBlog(
             @Valid @RequestBody BlogCreateDTO blogCreateDTO,
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
-        blogCreateDTO.setAuthorUserId(requireUserId(principal));
-        return blogService.createBlog(blogCreateDTO);
+        return blogService.createBlog(blogCreateDTO, requireUserId(principal));
     }
 
     @GetMapping

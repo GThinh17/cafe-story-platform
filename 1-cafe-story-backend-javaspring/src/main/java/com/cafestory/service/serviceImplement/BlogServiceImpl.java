@@ -44,8 +44,9 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     @Transactional
-    public BlogResponseDTO createBlog(BlogCreateDTO blogCreateDTO) {
-        User author = userValidator.validateUserExists(blogCreateDTO.getAuthorUserId());
+    public BlogResponseDTO createBlog(BlogCreateDTO blogCreateDTO, UUID actorUserId) {
+        User author = userValidator.validateUserExists(actorUserId);
+        userValidator.validateUserActive(author);
         CafePage page = null;
         if (blogCreateDTO.getPageId() != null) {
             page = cafePageValidator.validateUserCanCreateBlogOnPage(blogCreateDTO.getPageId(), author.getUserId());

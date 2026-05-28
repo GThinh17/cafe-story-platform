@@ -1,7 +1,9 @@
 package com.cafestory.validation;
 
 import com.cafestory.entity.CafePage;
+import com.cafestory.entity.PageMember;
 import com.cafestory.entity.User;
+import com.cafestory.entity.enums.PageMemberStatus;
 import com.cafestory.repository.CafePageRepository;
 import com.cafestory.repository.PageMemberRepository;
 import org.junit.jupiter.api.Test;
@@ -13,11 +15,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -107,8 +109,8 @@ class CafePageValidatorTest {
         when(pageMemberRepository.existsByCafePageIdAndUserUserIdAndStatusAndRoleNameIn(
                 eq(cafePage.getId()),
                 eq(userId),
-                eq(com.cafestory.entity.enums.PageMemberStatus.ACTIVE),
-                anyList())).thenReturn(true);
+                eq(PageMemberStatus.ACTIVE),
+                eq(List.of(PageMember.ROLE_OWNER, PageMember.ROLE_CO_OWNER)))).thenReturn(true);
 
         cafePageValidator.validateUserCanCreateBlogOnPage(cafePage.getId(), userId);
     }
@@ -122,8 +124,8 @@ class CafePageValidatorTest {
         when(pageMemberRepository.existsByCafePageIdAndUserUserIdAndStatusAndRoleNameIn(
                 eq(cafePage.getId()),
                 eq(userId),
-                eq(com.cafestory.entity.enums.PageMemberStatus.ACTIVE),
-                anyList())).thenReturn(false);
+                eq(PageMemberStatus.ACTIVE),
+                eq(List.of(PageMember.ROLE_OWNER, PageMember.ROLE_CO_OWNER)))).thenReturn(false);
 
         assertThatThrownBy(() -> cafePageValidator.validateUserCanCreateBlogOnPage(cafePage.getId(), userId))
                 .isInstanceOf(ResponseStatusException.class)
@@ -142,8 +144,8 @@ class CafePageValidatorTest {
         when(pageMemberRepository.existsByCafePageIdAndUserUserIdAndStatusAndRoleNameIn(
                 eq(cafePage.getId()),
                 eq(userId),
-                eq(com.cafestory.entity.enums.PageMemberStatus.ACTIVE),
-                anyList())).thenReturn(true);
+                eq(PageMemberStatus.ACTIVE),
+                eq(List.of(PageMember.ROLE_OWNER, PageMember.ROLE_CO_OWNER)))).thenReturn(true);
 
         cafePageValidator.validateUserCanManagePage(cafePage.getId(), userId);
     }
@@ -157,8 +159,8 @@ class CafePageValidatorTest {
         when(pageMemberRepository.existsByCafePageIdAndUserUserIdAndStatusAndRoleNameIn(
                 eq(cafePage.getId()),
                 eq(userId),
-                eq(com.cafestory.entity.enums.PageMemberStatus.ACTIVE),
-                anyList())).thenReturn(false);
+                eq(PageMemberStatus.ACTIVE),
+                eq(List.of(PageMember.ROLE_OWNER, PageMember.ROLE_CO_OWNER)))).thenReturn(false);
 
         assertThatThrownBy(() -> cafePageValidator.validateUserCanManagePage(cafePage.getId(), userId))
                 .isInstanceOf(ResponseStatusException.class)

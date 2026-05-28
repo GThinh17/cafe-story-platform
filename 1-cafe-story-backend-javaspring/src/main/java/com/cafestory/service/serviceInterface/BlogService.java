@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface BlogService {
-    BlogResponseDTO createBlog(BlogCreateDTO blogCreateDTO);
+    BlogResponseDTO createBlog(BlogCreateDTO blogCreateDTO, UUID actorUserId);
 
     List<BlogResponseDTO> getAllBlogs();
 
