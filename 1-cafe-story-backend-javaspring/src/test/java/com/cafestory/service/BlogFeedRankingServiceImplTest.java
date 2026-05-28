@@ -2,6 +2,7 @@ package com.cafestory.service;
 
 import com.cafestory.dto.responseDTO.BlogFeedResponse;
 import com.cafestory.dto.responseDTO.BlogDisplayAuthorType;
+import com.cafestory.dto.responseDTO.FeedResponseDTO;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogRecommendationScore;
 import com.cafestory.entity.BlogTrendingScore;
@@ -9,6 +10,7 @@ import com.cafestory.entity.CafePage;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.ModerationDecision;
+import com.cafestory.entity.enums.FeedItemType;
 import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.entity.enums.TrendWindowType;
 import com.cafestory.repository.AiModerationResultRepository;
@@ -30,13 +32,16 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Pageable;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -80,7 +85,116 @@ class BlogFeedRankingServiceImplTest {
     private UserValidator userValidator;
 
     @Test
-    void getPersonalizedFeed_success_readsLatestCachedScores_TC001() {
+    void getOrganicFeed_success_rankingOrderByScore_TC001() {
+        Blog lowScoreBlog = organicBlog(
+                UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                null,
+                1,
+                0,
+                0,
+                LocalDateTime.now().minusHours(12));
+        Blog highScorePageBlog = organicBlog(
+                UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                UUID.randomUUID(),
+                20,
+                5,
+                3,
+                LocalDateTime.now().minusHours(12));
+        BlogFeedRankingServiceImpl service = service();
+
+        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(lowScoreBlog, highScorePageBlog));
+
+        FeedResponseDTO result = service.getOrganicFeed(null, 20);
+
+        assertThat(result.getItems()).hasSize(2);
+        assertThat(result.getItems().getFirst().getItemType()).isEqualTo(FeedItemType.CAFE_PAGE_BLOG);
+        assertThat(result.getItems().getFirst().getBlog().getBlogId()).isEqualTo(highScorePageBlog.getId());
+        assertThat(result.getItems().getFirst().getBlog().getDisplayAuthorType()).isEqualTo(BlogDisplayAuthorType.CAFE_PAGE);
+        assertThat(result.getItems().getFirst().getBlog().getDisplayName()).isEqualTo("Cafe Story Roastery");
+        assertThat(result.getItems().getFirst().getAd()).isNull();
+        assertThat(result.getItems().getFirst().getPosition()).isZero();
+        assertThat(result.getHasMore()).isFalse();
+        assertThat(result.getNextCursor()).isNull();
+    }
+
+    @Test
+    void getOrganicFeed_success_nextCursorDoesNotRepeatItems_TC002() {
+        LocalDateTime createdAt = LocalDateTime.now().minusHours(4);
+        Blog firstBlog = organicBlog(
+                UUID.fromString("00000000-0000-0000-0000-000000000101"),
+                UUID.randomUUID(),
+                20,
+                2,
+                1,
+                createdAt);
+        Blog secondBlog = organicBlog(
+                UUID.fromString("00000000-0000-0000-0000-000000000102"),
+                null,
+                1,
+                0,
+                0,
+                createdAt.minusHours(1));
+        BlogFeedRankingServiceImpl service = service();
+
+        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(secondBlog, firstBlog));
+
+        FeedResponseDTO firstPage = service.getOrganicFeed(null, 1);
+        FeedResponseDTO secondPage =
+                service.getOrganicFeed(firstPage.getNextCursor(), 1);
+
+        assertThat(firstPage.getItems()).extracting(item -> item.getBlog().getBlogId())
+                .containsExactly(firstBlog.getId());
+        assertThat(firstPage.getHasMore()).isTrue();
+        assertThat(firstPage.getNextCursor()).isNotBlank();
+        assertThat(secondPage.getItems()).extracting(item -> item.getBlog().getBlogId())
+                .containsExactly(secondBlog.getId());
+        assertThat(secondPage.getHasMore()).isFalse();
+    }
+
+    @Test
+    void getOrganicFeed_success_sameScoreTieBreakByCreatedAtThenId_TC003() {
+        LocalDateTime sameCreatedAt = LocalDateTime.of(2026, 5, 28, 10, 0);
+        Blog lowerIdBlog = organicBlog(
+                UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                null,
+                2,
+                1,
+                0,
+                sameCreatedAt);
+        Blog higherIdBlog = organicBlog(
+                UUID.fromString("00000000-0000-0000-0000-000000000002"),
+                null,
+                2,
+                1,
+                0,
+                sameCreatedAt);
+        BlogFeedRankingServiceImpl service = service();
+
+        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(lowerIdBlog, higherIdBlog));
+
+        FeedResponseDTO result = service.getOrganicFeed(null, 20);
+
+        assertThat(result.getItems()).extracting(item -> item.getBlog().getBlogId())
+                .containsExactly(higherIdBlog.getId(), lowerIdBlog.getId());
+        assertThat(result.getItems()).extracting(item -> item.getItemType())
+                .containsExactly(FeedItemType.USER_BLOG, FeedItemType.USER_BLOG);
+    }
+
+    @Test
+    void getOrganicFeed_fail_invalidCursor_TC004() {
+        BlogFeedRankingServiceImpl service = service();
+        String invalidCursor = Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString("{\"version\":1}".getBytes(StandardCharsets.UTF_8));
+
+        assertThatThrownBy(() -> service.getOrganicFeed(invalidCursor, 20))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .satisfies(error -> assertThat(((org.springframework.web.server.ResponseStatusException) error)
+                        .getStatusCode()).isEqualTo(org.springframework.http.HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void getPersonalizedFeed_success_readsLatestCachedScores_TC005() {
         User user = user();
         Blog blog = blog(user.getRegion().getRegionId());
         BlogRecommendationScore score = recommendationScore(user, blog, 91.0, 1);
@@ -124,7 +238,7 @@ class BlogFeedRankingServiceImplTest {
     }
 
     @Test
-    void rebuildRecommendationCache_success_scoresAndStoresCache_TC002() {
+    void rebuildRecommendationCache_success_scoresAndStoresCache_TC006() {
         User user = user();
         UUID regionId = user.getRegion().getRegionId();
         Region blogRegion = region("Ho Chi Minh");
@@ -179,7 +293,7 @@ class BlogFeedRankingServiceImplTest {
     }
 
     @Test
-    void rebuildRecommendationCache_success_reportPenaltyReducesScore_TC003() {
+    void rebuildRecommendationCache_success_reportPenaltyReducesScore_TC007() {
         User user = user();
         Blog blog = blog(UUID.randomUUID());
         BlogTrendingScore trendingScore = trendingScore(blog, 100.0);
@@ -219,6 +333,7 @@ class BlogFeedRankingServiceImplTest {
                 any(),
                 any(),
                 any())).thenReturn(0L);
+        lenient().when(aiModerationResultRepository.existsByBlogIdAndDecision(any(UUID.class), any())).thenReturn(false);
         lenient().when(regionRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
         lenient().when(cafePageRepository.findAllById(any())).thenAnswer(invocation -> {
             Iterable<UUID> pageIds = invocation.getArgument(0);
@@ -289,6 +404,33 @@ class BlogFeedRankingServiceImplTest {
         blog.setCommentCount(3);
         blog.setShareCount(4);
         blog.setCreatedAt(LocalDateTime.now().minusHours(1));
+        return blog;
+    }
+
+    private Blog organicBlog(
+            UUID blogId,
+            UUID pageId,
+            int likeCount,
+            int commentCount,
+            int shareCount,
+            LocalDateTime createdAt) {
+        User author = new User();
+        author.setUserId(UUID.randomUUID());
+        author.setUserName("author");
+        author.setUserFullName("Author Name");
+        author.setUserAvatar("/images/default-avatar.svg");
+
+        Blog blog = new Blog();
+        blog.setId(blogId);
+        blog.setAuthor(author);
+        blog.setPageId(pageId);
+        blog.setContent("Cafe Story organic feed blog");
+        blog.setImageUrls(List.of("/images/feed/cafe.jpg"));
+        blog.setStatus(PostStatus.PUBLISHED);
+        blog.setLikeCount(likeCount);
+        blog.setCommentCount(commentCount);
+        blog.setShareCount(shareCount);
+        blog.setCreatedAt(createdAt);
         return blog;
     }
 

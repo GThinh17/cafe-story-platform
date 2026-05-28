@@ -9,6 +9,7 @@ import com.cafestory.entity.CafePage;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.AdStatus;
+import com.cafestory.entity.enums.FeedItemType;
 import com.cafestory.mapper.AdCampaignMapper;
 import com.cafestory.repository.AdCampaignRepository;
 import com.cafestory.repository.AdDailyStatRepository;
@@ -86,7 +87,9 @@ class FeedAdServiceImplTest {
 
         List<FeedItemResponseDTO> result = feedAdService.insertAdsIntoFeed(userId, organicPosts(10));
 
-        assertThat(result).anyMatch(item -> "AD".equals(item.getItemType()) && campaignId.equals(item.getAd().getAdCampaignId()));
+        assertThat(result).anyMatch(item -> item.getItemType() == FeedItemType.SPONSORED_CAFE
+                && campaignId.equals(item.getAd().getAdCampaignId())
+                && item.getTrackingToken() != null);
         assertThat(campaign.getServedImpressions()).isEqualTo(1);
         assertThat(stat.getImpressions()).isEqualTo(5);
         verify(adImpressionRepository).save(any());
@@ -128,7 +131,7 @@ class FeedAdServiceImplTest {
 
         List<FeedItemResponseDTO> result = feedAdService.insertAdsIntoFeed(userId, organicPosts(10));
 
-        assertThat(result).noneMatch(item -> "AD".equals(item.getItemType()));
+        assertThat(result).noneMatch(item -> item.getItemType() == FeedItemType.SPONSORED_CAFE);
         verify(adImpressionRepository, never()).save(any());
     }
 
@@ -148,7 +151,7 @@ class FeedAdServiceImplTest {
 
         List<FeedItemResponseDTO> result = feedAdService.insertAdsIntoFeed(userId, organicPosts(25));
 
-        assertThat(result.stream().filter(item -> "AD".equals(item.getItemType())).count()).isEqualTo(1);
+        assertThat(result.stream().filter(item -> item.getItemType() == FeedItemType.SPONSORED_CAFE).count()).isEqualTo(1);
     }
 
     @Test
@@ -169,6 +172,7 @@ class FeedAdServiceImplTest {
         return IntStream.range(0, count).mapToObj(index -> {
             BlogFeedResponse response = new BlogFeedResponse();
             response.setBlogId(UUID.randomUUID());
+            response.setPageId(index % 2 == 0 ? null : UUID.randomUUID());
             return response;
         }).toList();
     }
