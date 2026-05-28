@@ -33,12 +33,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeParseException;
-import java.util.Base64;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -157,14 +156,17 @@ public class CafePageServiceImpl implements CafePageService {
         int safeSize = Math.min(Math.max(1, size), 50);
         LocalDateTime now = LocalDateTime.now();
         List<CafePageRankingCandidate> candidates = cafePageRepository.findActiveCafePagesForRegionalRanking(
-                        regionId,
-                        normalizedCity)
+                regionId,
+                normalizedCity)
                 .stream()
                 .map(cafePage -> new CafePageRankingCandidate(cafePage, calculateRankingScore(cafePage, now)))
                 .sorted(Comparator.comparing(CafePageRankingCandidate::score).reversed()
-                        .thenComparing(candidate -> safe(candidate.cafePage().getFollowerCount()), Comparator.reverseOrder())
-                        .thenComparing(candidate -> safe(candidate.cafePage().getLikeCount()), Comparator.reverseOrder())
-                        .thenComparing(candidate -> candidate.cafePage().getCreatedAt(), Comparator.nullsLast(Comparator.reverseOrder())))
+                        .thenComparing(candidate -> safe(candidate.cafePage().getFollowerCount()),
+                                Comparator.reverseOrder())
+                        .thenComparing(candidate -> safe(candidate.cafePage().getLikeCount()),
+                                Comparator.reverseOrder())
+                        .thenComparing(candidate -> candidate.cafePage().getCreatedAt(),
+                                Comparator.nullsLast(Comparator.reverseOrder())))
                 .limit(safeSize)
                 .toList();
 
@@ -304,6 +306,8 @@ public class CafePageServiceImpl implements CafePageService {
     }
 
     private record CafePageBlogCursorPayload(String afterCreatedAt, UUID afterId, int version) {
+    }
+
     private double calculateRankingScore(CafePage cafePage, LocalDateTime now) {
         return safe(cafePage.getFollowerCount()) * 3.0
                 + safe(cafePage.getLikeCount()) * 2.0
