@@ -2,6 +2,7 @@ package com.cafestory.service;
 
 import com.cafestory.dto.requestDTO.CafePageCreateDTO;
 import com.cafestory.dto.requestDTO.CafePageUpdateDTO;
+import com.cafestory.dto.responseDTO.BlogCursorPageResponseDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
 import com.cafestory.dto.responseDTO.CafePageResponseDTO;
 import com.cafestory.entity.Blog;
@@ -23,13 +24,18 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
 
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -150,22 +156,52 @@ class CafePageServiceImplTest {
     @Test
     void getBlogsByCafePageId_success_TC006() {
         UUID cafePageId = UUID.randomUUID();
-        Blog blog = blog(UUID.randomUUID(), cafePageId);
+        Blog firstBlog = blog(UUID.randomUUID(), cafePageId, LocalDateTime.of(2026, 5, 28, 10, 0));
+        Blog extraBlog = blog(UUID.randomUUID(), cafePageId, LocalDateTime.of(2026, 5, 28, 9, 0));
+        BlogResponseDTO firstResponse = new BlogResponseDTO();
+        firstResponse.setId(firstBlog.getId());
+        firstResponse.setPageId(cafePageId);
+
+        when(blogRepository.findPublishedCafePageBlogsFirstPage(cafePageId, PageRequest.of(0, 2)))
+                .thenReturn(List.of(firstBlog, extraBlog));
+        when(blogMapper.toBlogResponseDTO(firstBlog)).thenReturn(firstResponse);
+
+        BlogCursorPageResponseDTO result = cafePageService.getBlogsByCafePageId(cafePageId, null, 1);
+
+        assertThat(result.getItems()).containsExactly(firstResponse);
+        assertThat(result.getHasMore()).isTrue();
+        assertThat(result.getNextCursor()).isNotBlank();
+        verify(cafePageValidator).validateCafePageExists(cafePageId);
+        verify(blogRepository).findPublishedCafePageBlogsFirstPage(cafePageId, PageRequest.of(0, 2));
+    }
+
+    @Test
+    void getBlogsByCafePageId_success_nextCursor_TC007() {
+        UUID cafePageId = UUID.randomUUID();
+        UUID afterId = UUID.randomUUID();
+        LocalDateTime afterCreatedAt = LocalDateTime.of(2026, 5, 28, 10, 0);
+        String cursor = cursor(afterCreatedAt, afterId);
+        Blog blog = blog(UUID.randomUUID(), cafePageId, LocalDateTime.of(2026, 5, 28, 9, 0));
         BlogResponseDTO response = new BlogResponseDTO();
         response.setId(blog.getId());
-        response.setPageId(cafePageId);
 
-        when(blogRepository.findByPageId(cafePageId)).thenReturn(List.of(blog));
+        when(blogRepository.findPublishedCafePageBlogsAfterCursor(
+                eq(cafePageId),
+                eq(afterCreatedAt),
+                eq(afterId),
+                eq(PageRequest.of(0, 21)))).thenReturn(List.of(blog));
         when(blogMapper.toBlogResponseDTO(blog)).thenReturn(response);
 
-        List<BlogResponseDTO> result = cafePageService.getBlogsByCafePageId(cafePageId);
+        BlogCursorPageResponseDTO result = cafePageService.getBlogsByCafePageId(cafePageId, cursor, 20);
 
-        assertThat(result).containsExactly(response);
+        assertThat(result.getItems()).containsExactly(response);
+        assertThat(result.getHasMore()).isFalse();
+        assertThat(result.getNextCursor()).isNull();
         verify(cafePageValidator).validateCafePageExists(cafePageId);
     }
 
     @Test
-    void updateCafePage_success_TC007() {
+    void updateCafePage_success_TC008() {
         UUID cafePageId = UUID.randomUUID();
         CafePage cafePage = cafePage(cafePageId, user(UUID.randomUUID()));
         UUID actorUserId = cafePage.getOwner().getUserId();
@@ -192,7 +228,7 @@ class CafePageServiceImplTest {
     }
 
     @Test
-    void deleteCafePage_success_TC008() {
+    void deleteCafePage_success_TC009() {
         UUID cafePageId = UUID.randomUUID();
         CafePage cafePage = cafePage(cafePageId, user(UUID.randomUUID()));
         UUID actorUserId = cafePage.getOwner().getUserId();
@@ -235,13 +271,23 @@ class CafePageServiceImplTest {
         return cafePage;
     }
 
-    private Blog blog(UUID blogId, UUID pageId) {
+    private Blog blog(UUID blogId, UUID pageId, LocalDateTime createdAt) {
         Blog blog = new Blog();
         blog.setId(blogId);
         blog.setPageId(pageId);
         blog.setAuthor(user(UUID.randomUUID()));
         blog.setContent("Cafe blog");
+        blog.setCreatedAt(createdAt);
         return blog;
+    }
+
+    private String cursor(LocalDateTime afterCreatedAt, UUID afterId) {
+        String json = """
+                {"afterCreatedAt":"%s","afterId":"%s","version":1}
+                """.formatted(afterCreatedAt, afterId).trim();
+        return Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(json.getBytes(StandardCharsets.UTF_8));
     }
 
     private CafePageResponseDTO response(UUID cafePageId, UUID ownerUserId) {

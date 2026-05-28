@@ -2,8 +2,10 @@ package com.cafestory.service.serviceImplement;
 
 import com.cafestory.dto.requestDTO.CafePageCreateDTO;
 import com.cafestory.dto.requestDTO.CafePageUpdateDTO;
+import com.cafestory.dto.responseDTO.BlogCursorPageResponseDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
 import com.cafestory.dto.responseDTO.CafePageResponseDTO;
+import com.cafestory.entity.Blog;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.PageMember;
 import com.cafestory.entity.PageMemberId;
@@ -18,11 +20,20 @@ import com.cafestory.repository.RegionRepository;
 import com.cafestory.service.serviceInterface.CafePageService;
 import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.UserValidator;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
+import java.util.Base64;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -30,6 +41,12 @@ import java.util.UUID;
 
 @Service
 public class CafePageServiceImpl implements CafePageService {
+    private static final int DEFAULT_BLOG_PAGE_SIZE = 20;
+    private static final int MAX_BLOG_PAGE_SIZE = 50;
+    private static final int CURSOR_VERSION = 1;
+    private static final ObjectMapper CURSOR_OBJECT_MAPPER = JsonMapper.builder()
+            .addModule(new JavaTimeModule())
+            .build();
 
     private final CafePageRepository cafePageRepository;
     private final BlogRepository blogRepository;
@@ -135,12 +152,25 @@ public class CafePageServiceImpl implements CafePageService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<BlogResponseDTO> getBlogsByCafePageId(UUID cafePageId) {
+    public BlogCursorPageResponseDTO getBlogsByCafePageId(UUID cafePageId, String cursor, int size) {
         cafePageValidator.validateCafePageExists(cafePageId);
-        return blogRepository.findByPageId(cafePageId)
+        int safeSize = normalizeBlogPageSize(size);
+        CafePageBlogCursor pageCursor = decodeCursor(cursor);
+        List<Blog> blogs = findCafePageBlogs(cafePageId, pageCursor, safeSize + 1);
+        boolean hasMore = blogs.size() > safeSize;
+        List<Blog> pageItems = hasMore ? blogs.subList(0, safeSize) : blogs;
+        List<BlogResponseDTO> items = pageItems
                 .stream()
                 .map(blogMapper::toBlogResponseDTO)
                 .toList();
+
+        BlogCursorPageResponseDTO response = new BlogCursorPageResponseDTO();
+        response.setItems(items);
+        response.setHasMore(hasMore);
+        response.setNextCursor(hasMore && !pageItems.isEmpty()
+                ? encodeCursor(pageItems.getLast())
+                : null);
+        return response;
     }
 
     @Override
@@ -182,5 +212,65 @@ public class CafePageServiceImpl implements CafePageService {
         cafePageValidator.validateUserCanManagePage(cafePageId, actorUserId);
         CafePage cafePage = cafePageValidator.validateCafePageExists(cafePageId);
         cafePageRepository.delete(cafePage);
+    }
+
+    private int normalizeBlogPageSize(int size) {
+        if (size <= 0) {
+            return DEFAULT_BLOG_PAGE_SIZE;
+        }
+        return Math.min(size, MAX_BLOG_PAGE_SIZE);
+    }
+
+    private List<Blog> findCafePageBlogs(UUID cafePageId, CafePageBlogCursor cursor, int limit) {
+        PageRequest pageRequest = PageRequest.of(0, limit);
+        if (cursor == null) {
+            return blogRepository.findPublishedCafePageBlogsFirstPage(cafePageId, pageRequest);
+        }
+
+        return blogRepository.findPublishedCafePageBlogsAfterCursor(
+                cafePageId,
+                cursor.afterCreatedAt(),
+                cursor.afterId(),
+                pageRequest);
+    }
+
+    private CafePageBlogCursor decodeCursor(String cursor) {
+        if (cursor == null || cursor.isBlank()) {
+            return null;
+        }
+
+        try {
+            String json = new String(Base64.getUrlDecoder().decode(cursor), StandardCharsets.UTF_8);
+            CafePageBlogCursorPayload payload = CURSOR_OBJECT_MAPPER.readValue(json, CafePageBlogCursorPayload.class);
+            if (payload.version() != CURSOR_VERSION || payload.afterCreatedAt() == null || payload.afterId() == null) {
+                throw invalidCursor();
+            }
+            return new CafePageBlogCursor(LocalDateTime.parse(payload.afterCreatedAt()), payload.afterId());
+        } catch (IllegalArgumentException | JsonProcessingException | DateTimeParseException error) {
+            throw invalidCursor();
+        }
+    }
+
+    private String encodeCursor(Blog blog) {
+        try {
+            CafePageBlogCursorPayload payload = new CafePageBlogCursorPayload(
+                    blog.getCreatedAt().toString(),
+                    blog.getId(),
+                    CURSOR_VERSION);
+            String json = CURSOR_OBJECT_MAPPER.writeValueAsString(payload);
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+        } catch (JsonProcessingException error) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to create blog cursor");
+        }
+    }
+
+    private ResponseStatusException invalidCursor() {
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid cafe page blog cursor");
+    }
+
+    private record CafePageBlogCursor(LocalDateTime afterCreatedAt, UUID afterId) {
+    }
+
+    private record CafePageBlogCursorPayload(String afterCreatedAt, UUID afterId, int version) {
     }
 }
