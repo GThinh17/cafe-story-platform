@@ -26,6 +26,13 @@ public class BlogResponseDTO {
     private Integer likeCount;
     private Integer shareCount;
     private Integer commentCount;
+    private Boolean isLike;
+    private Boolean isSave;
+    private Boolean isRating;
+    private Integer myRating;
+    private Double ratingScore;
+    private Long ratingCount;
+    private Long saveCount;
     private BlogDisplayAuthorType displayAuthorType;
     private String displayName;
     private String displayAvatarUrl;

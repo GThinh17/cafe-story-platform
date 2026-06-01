@@ -4,11 +4,15 @@ import com.cafestory.dto.requestDTO.BlogCreateDTO;
 import com.cafestory.dto.requestDTO.BlogUpdateDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
 import com.cafestory.entity.Blog;
+import com.cafestory.entity.BlogRating;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.mapper.BlogMapper;
+import com.cafestory.repository.BlogLikeRepository;
+import com.cafestory.repository.BlogRatingRepository;
 import com.cafestory.repository.BlogRepository;
+import com.cafestory.repository.BlogSaveRepository;
 import com.cafestory.service.serviceImplement.BlogServiceImpl;
 import com.cafestory.validation.BlogValidator;
 import com.cafestory.validation.CafePageValidator;
@@ -22,6 +26,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,6 +41,15 @@ class BlogServiceImplTest {
 
     @Mock
     private BlogRepository blogRepository;
+
+    @Mock
+    private BlogLikeRepository blogLikeRepository;
+
+    @Mock
+    private BlogSaveRepository blogSaveRepository;
+
+    @Mock
+    private BlogRatingRepository blogRatingRepository;
 
     @Mock
     private BlogMapper blogMapper;
@@ -237,7 +251,37 @@ class BlogServiceImplTest {
     }
 
     @Test
-    void getBlogById_fail_blogNotFound_TC011() {
+    void getBlogById_success_enrichesViewerInteractionFields_TC011() {
+        UUID blogId = UUID.randomUUID();
+        UUID viewerUserId = UUID.randomUUID();
+        Blog blog = blog();
+        blog.setId(blogId);
+        BlogRating rating = rating(blog, user(viewerUserId), 4);
+        BlogResponseDTO response = blogResponse(blogId, blog.getAuthor().getUserId());
+
+        when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
+        when(blogMapper.toBlogResponseDTO(blog)).thenReturn(response);
+        when(blogLikeRepository.existsByUserUserIdAndBlogId(viewerUserId, blogId)).thenReturn(true);
+        when(blogSaveRepository.findByUserUserIdAndBlogId(viewerUserId, blogId))
+                .thenReturn(Optional.of(new com.cafestory.entity.BlogSave()));
+        when(blogSaveRepository.countByBlogId(blogId)).thenReturn(3L);
+        when(blogRatingRepository.findAverageRatingByBlogId(blogId)).thenReturn(4.5);
+        when(blogRatingRepository.countByBlogId(blogId)).thenReturn(2L);
+        when(blogRatingRepository.findByUserUserIdAndBlogId(viewerUserId, blogId)).thenReturn(Optional.of(rating));
+
+        BlogResponseDTO result = blogService.getBlogById(blogId, viewerUserId);
+
+        assertThat(result.getIsLike()).isTrue();
+        assertThat(result.getIsSave()).isTrue();
+        assertThat(result.getIsRating()).isTrue();
+        assertThat(result.getMyRating()).isEqualTo(4);
+        assertThat(result.getRatingScore()).isEqualTo(4.5);
+        assertThat(result.getRatingCount()).isEqualTo(2L);
+        assertThat(result.getSaveCount()).isEqualTo(3L);
+    }
+
+    @Test
+    void getBlogById_fail_blogNotFound_TC012() {
         UUID blogId = UUID.randomUUID();
 
         when(blogValidator.validateBlogExists(blogId))
@@ -250,7 +294,7 @@ class BlogServiceImplTest {
     }
 
     @Test
-    void updateBlog_success_updateAllFields_TC012() {
+    void updateBlog_success_updateAllFields_TC013() {
         UUID blogId = UUID.randomUUID();
         BlogUpdateDTO request = updateBlogRequest();
         Blog blog = blog();
@@ -278,7 +322,7 @@ class BlogServiceImplTest {
     }
 
     @Test
-    void updateBlog_success_nullFields_TC013() {
+    void updateBlog_success_nullFields_TC014() {
         UUID blogId = UUID.randomUUID();
         BlogUpdateDTO request = new BlogUpdateDTO();
         Blog blog = blog();
@@ -296,7 +340,7 @@ class BlogServiceImplTest {
     }
 
     @Test
-    void updateBlog_fail_blogNotFound_TC014() {
+    void updateBlog_fail_blogNotFound_TC015() {
         UUID blogId = UUID.randomUUID();
         BlogUpdateDTO request = updateBlogRequest();
 
@@ -312,7 +356,7 @@ class BlogServiceImplTest {
     }
 
     @Test
-    void deleteBlog_success_TC015() {
+    void deleteBlog_success_TC016() {
         UUID blogId = UUID.randomUUID();
         Blog blog = blog();
         UUID actorUserId = blog.getAuthor().getUserId();
@@ -325,7 +369,7 @@ class BlogServiceImplTest {
     }
 
     @Test
-    void deleteBlog_fail_blogNotFound_TC016() {
+    void deleteBlog_fail_blogNotFound_TC017() {
         UUID blogId = UUID.randomUUID();
 
         when(blogValidator.validateBlogExists(blogId))
@@ -386,6 +430,15 @@ class BlogServiceImplTest {
         user.setUserEmail("luan123@example.com");
         user.setAccountStatus(true);
         return user;
+    }
+
+    private BlogRating rating(Blog blog, User user, Integer ratingValue) {
+        BlogRating rating = new BlogRating();
+        rating.setId(UUID.randomUUID());
+        rating.setBlog(blog);
+        rating.setUser(user);
+        rating.setRating(ratingValue);
+        return rating;
     }
 
     private CafePage cafePage(UUID pageId) {

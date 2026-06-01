@@ -12,11 +12,17 @@ public interface BlogService {
 
     List<BlogResponseDTO> getAllBlogs();
 
+    List<BlogResponseDTO> getAllBlogs(UUID viewerUserId);
+
     List<BlogResponseDTO> getBlogsByAuthorId(UUID authorUserId);
 
     List<BlogResponseDTO> getAllBlogsByUserId(UUID userId);
 
+    List<BlogResponseDTO> getAllBlogsByUserId(UUID userId, UUID viewerUserId);
+
     BlogResponseDTO getBlogById(UUID blogId);
+
+    BlogResponseDTO getBlogById(UUID blogId, UUID viewerUserId);
 
     BlogResponseDTO updateBlog(UUID blogId, UUID actorUserId, BlogUpdateDTO blogUpdateDTO);
 
