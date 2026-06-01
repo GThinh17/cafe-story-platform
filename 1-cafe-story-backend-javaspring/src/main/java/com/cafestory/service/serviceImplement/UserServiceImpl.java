@@ -8,6 +8,7 @@ import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
 import com.cafestory.mapper.UserMapper;
 import com.cafestory.repository.RegionRepository;
+import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.UserService;
 import com.cafestory.validation.UserValidator;
@@ -24,6 +25,7 @@ import java.util.UUID;
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+    private final UserFollowRepository userFollowRepository;
     private final RegionRepository regionRepository;
     private final UserMapper userMapper;
     private final UserValidator userValidator;
@@ -31,11 +33,13 @@ public class UserServiceImpl implements UserService {
 
     public UserServiceImpl(
             UserRepository userRepository,
+            UserFollowRepository userFollowRepository,
             RegionRepository regionRepository,
             UserMapper userMapper,
             UserValidator userValidator,
             PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
+        this.userFollowRepository = userFollowRepository;
         this.regionRepository = regionRepository;
         this.userMapper = userMapper;
         this.userValidator = userValidator;
@@ -62,16 +66,28 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public List<UserResponseDTO> getAllUsers() {
+        return getAllUsers(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserResponseDTO> getAllUsers(UUID viewerUserId) {
         return userRepository.findAll()
                 .stream()
-                .map(userMapper::toUserResponseDTO)
+                .map(user -> toUserResponseDTO(user, viewerUserId))
                 .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public UserResponseDTO getUserById(UUID userId) {
-        return userMapper.toUserResponseDTO(userValidator.validateUserExists(userId));
+        return getUserById(userId, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserResponseDTO getUserById(UUID userId, UUID viewerUserId) {
+        return toUserResponseDTO(userValidator.validateUserExists(userId), viewerUserId);
     }
 
     @Override
@@ -166,5 +182,14 @@ public class UserServiceImpl implements UserService {
 
     private String firstNonBlank(String first, String second) {
         return first != null && !first.isBlank() ? first : second;
+    }
+
+    private UserResponseDTO toUserResponseDTO(User user, UUID viewerUserId) {
+        UserResponseDTO response = userMapper.toUserResponseDTO(user);
+        response.setIsFollowing(viewerUserId != null
+                && user.getUserId() != null
+                && !viewerUserId.equals(user.getUserId())
+                && userFollowRepository.existsByFollowerUserIdAndFollowingUserId(viewerUserId, user.getUserId()));
+        return response;
     }
 }

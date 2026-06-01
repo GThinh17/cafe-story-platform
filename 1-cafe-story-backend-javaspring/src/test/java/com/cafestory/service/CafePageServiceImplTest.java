@@ -15,6 +15,8 @@ import com.cafestory.mapper.BlogMapper;
 import com.cafestory.mapper.CafePageMapper;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.CafePageRepository;
+import com.cafestory.repository.PageFollowRepository;
+import com.cafestory.repository.PageLikeRepository;
 import com.cafestory.repository.PageMemberRepository;
 import com.cafestory.repository.RegionRepository;
 import com.cafestory.service.serviceImplement.CafePageServiceImpl;
@@ -49,6 +51,12 @@ class CafePageServiceImplTest {
 
     @Mock
     private BlogRepository blogRepository;
+
+    @Mock
+    private PageFollowRepository pageFollowRepository;
+
+    @Mock
+    private PageLikeRepository pageLikeRepository;
 
     @Mock
     private PageMemberRepository pageMemberRepository;
@@ -193,7 +201,26 @@ class CafePageServiceImplTest {
     }
 
     @Test
-    void getBlogsByCafePageId_success_TC007() {
+    void getCafePageById_success_enrichesViewerFollowAndLikeState_TC007() {
+        UUID viewerUserId = UUID.randomUUID();
+        CafePage cafePage = cafePage(UUID.randomUUID(), user(UUID.randomUUID()));
+        CafePageResponseDTO response = response(cafePage.getId(), cafePage.getOwner().getUserId());
+
+        when(cafePageValidator.validateCafePageExists(cafePage.getId())).thenReturn(cafePage);
+        when(cafePageMapper.toCafePageResponseDTO(cafePage)).thenReturn(response);
+        when(pageFollowRepository.existsByUserUserIdAndCafePageId(viewerUserId, cafePage.getId()))
+                .thenReturn(true);
+        when(pageLikeRepository.existsByUserUserIdAndCafePageId(viewerUserId, cafePage.getId()))
+                .thenReturn(true);
+
+        CafePageResponseDTO result = cafePageService.getCafePageById(cafePage.getId(), viewerUserId);
+
+        assertThat(result.getIsFollowing()).isTrue();
+        assertThat(result.getIsLiked()).isTrue();
+    }
+
+    @Test
+    void getBlogsByCafePageId_success_TC008() {
         UUID cafePageId = UUID.randomUUID();
         Blog firstBlog = blog(UUID.randomUUID(), cafePageId, LocalDateTime.of(2026, 5, 28, 10, 0));
         Blog extraBlog = blog(UUID.randomUUID(), cafePageId, LocalDateTime.of(2026, 5, 28, 9, 0));
@@ -215,7 +242,7 @@ class CafePageServiceImplTest {
     }
 
     @Test
-    void getBlogsByCafePageId_success_nextCursor_TC007() {
+    void getBlogsByCafePageId_success_nextCursor_TC009() {
         UUID cafePageId = UUID.randomUUID();
         UUID afterId = UUID.randomUUID();
         LocalDateTime afterCreatedAt = LocalDateTime.of(2026, 5, 28, 10, 0);
@@ -240,7 +267,7 @@ class CafePageServiceImplTest {
     }
 
     @Test
-    void updateCafePage_success_TC008() {
+    void updateCafePage_success_TC010() {
         UUID cafePageId = UUID.randomUUID();
         CafePage cafePage = cafePage(cafePageId, user(UUID.randomUUID()));
         UUID actorUserId = cafePage.getOwner().getUserId();
@@ -267,7 +294,7 @@ class CafePageServiceImplTest {
     }
 
     @Test
-    void deleteCafePage_success_TC009() {
+    void deleteCafePage_success_TC011() {
         UUID cafePageId = UUID.randomUUID();
         CafePage cafePage = cafePage(cafePageId, user(UUID.randomUUID()));
         UUID actorUserId = cafePage.getOwner().getUserId();

@@ -10,6 +10,7 @@ import org.mapstruct.Mapping;
 public interface UserMapper {
 
     @Mapping(source = "region.regionId", target = "regionId")
+    @Mapping(target = "isFollowing", ignore = true)
     UserResponseDTO toUserResponseDTO(User user);
 
     @Mapping(target = "userId", ignore = true)

@@ -11,6 +11,8 @@ public interface CafePageMapper {
 
     @Mapping(source = "owner.userId", target = "ownerUserId")
     @Mapping(source = "region.regionId", target = "regionId")
+    @Mapping(target = "isFollowing", ignore = true)
+    @Mapping(target = "isLiked", ignore = true)
     CafePageResponseDTO toCafePageResponseDTO(CafePage cafePage);
 
     @Mapping(target = "id", ignore = true)

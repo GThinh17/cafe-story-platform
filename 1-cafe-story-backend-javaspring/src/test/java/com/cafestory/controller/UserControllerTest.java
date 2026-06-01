@@ -43,28 +43,30 @@ class UserControllerTest {
 
     @Test
     void getAllUsers_success_TC002() {
+        UUID viewerUserId = UUID.randomUUID();
         List<UserResponseDTO> response = List.of(userResponse());
 
-        when(userService.getAllUsers()).thenReturn(response);
+        when(userService.getAllUsers(viewerUserId)).thenReturn(response);
 
-        List<UserResponseDTO> result = userController.getAllUsers();
+        List<UserResponseDTO> result = userController.getAllUsers(principal(viewerUserId));
 
         assertThat(result).hasSize(1);
         assertThat(result).isEqualTo(response);
-        verify(userService).getAllUsers();
+        verify(userService).getAllUsers(viewerUserId);
     }
 
     @Test
     void getUserById_success_TC003() {
         UUID userId = UUID.randomUUID();
+        UUID viewerUserId = UUID.randomUUID();
         UserResponseDTO response = userResponse();
 
-        when(userService.getUserById(userId)).thenReturn(response);
+        when(userService.getUserById(userId, viewerUserId)).thenReturn(response);
 
-        UserResponseDTO result = userController.getUserById(userId);
+        UserResponseDTO result = userController.getUserById(userId, principal(viewerUserId));
 
         assertThat(result).isEqualTo(response);
-        verify(userService).getUserById(userId);
+        verify(userService).getUserById(userId, viewerUserId);
     }
 
     @Test

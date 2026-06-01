@@ -12,7 +12,11 @@ public interface UserService {
 
     List<UserResponseDTO> getAllUsers();
 
+    List<UserResponseDTO> getAllUsers(UUID viewerUserId);
+
     UserResponseDTO getUserById(UUID userId);
+
+    UserResponseDTO getUserById(UUID userId, UUID viewerUserId);
 
     UserResponseDTO updateUser(UUID userId, UserUpdateDTO userUpdateDTO);
 

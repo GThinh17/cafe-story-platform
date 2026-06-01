@@ -8,6 +8,7 @@ import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
 import com.cafestory.mapper.UserMapper;
 import com.cafestory.repository.RegionRepository;
+import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceImplement.UserServiceImpl;
 import com.cafestory.validation.UserValidator;
@@ -36,6 +37,9 @@ class UserServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private UserFollowRepository userFollowRepository;
 
     @Mock
     private RegionRepository regionRepository;
@@ -135,7 +139,23 @@ class UserServiceImplTest {
     }
 
     @Test
-    void getUserById_fail_notFound_TC006() {
+    void getUserById_success_enrichesViewerFollowState_TC006() {
+        User user = user();
+        UUID viewerUserId = UUID.randomUUID();
+        UserResponseDTO response = userResponse(user.getUserId());
+
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
+        when(userMapper.toUserResponseDTO(user)).thenReturn(response);
+        when(userFollowRepository.existsByFollowerUserIdAndFollowingUserId(viewerUserId, user.getUserId()))
+                .thenReturn(true);
+
+        UserResponseDTO result = userService.getUserById(user.getUserId(), viewerUserId);
+
+        assertThat(result.getIsFollowing()).isTrue();
+    }
+
+    @Test
+    void getUserById_fail_notFound_TC007() {
         UUID userId = UUID.randomUUID();
 
         when(userValidator.validateUserExists(userId))
@@ -148,7 +168,7 @@ class UserServiceImplTest {
     }
 
     @Test
-    void updateUser_success_updateAllFields_TC007() {
+    void updateUser_success_updateAllFields_TC008() {
         User user = user();
         UserUpdateDTO request = updateUserRequest();
         UserResponseDTO response = userResponse(user.getUserId());
@@ -184,7 +204,7 @@ class UserServiceImplTest {
     }
 
     @Test
-    void updateUser_success_sameUsernameAndEmail_TC008() {
+    void updateUser_success_sameUsernameAndEmail_TC009() {
         User user = user();
         UserUpdateDTO request = updateUserRequest();
         request.setUserName(user.getUserName());
@@ -205,7 +225,7 @@ class UserServiceImplTest {
     }
 
     @Test
-    void updateUser_success_nullFields_TC009() {
+    void updateUser_success_nullFields_TC010() {
         User user = user();
         UserUpdateDTO request = new UserUpdateDTO();
         UserResponseDTO response = userResponse(user.getUserId());
@@ -221,7 +241,7 @@ class UserServiceImplTest {
     }
 
     @Test
-    void updateUser_fail_notFound_TC010() {
+    void updateUser_fail_notFound_TC011() {
         UUID userId = UUID.randomUUID();
         UserUpdateDTO request = updateUserRequest();
 
@@ -237,7 +257,7 @@ class UserServiceImplTest {
     }
 
     @Test
-    void updateUser_fail_duplicateUsername_TC011() {
+    void updateUser_fail_duplicateUsername_TC012() {
         User user = user();
         User anotherUser = user();
         anotherUser.setUserId(UUID.randomUUID());
@@ -256,7 +276,7 @@ class UserServiceImplTest {
     }
 
     @Test
-    void updateUser_fail_duplicateEmail_TC012() {
+    void updateUser_fail_duplicateEmail_TC013() {
         User user = user();
         User anotherUser = user();
         anotherUser.setUserId(UUID.randomUUID());
