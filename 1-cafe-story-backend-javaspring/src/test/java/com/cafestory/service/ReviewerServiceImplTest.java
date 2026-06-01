@@ -1,6 +1,8 @@
 package com.cafestory.service;
 
 import com.cafestory.entity.BlogLike;
+import com.cafestory.entity.Blog;
+import com.cafestory.entity.BlogSave;
 import com.cafestory.entity.BlogShare;
 import com.cafestory.entity.Comment;
 import com.cafestory.entity.Reviewer;
@@ -11,8 +13,11 @@ import com.cafestory.entity.Role;
 import com.cafestory.entity.User;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerRankingResponseDTO;
 import com.cafestory.entity.enums.PayoutStatus;
+import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.entity.enums.ReviewerBadge;
 import com.cafestory.repository.BlogLikeRepository;
+import com.cafestory.repository.BlogRepository;
+import com.cafestory.repository.BlogSaveRepository;
 import com.cafestory.repository.BlogShareRepository;
 import com.cafestory.repository.CommentRepository;
 import com.cafestory.repository.ReviewerBadgeHistoryRepository;
@@ -34,6 +39,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -58,6 +64,12 @@ class ReviewerServiceImplTest {
 
     @Mock
     private BlogLikeRepository blogLikeRepository;
+
+    @Mock
+    private BlogRepository blogRepository;
+
+    @Mock
+    private BlogSaveRepository blogSaveRepository;
 
     @Mock
     private BlogShareRepository blogShareRepository;
@@ -95,6 +107,8 @@ class ReviewerServiceImplTest {
     void setUp() {
         reviewerService = new ReviewerServiceImpl(
                 blogLikeRepository,
+                blogRepository,
+                blogSaveRepository,
                 blogShareRepository,
                 commentRepository,
                 reviewerPayoutRepository,
@@ -379,6 +393,89 @@ class ReviewerServiceImplTest {
     }
 
     @Test
+    void discovery_success_regionUsesRegionActivityBadgeAndViewerState_TC014() {
+        User viewer = user(adminId, "HCM", "HCM", "D1");
+        User first = user(reviewerUserId, "HCM", "HCM", "D1");
+        first.setUserFullName("Saigon Reviewer");
+        first.setUserFollower(10);
+        User second = user(secondReviewerUserId, "HN", "HN", "Ba Dinh");
+        second.setUserFollower(50);
+        Reviewer firstReviewer = reviewer(reviewerId, first);
+        Reviewer secondReviewer = reviewer(secondReviewerId, second);
+        Blog firstBlog = blog(UUID.randomUUID(), first, LocalDateTime.now().minusDays(3));
+        Blog secondBlog = blog(UUID.randomUUID(), second, LocalDateTime.now().minusDays(3));
+        mockDiscoveryData(List.of(firstReviewer, secondReviewer), List.of(firstBlog, secondBlog));
+        mockLatestBadges(Map.of(reviewerId, ReviewerBadge.GOLD, secondReviewerId, ReviewerBadge.DIAMOND));
+        when(userFollowRepository.existsByFollowerUserIdAndFollowingUserId(adminId, reviewerUserId)).thenReturn(true);
+
+        var result = reviewerService.getReviewersInRegion(adminId, "HCM", "HCM", null, "D1", null, 0, 10);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getReviewerId()).isEqualTo(reviewerId);
+        assertThat(result.get(0).getUserFullName()).isEqualTo("Saigon Reviewer");
+        assertThat(result.get(0).getBadge()).isEqualTo(ReviewerBadge.GOLD);
+        assertThat(result.get(0).getBadgeLevel()).isEqualTo(4);
+        assertThat(result.get(0).isFollowing()).isTrue();
+        assertThat(result.get(0).isMe()).isFalse();
+        assertThat(result.get(0).getRankingScore()).isPositive();
+    }
+
+    @Test
+    void discovery_success_trendingPrioritizesRecentInteractionsWithBadgeBoost_TC015() {
+        User activeUser = user(reviewerUserId, "HCM", "HCM", "D1");
+        User oldUser = user(secondReviewerUserId, "HCM", "HCM", "D2");
+        activeUser.setUserFollower(1);
+        oldUser.setUserFollower(100);
+        Reviewer activeReviewer = reviewer(reviewerId, activeUser);
+        Reviewer oldReviewer = reviewer(secondReviewerId, oldUser);
+        Blog activeBlog = blog(UUID.randomUUID(), activeUser, LocalDateTime.now().minusDays(1));
+        Blog oldBlog = blog(UUID.randomUUID(), oldUser, LocalDateTime.now().minusDays(40));
+        mockDiscoveryData(List.of(activeReviewer, oldReviewer), List.of(activeBlog, oldBlog));
+        mockLatestBadges(Map.of(reviewerId, ReviewerBadge.BRONZE, secondReviewerId, ReviewerBadge.DIAMOND));
+        when(blogLikeRepository.findAll()).thenReturn(List.of(
+                like(activeBlog),
+                like(activeBlog),
+                like(activeBlog),
+                like(activeBlog),
+                like(activeBlog),
+                like(activeBlog),
+                like(activeBlog),
+                like(activeBlog),
+                like(activeBlog),
+                like(activeBlog)));
+
+        var result = reviewerService.getTrendingReviewers(activeUser.getUserId(), "DAY_7", 0, 10);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getReviewerId()).isEqualTo(reviewerId);
+        assertThat(result.get(0).getRecentLikeCount()).isEqualTo(10);
+        assertThat(result.get(0).isMe()).isTrue();
+        assertThat(result.get(0).getRankingScore()).isGreaterThan(result.get(1).getRankingScore());
+    }
+
+    @Test
+    void discovery_success_topUsesLifetimeReputationAndBadge_TC016() {
+        User first = user(reviewerUserId, "HCM", "HCM", "D1");
+        User second = user(secondReviewerUserId, "HCM", "HCM", "D2");
+        first.setUserFollower(1);
+        second.setUserFollower(1);
+        Reviewer firstReviewer = reviewer(reviewerId, first);
+        Reviewer secondReviewer = reviewer(secondReviewerId, second);
+        Blog firstBlog = blog(UUID.randomUUID(), first, LocalDateTime.now().minusMonths(3));
+        Blog secondBlog = blog(UUID.randomUUID(), second, LocalDateTime.now().minusMonths(3));
+        mockDiscoveryData(List.of(firstReviewer, secondReviewer), List.of(firstBlog, secondBlog));
+        mockLatestBadges(Map.of(reviewerId, ReviewerBadge.IRON, secondReviewerId, ReviewerBadge.DIAMOND));
+
+        var result = reviewerService.getTopReviewers(null, 0, 10);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getReviewerId()).isEqualTo(secondReviewerId);
+        assertThat(result.get(0).getBadge()).isEqualTo(ReviewerBadge.DIAMOND);
+        assertThat(result.get(0).getBadgeScore()).isEqualTo(70.0);
+        assertThat(result.get(0).getRankingScore()).isGreaterThan(result.get(1).getRankingScore());
+    }
+
+    @Test
     void geo_success_groupingUnknownFilteringAndTotals_TC005() {
         User first = user(reviewerUserId, "HCM", "HCM", "D1");
         User second = user(secondReviewerUserId, "HCM", "HCM", "D2");
@@ -532,11 +629,44 @@ class ReviewerServiceImplTest {
         when(reviewerRepository.findAll()).thenReturn(List.of(first, second, third));
     }
 
+    private void mockDiscoveryData(List<Reviewer> reviewers, List<Blog> blogs) {
+        when(reviewerRepository.findAll()).thenReturn(reviewers);
+        when(blogRepository.findAll()).thenReturn(blogs);
+        when(blogLikeRepository.findAll()).thenReturn(List.of());
+        when(blogShareRepository.findAll()).thenReturn(List.of());
+        when(commentRepository.findAll()).thenReturn(List.of());
+        when(blogSaveRepository.findAll()).thenReturn(List.of());
+    }
+
+    private void mockLatestBadges(Map<UUID, ReviewerBadge> badgesByReviewerId) {
+        when(reviewerBadgeHistoryRepository.findTopByReviewerReviewerIdOrderByMonthDesc(any(UUID.class)))
+                .thenAnswer(invocation -> {
+                    UUID reviewerId = invocation.getArgument(0);
+                    ReviewerBadge badge = badgesByReviewerId.get(reviewerId);
+                    if (badge == null) {
+                        return Optional.empty();
+                    }
+                    ReviewerBadgeHistory history = new ReviewerBadgeHistory();
+                    history.setId(UUID.randomUUID());
+                    history.setReviewer(reviewer(reviewerId, user(UUID.randomUUID(), null, null, null)));
+                    history.setMonth("2026-05");
+                    history.setBadge(badge);
+                    history.setScore(100);
+                    return Optional.of(history);
+                });
+    }
+
     private BlogLike like(User user) {
         BlogLike like = new BlogLike();
         like.setId(UUID.randomUUID());
         like.setUser(user);
         like.setCreatedAt(LocalDateTime.now());
+        return like;
+    }
+
+    private BlogLike like(Blog blog) {
+        BlogLike like = like(user(UUID.randomUUID(), null, null, null));
+        like.setBlog(blog);
         return like;
     }
 
@@ -548,6 +678,12 @@ class ReviewerServiceImplTest {
         return share;
     }
 
+    private BlogShare share(Blog blog) {
+        BlogShare share = share(user(UUID.randomUUID(), null, null, null));
+        share.setBlog(blog);
+        return share;
+    }
+
     private Comment comment(User user) {
         Comment comment = new Comment();
         comment.setId(UUID.randomUUID());
@@ -555,6 +691,31 @@ class ReviewerServiceImplTest {
         comment.setCreatedAt(LocalDateTime.now());
         comment.setContent("Review");
         return comment;
+    }
+
+    private Comment comment(Blog blog) {
+        Comment comment = comment(user(UUID.randomUUID(), null, null, null));
+        comment.setBlog(blog);
+        return comment;
+    }
+
+    private BlogSave save(Blog blog) {
+        BlogSave save = new BlogSave();
+        save.setId(UUID.randomUUID());
+        save.setUser(user(UUID.randomUUID(), null, null, null));
+        save.setBlog(blog);
+        save.setCreatedAt(LocalDateTime.now());
+        return save;
+    }
+
+    private Blog blog(UUID blogId, User author, LocalDateTime createdAt) {
+        Blog blog = new Blog();
+        blog.setId(blogId);
+        blog.setAuthor(author);
+        blog.setContent("Cafe review");
+        blog.setStatus(PostStatus.PUBLISHED);
+        blog.setCreatedAt(createdAt);
+        return blog;
     }
 
     private User user(UUID userId, String city, String province, String area) {

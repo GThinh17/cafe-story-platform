@@ -1,6 +1,7 @@
 package com.cafestory.service.serviceInterface;
 
 import com.cafestory.dto.responseDTO.reviewer.ReviewerBadgeResponseDTO;
+import com.cafestory.dto.responseDTO.reviewer.ReviewerDiscoveryResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerGeoAnalyticsResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerPayoutResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerRankingResponseDTO;
@@ -25,6 +26,20 @@ public interface ReviewerService {
     ReviewerStatsResponseDTO countReviewerStatsByDateRange(UUID reviewerId, LocalDateTime startDate, LocalDateTime endDate);
 
     List<ReviewerRankingResponseDTO> getReviewerRanking(String period, int page, int limit, String city, String province, String area);
+
+    List<ReviewerDiscoveryResponseDTO> getReviewersInRegion(
+            UUID viewerUserId,
+            String city,
+            String province,
+            String ward,
+            String area,
+            String street,
+            int page,
+            int size);
+
+    List<ReviewerDiscoveryResponseDTO> getTrendingReviewers(UUID viewerUserId, String window, int page, int size);
+
+    List<ReviewerDiscoveryResponseDTO> getTopReviewers(UUID viewerUserId, int page, int size);
 
     long calculateReviewerScore(ReviewerStatsResponseDTO stats);
 
