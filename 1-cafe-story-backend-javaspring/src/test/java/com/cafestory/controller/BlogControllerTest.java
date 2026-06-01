@@ -47,51 +47,55 @@ class BlogControllerTest {
     void getBlogs_success_getAllBlogs_TC002() {
         List<BlogResponseDTO> response = List.of(blogResponse());
 
-        when(blogService.getAllBlogs()).thenReturn(response);
+        UUID userId = UUID.randomUUID();
+        when(blogService.getAllBlogs(userId)).thenReturn(response);
 
-        List<BlogResponseDTO> result = blogController.getBlogs(null);
+        List<BlogResponseDTO> result = blogController.getBlogs(null, principal(userId));
 
         assertThat(result).isEqualTo(response);
-        verify(blogService).getAllBlogs();
+        verify(blogService).getAllBlogs(userId);
     }
 
     @Test
     void getBlogs_success_getAllBlogsByAuthorUserId_TC003() {
         UUID authorUserId = UUID.randomUUID();
+        UUID viewerUserId = UUID.randomUUID();
         List<BlogResponseDTO> response = List.of(blogResponse());
 
-        when(blogService.getAllBlogsByUserId(authorUserId)).thenReturn(response);
+        when(blogService.getAllBlogsByUserId(authorUserId, viewerUserId)).thenReturn(response);
 
-        List<BlogResponseDTO> result = blogController.getBlogs(authorUserId);
+        List<BlogResponseDTO> result = blogController.getBlogs(authorUserId, principal(viewerUserId));
 
         assertThat(result).isEqualTo(response);
-        verify(blogService).getAllBlogsByUserId(authorUserId);
+        verify(blogService).getAllBlogsByUserId(authorUserId, viewerUserId);
     }
 
     @Test
     void getAllBlogsByUserId_success_TC004() {
         UUID userId = UUID.randomUUID();
+        UUID viewerUserId = UUID.randomUUID();
         List<BlogResponseDTO> response = List.of(blogResponse());
 
-        when(blogService.getAllBlogsByUserId(userId)).thenReturn(response);
+        when(blogService.getAllBlogsByUserId(userId, viewerUserId)).thenReturn(response);
 
-        List<BlogResponseDTO> result = blogController.getAllBlogsByUserId(userId);
+        List<BlogResponseDTO> result = blogController.getAllBlogsByUserId(userId, principal(viewerUserId));
 
         assertThat(result).isEqualTo(response);
-        verify(blogService).getAllBlogsByUserId(userId);
+        verify(blogService).getAllBlogsByUserId(userId, viewerUserId);
     }
 
     @Test
     void getBlogById_success_TC005() {
         UUID blogId = UUID.randomUUID();
+        UUID viewerUserId = UUID.randomUUID();
         BlogResponseDTO response = blogResponse();
 
-        when(blogService.getBlogById(blogId)).thenReturn(response);
+        when(blogService.getBlogById(blogId, viewerUserId)).thenReturn(response);
 
-        BlogResponseDTO result = blogController.getBlogById(blogId);
+        BlogResponseDTO result = blogController.getBlogById(blogId, principal(viewerUserId));
 
         assertThat(result).isEqualTo(response);
-        verify(blogService).getBlogById(blogId);
+        verify(blogService).getBlogById(blogId, viewerUserId);
     }
 
     @Test

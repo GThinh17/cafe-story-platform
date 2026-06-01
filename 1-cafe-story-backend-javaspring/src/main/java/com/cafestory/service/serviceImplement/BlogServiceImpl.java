@@ -7,7 +7,10 @@ import com.cafestory.entity.Blog;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.User;
 import com.cafestory.mapper.BlogMapper;
+import com.cafestory.repository.BlogLikeRepository;
+import com.cafestory.repository.BlogRatingRepository;
 import com.cafestory.repository.BlogRepository;
+import com.cafestory.repository.BlogSaveRepository;
 import com.cafestory.service.serviceInterface.BlogService;
 import com.cafestory.validation.BlogValidator;
 import com.cafestory.validation.CafePageValidator;
@@ -24,6 +27,9 @@ import java.util.UUID;
 public class BlogServiceImpl implements BlogService {
 
     private final BlogRepository blogRepository;
+    private final BlogLikeRepository blogLikeRepository;
+    private final BlogSaveRepository blogSaveRepository;
+    private final BlogRatingRepository blogRatingRepository;
     private final BlogMapper blogMapper;
     private final BlogValidator blogValidator;
     private final CafePageValidator cafePageValidator;
@@ -31,11 +37,17 @@ public class BlogServiceImpl implements BlogService {
 
     public BlogServiceImpl(
             BlogRepository blogRepository,
+            BlogLikeRepository blogLikeRepository,
+            BlogSaveRepository blogSaveRepository,
+            BlogRatingRepository blogRatingRepository,
             BlogMapper blogMapper,
             BlogValidator blogValidator,
             CafePageValidator cafePageValidator,
             UserValidator userValidator) {
         this.blogRepository = blogRepository;
+        this.blogLikeRepository = blogLikeRepository;
+        this.blogSaveRepository = blogSaveRepository;
+        this.blogRatingRepository = blogRatingRepository;
         this.blogMapper = blogMapper;
         this.blogValidator = blogValidator;
         this.cafePageValidator = cafePageValidator;
@@ -69,9 +81,15 @@ public class BlogServiceImpl implements BlogService {
     @Override
     @Transactional(readOnly = true)
     public List<BlogResponseDTO> getAllBlogs() {
+        return getAllBlogs(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BlogResponseDTO> getAllBlogs(UUID viewerUserId) {
         return blogRepository.findAll()
                 .stream()
-                .map(blogMapper::toBlogResponseDTO)
+                .map(blog -> toBlogResponseDTO(blog, viewerUserId))
                 .toList();
     }
 
@@ -84,17 +102,29 @@ public class BlogServiceImpl implements BlogService {
     @Override
     @Transactional(readOnly = true)
     public List<BlogResponseDTO> getAllBlogsByUserId(UUID userId) {
+        return getAllBlogsByUserId(userId, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BlogResponseDTO> getAllBlogsByUserId(UUID userId, UUID viewerUserId) {
         userValidator.validateUserExists(userId);
         return blogRepository.findByAuthorUserId(userId)
                 .stream()
-                .map(blogMapper::toBlogResponseDTO)
+                .map(blog -> toBlogResponseDTO(blog, viewerUserId))
                 .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public BlogResponseDTO getBlogById(UUID blogId) {
-        return blogMapper.toBlogResponseDTO(blogValidator.validateBlogExists(blogId));
+        return getBlogById(blogId, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BlogResponseDTO getBlogById(UUID blogId, UUID viewerUserId) {
+        return toBlogResponseDTO(blogValidator.validateBlogExists(blogId), viewerUserId);
     }
 
     @Override
@@ -142,5 +172,38 @@ public class BlogServiceImpl implements BlogService {
         if (actorUserId == null || blog.getAuthor() == null || !actorUserId.equals(blog.getAuthor().getUserId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not allowed to manage this blog");
         }
+    }
+
+    private BlogResponseDTO toBlogResponseDTO(Blog blog, UUID viewerUserId) {
+        BlogResponseDTO response = blogMapper.toBlogResponseDTO(blog);
+        UUID blogId = blog.getId();
+        response.setIsLike(viewerUserId != null && blogLikeRepository.existsByUserUserIdAndBlogId(viewerUserId, blogId));
+        response.setIsSave(viewerUserId != null && blogSaveRepository.findByUserUserIdAndBlogId(viewerUserId, blogId).isPresent());
+        response.setSaveCount(blogSaveRepository.countByBlogId(blogId));
+
+        response.setRatingScore(resolveRatingScore(blogId));
+        response.setRatingCount(blogRatingRepository.countByBlogId(blogId));
+        if (viewerUserId == null) {
+            response.setIsRating(false);
+            response.setMyRating(null);
+            return response;
+        }
+
+        blogRatingRepository.findByUserUserIdAndBlogId(viewerUserId, blogId)
+                .ifPresentOrElse(
+                        rating -> {
+                            response.setIsRating(true);
+                            response.setMyRating(rating.getRating());
+                        },
+                        () -> {
+                            response.setIsRating(false);
+                            response.setMyRating(null);
+                        });
+        return response;
+    }
+
+    private double resolveRatingScore(UUID blogId) {
+        Double ratingScore = blogRatingRepository.findAverageRatingByBlogId(blogId);
+        return ratingScore == null ? 0.0 : ratingScore;
     }
 }

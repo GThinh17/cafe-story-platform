@@ -43,21 +43,27 @@ public class BlogController {
     }
 
     @GetMapping
-    public List<BlogResponseDTO> getBlogs(@RequestParam(required = false) UUID authorUserId) {
+    public List<BlogResponseDTO> getBlogs(
+            @RequestParam(required = false) UUID authorUserId,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         if (authorUserId != null) {
-            return blogService.getAllBlogsByUserId(authorUserId);
+            return blogService.getAllBlogsByUserId(authorUserId, optionalUserId(principal));
         }
-        return blogService.getAllBlogs();
+        return blogService.getAllBlogs(optionalUserId(principal));
     }
 
     @GetMapping("/users/{userId}")
-    public List<BlogResponseDTO> getAllBlogsByUserId(@PathVariable UUID userId) {
-        return blogService.getAllBlogsByUserId(userId);
+    public List<BlogResponseDTO> getAllBlogsByUserId(
+            @PathVariable UUID userId,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return blogService.getAllBlogsByUserId(userId, optionalUserId(principal));
     }
 
     @GetMapping("/{blogId}")
-    public BlogResponseDTO getBlogById(@PathVariable UUID blogId) {
-        return blogService.getBlogById(blogId);
+    public BlogResponseDTO getBlogById(
+            @PathVariable UUID blogId,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return blogService.getBlogById(blogId, optionalUserId(principal));
     }
 
     @PatchMapping("/{blogId}")
@@ -74,5 +80,9 @@ public class BlogController {
             @PathVariable UUID blogId,
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         blogService.deleteBlog(blogId, requireUserId(principal));
+    }
+
+    private UUID optionalUserId(AuthenticatedUserPrincipal principal) {
+        return principal == null ? null : principal.userId();
     }
 }
