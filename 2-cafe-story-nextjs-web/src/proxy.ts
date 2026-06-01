@@ -9,6 +9,11 @@ export function proxy(request: NextRequest) {
   const { nextUrl } = request;
   const pathname = nextUrl.pathname;
   const hasAccessToken = Boolean(request.cookies.get(ACCESS_TOKEN_COOKIE)?.value);
+  const shouldBypassAuth = process.env.NODE_ENV === "development";
+
+  if (shouldBypassAuth) {
+    return NextResponse.next();
+  }
 
   if (isAuthRoute(pathname) && hasAccessToken) {
     return NextResponse.redirect(new URL("/", request.url));

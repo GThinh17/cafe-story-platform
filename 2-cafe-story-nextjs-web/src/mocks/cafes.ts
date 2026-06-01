@@ -1,4 +1,9 @@
-import type { CafeEditorialCollection, CafeSummary } from "@/types/cafe";
+import type {
+  CafeCategory,
+  CafeEditorialCollection,
+  CafeMenu,
+  CafeSummary,
+} from "@/types/cafe";
 
 export const mockCafeSummaries: CafeSummary[] = [
   {
@@ -15,6 +20,9 @@ export const mockCafeSummaries: CafeSummary[] = [
     status: "Closed",
     photoCount: "1,248",
     image: "/images/cafes/velvet-roast/latte-art.jpg",
+    coverImage: "/images/cafes/velvet-roast/minimal-interior.jpg",
+    coverImageAlt:
+      "Minimal bright cafe interior with tall windows and olive trees",
     gallery: [
       "/images/cafes/velvet-roast/minimal-interior.jpg",
       "/images/cafes/velvet-roast/croissant-flatlay.jpg",
@@ -153,6 +161,34 @@ export const mockCafeSummaries: CafeSummary[] = [
 
 export const mockFeaturedCafe = mockCafeSummaries[0];
 
+export const mockCafeCategories: CafeCategory[] = [
+  {
+    id: "vintage-vibes",
+    label: "Vintage vibes",
+    icon: "sparkle",
+  },
+  {
+    id: "workspace-ready",
+    label: "Workspace ready",
+    icon: "laptop",
+  },
+  {
+    id: "specialty-brews",
+    label: "Specialty brews",
+    icon: "coffee",
+  },
+  {
+    id: "hidden-gems",
+    label: "Hidden gems",
+    icon: "gem",
+  },
+  {
+    id: "outdoor-patios",
+    label: "Outdoor patios",
+    icon: "leaf",
+  },
+];
+
 export const mockCafeEditorialCollections: CafeEditorialCollection[] = [
   {
     id: "rainy-day-spots",
@@ -171,3 +207,119 @@ export const mockCafeEditorialCollections: CafeEditorialCollection[] = [
     alt: "Coffee being brewed with warm light and steam",
   },
 ];
+
+const mockVelvetMenuImages = {
+  latte: {
+    src: "/images/cafes/velvet-roast/latte-art.jpg",
+    alt: "Velvet latte with leaf latte art",
+    label: "Velvet Latte",
+  },
+  coldBrew: {
+    src: "/images/cafes/velvet-roast/pour-over.jpg",
+    alt: "Tall cold brew on a pale wood table",
+    label: "Nitro Cold Brew",
+  },
+  croissant: {
+    src: "/images/cafes/velvet-roast/croissant-flatlay.jpg",
+    alt: "Almond croissant dusted with sugar",
+  },
+  brownie: {
+    src: "/images/cafes/velvet-roast/cozy-corner.jpg",
+    alt: "Dark chocolate brownie on a cafe table",
+  },
+};
+
+export const mockCafeMenu: CafeMenu = {
+  signature: [
+    {
+      id: "velvet-latte",
+      name: "Velvet Latte",
+      price: 6.5,
+      description:
+        "Signature blend with steamed milk & house-made vanilla bean syrup.",
+      image: mockVelvetMenuImages.latte.src,
+      images: [
+        mockVelvetMenuImages.latte,
+        mockVelvetMenuImages.coldBrew,
+        mockVelvetMenuImages.croissant,
+        mockVelvetMenuImages.brownie,
+      ],
+      badge: "Barista's Choice",
+    },
+    {
+      id: "nitro-cold-brew",
+      name: "Nitro Cold Brew",
+      price: 7,
+      description:
+        "12-hour steep, infused with nitrogen for a creamy, cascading finish.",
+      image: mockVelvetMenuImages.coldBrew.src,
+      images: [
+        mockVelvetMenuImages.latte,
+        mockVelvetMenuImages.coldBrew,
+        mockVelvetMenuImages.croissant,
+        mockVelvetMenuImages.brownie,
+      ],
+    },
+  ],
+  seasonal: [
+    {
+      id: "autumn-spiced-flat-white",
+      name: "Autumn Spiced Flat White",
+      price: 6,
+      description: "Cinnamon, nutmeg, and a hint of maple.",
+    },
+    {
+      id: "cardamom-rose-cortado",
+      name: "Cardamom Rose Cortado",
+      price: 5.5,
+      description: "Floral notes perfectly balanced with rich espresso.",
+    },
+  ],
+  classics: [
+    {
+      id: "americano",
+      name: "Americano",
+      price: 4.5,
+      description: "Double shot of espresso with hot water",
+    },
+    {
+      id: "cappuccino",
+      name: "Cappuccino",
+      price: 5.5,
+      description: "Equal parts espresso, steamed milk, and silky foam",
+    },
+    {
+      id: "macchiato",
+      name: "Macchiato",
+      price: 4,
+      description: "Double espresso marked with a dollop of foam",
+    },
+    {
+      id: "pour-over",
+      name: "Pour Over",
+      price: 6,
+      description: "Single origin, slow-brewed to perfection",
+    },
+  ],
+  pastries: [
+    {
+      id: "almond-croissant",
+      name: "Almond Croissant",
+      price: 5,
+      description: "Twice-baked with almond frangipane & toasted flakes",
+      image: mockVelvetMenuImages.croissant.src,
+      badge: "Chef's Pick",
+    },
+    {
+      id: "sea-salt-brownie",
+      name: "Sea Salt Brownie",
+      price: 4.5,
+      description: "Dark chocolate Valrhona with Maldon sea salt",
+      image: mockVelvetMenuImages.brownie.src,
+    },
+  ],
+};
+
+export const mockCafeMenusByCafeId: Record<string, CafeMenu> = {
+  "velvet-roast": mockCafeMenu,
+};

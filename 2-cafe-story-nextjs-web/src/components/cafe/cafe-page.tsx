@@ -1,19 +1,15 @@
-import {
-  BookOpenIcon,
-  InfoIcon,
-  MapIcon,
-  StarIcon,
-} from "lucide-react";
-import type { CafeSummary } from "@/types/cafe";
+import { InfoIcon, StarIcon } from "lucide-react";
+import type { CafeMenu, CafeSummary } from "@/types/cafe";
+import { CafeActionButtons } from "@/features/cafes/components/cafe-action-buttons";
 import { CafeRecentReviews } from "@/components/review/cafe-recent-reviews";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import type { CafeReviewPost } from "@/types/review";
 
 type CafePageProps = {
   cafe: CafeSummary;
+  menu: CafeMenu;
   recentReviews?: CafeReviewPost[];
 };
 
@@ -23,8 +19,10 @@ const defaultOpeningHours = [
   { day: "Sunday", time: "8:00 AM - 5:00 PM" },
 ];
 
-export function CafePage({ cafe, recentReviews = [] }: CafePageProps) {
+export function CafePage({ cafe, menu, recentReviews = [] }: CafePageProps) {
   const openingHours = cafe.openingHours ?? defaultOpeningHours;
+  const coverImage = cafe.coverImage ?? cafe.gallery[0] ?? cafe.image;
+  const coverImageAlt = cafe.coverImageAlt ?? `${cafe.name} cover image`;
   const communityPhotos =
     cafe.communityPhotos ??
     [cafe.image, ...cafe.gallery].map((image) => ({
@@ -34,7 +32,26 @@ export function CafePage({ cafe, recentReviews = [] }: CafePageProps) {
 
   return (
     <article className="w-full space-y-10 bg-background text-espresso">
-      <section className="pb-10 pt-2">
+      <section className="space-y-8 pb-10 pt-2">
+        <div className="group relative min-h-[320px] overflow-hidden rounded-md border border-line-soft bg-surface-muted shadow-sm sm:min-h-[420px]">
+          <img
+            alt={coverImageAlt}
+            className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
+            decoding="async"
+            fetchPriority="high"
+            src={coverImage}
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-espresso/75 via-espresso/20 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-6 text-white sm:p-10">
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-white/75">
+              CafeStory Cover
+            </p>
+            <h2 className="mt-2 max-w-2xl font-serif text-4xl font-medium italic leading-tight sm:text-6xl">
+              {cafe.name}
+            </h2>
+          </div>
+        </div>
+
         <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div className="min-w-0 space-y-3">
             <h1 className="font-serif text-4xl font-medium leading-tight text-espresso">
@@ -57,23 +74,7 @@ export function CafePage({ cafe, recentReviews = [] }: CafePageProps) {
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Button
-              className="flex h-12 items-center justify-center gap-2 rounded-sm bg-espresso px-8 text-sm font-black text-white transition hover:bg-primary-strong"
-              type="button"
-            >
-              <BookOpenIcon data-icon="inline-start" />
-              View Menu
-            </Button>
-            <Button
-              className="flex h-12 items-center justify-center gap-2 rounded-sm border border-espresso bg-transparent px-8 text-sm font-black text-espresso transition hover:bg-surface-muted"
-              type="button"
-              variant="outline"
-            >
-              <MapIcon data-icon="inline-start" />
-              Get Directions
-            </Button>
-          </div>
+          <CafeActionButtons cafeName={cafe.name} menu={menu} />
         </div>
         <Separator className="mt-10" />
       </section>

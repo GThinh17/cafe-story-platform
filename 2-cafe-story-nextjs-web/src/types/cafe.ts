@@ -12,6 +12,8 @@ export type CafeSummary = {
   status?: string;
   photoCount?: string;
   image: string;
+  coverImage?: string;
+  coverImageAlt?: string;
   gallery: string[];
   tags: string[];
   amenities: string[];
@@ -64,4 +66,31 @@ export type CafeEditorialCollection = {
   ctaLabel: string;
   image: string;
   alt: string;
+};
+
+export type CafeCategory = {
+  id: string;
+  label: string;
+  icon: "sparkle" | "laptop" | "coffee" | "gem" | "leaf";
+};
+
+export type CafeMenu = {
+  signature: CafeMenuItem[];
+  seasonal: CafeMenuItem[];
+  classics: CafeMenuItem[];
+  pastries: CafeMenuItem[];
+};
+
+export type CafeMenuItem = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  image?: string;
+  images?: {
+    src: string;
+    alt: string;
+    label?: string;
+  }[];
+  badge?: string;
 };

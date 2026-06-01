@@ -70,7 +70,7 @@ export default async function ExplorePage({ searchParams }: ExplorePageProps) {
   const cafes = await loadTopCafes(city, regionId);
 
   return (
-    <main className="-ml-8 min-h-screen w-[calc(100vw-64px)] max-w-none touch-pan-y overflow-x-clip bg-background sm:-ml-14 sm:w-[calc(100vw-72px)] xl:-ml-[248px]">
+    <main className="-ml-20 min-h-screen w-screen max-w-none touch-pan-y overflow-x-clip bg-background sm:-ml-28 xl:-ml-80">
       <ExploreCafes
         cafes={cafes}
         collections={mockCafeEditorialCollections}
