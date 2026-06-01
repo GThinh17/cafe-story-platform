@@ -17,6 +17,8 @@ import com.cafestory.mapper.BlogMapper;
 import com.cafestory.mapper.CafePageMapper;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.CafePageRepository;
+import com.cafestory.repository.PageFollowRepository;
+import com.cafestory.repository.PageLikeRepository;
 import com.cafestory.repository.PageMemberRepository;
 import com.cafestory.repository.RegionRepository;
 import com.cafestory.service.serviceInterface.CafePageService;
@@ -55,6 +57,8 @@ public class CafePageServiceImpl implements CafePageService {
 
     private final CafePageRepository cafePageRepository;
     private final BlogRepository blogRepository;
+    private final PageFollowRepository pageFollowRepository;
+    private final PageLikeRepository pageLikeRepository;
     private final PageMemberRepository pageMemberRepository;
     private final RegionRepository regionRepository;
     private final CafePageMapper cafePageMapper;
@@ -65,6 +69,8 @@ public class CafePageServiceImpl implements CafePageService {
     public CafePageServiceImpl(
             CafePageRepository cafePageRepository,
             BlogRepository blogRepository,
+            PageFollowRepository pageFollowRepository,
+            PageLikeRepository pageLikeRepository,
             PageMemberRepository pageMemberRepository,
             RegionRepository regionRepository,
             CafePageMapper cafePageMapper,
@@ -73,6 +79,8 @@ public class CafePageServiceImpl implements CafePageService {
             UserValidator userValidator) {
         this.cafePageRepository = cafePageRepository;
         this.blogRepository = blogRepository;
+        this.pageFollowRepository = pageFollowRepository;
+        this.pageLikeRepository = pageLikeRepository;
         this.pageMemberRepository = pageMemberRepository;
         this.regionRepository = regionRepository;
         this.cafePageMapper = cafePageMapper;
@@ -133,19 +141,31 @@ public class CafePageServiceImpl implements CafePageService {
     @Override
     @Transactional(readOnly = true)
     public List<CafePageResponseDTO> getAllCafePages() {
+        return getAllCafePages(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CafePageResponseDTO> getAllCafePages(UUID viewerUserId) {
         return cafePageRepository.findAll()
                 .stream()
-                .map(cafePageMapper::toCafePageResponseDTO)
+                .map(cafePage -> toCafePageResponseDTO(cafePage, viewerUserId))
                 .toList();
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<CafePageResponseDTO> getCafePagesByOwnerId(UUID ownerUserId) {
+        return getCafePagesByOwnerId(ownerUserId, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<CafePageResponseDTO> getCafePagesByOwnerId(UUID ownerUserId, UUID viewerUserId) {
         userValidator.validateUserExists(ownerUserId);
         return cafePageRepository.findByOwnerUserId(ownerUserId)
                 .stream()
-                .map(cafePageMapper::toCafePageResponseDTO)
+                .map(cafePage -> toCafePageResponseDTO(cafePage, viewerUserId))
                 .toList();
     }
 
@@ -181,7 +201,13 @@ public class CafePageServiceImpl implements CafePageService {
     @Override
     @Transactional(readOnly = true)
     public CafePageResponseDTO getCafePageById(UUID cafePageId) {
-        return cafePageMapper.toCafePageResponseDTO(cafePageValidator.validateCafePageExists(cafePageId));
+        return getCafePageById(cafePageId, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CafePageResponseDTO getCafePageById(UUID cafePageId, UUID viewerUserId) {
+        return toCafePageResponseDTO(cafePageValidator.validateCafePageExists(cafePageId), viewerUserId);
     }
 
     @Override
@@ -358,5 +384,17 @@ public class CafePageServiceImpl implements CafePageService {
     }
 
     private record CafePageRankingCandidate(CafePage cafePage, double score) {
+    }
+
+    private CafePageResponseDTO toCafePageResponseDTO(CafePage cafePage, UUID viewerUserId) {
+        CafePageResponseDTO response = cafePageMapper.toCafePageResponseDTO(cafePage);
+        UUID cafePageId = cafePage.getId();
+        response.setIsFollowing(viewerUserId != null
+                && cafePageId != null
+                && pageFollowRepository.existsByUserUserIdAndCafePageId(viewerUserId, cafePageId));
+        response.setIsLiked(viewerUserId != null
+                && cafePageId != null
+                && pageLikeRepository.existsByUserUserIdAndCafePageId(viewerUserId, cafePageId));
+        return response;
     }
 }

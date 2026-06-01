@@ -47,11 +47,13 @@ public class CafePageController {
     }
 
     @GetMapping
-    public List<CafePageResponseDTO> getCafePages(@RequestParam(required = false) UUID ownerUserId) {
+    public List<CafePageResponseDTO> getCafePages(
+            @RequestParam(required = false) UUID ownerUserId,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         if (ownerUserId != null) {
-            return cafePageService.getCafePagesByOwnerId(ownerUserId);
+            return cafePageService.getCafePagesByOwnerId(ownerUserId, optionalUserId(principal));
         }
-        return cafePageService.getAllCafePages();
+        return cafePageService.getAllCafePages(optionalUserId(principal));
     }
 
     @GetMapping("/top")
@@ -63,8 +65,10 @@ public class CafePageController {
     }
 
     @GetMapping("/{cafePageId}")
-    public CafePageResponseDTO getCafePageById(@PathVariable UUID cafePageId) {
-        return cafePageService.getCafePageById(cafePageId);
+    public CafePageResponseDTO getCafePageById(
+            @PathVariable UUID cafePageId,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return cafePageService.getCafePageById(cafePageId, optionalUserId(principal));
     }
 
     @GetMapping("/{cafePageId}/blogs")
@@ -89,5 +93,9 @@ public class CafePageController {
             @PathVariable UUID cafePageId,
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         cafePageService.deleteCafePage(cafePageId, requireUserId(principal));
+    }
+
+    private UUID optionalUserId(AuthenticatedUserPrincipal principal) {
+        return principal == null ? null : principal.userId();
     }
 }

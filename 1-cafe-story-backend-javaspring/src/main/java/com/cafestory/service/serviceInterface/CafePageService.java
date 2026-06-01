@@ -15,11 +15,17 @@ public interface CafePageService {
 
     List<CafePageResponseDTO> getAllCafePages();
 
+    List<CafePageResponseDTO> getAllCafePages(UUID viewerUserId);
+
     List<CafePageResponseDTO> getCafePagesByOwnerId(UUID ownerUserId);
+
+    List<CafePageResponseDTO> getCafePagesByOwnerId(UUID ownerUserId, UUID viewerUserId);
 
     List<CafePageRankingResponseDTO> getTopCafePages(UUID regionId, String city, int size);
 
     CafePageResponseDTO getCafePageById(UUID cafePageId);
+
+    CafePageResponseDTO getCafePageById(UUID cafePageId, UUID viewerUserId);
 
     BlogCursorPageResponseDTO getBlogsByCafePageId(UUID cafePageId, String cursor, int size);
 

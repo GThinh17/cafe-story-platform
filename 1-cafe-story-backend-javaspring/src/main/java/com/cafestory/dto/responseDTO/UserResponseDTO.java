@@ -17,4 +17,5 @@ public class UserResponseDTO {
     private Boolean accountStatus;
     private UUID regionId;
     private RegionResponseDTO region;
+    private Boolean isFollowing;
 }

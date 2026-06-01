@@ -41,13 +41,16 @@ public class UserController {
     }
 
     @GetMapping
-    public List<UserResponseDTO> getAllUsers() {
-        return userService.getAllUsers();
+    public List<UserResponseDTO> getAllUsers(
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return userService.getAllUsers(optionalUserId(principal));
     }
 
     @GetMapping("/{userId}")
-    public UserResponseDTO getUserById(@PathVariable UUID userId) {
-        return userService.getUserById(userId);
+    public UserResponseDTO getUserById(
+            @PathVariable UUID userId,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return userService.getUserById(userId, optionalUserId(principal));
     }
 
     @PatchMapping("/me")
@@ -68,5 +71,9 @@ public class UserController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteUser(@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         userService.deleteUser(requireUserId(principal));
+    }
+
+    private UUID optionalUserId(AuthenticatedUserPrincipal principal) {
+        return principal == null ? null : principal.userId();
     }
 }

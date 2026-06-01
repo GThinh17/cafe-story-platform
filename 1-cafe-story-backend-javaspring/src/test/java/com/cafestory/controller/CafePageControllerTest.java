@@ -47,27 +47,29 @@ class CafePageControllerTest {
 
     @Test
     void getCafePages_success_allPages_TC002() {
+        UUID viewerUserId = UUID.randomUUID();
         List<CafePageResponseDTO> response = List.of(response());
 
-        when(cafePageService.getAllCafePages()).thenReturn(response);
+        when(cafePageService.getAllCafePages(viewerUserId)).thenReturn(response);
 
-        List<CafePageResponseDTO> result = cafePageController.getCafePages(null);
+        List<CafePageResponseDTO> result = cafePageController.getCafePages(null, principal(viewerUserId));
 
         assertThat(result).isEqualTo(response);
-        verify(cafePageService).getAllCafePages();
+        verify(cafePageService).getAllCafePages(viewerUserId);
     }
 
     @Test
     void getCafePages_success_byOwner_TC003() {
         UUID ownerUserId = UUID.randomUUID();
+        UUID viewerUserId = UUID.randomUUID();
         List<CafePageResponseDTO> response = List.of(response());
 
-        when(cafePageService.getCafePagesByOwnerId(ownerUserId)).thenReturn(response);
+        when(cafePageService.getCafePagesByOwnerId(ownerUserId, viewerUserId)).thenReturn(response);
 
-        List<CafePageResponseDTO> result = cafePageController.getCafePages(ownerUserId);
+        List<CafePageResponseDTO> result = cafePageController.getCafePages(ownerUserId, principal(viewerUserId));
 
         assertThat(result).isEqualTo(response);
-        verify(cafePageService).getCafePagesByOwnerId(ownerUserId);
+        verify(cafePageService).getCafePagesByOwnerId(ownerUserId, viewerUserId);
     }
 
     @Test
@@ -89,14 +91,15 @@ class CafePageControllerTest {
     @Test
     void getCafePageById_success_TC005() {
         UUID cafePageId = UUID.randomUUID();
+        UUID viewerUserId = UUID.randomUUID();
         CafePageResponseDTO response = response();
 
-        when(cafePageService.getCafePageById(cafePageId)).thenReturn(response);
+        when(cafePageService.getCafePageById(cafePageId, viewerUserId)).thenReturn(response);
 
-        CafePageResponseDTO result = cafePageController.getCafePageById(cafePageId);
+        CafePageResponseDTO result = cafePageController.getCafePageById(cafePageId, principal(viewerUserId));
 
         assertThat(result).isEqualTo(response);
-        verify(cafePageService).getCafePageById(cafePageId);
+        verify(cafePageService).getCafePageById(cafePageId, viewerUserId);
     }
 
     @Test
