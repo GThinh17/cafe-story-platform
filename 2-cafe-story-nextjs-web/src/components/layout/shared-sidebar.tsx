@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  BadgeDollarSignIcon,
   BellIcon,
   CompassIcon,
   HomeIcon,
@@ -10,6 +11,7 @@ import {
   UserIcon,
 } from "lucide-react";
 import { ActivityList } from "@/components/notification/activity-list";
+import { PricingPlanModal } from "@/components/layout/pricing-plan-modal";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { CreatePostModal } from "@/components/review/create-post-modal";
 import { BrandIcon } from "@/components/ui/brand-icon";
@@ -59,6 +61,7 @@ export function SharedSidebar() {
   const pathname = usePathname();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
+  const [isPricingPlanOpen, setIsPricingPlanOpen] = useState(false);
 
   return (
     <>
@@ -155,6 +158,32 @@ export function SharedSidebar() {
               </a>
             );
           })}
+
+          <Button
+            aria-expanded={isPricingPlanOpen}
+            aria-label="Pricing plan"
+            className={cn(
+              buttonVariants({ variant: "ghost" }),
+              "h-12 w-full min-w-0 justify-start gap-3 px-3 text-sm no-underline",
+              isPricingPlanOpen
+                ? "font-bold text-primary-strong hover:text-primary-strong"
+                : "font-medium text-muted hover:text-muted",
+            )}
+            onClick={() => {
+              setIsNotificationsOpen(false);
+              setIsCreatePostOpen(false);
+              setIsPricingPlanOpen(true);
+            }}
+            type="button"
+            variant="ghost"
+          >
+            <span className="grid size-6 shrink-0 place-items-center">
+              <BadgeDollarSignIcon aria-hidden="true" />
+            </span>
+            <span className="translate-x-[-4px] whitespace-nowrap opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100">
+              Pricing plan
+            </span>
+          </Button>
         </nav>
 
         <div className="mt-auto px-2 pb-4 sm:px-3">
@@ -186,6 +215,11 @@ export function SharedSidebar() {
         hints={mockReviewDraftHints}
         isOpen={isCreatePostOpen}
         onClose={() => setIsCreatePostOpen(false)}
+      />
+
+      <PricingPlanModal
+        isOpen={isPricingPlanOpen}
+        onOpenChange={setIsPricingPlanOpen}
       />
     </>
   );

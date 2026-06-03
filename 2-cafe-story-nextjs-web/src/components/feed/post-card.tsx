@@ -1,8 +1,8 @@
 import {
   HeartIcon,
   MessageCircleIcon,
-  SendIcon,
   BookmarkIcon,
+  Repeat2Icon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import { DEFAULT_AVATAR_IMAGE } from "@/lib/avatar";
 export type { FeedPost };
 
 type PostCardProps = {
+  onCommentClick?: (post: FeedPost) => void;
   post: FeedPost;
 };
 
@@ -33,12 +34,27 @@ const postActions = [
   },
   {
     label: "Share",
-    icon: SendIcon,
+    icon: Repeat2Icon,
   },
 ];
 
-export function PostCard({ post }: PostCardProps) {
+function formatPostCommentCount(post: FeedPost) {
+  return Array.isArray(post.comments)
+    ? new Intl.NumberFormat("en", {
+        notation: "compact",
+        maximumFractionDigits: 1,
+      }).format(post.comments.length)
+    : post.comments;
+}
+
+export function PostCard({ onCommentClick, post }: PostCardProps) {
   const authorAvatar = post.authorAvatar?.trim() || DEFAULT_AVATAR_IMAGE;
+  const commentCount = formatPostCommentCount(post);
+  const actionCounts: Record<string, string> = {
+    Comment: commentCount,
+    Like: post.likes,
+    Share: post.shares ?? "0",
+  };
 
   return (
     <Card className="mx-auto w-[85%] max-w-full overflow-hidden [contain-intrinsic-size:765px] [content-visibility:auto]">
@@ -77,33 +93,33 @@ export function PostCard({ post }: PostCardProps) {
 
       <CardContent className="flex flex-col gap-4 px-4 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex gap-2">
+          <div className="flex items-center gap-4">
             {postActions.map(({ icon: Icon, label }) => (
               <Button
-                className="text-muted hover:bg-transparent data-[state=active]:bg-transparent"
                 aria-label={label}
+                className="h-auto gap-1.5 px-0 py-0 text-sm font-bold text-foreground hover:bg-transparent hover:text-primary data-[state=active]:bg-transparent"
                 key={label}
-                size="icon"
+                onClick={
+                  label === "Comment" ? () => onCommentClick?.(post) : undefined
+                }
                 type="button"
                 variant="ghost"
               >
-                <Icon />
+                <Icon className="size-6" strokeWidth={2.2} />
+                <span>{actionCounts[label]}</span>
               </Button>
             ))}
           </div>
           <Button
-            className="text-muted hover:bg-transparent data-[state=active]:bg-transparent"
-            size="sm"
+            aria-label="Bookmark"
+            className="h-auto px-0 py-0 text-foreground hover:bg-transparent hover:text-primary data-[state=active]:bg-transparent"
             type="button"
             variant="ghost"
           >
-            <BookmarkIcon className="size-4" strokeWidth={2.5} />
+            <BookmarkIcon className="size-6" strokeWidth={2.2} />
           </Button>
         </div>
 
-        <p className="text-sm font-semibold">
-          {post.likes} likes - {post.comments} comments
-        </p>
         <p className="text-sm leading-6 text-foreground">
           <span className="font-bold">{post.author}</span> {post.caption}
         </p>

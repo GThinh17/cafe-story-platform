@@ -1,5 +1,9 @@
+"use client";
+
+import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { PostCard } from "@/components/feed/post-card";
+import { PostCommentsModal } from "@/components/feed/post-comments-modal";
 import type { FeedPost } from "@/types/feed";
 
 type FeedPostListProps = {
@@ -8,6 +12,8 @@ type FeedPostListProps = {
 };
 
 export function FeedPostList({ errorMessage, posts }: FeedPostListProps) {
+  const [selectedPost, setSelectedPost] = useState<FeedPost | null>(null);
+
   if (errorMessage) {
     return (
       <Alert>
@@ -30,10 +36,25 @@ export function FeedPostList({ errorMessage, posts }: FeedPostListProps) {
   }
 
   return (
-    <div className="space-y-6">
-      {posts.map((post) => (
-        <PostCard key={post.id ?? post.cafe} post={post} />
-      ))}
-    </div>
+    <>
+      <div className="flex flex-col gap-6">
+        {posts.map((post) => (
+          <PostCard
+            key={post.id ?? post.cafe}
+            onCommentClick={setSelectedPost}
+            post={post}
+          />
+        ))}
+      </div>
+
+      <PostCommentsModal
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedPost(null);
+          }
+        }}
+        post={selectedPost}
+      />
+    </>
   );
 }
