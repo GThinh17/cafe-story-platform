@@ -20,6 +20,8 @@ public class BlogCreateDTO {
 
     private List<String> imageUrls;
 
+    private List<UUID> taggedUserIds;
+
     private Boolean isPinned;
 
     private Boolean allowComment;

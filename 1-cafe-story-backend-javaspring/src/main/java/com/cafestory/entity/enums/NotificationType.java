@@ -5,5 +5,6 @@ public enum NotificationType {
     SHARE,
     COMMENT,
     MESSAGE,
-    FOLLOW
+    FOLLOW,
+    TAG
 }

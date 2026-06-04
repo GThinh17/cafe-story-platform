@@ -12,6 +12,7 @@ public class BlogUpdateDTO {
     private UUID regionId;
     private String content;
     private List<String> imageUrls;
+    private List<UUID> taggedUserIds;
     private PostStatus status;
     private Boolean isPinned;
     private Boolean allowComment;

@@ -7,6 +7,7 @@ import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.mapper.BlogMapper;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.service.serviceInterface.AdminBlogService;
+import com.cafestory.service.serviceInterface.BlogTagService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -21,23 +22,25 @@ public class AdminBlogServiceImpl implements AdminBlogService {
 
     private final BlogRepository blogRepository;
     private final BlogMapper blogMapper;
+    private final BlogTagService blogTagService;
 
-    public AdminBlogServiceImpl(BlogRepository blogRepository, BlogMapper blogMapper) {
+    public AdminBlogServiceImpl(BlogRepository blogRepository, BlogMapper blogMapper, BlogTagService blogTagService) {
         this.blogRepository = blogRepository;
         this.blogMapper = blogMapper;
+        this.blogTagService = blogTagService;
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<BlogResponseDTO> getBlogs(PostStatus status, UUID authorUserId, UUID pageId, Pageable pageable) {
         return blogRepository.findAdminBlogs(status, authorUserId, pageId, pageable)
-                .map(blogMapper::toBlogResponseDTO);
+                .map(this::toBlogResponseDTO);
     }
 
     @Override
     @Transactional(readOnly = true)
     public BlogResponseDTO getBlog(UUID blogId) {
-        return blogMapper.toBlogResponseDTO(findBlog(blogId));
+        return toBlogResponseDTO(findBlog(blogId));
     }
 
     @Override
@@ -45,18 +48,25 @@ public class AdminBlogServiceImpl implements AdminBlogService {
     public BlogResponseDTO updateBlogStatus(UUID blogId, AdminPostStatusUpdateRequestDTO request) {
         Blog blog = findBlog(blogId);
         blog.setStatus(request.getStatus());
-        return blogMapper.toBlogResponseDTO(blogRepository.save(blog));
+        return toBlogResponseDTO(blogRepository.save(blog));
     }
 
     @Override
     @Transactional
     public void deleteBlog(UUID blogId) {
         Blog blog = findBlog(blogId);
+        blogTagService.deleteBlogTags(blogId);
         blogRepository.delete(blog);
     }
 
     private Blog findBlog(UUID blogId) {
         return blogRepository.findById(blogId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog not found"));
+    }
+
+    private BlogResponseDTO toBlogResponseDTO(Blog blog) {
+        BlogResponseDTO response = blogMapper.toBlogResponseDTO(blog);
+        response.setTaggedUsers(blogTagService.getTaggedUsers(blog.getId()));
+        return response;
     }
 }

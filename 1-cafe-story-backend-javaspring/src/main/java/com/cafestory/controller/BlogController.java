@@ -3,6 +3,7 @@ package com.cafestory.controller;
 import com.cafestory.dto.requestDTO.BlogCreateDTO;
 import com.cafestory.dto.requestDTO.BlogUpdateDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
+import com.cafestory.dto.responseDTO.BlogTaggedUserResponseDTO;
 import com.cafestory.service.serviceInterface.BlogService;
 import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
@@ -57,6 +58,13 @@ public class BlogController {
             @PathVariable UUID userId,
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         return blogService.getAllBlogsByUserId(userId, optionalUserId(principal));
+    }
+
+    @GetMapping("/tag-suggestions")
+    public List<BlogTaggedUserResponseDTO> getTagSuggestions(
+            @RequestParam(required = false) String keyword,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return blogService.getTagSuggestions(requireUserId(principal), keyword);
     }
 
     @GetMapping("/{blogId}")

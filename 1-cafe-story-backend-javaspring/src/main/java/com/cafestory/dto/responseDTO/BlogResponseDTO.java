@@ -33,6 +33,7 @@ public class BlogResponseDTO {
     private Double ratingScore;
     private Long ratingCount;
     private Long saveCount;
+    private List<BlogTaggedUserResponseDTO> taggedUsers;
     private BlogDisplayAuthorType displayAuthorType;
     private String displayName;
     private String displayAvatarUrl;
