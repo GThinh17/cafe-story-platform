@@ -1,7 +1,6 @@
 "use client";
 
 import type { ProfileHighlight, UserProfile } from "@/types/user";
-import Link from "next/link";
 import {
   Avatar,
   AvatarFallback,
@@ -10,15 +9,7 @@ import {
 import { useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { logout } from "@/lib/api/auth";
-import { useRouter } from "next/navigation";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
+import { ProfileSettingsModal } from "@/components/profile/profile-settings-modal";
 
 type ProfileHeaderProps = {
   highlights: ProfileHighlight[];
@@ -37,21 +28,7 @@ export function ProfileHeader({
   isLoading = false,
   profile,
 }: ProfileHeaderProps) {
-  const router = useRouter();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-
-  async function handleLogout() {
-    setIsLoggingOut(true);
-
-    try {
-      await logout();
-    } finally {
-      setIsSettingsOpen(false);
-      router.replace("/login");
-      router.refresh();
-    }
-  }
 
   return (
     <>
@@ -135,46 +112,10 @@ export function ProfileHeader({
         </div>
       </section>
 
-      <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <DialogContent className="w-[min(360px,calc(100vw-32px))] p-0">
-          <DialogTitle className="sr-only">Profile settings</DialogTitle>
-          <div className="flex flex-col text-center">
-            <DialogClose asChild>
-              <Link
-                className="flex min-h-12 items-center justify-center px-6 text-sm font-semibold text-foreground transition hover:bg-surface-muted"
-                href="/profile/edit"
-              >
-                Edit profile
-              </Link>
-            </DialogClose>
-            <Separator />
-            <button
-              className="min-h-12 px-6 text-sm font-semibold text-foreground transition hover:bg-surface-muted"
-              type="button"
-            >
-              Reviewer dashboard
-            </button>
-            <Separator />
-            <button
-              className="min-h-12 px-6 text-sm font-semibold text-accent transition hover:bg-surface-muted"
-              disabled={isLoggingOut}
-              onClick={handleLogout}
-              type="button"
-            >
-              {isLoggingOut ? "Logging out..." : "Log out"}
-            </button>
-            <Separator />
-            <DialogClose asChild>
-              <button
-                className="min-h-12 px-6 text-sm text-foreground transition hover:bg-surface-muted"
-                type="button"
-              >
-                Cancel
-              </button>
-            </DialogClose>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ProfileSettingsModal
+        onOpenChange={setIsSettingsOpen}
+        open={isSettingsOpen}
+      />
     </>
   );
 }

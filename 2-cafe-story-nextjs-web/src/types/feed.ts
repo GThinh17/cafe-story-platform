@@ -3,6 +3,23 @@ export type StoryItem = {
   image: string;
 };
 
+export type FeedPostComment = {
+  id: string;
+  author: string;
+  authorAvatar?: string;
+  body: string;
+  time?: string;
+  likes?: string;
+  replies?: string;
+};
+
+export type FeedPostMedia = {
+  id?: string;
+  src: string;
+  alt?: string;
+  type?: "image" | "video";
+};
+
 export type FeedPost = {
   id?: string;
   cafe: string;
@@ -13,8 +30,11 @@ export type FeedPost = {
   rating: string;
   caption: string;
   image: string;
+  media?: FeedPostMedia[];
   likes: string;
-  comments: string;
+  comments: string | FeedPostComment[];
+  commentItems?: FeedPostComment[];
+  shares?: string;
   tags: string[];
 };
 
