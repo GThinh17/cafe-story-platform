@@ -17,6 +17,7 @@ import com.cafestory.mapper.BlogMapper;
 import com.cafestory.mapper.CafePageMapper;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.CafePageRepository;
+import com.cafestory.repository.CafePageRatingRepository;
 import com.cafestory.repository.PageFollowRepository;
 import com.cafestory.repository.PageLikeRepository;
 import com.cafestory.repository.PageMemberRepository;
@@ -59,6 +60,7 @@ public class CafePageServiceImpl implements CafePageService {
     private final BlogRepository blogRepository;
     private final PageFollowRepository pageFollowRepository;
     private final PageLikeRepository pageLikeRepository;
+    private final CafePageRatingRepository cafePageRatingRepository;
     private final PageMemberRepository pageMemberRepository;
     private final RegionRepository regionRepository;
     private final CafePageMapper cafePageMapper;
@@ -71,6 +73,7 @@ public class CafePageServiceImpl implements CafePageService {
             BlogRepository blogRepository,
             PageFollowRepository pageFollowRepository,
             PageLikeRepository pageLikeRepository,
+            CafePageRatingRepository cafePageRatingRepository,
             PageMemberRepository pageMemberRepository,
             RegionRepository regionRepository,
             CafePageMapper cafePageMapper,
@@ -81,6 +84,7 @@ public class CafePageServiceImpl implements CafePageService {
         this.blogRepository = blogRepository;
         this.pageFollowRepository = pageFollowRepository;
         this.pageLikeRepository = pageLikeRepository;
+        this.cafePageRatingRepository = cafePageRatingRepository;
         this.pageMemberRepository = pageMemberRepository;
         this.regionRepository = regionRepository;
         this.cafePageMapper = cafePageMapper;
@@ -105,7 +109,7 @@ public class CafePageServiceImpl implements CafePageService {
 
         CafePage savedCafePage = cafePageRepository.save(cafePage);
         pageMemberRepository.saveAll(createPageMembers(savedCafePage, owner, cafePageCreateDTO.getCoOwnerUserIds()));
-        return cafePageMapper.toCafePageResponseDTO(savedCafePage);
+        return toCafePageResponseDTO(savedCafePage, owner.getUserId());
     }
 
     private List<PageMember> createPageMembers(CafePage cafePage, User owner, List<UUID> coOwnerUserIds) {
@@ -263,7 +267,7 @@ public class CafePageServiceImpl implements CafePageService {
         }
 
         CafePage updatedCafePage = cafePageRepository.save(cafePage);
-        return cafePageMapper.toCafePageResponseDTO(updatedCafePage);
+        return toCafePageResponseDTO(updatedCafePage, actorUserId);
     }
 
     @Override
@@ -395,6 +399,29 @@ public class CafePageServiceImpl implements CafePageService {
         response.setIsLiked(viewerUserId != null
                 && cafePageId != null
                 && pageLikeRepository.existsByUserUserIdAndCafePageId(viewerUserId, cafePageId));
+        response.setRatingScore(resolveRatingScore(cafePageId));
+        response.setRatingCount(cafePageRatingRepository.countByCafePageId(cafePageId));
+        if (viewerUserId == null) {
+            response.setIsRating(false);
+            response.setMyRating(null);
+            return response;
+        }
+
+        cafePageRatingRepository.findByUserUserIdAndCafePageId(viewerUserId, cafePageId)
+                .ifPresentOrElse(
+                        rating -> {
+                            response.setIsRating(true);
+                            response.setMyRating(rating.getRating());
+                        },
+                        () -> {
+                            response.setIsRating(false);
+                            response.setMyRating(null);
+                        });
         return response;
+    }
+
+    private double resolveRatingScore(UUID cafePageId) {
+        Double ratingScore = cafePageRatingRepository.findAverageRatingByCafePageId(cafePageId);
+        return ratingScore == null ? 0.0 : ratingScore;
     }
 }

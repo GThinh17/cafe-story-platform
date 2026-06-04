@@ -15,6 +15,7 @@ import com.cafestory.mapper.BlogMapper;
 import com.cafestory.mapper.CafePageMapper;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.CafePageRepository;
+import com.cafestory.repository.CafePageRatingRepository;
 import com.cafestory.repository.PageFollowRepository;
 import com.cafestory.repository.PageLikeRepository;
 import com.cafestory.repository.PageMemberRepository;
@@ -57,6 +58,9 @@ class CafePageServiceImplTest {
 
     @Mock
     private PageLikeRepository pageLikeRepository;
+
+    @Mock
+    private CafePageRatingRepository cafePageRatingRepository;
 
     @Mock
     private PageMemberRepository pageMemberRepository;
