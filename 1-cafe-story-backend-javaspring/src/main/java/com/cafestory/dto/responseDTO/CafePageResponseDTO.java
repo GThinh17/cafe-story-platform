@@ -11,7 +11,11 @@ public class CafePageResponseDTO {
     private UUID id;
     private UUID ownerUserId;
     private UUID regionId;
-    private RegionResponseDTO region;
+    private String regionCity;
+    private String regionProvince;
+    private String regionWard;
+    private String regionArea;
+    private String regionStreet;
     private String name;
     private String address;
     private String description;
@@ -22,6 +26,10 @@ public class CafePageResponseDTO {
     private Integer followerCount;
     private Boolean isFollowing;
     private Boolean isLiked;
+    private Boolean isRating;
+    private Integer myRating;
+    private Double ratingScore;
+    private Long ratingCount;
     private Integer maxMembers;
     private Boolean pageActive;
     private LocalDateTime pageExpiresAt;

@@ -16,6 +16,10 @@ public class UserResponseDTO {
     private Integer userFollower;
     private Boolean accountStatus;
     private UUID regionId;
-    private RegionResponseDTO region;
+    private String regionCity;
+    private String regionProvince;
+    private String regionWard;
+    private String regionArea;
+    private String regionStreet;
     private Boolean isFollowing;
 }
