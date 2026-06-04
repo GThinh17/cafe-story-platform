@@ -1,6 +1,7 @@
 package com.cafestory.service.serviceImplement;
 
 import com.cafestory.dto.responseDTO.reviewer.ReviewerBadgeResponseDTO;
+import com.cafestory.dto.responseDTO.reviewer.ReviewerDiscoveryResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerGeoAnalyticsResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerPayoutResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerRankingResponseDTO;
@@ -8,7 +9,9 @@ import com.cafestory.dto.responseDTO.reviewer.ReviewerResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerSegmentResponseDTO;
 import com.cafestory.dto.responseDTO.reviewer.ReviewerStatsResponseDTO;
 import com.cafestory.dto.responseDTO.RegionResponseDTO;
+import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogLike;
+import com.cafestory.entity.BlogSave;
 import com.cafestory.entity.BlogShare;
 import com.cafestory.entity.Comment;
 import com.cafestory.entity.Reviewer;
@@ -20,7 +23,10 @@ import com.cafestory.entity.User;
 import com.cafestory.entity.UserRoleAssignment;
 import com.cafestory.entity.enums.ReviewerBadge;
 import com.cafestory.entity.enums.PayoutStatus;
+import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.repository.BlogLikeRepository;
+import com.cafestory.repository.BlogRepository;
+import com.cafestory.repository.BlogSaveRepository;
 import com.cafestory.repository.BlogShareRepository;
 import com.cafestory.repository.CommentRepository;
 import com.cafestory.repository.ReviewerBadgeHistoryRepository;
@@ -45,9 +51,11 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -60,6 +68,8 @@ public class ReviewerServiceImpl implements ReviewerService {
     private static final String REVIEWER_ROLE = "REVIEWER";
 
     private final BlogLikeRepository blogLikeRepository;
+    private final BlogRepository blogRepository;
+    private final BlogSaveRepository blogSaveRepository;
     private final BlogShareRepository blogShareRepository;
     private final CommentRepository commentRepository;
     private final ReviewerPayoutRepository reviewerPayoutRepository;
@@ -73,6 +83,8 @@ public class ReviewerServiceImpl implements ReviewerService {
 
     public ReviewerServiceImpl(
             BlogLikeRepository blogLikeRepository,
+            BlogRepository blogRepository,
+            BlogSaveRepository blogSaveRepository,
             BlogShareRepository blogShareRepository,
             CommentRepository commentRepository,
             ReviewerPayoutRepository reviewerPayoutRepository,
@@ -84,6 +96,8 @@ public class ReviewerServiceImpl implements ReviewerService {
             UserFollowRepository userFollowRepository,
             UserValidator userValidator) {
         this.blogLikeRepository = blogLikeRepository;
+        this.blogRepository = blogRepository;
+        this.blogSaveRepository = blogSaveRepository;
         this.blogShareRepository = blogShareRepository;
         this.commentRepository = commentRepository;
         this.reviewerPayoutRepository = reviewerPayoutRepository;
@@ -173,6 +187,64 @@ public class ReviewerServiceImpl implements ReviewerService {
         int fromIndex = Math.min((sanitizedPage - 1) * sanitizedLimit, ranked.size());
         int toIndex = Math.min(fromIndex + sanitizedLimit, ranked.size());
         return ranked.subList(fromIndex, toIndex);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ReviewerDiscoveryResponseDTO> getReviewersInRegion(
+            UUID viewerUserId,
+            String city,
+            String province,
+            String ward,
+            String area,
+            String street,
+            int page,
+            int size) {
+        DateRange recentRange = new DateRange(LocalDate.now().minusDays(30).atStartOfDay(), LocalDate.now().plusDays(1).atStartOfDay());
+        RegionFilter filter = new RegionFilter(city, province, ward, area, street);
+        List<ReviewerScoreCard> cards = buildReviewerScoreCards(recentRange)
+                .stream()
+                .filter(card -> card.reviewCount() > 0)
+                .filter(card -> card.regionScore(filter) > 0)
+                .sorted(Comparator.comparingDouble((ReviewerScoreCard card) -> regionRankingScore(card, filter)).reversed()
+                        .thenComparing(Comparator.comparingDouble((ReviewerScoreCard card) -> card.regionScore(filter)).reversed())
+                        .thenComparing(Comparator.comparingInt((ReviewerScoreCard card) -> badgeLevel(card.badge())).reversed())
+                        .thenComparing(Comparator.comparingLong(ReviewerScoreCard::followerCount).reversed())
+                        .thenComparing(Comparator.comparingLong(ReviewerScoreCard::reviewCount).reversed())
+                        .thenComparing(card -> card.reviewer().getReviewerId().toString()))
+                .toList();
+        return page(cards, page, size, (rank, card) -> toDiscoveryResponse(card, viewerUserId, rank, regionRankingScore(card, filter)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ReviewerDiscoveryResponseDTO> getTrendingReviewers(UUID viewerUserId, String window, int page, int size) {
+        DateRange range = dateRangeForTrendingWindow(window);
+        List<ReviewerScoreCard> cards = buildReviewerScoreCards(range)
+                .stream()
+                .filter(card -> card.reviewCount() > 0)
+                .sorted(Comparator.comparingDouble(this::trendingRankingScore).reversed()
+                        .thenComparing(Comparator.comparingLong(ReviewerScoreCard::recentReviewCount).reversed())
+                        .thenComparing(Comparator.comparingLong(ReviewerScoreCard::recentLikeCount).reversed())
+                        .thenComparing(card -> card.reviewer().getReviewerId().toString()))
+                .toList();
+        return page(cards, page, size, (rank, card) -> toDiscoveryResponse(card, viewerUserId, rank, trendingRankingScore(card)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ReviewerDiscoveryResponseDTO> getTopReviewers(UUID viewerUserId, int page, int size) {
+        DateRange recentRange = new DateRange(LocalDate.now().minusDays(30).atStartOfDay(), LocalDate.now().plusDays(1).atStartOfDay());
+        List<ReviewerScoreCard> cards = buildReviewerScoreCards(recentRange)
+                .stream()
+                .filter(card -> card.reviewCount() > 0)
+                .sorted(Comparator.comparingDouble(this::topRankingScore).reversed()
+                        .thenComparing(Comparator.comparingInt((ReviewerScoreCard card) -> badgeLevel(card.badge())).reversed())
+                        .thenComparing(Comparator.comparingLong(ReviewerScoreCard::followerCount).reversed())
+                        .thenComparing(Comparator.comparingLong(ReviewerScoreCard::reviewCount).reversed())
+                        .thenComparing(card -> card.reviewer().getReviewerId().toString()))
+                .toList();
+        return page(cards, page, size, (rank, card) -> toDiscoveryResponse(card, viewerUserId, rank, topRankingScore(card)));
     }
 
     @Override
@@ -601,6 +673,225 @@ public class ReviewerServiceImpl implements ReviewerService {
         return likeCount + shareCount * 3 + commentCount * 5;
     }
 
+    private List<ReviewerScoreCard> buildReviewerScoreCards(DateRange recentRange) {
+        Map<UUID, ReviewerScoreAccumulator> accumulatorsByUserId = new HashMap<>();
+        for (Reviewer reviewer : reviewerRepository.findAll()) {
+            if (reviewer.getUser() == null || !Boolean.TRUE.equals(reviewer.getUser().getAccountStatus())) {
+                continue;
+            }
+            ReviewerBadgeHistory latestBadge = reviewerBadgeHistoryRepository
+                    .findTopByReviewerReviewerIdOrderByMonthDesc(reviewer.getReviewerId())
+                    .orElse(null);
+            accumulatorsByUserId.put(
+                    reviewer.getUser().getUserId(),
+                    new ReviewerScoreAccumulator(reviewer, latestBadge == null ? ReviewerBadge.IRON : latestBadge.getBadge()));
+        }
+
+        Map<UUID, ReviewerScoreAccumulator> accumulatorsByBlogId = new HashMap<>();
+        List<Blog> publishedBlogs = blogRepository.findAll()
+                .stream()
+                .filter(blog -> blog.getId() != null)
+                .filter(blog -> blog.getAuthor() != null)
+                .filter(blog -> blog.getStatus() == PostStatus.PUBLISHED)
+                .filter(blog -> accumulatorsByUserId.containsKey(blog.getAuthor().getUserId()))
+                .toList();
+        for (Blog blog : publishedBlogs) {
+            ReviewerScoreAccumulator accumulator = accumulatorsByUserId.get(blog.getAuthor().getUserId());
+            accumulator.incrementReviews(blog.getCreatedAt(), recentRange);
+            accumulator.addActiveMonth(blog.getCreatedAt());
+            accumulatorsByBlogId.put(blog.getId(), accumulator);
+        }
+
+        aggregateLikes(accumulatorsByBlogId, recentRange);
+        aggregateShares(accumulatorsByBlogId, recentRange);
+        aggregateComments(accumulatorsByBlogId, recentRange);
+        aggregateSaves(accumulatorsByBlogId, recentRange);
+
+        return accumulatorsByUserId.values()
+                .stream()
+                .map(ReviewerScoreAccumulator::toScoreCard)
+                .toList();
+    }
+
+    private void aggregateLikes(Map<UUID, ReviewerScoreAccumulator> accumulatorsByBlogId, DateRange recentRange) {
+        for (BlogLike like : blogLikeRepository.findAll()) {
+            ReviewerScoreAccumulator accumulator = accumulatorForInteraction(accumulatorsByBlogId, like.getBlog());
+            if (accumulator != null) {
+                accumulator.incrementLikes(like.getCreatedAt(), recentRange);
+            }
+        }
+    }
+
+    private void aggregateShares(Map<UUID, ReviewerScoreAccumulator> accumulatorsByBlogId, DateRange recentRange) {
+        for (BlogShare share : blogShareRepository.findAll()) {
+            ReviewerScoreAccumulator accumulator = accumulatorForInteraction(accumulatorsByBlogId, share.getBlog());
+            if (accumulator != null) {
+                accumulator.incrementShares(share.getCreatedAt(), recentRange);
+            }
+        }
+    }
+
+    private void aggregateComments(Map<UUID, ReviewerScoreAccumulator> accumulatorsByBlogId, DateRange recentRange) {
+        for (Comment comment : commentRepository.findAll()) {
+            ReviewerScoreAccumulator accumulator = accumulatorForInteraction(accumulatorsByBlogId, comment.getBlog());
+            if (accumulator != null) {
+                accumulator.incrementComments(comment.getCreatedAt(), recentRange);
+            }
+        }
+    }
+
+    private void aggregateSaves(Map<UUID, ReviewerScoreAccumulator> accumulatorsByBlogId, DateRange recentRange) {
+        for (BlogSave save : blogSaveRepository.findAll()) {
+            ReviewerScoreAccumulator accumulator = accumulatorForInteraction(accumulatorsByBlogId, save.getBlog());
+            if (accumulator != null) {
+                accumulator.incrementSaves(save.getCreatedAt(), recentRange);
+            }
+        }
+    }
+
+    private ReviewerScoreAccumulator accumulatorForInteraction(Map<UUID, ReviewerScoreAccumulator> accumulatorsByBlogId, Blog blog) {
+        if (blog == null || blog.getId() == null) {
+            return null;
+        }
+        return accumulatorsByBlogId.get(blog.getId());
+    }
+
+    private double regionRankingScore(ReviewerScoreCard card, RegionFilter filter) {
+        double baseScore = card.regionScore(filter)
+                + card.reviewCount() * 2.0
+                + card.totalLikeCount() * 1.5
+                + card.totalCommentCount() * 2.0
+                + card.followerCount() * 3.0
+                + card.recentReviewCount() * 4.0
+                + badgeBonus(card.badge());
+        return baseScore * badgeMultiplier(card.badge());
+    }
+
+    private double trendingRankingScore(ReviewerScoreCard card) {
+        double recentScore = card.recentReviewCount() * 5.0
+                + card.recentLikeCount() * 2.0
+                + card.recentCommentCount() * 3.0
+                + card.recentShareCount() * 4.0
+                + card.recentSaveCount() * 4.0;
+        double multiplier = Math.min(badgeMultiplier(card.badge()), 1.08);
+        return recentScore * multiplier + badgeBonus(card.badge()) * 0.25;
+    }
+
+    private double topRankingScore(ReviewerScoreCard card) {
+        double reputationScore = card.followerCount() * 4.0
+                + card.reviewCount() * 2.0
+                + card.totalLikeCount() * 2.0
+                + card.totalCommentCount() * 1.5
+                + card.totalShareCount() * 3.0
+                + card.activeMonthCount() * 3.0;
+        return (reputationScore + badgeBonus(card.badge())) * badgeMultiplier(card.badge());
+    }
+
+    private ReviewerDiscoveryResponseDTO toDiscoveryResponse(
+            ReviewerScoreCard card,
+            UUID viewerUserId,
+            int rank,
+            double rankingScore) {
+        User user = card.reviewer().getUser();
+        Region region = user.getRegion();
+        ReviewerDiscoveryResponseDTO response = new ReviewerDiscoveryResponseDTO();
+        response.setRank(rank);
+        response.setReviewerId(card.reviewer().getReviewerId());
+        response.setUserId(user.getUserId());
+        response.setUserName(user.getUserName());
+        response.setUserFullName(user.getUserFullName());
+        response.setAvatar(user.getUserAvatar());
+        response.setCity(region == null ? null : region.getCity());
+        response.setProvince(region == null ? null : region.getProvince());
+        response.setWard(region == null ? null : region.getWard());
+        response.setArea(region == null ? null : region.getArea());
+        response.setStreet(region == null ? null : region.getStreet());
+        response.setReviewCount(card.reviewCount());
+        response.setRecentReviewCount(card.recentReviewCount());
+        response.setFollowerCount(card.followerCount());
+        response.setTotalLikeCount(card.totalLikeCount());
+        response.setTotalCommentCount(card.totalCommentCount());
+        response.setTotalShareCount(card.totalShareCount());
+        response.setTotalSaveCount(card.totalSaveCount());
+        response.setRecentLikeCount(card.recentLikeCount());
+        response.setRecentCommentCount(card.recentCommentCount());
+        response.setRecentShareCount(card.recentShareCount());
+        response.setRecentSaveCount(card.recentSaveCount());
+        response.setBadge(card.badge());
+        response.setBadgeLevel(badgeLevel(card.badge()));
+        response.setBadgeScore(badgeBonus(card.badge()));
+        response.setRankingScore(rankingScore);
+        response.setMe(viewerUserId != null && viewerUserId.equals(user.getUserId()));
+        response.setFollowing(viewerUserId != null
+                && !viewerUserId.equals(user.getUserId())
+                && userFollowRepository.existsByFollowerUserIdAndFollowingUserId(viewerUserId, user.getUserId()));
+        return response;
+    }
+
+    private <T> List<ReviewerDiscoveryResponseDTO> page(
+            List<T> items,
+            int page,
+            int size,
+            RankedMapper<T> mapper) {
+        int sanitizedPage = Math.max(page, 0);
+        int sanitizedSize = Math.max(1, Math.min(size, 100));
+        int fromIndex = Math.min(sanitizedPage * sanitizedSize, items.size());
+        int toIndex = Math.min(fromIndex + sanitizedSize, items.size());
+        List<ReviewerDiscoveryResponseDTO> responses = new ArrayList<>();
+        for (int index = fromIndex; index < toIndex; index++) {
+            responses.add(mapper.map(index + 1, items.get(index)));
+        }
+        return responses;
+    }
+
+    private DateRange dateRangeForTrendingWindow(String window) {
+        LocalDate today = LocalDate.now();
+        if (window == null || window.isBlank()) {
+            return new DateRange(today.minusDays(7).atStartOfDay(), today.plusDays(1).atStartOfDay());
+        }
+        return switch (window.toUpperCase()) {
+            case "DAY_7", "WEEK" -> new DateRange(today.minusDays(7).atStartOfDay(), today.plusDays(1).atStartOfDay());
+            case "DAY_30", "MONTH" -> new DateRange(today.minusDays(30).atStartOfDay(), today.plusDays(1).atStartOfDay());
+            default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid reviewer trending window");
+        };
+    }
+
+    private boolean inRange(LocalDateTime createdAt, DateRange range) {
+        return createdAt != null
+                && !createdAt.isBefore(range.startDate())
+                && createdAt.isBefore(range.endDate());
+    }
+
+    private double badgeBonus(ReviewerBadge badge) {
+        return switch (badge == null ? ReviewerBadge.IRON : badge) {
+            case IRON -> 0.0;
+            case BRONZE -> 10.0;
+            case SILVER -> 25.0;
+            case GOLD -> 45.0;
+            case DIAMOND -> 70.0;
+        };
+    }
+
+    private double badgeMultiplier(ReviewerBadge badge) {
+        return switch (badge == null ? ReviewerBadge.IRON : badge) {
+            case IRON -> 1.0;
+            case BRONZE -> 1.03;
+            case SILVER -> 1.06;
+            case GOLD -> 1.10;
+            case DIAMOND -> 1.15;
+        };
+    }
+
+    private int badgeLevel(ReviewerBadge badge) {
+        return switch (badge == null ? ReviewerBadge.IRON : badge) {
+            case IRON -> 1;
+            case BRONZE -> 2;
+            case SILVER -> 3;
+            case GOLD -> 4;
+            case DIAMOND -> 5;
+        };
+    }
+
     private Comparator<ReviewerRankingResponseDTO> rankingComparator() {
         return Comparator.comparingLong(ReviewerRankingResponseDTO::getScore).reversed()
                 .thenComparing(Comparator.comparingLong(ReviewerRankingResponseDTO::getCommentCount).reversed())
@@ -618,6 +909,126 @@ public class ReviewerServiceImpl implements ReviewerService {
     }
 
     private record DateRange(LocalDateTime startDate, LocalDateTime endDate) {
+    }
+
+    private record RegionFilter(String city, String province, String ward, String area, String street) {
+    }
+
+    private interface RankedMapper<T> {
+        ReviewerDiscoveryResponseDTO map(int rank, T value);
+    }
+
+    private record ReviewerScoreCard(
+            Reviewer reviewer,
+            ReviewerBadge badge,
+            long reviewCount,
+            long recentReviewCount,
+            long followerCount,
+            long totalLikeCount,
+            long totalCommentCount,
+            long totalShareCount,
+            long totalSaveCount,
+            long recentLikeCount,
+            long recentCommentCount,
+            long recentShareCount,
+            long recentSaveCount,
+            long activeMonthCount) {
+
+        double regionScore(RegionFilter filter) {
+            Region region = reviewer.getUser().getRegion();
+            return matchScore(filter.city(), region == null ? null : region.getCity(), 50.0)
+                    + matchScore(filter.province(), region == null ? null : region.getProvince(), 25.0)
+                    + matchScore(filter.area(), region == null ? null : region.getArea(), 15.0)
+                    + matchScore(filter.ward(), region == null ? null : region.getWard(), 10.0)
+                    + matchScore(filter.street(), region == null ? null : region.getStreet(), 5.0);
+        }
+
+        private double matchScore(String expected, String actual, double score) {
+            if (expected == null || expected.isBlank()) {
+                return 0.0;
+            }
+            return actual != null && expected.equalsIgnoreCase(actual) ? score : 0.0;
+        }
+    }
+
+    private class ReviewerScoreAccumulator {
+        private final Reviewer reviewer;
+        private final ReviewerBadge badge;
+        private final Set<YearMonth> activeMonths = new HashSet<>();
+        private long reviewCount;
+        private long recentReviewCount;
+        private long totalLikeCount;
+        private long totalCommentCount;
+        private long totalShareCount;
+        private long totalSaveCount;
+        private long recentLikeCount;
+        private long recentCommentCount;
+        private long recentShareCount;
+        private long recentSaveCount;
+
+        ReviewerScoreAccumulator(Reviewer reviewer, ReviewerBadge badge) {
+            this.reviewer = reviewer;
+            this.badge = badge;
+        }
+
+        void incrementReviews(LocalDateTime createdAt, DateRange recentRange) {
+            reviewCount++;
+            if (inRange(createdAt, recentRange)) {
+                recentReviewCount++;
+            }
+        }
+
+        void addActiveMonth(LocalDateTime createdAt) {
+            if (createdAt != null) {
+                activeMonths.add(YearMonth.from(createdAt));
+            }
+        }
+
+        void incrementLikes(LocalDateTime createdAt, DateRange recentRange) {
+            totalLikeCount++;
+            if (inRange(createdAt, recentRange)) {
+                recentLikeCount++;
+            }
+        }
+
+        void incrementComments(LocalDateTime createdAt, DateRange recentRange) {
+            totalCommentCount++;
+            if (inRange(createdAt, recentRange)) {
+                recentCommentCount++;
+            }
+        }
+
+        void incrementShares(LocalDateTime createdAt, DateRange recentRange) {
+            totalShareCount++;
+            if (inRange(createdAt, recentRange)) {
+                recentShareCount++;
+            }
+        }
+
+        void incrementSaves(LocalDateTime createdAt, DateRange recentRange) {
+            totalSaveCount++;
+            if (inRange(createdAt, recentRange)) {
+                recentSaveCount++;
+            }
+        }
+
+        ReviewerScoreCard toScoreCard() {
+            return new ReviewerScoreCard(
+                    reviewer,
+                    badge,
+                    reviewCount,
+                    recentReviewCount,
+                    defaultInt(reviewer.getUser().getUserFollower()),
+                    totalLikeCount,
+                    totalCommentCount,
+                    totalShareCount,
+                    totalSaveCount,
+                    recentLikeCount,
+                    recentCommentCount,
+                    recentShareCount,
+                    recentSaveCount,
+                    activeMonths.size());
+        }
     }
 
     private static class EngagementAccumulator {
