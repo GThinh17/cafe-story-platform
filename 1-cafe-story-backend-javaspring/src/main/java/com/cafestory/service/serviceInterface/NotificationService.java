@@ -21,6 +21,8 @@ public interface NotificationService {
 
     NotificationResponseDTO createFollowNotification(UUID recipientId, UUID actorId, UUID userId);
 
+    NotificationResponseDTO createTagNotification(UUID recipientId, UUID actorId, UUID blogId);
+
     List<NotificationResponseDTO> getUserNotifications(UUID userId, int page, int limit, Boolean isRead, NotificationType type);
 
     long getUnreadCount(UUID userId);

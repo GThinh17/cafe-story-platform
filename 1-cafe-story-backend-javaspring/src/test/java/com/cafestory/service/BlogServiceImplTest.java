@@ -14,6 +14,7 @@ import com.cafestory.repository.BlogRatingRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.BlogSaveRepository;
 import com.cafestory.service.serviceImplement.BlogServiceImpl;
+import com.cafestory.service.serviceInterface.BlogTagService;
 import com.cafestory.validation.BlogValidator;
 import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.UserValidator;
@@ -62,6 +63,9 @@ class BlogServiceImplTest {
 
     @Mock
     private UserValidator userValidator;
+
+    @Mock
+    private BlogTagService blogTagService;
 
     @InjectMocks
     private BlogServiceImpl blogService;

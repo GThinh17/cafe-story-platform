@@ -3,6 +3,7 @@ package com.cafestory.service.serviceImplement;
 import com.cafestory.dto.requestDTO.BlogCreateDTO;
 import com.cafestory.dto.requestDTO.BlogUpdateDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
+import com.cafestory.dto.responseDTO.BlogTaggedUserResponseDTO;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.User;
@@ -12,6 +13,7 @@ import com.cafestory.repository.BlogRatingRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.BlogSaveRepository;
 import com.cafestory.service.serviceInterface.BlogService;
+import com.cafestory.service.serviceInterface.BlogTagService;
 import com.cafestory.validation.BlogValidator;
 import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.UserValidator;
@@ -34,6 +36,7 @@ public class BlogServiceImpl implements BlogService {
     private final BlogValidator blogValidator;
     private final CafePageValidator cafePageValidator;
     private final UserValidator userValidator;
+    private final BlogTagService blogTagService;
 
     public BlogServiceImpl(
             BlogRepository blogRepository,
@@ -43,7 +46,8 @@ public class BlogServiceImpl implements BlogService {
             BlogMapper blogMapper,
             BlogValidator blogValidator,
             CafePageValidator cafePageValidator,
-            UserValidator userValidator) {
+            UserValidator userValidator,
+            BlogTagService blogTagService) {
         this.blogRepository = blogRepository;
         this.blogLikeRepository = blogLikeRepository;
         this.blogSaveRepository = blogSaveRepository;
@@ -52,6 +56,7 @@ public class BlogServiceImpl implements BlogService {
         this.blogValidator = blogValidator;
         this.cafePageValidator = cafePageValidator;
         this.userValidator = userValidator;
+        this.blogTagService = blogTagService;
     }
 
     @Override
@@ -75,7 +80,8 @@ public class BlogServiceImpl implements BlogService {
         }
 
         Blog savedBlog = blogRepository.save(blog);
-        return blogMapper.toBlogResponseDTO(savedBlog);
+        blogTagService.syncBlogTags(savedBlog, actorUserId, blogCreateDTO.getTaggedUserIds());
+        return toBlogResponseDTO(savedBlog, actorUserId);
     }
 
     @Override
@@ -157,7 +163,10 @@ public class BlogServiceImpl implements BlogService {
         }
 
         Blog updatedBlog = blogRepository.save(blog);
-        return blogMapper.toBlogResponseDTO(updatedBlog);
+        if (blogUpdateDTO.getTaggedUserIds() != null) {
+            blogTagService.syncBlogTags(updatedBlog, actorUserId, blogUpdateDTO.getTaggedUserIds());
+        }
+        return toBlogResponseDTO(updatedBlog, actorUserId);
     }
 
     @Override
@@ -165,7 +174,14 @@ public class BlogServiceImpl implements BlogService {
     public void deleteBlog(UUID blogId, UUID actorUserId) {
         Blog blog = blogValidator.validateBlogExists(blogId);
         validateBlogOwner(blog, actorUserId);
+        blogTagService.deleteBlogTags(blogId);
         blogRepository.delete(blog);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BlogTaggedUserResponseDTO> getTagSuggestions(UUID actorUserId, String keyword) {
+        return blogTagService.getTagSuggestions(actorUserId, keyword);
     }
 
     private void validateBlogOwner(Blog blog, UUID actorUserId) {
@@ -183,6 +199,7 @@ public class BlogServiceImpl implements BlogService {
 
         response.setRatingScore(resolveRatingScore(blogId));
         response.setRatingCount(blogRatingRepository.countByBlogId(blogId));
+        response.setTaggedUsers(blogTagService.getTaggedUsers(blogId));
         if (viewerUserId == null) {
             response.setIsRating(false);
             response.setMyRating(null);

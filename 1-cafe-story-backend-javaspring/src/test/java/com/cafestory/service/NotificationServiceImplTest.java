@@ -126,7 +126,21 @@ class NotificationServiceImplTest {
     }
 
     @Test
-    void createNotification_fail_rejectMissingTargets_TC006() {
+    void createTagNotification_success_withBlogNavigation_TC006() {
+        UUID blogId = UUID.randomUUID();
+        mockCreate(NotificationType.TAG);
+
+        var result = notificationService.createTagNotification(recipientId(), actorId(), blogId);
+
+        assertThat(result.getType()).isEqualTo(NotificationType.TAG);
+        assertThat(result.getBlogId()).isEqualTo(blogId);
+        assertThat(result.getNavigation().getTargetType()).isEqualTo(NotificationTargetType.BLOG);
+        assertThat(result.getNavigation().getTargetId()).isEqualTo(blogId);
+        assertThat(result.getNavigation().getAction()).isEqualTo("open_blog");
+    }
+
+    @Test
+    void createNotification_fail_rejectMissingTargets_TC007() {
         assertThatThrownBy(() -> notificationService.createLikeNotification(recipientId(), actorId(), null))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
@@ -143,7 +157,7 @@ class NotificationServiceImplTest {
     }
 
     @Test
-    void createNotification_fail_invalidTypeAndMismatchedTarget_TC007() {
+    void createNotification_fail_invalidTypeAndMismatchedTarget_TC008() {
         CreateNotificationRequest invalidType = new CreateNotificationRequest();
         invalidType.setRecipientId(recipientId());
         invalidType.setActorId(actorId());
@@ -162,7 +176,7 @@ class NotificationServiceImplTest {
     }
 
     @Test
-    void createNotification_success_doNotNotifySelf_TC008() {
+    void createNotification_success_doNotNotifySelf_TC009() {
         UUID selfId = UUID.randomUUID();
 
         var result = notificationService.createLikeNotification(selfId, selfId, UUID.randomUUID());
@@ -172,7 +186,7 @@ class NotificationServiceImplTest {
     }
 
     @Test
-    void getUserNotifications_success_paginationAndFilters_TC009() {
+    void getUserNotifications_success_paginationAndFilters_TC010() {
         Notification notification = notification(NotificationType.MESSAGE, false);
         when(userValidator.validateUserExists(recipientId())).thenReturn(user(recipientId()));
         when(notificationRepository.findByRecipientUserId(eq(recipientId()), any(Pageable.class)))
@@ -191,7 +205,7 @@ class NotificationServiceImplTest {
     }
 
     @Test
-    void unreadCountAndReadDeleteActions_success_TC010() {
+    void unreadCountAndReadDeleteActions_success_TC011() {
         Notification notification = notification(NotificationType.FOLLOW, false);
         when(userValidator.validateUserExists(recipientId())).thenReturn(user(recipientId()));
         when(notificationRepository.countByRecipientUserIdAndIsRead(recipientId(), false)).thenReturn(2L, 1L, 0L);
@@ -213,7 +227,7 @@ class NotificationServiceImplTest {
     }
 
     @Test
-    void ownedActions_fail_userCannotAccessAnotherUsersNotification_TC011() {
+    void ownedActions_fail_userCannotAccessAnotherUsersNotification_TC012() {
         UUID otherUserId = UUID.randomUUID();
         Notification notification = notification(NotificationType.LIKE, false);
         when(userValidator.validateUserExists(otherUserId)).thenReturn(user(otherUserId));

@@ -32,7 +32,10 @@ public class NotificationMapper {
 
     private NavigationTargetResponseDTO toNavigationTarget(Notification notification) {
         NotificationType type = notification.getType();
-        if (type == NotificationType.LIKE || type == NotificationType.SHARE || type == NotificationType.COMMENT) {
+        if (type == NotificationType.LIKE
+                || type == NotificationType.SHARE
+                || type == NotificationType.COMMENT
+                || type == NotificationType.TAG) {
             return navigation(NotificationTargetType.BLOG, notification.getBlogId(), "open_blog");
         }
         if (type == NotificationType.MESSAGE) {

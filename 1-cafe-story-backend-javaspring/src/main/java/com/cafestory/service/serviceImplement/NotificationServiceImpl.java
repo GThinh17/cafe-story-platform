@@ -109,6 +109,13 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    public NotificationResponseDTO createTagNotification(UUID recipientId, UUID actorId, UUID blogId) {
+        CreateNotificationRequest request = baseRequest(recipientId, actorId, NotificationType.TAG);
+        request.setBlogId(blogId);
+        return createNotification(request);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<NotificationResponseDTO> getUserNotifications(
             UUID userId,
@@ -184,11 +191,11 @@ public class NotificationServiceImpl implements NotificationService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Actor id and recipient id are required");
         }
         if (request.getType() == null || !List.of(NotificationType.LIKE, NotificationType.SHARE, NotificationType.COMMENT,
-                NotificationType.MESSAGE, NotificationType.FOLLOW).contains(request.getType())) {
+                NotificationType.MESSAGE, NotificationType.FOLLOW, NotificationType.TAG).contains(request.getType())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid notification type");
         }
         switch (request.getType()) {
-            case LIKE, SHARE, COMMENT -> validateBlogTarget(request);
+            case LIKE, SHARE, COMMENT, TAG -> validateBlogTarget(request);
             case MESSAGE -> validateMessageTarget(request);
             case FOLLOW -> validateFollowTarget(request);
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid notification type");
