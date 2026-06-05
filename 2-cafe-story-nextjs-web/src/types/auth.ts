@@ -34,6 +34,15 @@ export type AuthUser = {
   roles: string[];
 };
 
+export type AuthState = {
+  user: AuthUser | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+  setUser?: (user: AuthUser | null) => void;
+};
+
 export type AuthResponse = {
   user: AuthUser;
 };

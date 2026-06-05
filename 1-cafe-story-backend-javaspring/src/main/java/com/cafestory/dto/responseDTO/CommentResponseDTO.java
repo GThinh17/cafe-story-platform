@@ -12,6 +12,7 @@ public class CommentResponseDTO {
     private UUID id;
     private UUID blogId;
     private UUID userId;
+    private String authorUserName;
     private UUID parentCommentId;
     private String content;
     private List<String> imageUrls;

@@ -1,6 +1,7 @@
 import { apiFetch } from "@/lib/api/client";
 import { apiEndpoints } from "@/lib/api/endpoints";
 import type {
+  BlogCreateRequest,
   BlogFeedParams,
   BlogFeedResponse,
   BlogLikeResponse,
@@ -46,6 +47,31 @@ export function getBlogFeed(
 
 export function getBlogs(options: ApiRequestOptions = {}) {
   return apiFetch<BlogResponse[]>(apiEndpoints.blogs.list, {
+    headers: options.headers,
+    method: "GET",
+  });
+}
+
+export function createBlog(
+  request: BlogCreateRequest,
+  options: ApiRequestOptions = {},
+) {
+  return apiFetch<BlogResponse>(apiEndpoints.blogs.list, {
+    body: request,
+    headers: options.headers,
+    method: "POST",
+  });
+}
+
+export function getBlogById(blogId: string, options: ApiRequestOptions = {}) {
+  return apiFetch<BlogResponse>(apiEndpoints.blogs.byId(blogId), {
+    headers: options.headers,
+    method: "GET",
+  });
+}
+
+export function getBlogsByUser(userId: string, options: ApiRequestOptions = {}) {
+  return apiFetch<BlogResponse[]>(apiEndpoints.blogs.byUser(userId), {
     headers: options.headers,
     method: "GET",
   });

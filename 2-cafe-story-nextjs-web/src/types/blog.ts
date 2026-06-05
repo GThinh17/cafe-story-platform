@@ -6,6 +6,7 @@ export type BlogFeedResponse = {
   blogId: string;
   contentPreview: string | null;
   imageUrls: string[] | null;
+  allowComment?: boolean | null;
   likeCount: number | null;
   commentCount: number | null;
   shareCount: number | null;
@@ -29,17 +30,41 @@ export type BlogFeedResponse = {
 export type BlogResponse = {
   id: string;
   authorUserId: string;
+  authorUserName?: string | null;
+  authorUserFullName?: string | null;
+  authorUserAvatar?: string | null;
   pageId: string | null;
+  pageName?: string | null;
+  pageAvatarUrl?: string | null;
   regionId: string | null;
   content: string;
-  imageUrls: string[];
+  imageUrls: string[] | null;
   status: BlogPostStatus;
-  isPinned: boolean;
-  allowComment: boolean;
-  likeCount: number;
-  shareCount: number;
+  isPinned: boolean | null;
+  allowComment: boolean | null;
+  likeCount: number | null;
+  shareCount: number | null;
+  commentCount?: number | null;
+  isLike?: boolean | null;
+  isSave?: boolean | null;
+  isRating?: boolean | null;
+  myRating?: number | null;
+  ratingScore?: number | null;
+  ratingCount?: number | null;
+  saveCount?: number | null;
+  displayName?: string | null;
+  displayAvatarUrl?: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+};
+
+export type BlogCreateRequest = {
+  content: string;
+  imageUrls?: string[];
+  allowComment?: boolean;
+  pageId?: string;
+  regionId?: string;
+  isPinned?: boolean;
 };
 
 export type BlogLikeResponse = {

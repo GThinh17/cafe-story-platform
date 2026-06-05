@@ -4,8 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, usePathname } from "next/navigation";
 import { ProfileHeader } from "@/components/profile/profile-header";
 import { ProfileReviewGrid } from "@/components/profile/profile-review-grid";
+import { CreatePostModal } from "@/components/review/create-post-modal";
+import { mapBlogResponsesToFeedPosts } from "@/features/blogs/blog-feed-adapter";
 import { useBfcacheRestoreEffect } from "@/hooks/use-bfcache-restore";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { getBlogsByUser } from "@/lib/api/blogs";
 import { ApiError } from "@/lib/api/client";
 import { followUser, getUserByUsername, unfollowUser } from "@/lib/api/users";
 import {
@@ -16,8 +19,9 @@ import {
   getUserHandle,
   getUserInitials,
 } from "@/lib/avatar";
-import { mockProfileReviews } from "@/mocks/reviews";
+import { mockReviewComposer, mockReviewDraftHints } from "@/mocks/reviews";
 import type { AuthUser } from "@/types/auth";
+import type { FeedPost } from "@/types/feed";
 import type { UserProfile, UserResponse } from "@/types/user";
 
 function mapAuthUserToProfile(user: AuthUser | null): UserProfile {
@@ -139,6 +143,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
   const params = useParams<{ username?: string | string[] }>();
   const { user, isLoading } = useCurrentUser();
   const profileRequestIdRef = useRef(0);
+  const postsRequestIdRef = useRef(0);
   const routeParamUsername = getUsernameParamValue(params.username);
   const routeUsername = useMemo(
     () =>
@@ -153,6 +158,11 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
+  const [profilePosts, setProfilePosts] = useState<FeedPost[]>([]);
+  const [isPostsLoading, setIsPostsLoading] = useState(false);
+  const [postsError, setPostsError] = useState<string | null>(null);
+  const [hasLoadedPosts, setHasLoadedPosts] = useState(false);
+  const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
 
   const loadProfile = useCallback(async (usernameOverride?: string) => {
     const usernameToFetch = usernameOverride || routeUsername;
@@ -162,6 +172,10 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
     setViewedUser(null);
     setIsFollowing(false);
     setFollowerCount(0);
+    setProfilePosts([]);
+    setIsPostsLoading(false);
+    setPostsError(null);
+    setHasLoadedPosts(false);
     setIsProfileLoading(Boolean(usernameToFetch));
     setProfileError(null);
 
@@ -200,9 +214,57 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
     }
   }, [routeUsername]);
 
+  const loadProfilePosts = useCallback(async (userId: string) => {
+    const requestId = postsRequestIdRef.current + 1;
+    postsRequestIdRef.current = requestId;
+
+    setIsPostsLoading(true);
+    setPostsError(null);
+    setHasLoadedPosts(false);
+
+    try {
+      const response = await getBlogsByUser(userId);
+
+      if (postsRequestIdRef.current !== requestId) {
+        return;
+      }
+
+      setProfilePosts(mapBlogResponsesToFeedPosts(response));
+      setHasLoadedPosts(true);
+    } catch (requestError) {
+      if (postsRequestIdRef.current !== requestId) {
+        return;
+      }
+
+      setProfilePosts([]);
+      setPostsError(
+        requestError instanceof ApiError
+          ? requestError.message
+          : "Unable to load profile posts.",
+      );
+      setHasLoadedPosts(false);
+    } finally {
+      if (postsRequestIdRef.current === requestId) {
+        setIsPostsLoading(false);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     void loadProfile();
   }, [loadProfile]);
+
+  useEffect(() => {
+    if (!viewedUser?.userId) {
+      setProfilePosts([]);
+      setIsPostsLoading(false);
+      setPostsError(null);
+      setHasLoadedPosts(false);
+      return;
+    }
+
+    void loadProfilePosts(viewedUser.userId);
+  }, [loadProfilePosts, viewedUser?.userId]);
 
   const handleBfcacheRestore = useCallback(() => {
     void loadProfile(routeUsername);
@@ -215,7 +277,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
       return {
         ...mapUserResponseToProfile(viewedUser),
         stats: {
-          posts: "0",
+          posts: String(profilePosts.length),
           cafes: "0",
           followers: String(followerCount),
         },
@@ -231,7 +293,14 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
       username: routeUsername,
       website: `cafestory.vn/${routeUsername}`,
     };
-  }, [followerCount, isOwnProfile, routeUsername, user, viewedUser]);
+  }, [
+    followerCount,
+    isOwnProfile,
+    profilePosts.length,
+    routeUsername,
+    user,
+    viewedUser,
+  ]);
 
   async function handleFollowToggle() {
     if (!viewedUser?.userId) {
@@ -277,7 +346,32 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
         onFollowToggle={handleFollowToggle}
         profile={profile}
       />
-      <ProfileReviewGrid reviews={mockProfileReviews} />
+      <ProfileReviewGrid
+        canCreatePost={isOwnProfile}
+        errorMessage={postsError}
+        hasLoadedPosts={hasLoadedPosts}
+        isLoading={(isProfileLoading && !viewedUser) || isPostsLoading}
+        onCreatePostClick={() => setIsCreatePostOpen(true)}
+        onRetry={() => {
+          if (viewedUser?.userId) {
+            void loadProfilePosts(viewedUser.userId);
+          }
+        }}
+        posts={profilePosts}
+      />
+      <CreatePostModal
+        composer={mockReviewComposer}
+        hints={mockReviewDraftHints}
+        isOpen={isCreatePostOpen}
+        onCreated={() => {
+          if (viewedUser?.userId) {
+            void loadProfilePosts(viewedUser.userId);
+          }
+        }}
+        onClose={() => {
+          setIsCreatePostOpen(false);
+        }}
+      />
     </>
   );
 }

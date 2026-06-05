@@ -2,7 +2,7 @@ type CloudinaryUploadResponse = {
   secure_url?: unknown;
 };
 
-export async function uploadAvatarToCloudinary(file: File) {
+async function uploadImageToCloudinary(file: File, folder: string, errorLabel: string) {
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
   const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
 
@@ -13,7 +13,7 @@ export async function uploadAvatarToCloudinary(file: File) {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("upload_preset", uploadPreset);
-  formData.append("folder", "cafestory/avatars");
+  formData.append("folder", folder);
 
   const response = await fetch(
     `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
@@ -24,7 +24,7 @@ export async function uploadAvatarToCloudinary(file: File) {
   );
 
   if (!response.ok) {
-    throw new Error("Unable to upload avatar.");
+    throw new Error(`Unable to upload ${errorLabel}.`);
   }
 
   const data = (await response.json()) as CloudinaryUploadResponse;
@@ -34,4 +34,12 @@ export async function uploadAvatarToCloudinary(file: File) {
   }
 
   return data.secure_url;
+}
+
+export function uploadAvatarToCloudinary(file: File) {
+  return uploadImageToCloudinary(file, "cafestory/avatars", "avatar");
+}
+
+export function uploadPostImageToCloudinary(file: File) {
+  return uploadImageToCloudinary(file, "cafestory/posts", "post image");
 }

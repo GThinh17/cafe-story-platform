@@ -42,6 +42,7 @@ export type FeedPost = {
   likes: string;
   likeCount?: number;
   isLiked?: boolean;
+  allowComment?: boolean;
   comments: string | FeedPostComment[];
   commentCount?: number;
   commentItems?: FeedPostComment[];

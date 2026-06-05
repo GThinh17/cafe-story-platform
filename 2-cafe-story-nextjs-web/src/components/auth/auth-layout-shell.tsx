@@ -11,9 +11,9 @@ const authHeroImage =
 
 export function AuthLayoutShell({ children }: AuthLayoutShellProps) {
   return (
-    <main className="min-h-screen w-full overflow-x-clip bg-background text-foreground">
-      <div className="grid min-h-screen w-full grid-cols-1 lg:grid-cols-2">
-        <section className="relative min-h-[340px] overflow-hidden bg-espresso lg:min-h-screen">
+    <main className="fixed inset-0 overflow-hidden bg-background text-foreground">
+      <div className="grid h-full min-h-0 w-full grid-cols-1 grid-rows-[260px_minmax(0,1fr)] overflow-hidden lg:grid-cols-2 lg:grid-rows-1">
+        <section className="relative h-full min-h-0 overflow-hidden bg-espresso">
           <img
             alt="Small cafe table with a coffee cup in warm light"
             className="absolute inset-0 h-full w-full scale-[1.04] object-cover object-center"
@@ -23,7 +23,7 @@ export function AuthLayoutShell({ children }: AuthLayoutShellProps) {
           <div className="absolute inset-0 bg-espresso/25" />
           <div className="absolute inset-0 bg-gradient-to-t from-espresso/72 via-espresso/12 to-transparent" />
 
-          <div className="relative flex h-full min-h-[340px] flex-col justify-between p-6 sm:p-10 lg:min-h-screen lg:p-16">
+          <div className="relative flex h-full min-h-0 flex-col justify-between p-6 sm:p-10 lg:p-16">
             <Link
               aria-label="Cafe Story home"
               className="grid size-12 place-items-center rounded-full bg-surface/85 p-1 shadow-sm no-underline backdrop-blur"
@@ -47,8 +47,8 @@ export function AuthLayoutShell({ children }: AuthLayoutShellProps) {
           </div>
         </section>
 
-        <section className="flex min-h-screen items-center justify-center bg-surface px-5 py-12 sm:px-10 lg:px-16">
-          <div className="w-full max-w-[400px]">
+        <section className="flex h-full min-h-0 justify-center overflow-y-auto bg-surface px-5 py-10 sm:px-10 lg:px-16">
+          <div className="my-auto w-full max-w-[400px]">
             <div className="mb-12 lg:hidden">
               <p className="text-lg font-black text-espresso">Cafe Story</p>
               <p className="mt-2 text-sm leading-6 text-coffee-muted">

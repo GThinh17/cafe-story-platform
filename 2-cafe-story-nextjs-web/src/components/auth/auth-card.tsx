@@ -11,15 +11,51 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError } from "@/lib/api/client";
 import { login, register, suggestUserNames } from "@/lib/api/auth";
+import { updateMeRegion, type UpdateMeRegionRequest } from "@/lib/api/users";
 import type { AuthField, AuthFormCopy, AuthMode } from "@/types/auth";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/components/providers/auth-provider";
 
 type AuthCardProps = {
   mode: AuthMode;
+};
+
+type RegionState = {
+  provinceId: string;
+  province: string;
+  ward: string;
+  area: string;
+  street: string;
+};
+
+type ProvinceOption = {
+  idProvince: string;
+  name: string;
+};
+
+type WardOption = {
+  idProvince: string;
+  idWard: string;
+  name: string;
+};
+
+const emptyRegion: RegionState = {
+  provinceId: "",
+  province: "",
+  ward: "",
+  area: "",
+  street: "",
 };
 
 const authCopy: Record<AuthMode, AuthFormCopy> = {
@@ -127,9 +163,41 @@ function buildSwitchHref(
   return query ? `${baseHref}?${query}` : baseHref;
 }
 
+function getCityName(province: string) {
+  return province
+    .replace(/^Th\u00e0nh ph\u1ed1\s+/i, "")
+    .replace(/^T\u1ec9nh\s+/i, "")
+    .trim();
+}
+
+function trimToUndefined(value: string) {
+  const trimmedValue = value.trim();
+
+  return trimmedValue || undefined;
+}
+
+function hasStartedRegion(region: RegionState) {
+  return Boolean(
+    region.provinceId ||
+      region.province.trim() ||
+      region.ward.trim() ||
+      region.area.trim() ||
+      region.street.trim(),
+  );
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof ApiError || error instanceof Error) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
 export function AuthCard({ mode }: AuthCardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { refetch, setUser } = useAuth();
   const copy = authCopy[mode];
   const fields = getFields(mode);
   const [errorMessage, setErrorMessage] = useState("");
@@ -140,11 +208,24 @@ export function AuthCard({ mode }: AuthCardProps) {
   const [suggestionError, setSuggestionError] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [userName, setUserName] = useState("");
+  const [region, setRegion] = useState<RegionState>(emptyRegion);
+  const [provinceOptions, setProvinceOptions] = useState<ProvinceOption[]>([]);
+  const [wardOptions, setWardOptions] = useState<WardOption[]>([]);
+  const [isProvinceLoading, setIsProvinceLoading] = useState(mode === "register");
+  const [isWardLoading, setIsWardLoading] = useState(false);
+  const [addressDataError, setAddressDataError] = useState<string | null>(null);
   const suggestionRequestIdRef = useRef(0);
   const reason = searchParams.get("reason");
   const nextPath = getSafeNextPath(searchParams.get("next"));
   const switchHref = buildSwitchHref(copy.switchHref, nextPath, reason);
   const shouldShowAuthNotice = reason === "auth_required";
+  const selectedProvince = useMemo(
+    () =>
+      provinceOptions.find(
+        (province) => province.idProvince === region.provinceId,
+      ),
+    [provinceOptions, region.provinceId],
+  );
 
   useEffect(() => {
     if (mode !== "register") {
@@ -196,6 +277,80 @@ export function AuthCard({ mode }: AuthCardProps) {
     };
   }, [fullName, mode]);
 
+  useEffect(() => {
+    if (mode !== "register") {
+      setIsProvinceLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadProvinces() {
+      setIsProvinceLoading(true);
+      setAddressDataError(null);
+
+      try {
+        const { getAllProvincesSorted } = await import("new-vn-provinces/provinces");
+        const provinces = await getAllProvincesSorted();
+
+        if (isMounted) {
+          setProvinceOptions(provinces);
+        }
+      } catch {
+        if (isMounted) {
+          setAddressDataError("Unable to load Vietnam address data.");
+        }
+      } finally {
+        if (isMounted) {
+          setIsProvinceLoading(false);
+        }
+      }
+    }
+
+    void loadProvinces();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [mode]);
+
+  useEffect(() => {
+    if (mode !== "register" || !region.provinceId) {
+      setWardOptions([]);
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadWards() {
+      setIsWardLoading(true);
+      setAddressDataError(null);
+
+      try {
+        const { getWardsByProvinceId } = await import("new-vn-provinces/provinces");
+        const wards = await getWardsByProvinceId(region.provinceId);
+
+        if (isMounted) {
+          setWardOptions(wards);
+        }
+      } catch {
+        if (isMounted) {
+          setAddressDataError("Unable to load ward data for this province.");
+        }
+      } finally {
+        if (isMounted) {
+          setIsWardLoading(false);
+        }
+      }
+    }
+
+    void loadWards();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [mode, region.provinceId]);
+
   function handleFullNameChange(value: string) {
     setFullName(value);
     setUserName("");
@@ -209,6 +364,27 @@ export function AuthCard({ mode }: AuthCardProps) {
     setSelectedSuggestion(suggestion);
   }
 
+  function buildRegionRequest(): UpdateMeRegionRequest | null {
+    if (mode !== "register" || !hasStartedRegion(region)) {
+      return null;
+    }
+
+    if (!selectedProvince?.name || !region.ward) {
+      throw new Error("Select both province and ward, or leave the address fields blank.");
+    }
+
+    const area = region.area.trim();
+
+    return {
+      city: trimToUndefined(getCityName(selectedProvince.name)),
+      province: trimToUndefined(region.province),
+      ward: trimToUndefined(region.ward),
+      area: area || undefined,
+      district: area || undefined,
+      street: trimToUndefined(region.street),
+    };
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage("");
@@ -219,12 +395,19 @@ export function AuthCard({ mode }: AuthCardProps) {
 
     try {
       if (mode === "login") {
-        await login({
+        const response = await login({
           identifier: String(formData.get("identifier") ?? ""),
           password,
         });
+
+        if (setUser) {
+          setUser(response.user);
+        } else {
+          await refetch();
+        }
       } else {
         const userEmail = String(formData.get("userEmail") ?? "");
+        const regionRequest = buildRegionRequest();
 
         await register({
           userName: String(formData.get("userName") ?? ""),
@@ -232,19 +415,43 @@ export function AuthCard({ mode }: AuthCardProps) {
           userEmail,
           password,
         });
-        await login({
+        const response = await login({
           identifier: userEmail,
           password,
         });
+
+        if (!regionRequest) {
+          if (setUser) {
+            setUser(response.user);
+          } else {
+            await refetch();
+          }
+        } else {
+          try {
+            await updateMeRegion(regionRequest);
+            await refetch();
+          } catch (regionError) {
+            if (setUser) {
+              setUser(response.user);
+            } else {
+              await refetch();
+            }
+
+            throw new Error(
+              `Your account was created, but we couldn't save your address: ${getErrorMessage(
+                regionError,
+                "Please update your address after signing in.",
+              )}`,
+            );
+          }
+        }
       }
 
       router.push(nextPath);
       router.refresh();
     } catch (error) {
       setErrorMessage(
-        error instanceof ApiError
-          ? error.message
-          : "Something went wrong. Please try again.",
+        getErrorMessage(error, "Something went wrong. Please try again."),
       );
     } finally {
       setIsSubmitting(false);
@@ -254,9 +461,6 @@ export function AuthCard({ mode }: AuthCardProps) {
   return (
     <section className="w-full">
       <div className="flex flex-col gap-2">
-        {copy.eyebrow ? (
-          <p className="text-lg font-black text-espresso">{copy.eyebrow}</p>
-        ) : null}
         <h1 className="text-3xl font-black leading-tight text-espresso sm:text-[32px]">
           {copy.title}
         </h1>
@@ -266,12 +470,12 @@ export function AuthCard({ mode }: AuthCardProps) {
       </div>
 
       {shouldShowAuthNotice ? (
-        <p className="mt-6 rounded border border-primary/20 bg-primary/10 px-4 py-3 text-sm font-bold leading-6 text-primary-strong">
-          Please sign in to continue.
+        <p className="mt-6 rounded border border-primary/20 bg-primary/10 px-4 py-3 text-sm font-semibold leading-6 text-primary-strong">
+          Please sign in or register to continue.
         </p>
       ) : null}
 
-      <form className="mt-10 space-y-6" onSubmit={handleSubmit}>
+      <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
         <FieldGroup>
           {fields.map((field) => {
             const isFullNameField = mode === "register" && field.name === "userFullName";
@@ -355,18 +559,163 @@ export function AuthCard({ mode }: AuthCardProps) {
         </FieldGroup>
 
         {mode === "register" ? (
-          <Field orientation="horizontal">
-            <Checkbox
-              className="mt-0.5"
-              name="terms"
-              required
-            />
-            <FieldContent>
-              <FieldLabel className="text-xs leading-5 text-coffee-muted">
-                I agree to the Terms of Service and Privacy Policy.
-              </FieldLabel>
-            </FieldContent>
-          </Field>
+          <>
+            <FieldGroup>
+              <Field>
+                <FieldLabel className="text-xs font-black uppercase tracking-[0.08em] text-coffee-muted">
+                  Province / city
+                </FieldLabel>
+                <Select
+                  disabled={isProvinceLoading || isSubmitting}
+                  onValueChange={(provinceId) =>
+                    setRegion((current) => ({
+                      ...current,
+                      provinceId,
+                      province:
+                        provinceOptions.find(
+                          (province) => province.idProvince === provinceId,
+                        )?.name ?? "",
+                      ward: "",
+                      area: "",
+                    }))
+                  }
+                  value={region.provinceId}
+                >
+                  <SelectTrigger
+                    aria-invalid={hasStartedRegion(region) && !region.provinceId}
+                    className="h-12 w-full rounded-none border-0 border-b border-line-soft bg-transparent px-0 text-base text-espresso focus:border-espresso"
+                  >
+                    <SelectValue
+                      placeholder={
+                        isProvinceLoading
+                          ? "Loading provinces..."
+                          : "Select province"
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {provinceOptions.map((province) => (
+                      <SelectItem
+                        key={province.idProvince}
+                        value={province.idProvince}
+                      >
+                        {province.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
+                <FieldLabel className="text-xs font-black uppercase tracking-[0.08em] text-coffee-muted">
+                  Ward
+                </FieldLabel>
+                <Select
+                  disabled={!region.provinceId || isWardLoading || isSubmitting}
+                  onValueChange={(ward) =>
+                    setRegion((current) => ({
+                      ...current,
+                      ward,
+                      area: "",
+                    }))
+                  }
+                  value={region.ward}
+                >
+                  <SelectTrigger
+                    aria-invalid={hasStartedRegion(region) && !region.ward}
+                    className="h-12 w-full rounded-none border-0 border-b border-line-soft bg-transparent px-0 text-base text-espresso focus:border-espresso"
+                  >
+                    <SelectValue
+                      placeholder={isWardLoading ? "Loading wards..." : "Select ward"}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {wardOptions.map((ward) => (
+                      <SelectItem key={ward.idWard} value={ward.name}>
+                        {ward.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
+                <FieldLabel
+                  className="text-xs font-black uppercase tracking-[0.08em] text-coffee-muted"
+                  htmlFor="city"
+                >
+                  City
+                </FieldLabel>
+                <Input
+                  className="rounded-none border-0 border-b border-line-soft bg-transparent px-0 text-base text-espresso placeholder:text-line-soft focus:border-espresso"
+                  id="city"
+                  name="city"
+                  readOnly
+                  value={selectedProvince ? getCityName(selectedProvince.name) : ""}
+                />
+              </Field>
+              <Field>
+                <FieldLabel
+                  className="text-xs font-black uppercase tracking-[0.08em] text-coffee-muted"
+                  htmlFor="area"
+                >
+                  Area
+                </FieldLabel>
+                <Input
+                  className="rounded-none border-0 border-b border-line-soft bg-transparent px-0 text-base text-espresso placeholder:text-line-soft focus:border-espresso"
+                  disabled={isSubmitting}
+                  id="area"
+                  name="area"
+                  onChange={(event) =>
+                    setRegion((current) => ({
+                      ...current,
+                      area: event.target.value,
+                    }))
+                  }
+                  placeholder="Optional neighborhood or local landmark"
+                  value={region.area}
+                />
+              </Field>
+              <Field>
+                <FieldLabel
+                  className="text-xs font-black uppercase tracking-[0.08em] text-coffee-muted"
+                  htmlFor="street"
+                >
+                  Street
+                </FieldLabel>
+                <Input
+                  className="rounded-none border-0 border-b border-line-soft bg-transparent px-0 text-base text-espresso placeholder:text-line-soft focus:border-espresso"
+                  disabled={isSubmitting}
+                  id="street"
+                  name="street"
+                  onChange={(event) =>
+                    setRegion((current) => ({
+                      ...current,
+                      street: event.target.value,
+                    }))
+                  }
+                  placeholder="House number, street name"
+                  value={region.street}
+                />
+              </Field>
+              {addressDataError ? (
+                <p className="rounded border border-accent/25 bg-accent/10 px-4 py-3 text-sm font-medium text-espresso">
+                  {addressDataError}
+                </p>
+              ) : null}
+            </FieldGroup>
+
+            <Field orientation="horizontal">
+              <Checkbox
+                className="mt-0.5"
+                name="terms"
+                required
+              />
+              <FieldContent>
+                <FieldLabel className="text-xs leading-5 text-coffee-muted">
+                  I agree to the Terms of Service and Privacy Policy.
+                </FieldLabel>
+              </FieldContent>
+            </Field>
+          </>
         ) : null}
 
         {errorMessage ? (
@@ -414,7 +763,7 @@ export function AuthCard({ mode }: AuthCardProps) {
         </Button>
       </div>
 
-      <div className="mt-16 flex items-center justify-center gap-1 text-center text-base text-coffee-muted">
+      <div className="mt-8 flex items-center justify-center gap-1 text-center text-base text-coffee-muted">
         <span>{copy.switchPrompt}</span>
         <Link className="font-black text-espresso no-underline" href={switchHref}>
           {copy.switchLabel}

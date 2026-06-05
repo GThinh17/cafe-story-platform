@@ -14,6 +14,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  getFeedPostMediaList,
+  PostMediaCarousel,
+} from "@/components/feed/post-media-carousel";
 import type { FeedPost } from "@/types/feed";
 import { DEFAULT_AVATAR_IMAGE } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
@@ -77,6 +81,7 @@ export function PostCard({ onCommentClick, onLikeClick, post }: PostCardProps) {
     Like: formatPostLikeCount(post),
     Share: post.shares ?? "0",
   };
+  const media = getFeedPostMediaList(post);
 
   return (
     <Card className="mx-auto w-[85%] max-w-full overflow-hidden [contain-intrinsic-size:765px] [content-visibility:auto]">
@@ -109,13 +114,13 @@ export function PostCard({ onCommentClick, onLikeClick, post }: PostCardProps) {
        
       </CardHeader>
 
-      <img
-        alt={`${post.cafe} cafe interior`}
-        className="aspect-[4/5] w-full object-cover sm:aspect-[5/4]"
-        decoding="async"
-        loading="lazy"
-        src={post.image}
-      />
+      {media.length > 0 ? (
+        <PostMediaCarousel
+          frame="adaptive"
+          imageClassName="bg-espresso"
+          media={media}
+        />
+      ) : null}
 
       <CardContent className="flex flex-col gap-4 px-4 py-4">
         <div className="flex items-center justify-between">

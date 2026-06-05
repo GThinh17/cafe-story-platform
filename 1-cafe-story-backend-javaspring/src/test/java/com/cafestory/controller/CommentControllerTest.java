@@ -12,6 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,6 +40,7 @@ class CommentControllerTest {
         CommentResponseDTO result = commentController.createComment(request, principal(userId));
 
         assertThat(result).isEqualTo(response);
+        assertThat(result.getAuthorUserName()).isEqualTo("comment-owner");
         assertThat(request.getUserId()).isEqualTo(userId);
         verify(commentService).createComment(request);
     }
@@ -52,6 +54,9 @@ class CommentControllerTest {
         List<CommentResponseDTO> result = commentController.getComments(null, null);
 
         assertThat(result).isEqualTo(response);
+        assertThat(result)
+                .extracting(CommentResponseDTO::getAuthorUserName)
+                .containsExactly("comment-owner");
         verify(commentService).getAllComments();
     }
 
@@ -65,6 +70,9 @@ class CommentControllerTest {
         List<CommentResponseDTO> result = commentController.getComments(blogId, null);
 
         assertThat(result).isEqualTo(response);
+        assertThat(result)
+                .extracting(CommentResponseDTO::getAuthorUserName)
+                .containsExactly("comment-owner");
         verify(commentService).getCommentsByBlogId(blogId);
     }
 
@@ -78,19 +86,53 @@ class CommentControllerTest {
         List<CommentResponseDTO> result = commentController.getComments(null, userId);
 
         assertThat(result).isEqualTo(response);
+        assertThat(result)
+                .extracting(CommentResponseDTO::getAuthorUserName)
+                .containsExactly("comment-owner");
         verify(commentService).getCommentsByUserId(userId);
     }
 
     @Test
-    void getCommentsByBlogId_success_TC005() {
+    void getCommentsByBlogId_success_multipleCommentAuthorsAndReplies_TC005() {
         UUID blogId = UUID.randomUUID();
-        List<CommentResponseDTO> response = List.of(commentResponse());
+        UUID ownerUserId = UUID.randomUUID();
+        UUID currentUserId = UUID.randomUUID();
+        UUID otherUserId = UUID.randomUUID();
+        UUID parentCommentId = UUID.randomUUID();
+        UUID replyCommentId = UUID.randomUUID();
+        UUID nestedReplyUserId = UUID.randomUUID();
+        List<CommentResponseDTO> response = List.of(
+                commentResponse(UUID.randomUUID(), blogId, ownerUserId, null, "blog-owner"),
+                commentResponse(parentCommentId, blogId, currentUserId, null, "current-user"),
+                commentResponse(UUID.randomUUID(), blogId, otherUserId, null, "other-user"),
+                commentResponse(replyCommentId, blogId, otherUserId, parentCommentId, "reply-user"),
+                commentResponse(UUID.randomUUID(), blogId, nestedReplyUserId, replyCommentId, "nested-reply-user"));
 
         when(commentService.getCommentsByBlogId(blogId)).thenReturn(response);
 
         List<CommentResponseDTO> result = commentController.getCommentsByBlogId(blogId);
 
         assertThat(result).isEqualTo(response);
+        assertThat(result)
+                .extracting(CommentResponseDTO::getAuthorUserName)
+                .containsExactly("blog-owner", "current-user", "other-user", "reply-user", "nested-reply-user");
+        assertThat(result)
+                .extracting(CommentResponseDTO::getId)
+                .containsExactlyElementsOf(response.stream().map(CommentResponseDTO::getId).toList());
+        assertThat(result)
+                .extracting(CommentResponseDTO::getBlogId)
+                .containsOnly(blogId);
+        assertThat(result)
+                .extracting(CommentResponseDTO::getUserId)
+                .containsExactly(ownerUserId, currentUserId, otherUserId, otherUserId, nestedReplyUserId);
+        assertThat(result.get(3).getParentCommentId()).isEqualTo(parentCommentId);
+        assertThat(result.get(4).getParentCommentId()).isEqualTo(replyCommentId);
+        assertThat(result)
+                .extracting(CommentResponseDTO::getContent)
+                .containsOnly("Comment content");
+        assertThat(result)
+                .extracting(CommentResponseDTO::getCreatedAt)
+                .doesNotContainNull();
         verify(commentService).getCommentsByBlogId(blogId);
     }
 
@@ -104,6 +146,9 @@ class CommentControllerTest {
         List<CommentResponseDTO> result = commentController.getCommentsByUserId(userId);
 
         assertThat(result).isEqualTo(response);
+        assertThat(result)
+                .extracting(CommentResponseDTO::getAuthorUserName)
+                .containsExactly("comment-owner");
         verify(commentService).getCommentsByUserId(userId);
     }
 
@@ -117,6 +162,9 @@ class CommentControllerTest {
         List<CommentResponseDTO> result = commentController.getRepliesByCommentId(commentId);
 
         assertThat(result).isEqualTo(response);
+        assertThat(result)
+                .extracting(CommentResponseDTO::getAuthorUserName)
+                .containsExactly("comment-owner");
         verify(commentService).getRepliesByCommentId(commentId);
     }
 
@@ -130,6 +178,7 @@ class CommentControllerTest {
         CommentResponseDTO result = commentController.getCommentById(commentId);
 
         assertThat(result).isEqualTo(response);
+        assertThat(result.getAuthorUserName()).isEqualTo("comment-owner");
         verify(commentService).getCommentById(commentId);
     }
 
@@ -145,6 +194,7 @@ class CommentControllerTest {
         CommentResponseDTO result = commentController.updateComment(commentId, request, principal(userId));
 
         assertThat(result).isEqualTo(response);
+        assertThat(result.getAuthorUserName()).isEqualTo("comment-owner");
         verify(commentService).updateComment(commentId, userId, request);
     }
 
@@ -176,14 +226,25 @@ class CommentControllerTest {
     }
 
     private CommentResponseDTO commentResponse() {
+        return commentResponse(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "comment-owner");
+    }
+
+    private CommentResponseDTO commentResponse(
+            UUID commentId,
+            UUID blogId,
+            UUID userId,
+            UUID parentCommentId,
+            String authorUserName) {
         CommentResponseDTO response = new CommentResponseDTO();
-        response.setId(UUID.randomUUID());
-        response.setBlogId(UUID.randomUUID());
-        response.setUserId(UUID.randomUUID());
-        response.setParentCommentId(UUID.randomUUID());
+        response.setId(commentId);
+        response.setBlogId(blogId);
+        response.setUserId(userId);
+        response.setAuthorUserName(authorUserName);
+        response.setParentCommentId(parentCommentId);
         response.setContent("Comment content");
         response.setImageUrls(List.of("https://example.com/comment-1.png"));
         response.setStatus(PostStatus.PUBLISHED);
+        response.setCreatedAt(LocalDateTime.now());
         return response;
     }
 

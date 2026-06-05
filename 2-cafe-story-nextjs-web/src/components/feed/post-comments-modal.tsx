@@ -17,7 +17,12 @@ import {
   type PostCommentReplyTarget,
 } from "@/components/feed/post-comment-item";
 import { PostCommentSkeleton } from "@/components/feed/post-comment-skeleton";
+import {
+  getFeedPostMediaList,
+  PostMediaCarousel,
+} from "@/components/feed/post-media-carousel";
 import { DEFAULT_AVATAR_IMAGE } from "@/lib/avatar";
+import { getBlogById } from "@/lib/api/blogs";
 import { createComment, getCommentsByBlog } from "@/lib/api/comments";
 import { cn } from "@/lib/utils";
 import type { AuthUser } from "@/types/auth";
@@ -37,16 +42,6 @@ type PostCommentsModalProps = {
 
 function getAuthorAvatar(post: FeedPost) {
   return post.authorAvatar?.trim() || DEFAULT_AVATAR_IMAGE;
-}
-
-function getPrimaryMedia(post: FeedPost) {
-  const firstMedia = post.media?.find((media) => media.src.trim());
-
-  return {
-    alt: firstMedia?.alt ?? `${post.cafe} post media`,
-    src: firstMedia?.src ?? post.image,
-    type: firstMedia?.type ?? "image",
-  };
 }
 
 function formatCount(value: number) {
@@ -80,33 +75,29 @@ function getPostAuthorUsername(post: FeedPost) {
 
 type CommentMappingContext = {
   currentUser: AuthUser | null;
-  postAuthorUserId?: string;
-  postAuthorUsername?: string;
 };
+
+function getCurrentUserUsername(currentUser: AuthUser | null) {
+  return firstNonEmpty([
+    currentUser?.userName,
+    (currentUser as (AuthUser & { username?: string }) | null)?.username,
+  ]);
+}
 
 function getCommentUsername(
   comment: CommentResponse,
   context: CommentMappingContext,
 ) {
-  const response = comment as CommentResponse & {
-    authorUserName?: string | null;
-    username?: string | null;
-  };
-  const currentUserName =
-    (context.currentUser as (AuthUser & { username?: string }) | null)?.username ??
-    context.currentUser?.userName;
+  const currentUserName = getCurrentUserUsername(context.currentUser);
 
   return (
     firstNonEmpty([
-      response.username,
-      response.userName,
-      response.authorUsername,
-      response.authorUserName,
+      comment.authorUserName,
+      comment.username,
+      comment.userName,
+      comment.authorUsername,
       context.currentUser?.userId === comment.userId ? currentUserName : undefined,
-      context.postAuthorUserId === comment.userId
-        ? context.postAuthorUsername
-        : undefined,
-    ]) ?? "CafeStory User"
+    ]) ?? "cafestory_user"
   );
 }
 
@@ -191,16 +182,10 @@ function mapCommentsToThread(
 
   function flattenDescendants(parent: CommentResponse): FeedPostComment[] {
     const children = childrenByParentId.get(parent.id) ?? [];
+    const parentUsername = getCommentUsername(parent, context);
 
     return children.flatMap((child) => [
-      mapCommentResponse(
-        child,
-        context,
-        firstNonEmpty([
-          child.replyToUsername,
-          mapCommentResponse(parent, context).authorUsername,
-        ]),
-      ),
+      mapCommentResponse(child, context, parentUsername),
       ...flattenDescendants(child),
     ]);
   }
@@ -223,11 +208,7 @@ function createOptimisticComment(
   currentUser: AuthUser | null,
   replyTarget: PostCommentReplyTarget | null,
 ): FeedPostComment {
-  const currentUsername =
-    firstNonEmpty([
-      (currentUser as (AuthUser & { username?: string }) | null)?.username,
-      currentUser?.userName,
-    ]) ?? "CafeStory User";
+  const currentUsername = getCurrentUserUsername(currentUser) ?? "cafestory_user";
 
   return {
     id: `optimistic-${crypto.randomUUID()}`,
@@ -325,6 +306,10 @@ export function PostCommentsModal({
   const [draftComment, setDraftComment] = useState("");
   const [comments, setComments] = useState<FeedPostComment[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [isLoadingCommentPermission, setIsLoadingCommentPermission] = useState(false);
+  const [resolvedAllowComment, setResolvedAllowComment] = useState<boolean | null>(
+    null,
+  );
   const [commentsError, setCommentsError] = useState<string | null>(null);
   const [replyTarget, setReplyTarget] = useState<PostCommentReplyTarget | null>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
@@ -341,8 +326,6 @@ export function PostCommentsModal({
       const response = await getCommentsByBlog(post.id);
       const visibleComments = mapCommentsToThread(response, {
         currentUser,
-        postAuthorUserId: post.authorUserId,
-        postAuthorUsername: getPostAuthorUsername(post),
       });
       setComments(visibleComments);
       onCommentCountChange(post.id, {
@@ -357,9 +340,6 @@ export function PostCommentsModal({
   }, [
     currentUser,
     onCommentCountChange,
-    post?.author,
-    post?.authorUserId,
-    post?.authorUsername,
     post?.id,
   ]);
 
@@ -372,6 +352,56 @@ export function PostCommentsModal({
     void loadComments();
   }, [loadComments, post?.id]);
 
+  useEffect(() => {
+    if (!post?.id) {
+      setIsLoadingCommentPermission(false);
+      setResolvedAllowComment(null);
+      return;
+    }
+
+    setResolvedAllowComment(post.allowComment ?? null);
+
+    if (post.allowComment === false) {
+      setIsLoadingCommentPermission(false);
+      return;
+    }
+
+    let isActive = true;
+
+    setIsLoadingCommentPermission(true);
+
+    getBlogById(post.id)
+      .then((blog) => {
+        if (isActive) {
+          setResolvedAllowComment(blog.allowComment ?? post.allowComment ?? true);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setResolvedAllowComment(post.allowComment ?? true);
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsLoadingCommentPermission(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [post?.allowComment, post?.id]);
+
+  const isCommentRestricted = resolvedAllowComment === false;
+  const isCommentDisabled = isLoadingCommentPermission || isCommentRestricted;
+
+  useEffect(() => {
+    if (isCommentRestricted) {
+      setDraftComment("");
+      setReplyTarget(null);
+    }
+  }, [isCommentRestricted]);
+
   if (!post) {
     return null;
   }
@@ -381,14 +411,18 @@ export function PostCommentsModal({
   const authorHref = getUserProfileHref(authorUsername);
   const commentCount = getPostCommentCount(post);
   const shareCount = post.shares ?? "0";
-  const media = getPrimaryMedia(post);
-  const hasImage = media.type === "image" && media.src.trim().length > 0;
+  const media = getFeedPostMediaList(post);
+  const hasImage = media.length > 0;
   const likeCount =
     typeof post.likeCount === "number" ? formatCount(post.likeCount) : post.likes;
   const postId = post.id;
   const postCommentCount = post.commentCount;
 
   function handleReply(target: PostCommentReplyTarget) {
+    if (isCommentDisabled) {
+      return;
+    }
+
     setReplyTarget(target);
     commentInputRef.current?.focus();
   }
@@ -400,6 +434,10 @@ export function PostCommentsModal({
   }
 
   async function handleCreateComment() {
+    if (isCommentDisabled) {
+      return;
+    }
+
     const content = draftComment.trim();
 
     if (!postId || !content) {
@@ -467,11 +505,11 @@ export function PostCommentsModal({
 
         <section className="relative min-h-[280px] overflow-hidden bg-espresso lg:min-h-0">
           {hasImage ? (
-            <img
-              alt={media.alt}
-              className="h-full w-full object-cover"
-              decoding="async"
-              src={media.src}
+            <PostMediaCarousel
+              className="h-full min-h-[280px] lg:min-h-0"
+              frame="fixed"
+              imageClassName="bg-espresso"
+              media={media}
             />
           ) : (
             <div className="grid h-full min-h-[280px] place-items-center bg-surface-muted px-8 text-center text-sm font-semibold text-coffee-muted">
@@ -571,6 +609,7 @@ export function PostCommentsModal({
               ) : comments.length > 0 ? (
                 comments.map((comment) => (
                   <PostCommentItem
+                    canReply={!isCommentDisabled}
                     comment={comment}
                     key={comment.id}
                     onLike={handleCommentLike}
@@ -644,24 +683,34 @@ export function PostCommentsModal({
                 <input
                   ref={commentInputRef}
                   className="h-10 w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted"
-                  onChange={(event) => setDraftComment(event.target.value)}
+                  onChange={(event) => {
+                    if (isCommentDisabled) {
+                      return;
+                    }
+
+                    setDraftComment(event.target.value);
+                  }}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter") {
+                    if (event.key === "Enter" && !isCommentDisabled) {
                       void handleCreateComment();
                     }
                   }}
                   placeholder={
-                    replyTarget
+                    isCommentRestricted
+                      ? "Comment restricted"
+                      : replyTarget
                       ? `Reply to ${replyTarget.authorUsername ?? replyTarget.author}...`
                       : "Add a comment..."
                   }
                   type="text"
-                  value={draftComment}
+                  disabled={isCommentDisabled}
+                  readOnly={isCommentDisabled}
+                  value={isCommentDisabled ? "" : draftComment}
                 />
               </label>
               <Button
                 className="h-9 shrink-0 px-3 text-sm font-black"
-                disabled={draftComment.trim().length === 0}
+                disabled={isCommentDisabled || draftComment.trim().length === 0}
                 onClick={() => void handleCreateComment()}
                 type="button"
                 variant="ghost"

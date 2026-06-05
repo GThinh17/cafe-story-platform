@@ -7,11 +7,13 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
+  DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { logout } from "@/lib/api/auth";
 import type { AuthUser } from "@/types/auth";
+import { useAuth } from "@/components/providers/auth-provider";
 
 type ProfileSettingsModalProps = {
   currentUser?: AuthUser | null;
@@ -25,6 +27,7 @@ export function ProfileSettingsModal({
   onOpenChange,
 }: ProfileSettingsModalProps) {
   const router = useRouter();
+  const { setUser } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const shouldShowReviewerDashboard = isReviewer(currentUser);
   const currentUsername = currentUser?.userName?.trim();
@@ -35,6 +38,7 @@ export function ProfileSettingsModal({
     try {
       await logout();
     } finally {
+      setUser?.(null);
       onOpenChange(false);
       router.replace("/login");
       router.refresh();
@@ -45,6 +49,9 @@ export function ProfileSettingsModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[min(360px,calc(100vw-32px))] p-0">
         <DialogTitle className="sr-only">Profile settings</DialogTitle>
+        <DialogDescription className="sr-only">
+          Choose a profile settings action.
+        </DialogDescription>
         <div className="flex flex-col text-center">
           {currentUsername ? (
             <DialogClose asChild>

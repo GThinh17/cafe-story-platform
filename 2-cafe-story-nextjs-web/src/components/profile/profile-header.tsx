@@ -60,9 +60,9 @@ export function ProfileHeader({
             </div>
           </div>
 
-          <div className="min-w-0 flex-1 space-y-5">
+          <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="truncate text-xl font-normal text-foreground">
+              <h1 className="truncate text-3xl font-bold text-foreground">
                 {isLoading ? "Loading..." : profile.username}
               </h1>
 
@@ -111,17 +111,8 @@ export function ProfileHeader({
 
             <div className="min-w-0 space-y-1 text-sm leading-6">
               <p className="font-black">{profile.displayName}</p>
-              {profile.email ? (
-                <p className="text-muted">{profile.email}</p>
-              ) : null}
               <p className="max-w-full break-words">{profile.bio}</p>
               <p className="text-muted">{profile.location}</p>
-              <a
-                className="block max-w-full truncate font-black text-primary no-underline"
-                href="#"
-              >
-                {profile.website}
-              </a>
             </div>
           </div>
         </div>

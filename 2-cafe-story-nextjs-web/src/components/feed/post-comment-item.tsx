@@ -15,6 +15,7 @@ export type PostCommentReplyTarget = {
 };
 
 type PostCommentItemProps = {
+  canReply?: boolean;
   comment: FeedPostComment;
   isReply?: boolean;
   onLike: (commentId: string) => void;
@@ -44,6 +45,7 @@ function getUserProfileHref(username: string) {
 }
 
 export function PostCommentItem({
+  canReply = true,
   comment,
   isReply = false,
   onLike,
@@ -54,7 +56,7 @@ export function PostCommentItem({
   const [isBodyExpanded, setIsBodyExpanded] = useState(false);
   const avatar = comment.authorAvatar?.trim() || DEFAULT_AVATAR_IMAGE;
   const authorUsername =
-    comment.authorUsername?.trim() || comment.author.trim() || "CafeStory User";
+    comment.authorUsername?.trim() || comment.author.trim() || "cafestory_user";
   const authorHref = getUserProfileHref(authorUsername);
   const replyToUsername =
     comment.replyToUsername?.trim() || comment.replyToAuthor?.trim();
@@ -124,20 +126,22 @@ export function PostCommentItem({
             <button className="transition hover:text-primary" type="button">
               {formatCount(likeCount)} likes
             </button>
-            <button
-              className="transition hover:text-primary"
-              onClick={() =>
-                onReply({
-                  author: comment.author,
-                  authorUsername,
-                  commentId: comment.id,
-                  rootCommentId: threadRootId,
-                })
-              }
-              type="button"
-            >
-              Reply
-            </button>
+            {canReply ? (
+              <button
+                className="transition hover:text-primary"
+                onClick={() =>
+                  onReply({
+                    author: comment.author,
+                    authorUsername,
+                    commentId: comment.id,
+                    rootCommentId: threadRootId,
+                  })
+                }
+                type="button"
+              >
+                Reply
+              </button>
+            ) : null}
             <button
               aria-label="More comment options"
               className="transition hover:text-primary"
@@ -180,6 +184,7 @@ export function PostCommentItem({
           {replyItems.map((reply) => (
             <PostCommentItem
               comment={reply}
+              canReply={canReply}
               isReply
               key={reply.id}
               onLike={onLike}
