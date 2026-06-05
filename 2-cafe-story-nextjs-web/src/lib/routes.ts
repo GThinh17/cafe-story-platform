@@ -13,12 +13,18 @@ export const protectedRoutePrefixes = [
   "/reviews",
 ] as const;
 
+const protectedRoutePatterns = [
+  /^\/[^/]+\/edit$/,
+] as const;
+
 export function isAuthRoute(pathname: string) {
   return authRoutes.some((route) => pathname === route);
 }
 
 export function isProtectedRoute(pathname: string) {
-  return protectedRoutePrefixes.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  return (
+    protectedRoutePrefixes.some(
+      (route) => pathname === route || pathname.startsWith(`${route}/`),
+    ) || protectedRoutePatterns.some((pattern) => pattern.test(pathname))
   );
 }

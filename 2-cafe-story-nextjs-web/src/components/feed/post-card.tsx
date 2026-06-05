@@ -4,6 +4,7 @@ import {
   BookmarkIcon,
   Repeat2Icon,
 } from "lucide-react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,11 +16,13 @@ import {
 } from "@/components/ui/card";
 import type { FeedPost } from "@/types/feed";
 import { DEFAULT_AVATAR_IMAGE } from "@/lib/avatar";
+import { cn } from "@/lib/utils";
 
 export type { FeedPost };
 
 type PostCardProps = {
   onCommentClick?: (post: FeedPost) => void;
+  onLikeClick?: (post: FeedPost) => void;
   post: FeedPost;
 };
 
@@ -39,7 +42,9 @@ const postActions = [
 ];
 
 function formatPostCommentCount(post: FeedPost) {
-  return Array.isArray(post.comments)
+  return typeof post.commentCount === "number"
+    ? formatCount(post.commentCount)
+    : Array.isArray(post.comments)
     ? new Intl.NumberFormat("en", {
         notation: "compact",
         maximumFractionDigits: 1,
@@ -47,12 +52,29 @@ function formatPostCommentCount(post: FeedPost) {
     : post.comments;
 }
 
-export function PostCard({ onCommentClick, post }: PostCardProps) {
+function formatCount(value: number) {
+  return new Intl.NumberFormat("en", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
+function formatPostLikeCount(post: FeedPost) {
+  return typeof post.likeCount === "number" ? formatCount(post.likeCount) : post.likes;
+}
+
+function getUserProfileHref(username: string) {
+  return `/${encodeURIComponent(username)}`;
+}
+
+export function PostCard({ onCommentClick, onLikeClick, post }: PostCardProps) {
   const authorAvatar = post.authorAvatar?.trim() || DEFAULT_AVATAR_IMAGE;
+  const authorUsername = post.authorUsername?.trim() || post.author?.trim() || "cafestory_user";
+  const authorHref = getUserProfileHref(authorUsername);
   const commentCount = formatPostCommentCount(post);
   const actionCounts: Record<string, string> = {
     Comment: commentCount,
-    Like: post.likes,
+    Like: formatPostLikeCount(post),
     Share: post.shares ?? "0",
   };
 
@@ -60,27 +82,31 @@ export function PostCard({ onCommentClick, post }: PostCardProps) {
     <Card className="mx-auto w-[85%] max-w-full overflow-hidden [contain-intrinsic-size:765px] [content-visibility:auto]">
       <CardHeader className="flex flex-row items-center justify-between gap-4 px-4 py-4">
         <div className="flex min-w-0 items-center gap-3">
-          <span className="block size-11 shrink-0 overflow-hidden rounded-full border border-border/40 bg-surface-muted shadow-[inset_0_0_0_999px_rgba(217,119,6,0.10)]">
+          <Link
+            aria-label={`View ${authorUsername}'s profile`}
+            className="block size-11 shrink-0 overflow-hidden rounded-full border border-border/40 bg-surface-muted shadow-[inset_0_0_0_999px_rgba(217,119,6,0.10)]"
+            href={authorHref}
+          >
             <img
-              alt={`${post.author} avatar`}
+              alt={`${authorUsername} avatar`}
               className="block size-full max-w-none rounded-full object-cover object-center"
               decoding="async"
               loading="lazy"
               src={authorAvatar}
             />
-          </span>
+          </Link>
           <div className="min-w-0">
             <CardTitle className="truncate text-base font-bold">
-              {post.author}
+              <Link className="hover:text-primary" href={authorHref}>
+                {authorUsername}
+              </Link>
             </CardTitle>
             <CardDescription className="truncate text-xs font-medium">
               {post.cafe} - {post.location} - {post.time}
             </CardDescription>
           </div>
         </div>
-        <Badge className="text-sm font-bold" variant="rating">
-          {post.rating}
-        </Badge>
+       
       </CardHeader>
 
       <img
@@ -100,12 +126,24 @@ export function PostCard({ onCommentClick, post }: PostCardProps) {
                 className="h-auto gap-1.5 px-0 py-0 text-sm font-bold text-foreground hover:bg-transparent hover:text-primary data-[state=active]:bg-transparent"
                 key={label}
                 onClick={
-                  label === "Comment" ? () => onCommentClick?.(post) : undefined
+                  label === "Comment"
+                    ? () => onCommentClick?.(post)
+                    : label === "Like"
+                      ? () => onLikeClick?.(post)
+                      : undefined
                 }
                 type="button"
                 variant="ghost"
               >
-                <Icon className="size-6" strokeWidth={2.2} />
+                <Icon
+                  className={cn(
+                    "size-6",
+                    label === "Like" &&
+                      post.isLiked &&
+                      "fill-accent text-accent",
+                  )}
+                  strokeWidth={2.2}
+                />
                 <span>{actionCounts[label]}</span>
               </Button>
             ))}
@@ -121,7 +159,10 @@ export function PostCard({ onCommentClick, post }: PostCardProps) {
         </div>
 
         <p className="text-sm leading-6 text-foreground">
-          <span className="font-bold">{post.author}</span> {post.caption}
+          <Link className="font-bold hover:text-primary" href={authorHref}>
+            {authorUsername}
+          </Link>{" "}
+          {post.caption}
         </p>
         <div className="flex flex-wrap gap-2">
           {post.tags.map((tag) => (

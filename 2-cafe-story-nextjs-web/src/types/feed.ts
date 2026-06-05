@@ -6,11 +6,17 @@ export type StoryItem = {
 export type FeedPostComment = {
   id: string;
   author: string;
+  authorUsername?: string;
   authorAvatar?: string;
   body: string;
   time?: string;
   likes?: string;
+  likeCount?: number;
+  isLiked?: boolean;
   replies?: string;
+  replyToAuthor?: string;
+  replyToUsername?: string;
+  replyItems?: FeedPostComment[];
 };
 
 export type FeedPostMedia = {
@@ -25,6 +31,8 @@ export type FeedPost = {
   cafe: string;
   location: string;
   author: string;
+  authorUserId?: string;
+  authorUsername?: string;
   authorAvatar?: string;
   time: string;
   rating: string;
@@ -32,7 +40,10 @@ export type FeedPost = {
   image: string;
   media?: FeedPostMedia[];
   likes: string;
+  likeCount?: number;
+  isLiked?: boolean;
   comments: string | FeedPostComment[];
+  commentCount?: number;
   commentItems?: FeedPostComment[];
   shares?: string;
   tags: string[];

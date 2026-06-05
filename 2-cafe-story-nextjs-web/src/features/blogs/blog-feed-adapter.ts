@@ -87,14 +87,16 @@ export function mapBlogFeedToFeedPosts(feed: BlogFeedResponse[]): FeedPost[] {
 
     return {
       id: item.blogId,
-      author:
-        firstNonEmpty([item.authorUserFullName, item.authorUserName]) ??
-        "cafestory_user",
+      author: firstNonEmpty([item.authorUserName, item.authorUserFullName]) ?? "cafestory_user",
+      authorUserId: item.authorUserId,
+      authorUsername: firstNonEmpty([item.authorUserName]),
       authorAvatar: firstNonEmpty([item.authorAvatar]) ?? "/images/default-avatar.svg",
       cafe: firstNonEmpty([item.pageName]) ?? "Cafe Story",
       caption: item.contentPreview?.trim() || "A new Cafe Story post is ready.",
+      commentCount: item.commentCount ?? 0,
       comments: formatCount(item.commentCount),
       image: image ?? fallbackImages[index % fallbackImages.length],
+      likeCount: item.likeCount ?? 0,
       likes: formatCount(item.likeCount),
       location: formatLocation(item),
       rating: item.rankPosition ? `#${item.rankPosition}` : "Feed",

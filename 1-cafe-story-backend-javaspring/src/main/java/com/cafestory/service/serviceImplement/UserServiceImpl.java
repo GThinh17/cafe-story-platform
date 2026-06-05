@@ -91,6 +91,14 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public UserResponseDTO getUserByUsername(String username, UUID viewerUserId) {
+        User user = userRepository.findByUserName(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        return getUserById(user.getUserId(), viewerUserId);
+    }
+
+    @Override
     @Transactional
     public UserResponseDTO updateUser(UUID userId, UserUpdateDTO userUpdateDTO) {
         User user = userValidator.validateUserExists(userId);

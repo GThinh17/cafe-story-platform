@@ -26,6 +26,11 @@ export type AuthUser = {
   userPhone: number | null;
   userAvatar: string | null;
   accountStatus: boolean;
+  regionCity?: string | null;
+  regionProvince?: string | null;
+  regionWard?: string | null;
+  regionArea?: string | null;
+  regionStreet?: string | null;
   roles: string[];
 };
 

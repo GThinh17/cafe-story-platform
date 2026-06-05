@@ -53,6 +53,13 @@ public class UserController {
         return userService.getUserById(userId, optionalUserId(principal));
     }
 
+    @GetMapping("/by-username/{username}")
+    public UserResponseDTO getUserByUsername(
+            @PathVariable String username,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return userService.getUserByUsername(username, optionalUserId(principal));
+    }
+
     @PatchMapping("/me")
     public UserResponseDTO updateUser(
             @Valid @RequestBody UserUpdateDTO userUpdateDTO,

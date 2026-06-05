@@ -3,6 +3,7 @@ import { apiEndpoints } from "@/lib/api/endpoints";
 import type {
   BlogFeedParams,
   BlogFeedResponse,
+  BlogLikeResponse,
   BlogResponse,
   BlogTrendingResponse,
 } from "@/types/blog";
@@ -65,4 +66,25 @@ export function getTrendingBlogs(
       method: "GET",
     },
   );
+}
+
+export function likeBlog(blogId: string, options: ApiRequestOptions = {}) {
+  return apiFetch<BlogLikeResponse>(apiEndpoints.blogs.likes(blogId), {
+    headers: options.headers,
+    method: "POST",
+  });
+}
+
+export function unlikeBlog(blogId: string, options: ApiRequestOptions = {}) {
+  return apiFetch<void>(apiEndpoints.blogs.likes(blogId), {
+    headers: options.headers,
+    method: "DELETE",
+  });
+}
+
+export function getBlogLikesByUser(userId: string, options: ApiRequestOptions = {}) {
+  return apiFetch<BlogLikeResponse[]>(apiEndpoints.blogs.likesByUser(userId), {
+    headers: options.headers,
+    method: "GET",
+  });
 }

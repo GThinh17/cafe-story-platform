@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   BadgeDollarSignIcon,
   BellIcon,
@@ -16,6 +17,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { CreatePostModal } from "@/components/review/create-post-modal";
 import { BrandIcon } from "@/components/ui/brand-icon";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import {
   Sheet,
   SheetContent,
@@ -36,7 +38,7 @@ const sidebarItems: SidebarItem[] = [
   { href: "/explore", label: "Explore", icon: "explore" },
   { href: "/notifications", label: "Notifications", icon: "bell" },
   { href: "/messages", label: "Messages", icon: "message" },
-  { href: "/profile", label: "Profile", icon: "profile" },
+  { href: "/login", label: "Profile", icon: "profile" },
   { href: "/reviews/new", label: "Create Post", icon: "plus" },
 ];
 
@@ -59,9 +61,11 @@ function isActivePath(pathname: string, href: string) {
 
 export function SharedSidebar() {
   const pathname = usePathname();
+  const { user, isLoading } = useCurrentUser();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
   const [isPricingPlanOpen, setIsPricingPlanOpen] = useState(false);
+  const profileHref = user?.userName ? `/${user.userName}` : "/login";
 
   return (
     <>
@@ -69,7 +73,7 @@ export function SharedSidebar() {
         className="group fixed inset-y-0 left-0 z-50 flex w-16 flex-col overflow-hidden border-r border-border bg-surface shadow-lg transition-[width,box-shadow] duration-200 ease-out hover:w-60 hover:shadow-2xl focus-within:w-60 focus-within:shadow-2xl sm:w-[72px]"
         aria-label="Primary navigation"
       >
-        <a
+        <Link
           className="flex h-[72px] min-w-0 items-center gap-3 px-3 text-muted no-underline sm:px-4"
           href="/"
           aria-label="Cafe Story home"
@@ -79,18 +83,24 @@ export function SharedSidebar() {
           <span className="translate-x-[-4px] whitespace-nowrap text-lg font-medium text-primary-strong opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100">
             Cafe Story
           </span>
-        </a>
+        </Link>
 
         <nav className="grid gap-1.5 px-2 py-2 sm:px-3">
           {sidebarItems.map((item) => {
             const Icon = sidebarIcons[item.icon];
             const isNotificationItem = item.icon === "bell";
             const isCreatePostItem = item.icon === "plus";
+            const itemHref =
+              item.icon === "profile"
+                ? isLoading
+                  ? "#"
+                  : profileHref
+                : item.href;
             const isActive = isNotificationItem
-              ? isNotificationsOpen || isActivePath(pathname, item.href)
+              ? isNotificationsOpen || isActivePath(pathname, itemHref)
               : isCreatePostItem
-                ? isCreatePostOpen || isActivePath(pathname, item.href)
-              : isActivePath(pathname, item.href);
+                ? isCreatePostOpen || isActivePath(pathname, itemHref)
+              : isActivePath(pathname, itemHref);
             const itemClassName = cn(
               buttonVariants({ variant: "ghost" }),
               "h-12 w-full min-w-0 justify-start gap-3 px-3 text-sm no-underline",
@@ -146,16 +156,16 @@ export function SharedSidebar() {
             }
 
             return (
-              <a
+              <Link
                 aria-current={isActive ? "page" : undefined}
                 aria-label={item.label}
                 className={itemClassName}
-                href={item.href}
+                href={itemHref}
                 key={item.href}
                 onClick={() => setIsNotificationsOpen(false)}
               >
                 {itemContent}
-              </a>
+              </Link>
             );
           })}
 

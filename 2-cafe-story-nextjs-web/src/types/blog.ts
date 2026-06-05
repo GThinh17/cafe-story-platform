@@ -42,6 +42,37 @@ export type BlogResponse = {
   updatedAt: string | null;
 };
 
+export type BlogLikeResponse = {
+  id: string;
+  userId: string;
+  blogId: string;
+  createdAt: string | null;
+};
+
+export type CommentResponse = {
+  id: string;
+  blogId: string;
+  userId: string;
+  username?: string | null;
+  userName?: string | null;
+  authorUsername?: string | null;
+  authorUserName?: string | null;
+  replyToUsername?: string | null;
+  parentCommentId: string | null;
+  content: string;
+  imageUrls: string[] | null;
+  status: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type CommentCreateRequest = {
+  blogId: string;
+  parentCommentId?: string;
+  content: string;
+  imageUrls?: string[];
+};
+
 export type BlogTrendingResponse = {
   blogId: string;
   contentPreview: string | null;

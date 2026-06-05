@@ -18,6 +18,8 @@ public interface UserService {
 
     UserResponseDTO getUserById(UUID userId, UUID viewerUserId);
 
+    UserResponseDTO getUserByUsername(String username, UUID viewerUserId);
+
     UserResponseDTO updateUser(UUID userId, UserUpdateDTO userUpdateDTO);
 
     UserResponseDTO updateUserRegion(UUID userId, RegionRequestDTO regionRequestDTO);
