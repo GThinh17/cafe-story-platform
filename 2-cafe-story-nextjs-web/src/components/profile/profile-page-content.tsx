@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, usePathname } from "next/navigation";
 import { ProfileHeader } from "@/components/profile/profile-header";
 import { ProfileReviewGrid } from "@/components/profile/profile-review-grid";
+import { useBfcacheRestoreEffect } from "@/hooks/use-bfcache-restore";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { ApiError } from "@/lib/api/client";
 import { followUser, getUserByUsername, unfollowUser } from "@/lib/api/users";
@@ -203,22 +204,11 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
     void loadProfile();
   }, [loadProfile]);
 
-  useEffect(() => {
-    function handlePageShow(event: PageTransitionEvent) {
-      if (event.persisted) {
-        const currentUsername =
-          getUsernameFromPathname(window.location.pathname) || routeUsername;
-
-        void loadProfile(currentUsername);
-      }
-    }
-
-    window.addEventListener("pageshow", handlePageShow);
-
-    return () => {
-      window.removeEventListener("pageshow", handlePageShow);
-    };
+  const handleBfcacheRestore = useCallback(() => {
+    void loadProfile(routeUsername);
   }, [loadProfile, routeUsername]);
+
+  useBfcacheRestoreEffect(handleBfcacheRestore);
 
   const profile = useMemo(() => {
     if (viewedUser) {

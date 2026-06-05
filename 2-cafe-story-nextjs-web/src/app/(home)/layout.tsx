@@ -1,31 +1,15 @@
 import type { Metadata } from "next";
-import { SharedSidebar } from "@/components/layout/shared-sidebar";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import "./../globals.css";
+import { MainAppShell } from "@/components/layout/main-app-shell";
 
 export const metadata: Metadata = {
   title: "Cafe Story",
   description: "Discover cafes, reviews, and coffee stories.",
-  icons: {
-    icon: "/icons/cafestory-brand-icon.svg",
-  },
 };
 
-export default function RootLayout({
+export default function HomeLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en" className="h-full antialiased">
-      <body className="min-h-full">
-        <TooltipProvider>
-          <SharedSidebar />
-          <div className="min-h-screen w-full max-w-full overflow-x-clip pl-20 sm:pl-28 xl:pl-80">
-            {children}
-          </div>
-        </TooltipProvider>
-      </body>
-    </html>
-  );
+  return <MainAppShell>{children}</MainAppShell>;
 }

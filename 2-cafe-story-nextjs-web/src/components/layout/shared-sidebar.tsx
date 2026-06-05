@@ -90,12 +90,9 @@ export function SharedSidebar() {
             const Icon = sidebarIcons[item.icon];
             const isNotificationItem = item.icon === "bell";
             const isCreatePostItem = item.icon === "plus";
+            const isProfileItem = item.icon === "profile";
             const itemHref =
-              item.icon === "profile"
-                ? isLoading
-                  ? "#"
-                  : profileHref
-                : item.href;
+              isProfileItem && !isLoading ? profileHref : item.href;
             const isActive = isNotificationItem
               ? isNotificationsOpen || isActivePath(pathname, itemHref)
               : isCreatePostItem
@@ -119,6 +116,22 @@ export function SharedSidebar() {
                 </span>
               </>
             );
+
+            if (isProfileItem && isLoading) {
+              return (
+                <Button
+                  aria-disabled="true"
+                  aria-label={item.label}
+                  className={itemClassName}
+                  disabled
+                  key={item.href}
+                  type="button"
+                  variant="ghost"
+                >
+                  {itemContent}
+                </Button>
+              );
+            }
 
             if (isNotificationItem) {
               return (
