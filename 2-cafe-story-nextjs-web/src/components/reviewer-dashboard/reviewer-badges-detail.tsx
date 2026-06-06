@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { ReviewerBadgeProgress } from "@/features/reviewer-dashboard/components/reviewer-badge-progress";
+import { ReviewerBadgeProgress } from "@/components/reviewer-dashboard/reviewer-badge-progress";
 import {
   mockReviewerBadges,
   mockReviewerProfile,

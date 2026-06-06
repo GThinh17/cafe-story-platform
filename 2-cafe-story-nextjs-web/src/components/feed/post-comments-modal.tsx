@@ -21,7 +21,7 @@ import {
   getFeedPostMediaList,
   PostMediaCarousel,
 } from "@/components/feed/post-media-carousel";
-import { DEFAULT_AVATAR_IMAGE } from "@/lib/avatar";
+import { getPostIdentity } from "@/components/feed/post-identity";
 import { getBlogById } from "@/lib/api/blogs";
 import { createComment, getCommentsByBlog } from "@/lib/api/comments";
 import { cn } from "@/lib/utils";
@@ -39,10 +39,6 @@ type PostCommentsModalProps = {
   onPostLikeClick: (post: FeedPost) => void;
   post: FeedPost | null;
 };
-
-function getAuthorAvatar(post: FeedPost) {
-  return post.authorAvatar?.trim() || DEFAULT_AVATAR_IMAGE;
-}
 
 function formatCount(value: number) {
   return new Intl.NumberFormat("en", {
@@ -63,10 +59,6 @@ function getPostCommentCount(post: FeedPost) {
 
 function firstNonEmpty(values: Array<string | null | undefined>) {
   return values.find((value) => value?.trim())?.trim();
-}
-
-function getUserProfileHref(username: string) {
-  return `/${encodeURIComponent(username)}`;
 }
 
 function getPostAuthorUsername(post: FeedPost) {
@@ -406,9 +398,9 @@ export function PostCommentsModal({
     return null;
   }
 
-  const authorAvatar = getAuthorAvatar(post);
+  const identity = getPostIdentity(post);
   const authorUsername = getPostAuthorUsername(post);
-  const authorHref = getUserProfileHref(authorUsername);
+  const locationLabel = post.locationLabel?.trim() || post.location?.trim();
   const commentCount = getPostCommentCount(post);
   const shareCount = post.shares ?? "0";
   const media = getFeedPostMediaList(post);
@@ -522,31 +514,36 @@ export function PostCommentsModal({
           <header className="flex items-center justify-between gap-4 border-b border-line-soft px-5 py-4">
             <div className="flex min-w-0 items-center gap-3">
               <Link
-                aria-label={`View ${authorUsername}'s profile`}
-                className="block size-11 shrink-0 rounded-full"
-                href={authorHref}
+                aria-label={`View ${identity.primaryName}`}
+                className="block size-11 shrink-0 cursor-pointer rounded-full"
+                href={identity.primaryHref}
               >
                 <img
-                  alt={`${authorUsername} avatar`}
+                  alt={`${identity.primaryName} avatar`}
                   className="size-full rounded-full border border-border object-cover"
                   decoding="async"
-                  src={authorAvatar}
+                  src={identity.primaryAvatar}
                 />
               </Link>
               <div className="min-w-0">
                 <h2 className="truncate text-sm font-black text-espresso">
-                  <Link className="hover:text-primary" href={authorHref}>
-                    {authorUsername}
+                  <Link className="cursor-pointer" href={identity.primaryHref}>
+                    {identity.primaryName}
                   </Link>
                 </h2>
-                <p className="truncate text-xs font-medium text-coffee-muted">
-                  {post.cafe} - {post.location}
-                </p>
+                {identity.isPagePost && identity.secondaryHref ? (
+                  <Link
+                    className="block cursor-pointer truncate text-xs font-bold text-coffee-muted"
+                    href={identity.secondaryHref}
+                  >
+                    {identity.secondaryName}
+                  </Link>
+                ) : null}
               </div>
             </div>
             <Button
               aria-label="Post options"
-              className="text-coffee-muted hover:bg-transparent hover:text-primary"
+              className="cursor-pointer text-coffee-muted hover:bg-transparent hover:text-primary"
               size="icon-sm"
               type="button"
               variant="ghost"
@@ -558,24 +555,24 @@ export function PostCommentsModal({
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
             <div className="flex min-w-0 gap-3">
               <Link
-                aria-label={`View ${authorUsername}'s profile`}
-                className="block size-9 shrink-0 rounded-full"
-                href={authorHref}
+                aria-label={`View ${identity.primaryName}`}
+                className="block size-9 shrink-0 cursor-pointer rounded-full"
+                href={identity.primaryHref}
               >
                 <img
-                  alt={`${authorUsername} avatar`}
+                  alt={`${identity.primaryName} avatar`}
                   className="size-full rounded-full border border-border object-cover"
                   decoding="async"
-                  src={authorAvatar}
+                  src={identity.primaryAvatar}
                 />
               </Link>
               <div className="min-w-0 flex-1">
                 <p className="break-words text-sm leading-6">
                   <Link
-                    className="font-black text-espresso hover:text-primary"
-                    href={authorHref}
+                    className="cursor-pointer font-black text-espresso"
+                    href={identity.primaryHref}
                   >
-                    {authorUsername}
+                    {identity.primaryName}
                   </Link>{" "}
                   <span className="text-coffee-muted">{post.caption}</span>
                 </p>
@@ -633,7 +630,7 @@ export function PostCommentsModal({
             <div className="flex items-center gap-4 px-3 text-foreground">
               <Button
                 aria-label="Like post"
-                className="h-auto gap-1.5 px-0 py-0 text-sm font-bold hover:bg-transparent hover:text-accent"
+                className="h-auto cursor-pointer gap-1.5 px-0 py-0 text-sm font-bold hover:bg-transparent hover:text-primary"
                 onClick={() => onPostLikeClick(post)}
                 type="button"
                 variant="ghost"
@@ -646,7 +643,7 @@ export function PostCommentsModal({
               </Button>
               <Button
                 aria-label="Comment on post"
-                className="h-auto gap-1.5 px-0 py-0 text-sm font-bold hover:bg-transparent hover:text-primary"
+                className="h-auto cursor-pointer gap-1.5 px-0 py-0 text-sm font-bold hover:bg-transparent hover:text-primary"
                 type="button"
                 variant="ghost"
               >
@@ -655,7 +652,7 @@ export function PostCommentsModal({
               </Button>
               <Button
                 aria-label="Share post"
-                className="h-auto gap-1.5 px-0 py-0 text-sm font-bold hover:bg-transparent hover:text-primary"
+                className="h-auto cursor-pointer gap-1.5 px-0 py-0 text-sm font-bold hover:bg-transparent hover:text-primary"
                 type="button"
                 variant="ghost"
               >
@@ -664,13 +661,19 @@ export function PostCommentsModal({
               </Button>
               <Button
                 aria-label="Bookmark post"
-                className="ml-auto h-auto px-0 py-0 hover:bg-transparent hover:text-primary"
+                className="ml-auto h-auto cursor-pointer px-0 py-0 hover:bg-transparent hover:text-primary"
                 type="button"
                 variant="ghost"
               >
                 <BookmarkIcon className="size-7" strokeWidth={2.4} />
               </Button>
             </div>
+
+            {locationLabel ? (
+              <p className="mt-1 px-3 text-xs font-semibold text-muted">
+                {locationLabel}
+              </p>
+            ) : null}
 
             <p className="mt-1 px-3 text-xs font-semibold text-muted">
               {post.time}

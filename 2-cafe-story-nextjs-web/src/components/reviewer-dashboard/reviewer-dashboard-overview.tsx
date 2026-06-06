@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ReviewerBadgeProgress } from "@/features/reviewer-dashboard/components/reviewer-badge-progress";
-import { ReviewerLeaderboardPanel } from "@/features/reviewer-dashboard/components/reviewer-leaderboard-panel";
-import { ReviewerPayoutPanel } from "@/features/reviewer-dashboard/components/reviewer-payout-panel";
-import { ReviewerPerformanceChart } from "@/features/reviewer-dashboard/components/reviewer-performance-chart";
-import { ReviewerProfileSummary } from "@/features/reviewer-dashboard/components/reviewer-profile-summary";
-import { ReviewerRecentActivityPanel } from "@/features/reviewer-dashboard/components/reviewer-recent-activity-panel";
-import { ReviewerSegmentCard } from "@/features/reviewer-dashboard/components/reviewer-segment-card";
-import { ReviewerStatsCards } from "@/features/reviewer-dashboard/components/reviewer-stats-cards";
+import { ReviewerBadgeProgress } from "@/components/reviewer-dashboard/reviewer-badge-progress";
+import { ReviewerLeaderboardPanel } from "@/components/reviewer-dashboard/reviewer-leaderboard-panel";
+import { ReviewerPayoutPanel } from "@/components/reviewer-dashboard/reviewer-payout-panel";
+import { ReviewerPerformanceChart } from "@/components/reviewer-dashboard/reviewer-performance-chart";
+import { ReviewerProfileSummary } from "@/components/reviewer-dashboard/reviewer-profile-summary";
+import { ReviewerRecentActivityPanel } from "@/components/reviewer-dashboard/reviewer-recent-activity-panel";
+import { ReviewerSegmentCard } from "@/components/reviewer-dashboard/reviewer-segment-card";
+import { ReviewerStatsCards } from "@/components/reviewer-dashboard/reviewer-stats-cards";
 import {
   mockReviewerActivities,
   mockReviewerBadges,

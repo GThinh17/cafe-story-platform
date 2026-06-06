@@ -1,5 +1,5 @@
-import { ReviewerDashboardShell } from "@/features/reviewer-dashboard/components/reviewer-dashboard-shell";
-import { ReviewerEarningsDetail } from "@/features/reviewer-dashboard/components/reviewer-earnings-detail";
+import { ReviewerDashboardShell } from "@/components/reviewer-dashboard/reviewer-dashboard-shell";
+import { ReviewerEarningsDetail } from "@/components/reviewer-dashboard/reviewer-earnings-detail";
 
 export default function ReviewerEarningsRoute() {
   return (

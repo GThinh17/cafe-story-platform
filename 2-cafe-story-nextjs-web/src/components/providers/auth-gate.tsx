@@ -22,13 +22,19 @@ function getSafeNextPath(pathname: string) {
 }
 
 export function AuthGate({ children }: AuthGateProps) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const {
+    hasResolvedInitialAuth,
+    isAuthenticated,
+    isInitialLoading,
+  } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const isAuthPage = isAuthRoute(pathname);
+  const shouldWaitForInitialAuth =
+    !hasResolvedInitialAuth && isInitialLoading && !isAuthenticated;
 
   useEffect(() => {
-    if (isLoading) {
+    if (shouldWaitForInitialAuth) {
       return;
     }
 
@@ -48,9 +54,15 @@ export function AuthGate({ children }: AuthGateProps) {
     if (isAuthenticated && isAuthPage) {
       router.replace("/");
     }
-  }, [isAuthPage, isAuthenticated, isLoading, pathname, router]);
+  }, [
+    isAuthPage,
+    isAuthenticated,
+    pathname,
+    router,
+    shouldWaitForInitialAuth,
+  ]);
 
-  if (isLoading) {
+  if (shouldWaitForInitialAuth) {
     return isAuthPage ? children : null;
   }
 

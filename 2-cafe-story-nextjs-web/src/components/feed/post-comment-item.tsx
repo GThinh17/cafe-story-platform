@@ -123,12 +123,12 @@ export function PostCommentItem({
           ) : null}
           <div className="mt-2 flex flex-wrap items-center gap-4 text-xs font-semibold text-muted">
             {comment.time ? <span>{comment.time}</span> : null}
-            <button className="transition hover:text-primary" type="button">
+            <button className="cursor-pointer transition hover:text-primary" type="button">
               {formatCount(likeCount)} likes
             </button>
             {canReply ? (
               <button
-                className="transition hover:text-primary"
+                className="cursor-pointer transition hover:text-primary"
                 onClick={() =>
                   onReply({
                     author: comment.author,
@@ -144,7 +144,7 @@ export function PostCommentItem({
             ) : null}
             <button
               aria-label="More comment options"
-              className="transition hover:text-primary"
+              className="cursor-pointer transition hover:text-primary"
               type="button"
             >
               <MoreHorizontalIcon className="size-4" />
@@ -153,7 +153,7 @@ export function PostCommentItem({
         </div>
         <button
           aria-label="Like comment"
-          className="mt-0.5 shrink-0 text-coffee-muted transition hover:text-accent"
+          className="mt-0.5 shrink-0 cursor-pointer text-coffee-muted transition hover:text-primary"
           onClick={() => onLike(comment.id)}
           type="button"
         >

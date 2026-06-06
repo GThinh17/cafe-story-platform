@@ -13,7 +13,7 @@ type BfcacheRestoreOptions = {
 export function useBfcacheRestore(options: BfcacheRestoreOptions = {}) {
   const router = useRouter();
   const onRestoreRef = useRef(options.onRestore);
-  const refreshRouter = options.refreshRouter ?? true;
+  const refreshRouter = options.refreshRouter ?? false;
 
   useEffect(() => {
     onRestoreRef.current = options.onRestore;

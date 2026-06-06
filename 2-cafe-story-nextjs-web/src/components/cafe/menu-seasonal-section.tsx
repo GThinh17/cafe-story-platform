@@ -1,4 +1,4 @@
-import { MenuSectionTitle } from "@/features/cafes/components/menu-section-title";
+import { MenuSectionTitle } from "@/components/cafe/menu-section-title";
 import type { CafeMenuItem } from "@/types/cafe";
 
 type MenuSeasonalSectionProps = {

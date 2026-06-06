@@ -43,3 +43,10 @@ export function uploadAvatarToCloudinary(file: File) {
 export function uploadPostImageToCloudinary(file: File) {
   return uploadImageToCloudinary(file, "cafestory/posts", "post image");
 }
+
+export function uploadCafeImageToCloudinary(
+  file: File,
+  imageType: "avatar" | "cover",
+) {
+  return uploadImageToCloudinary(file, "cafestory/cafes", `cafe ${imageType}`);
+}

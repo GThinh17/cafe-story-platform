@@ -1,16 +1,29 @@
+"use client";
+
 import { InfoIcon, StarIcon } from "lucide-react";
+import { useState } from "react";
 import type { CafeMenu, CafeSummary } from "@/types/cafe";
-import { CafeActionButtons } from "@/features/cafes/components/cafe-action-buttons";
+import { CafeActionButtons } from "@/components/cafe/cafe-action-buttons";
+import { CafeMapModal } from "@/components/cafe/cafe-map-modal";
 import { CafeRecentReviews } from "@/components/review/cafe-recent-reviews";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import type { CafeReviewPost } from "@/types/review";
+import type { FeedPost } from "@/types/feed";
 
 type CafePageProps = {
   cafe: CafeSummary;
+  cafePosts: FeedPost[];
   menu: CafeMenu;
-  recentReviews?: CafeReviewPost[];
+  hasMorePosts?: boolean;
+  isPostsLoading?: boolean;
+  onCafeLikeStateChange?: (nextState: {
+    isLiked: boolean;
+    likeCount: number;
+  }) => void;
+  onLoadMorePosts?: () => void;
+  postsErrorMessage?: string | null;
 };
 
 const defaultOpeningHours = [
@@ -19,62 +32,86 @@ const defaultOpeningHours = [
   { day: "Sunday", time: "8:00 AM - 5:00 PM" },
 ];
 
-export function CafePage({ cafe, menu, recentReviews = [] }: CafePageProps) {
+export function CafePage({
+  cafe,
+  cafePosts,
+  hasMorePosts = false,
+  isPostsLoading = false,
+  menu,
+  onCafeLikeStateChange,
+  onLoadMorePosts,
+  postsErrorMessage,
+}: CafePageProps) {
+  const [isMapOpen, setIsMapOpen] = useState(false);
   const openingHours = cafe.openingHours ?? defaultOpeningHours;
-  const coverImage = cafe.coverImage ?? cafe.gallery[0] ?? cafe.image;
+  const avatarImage = cafe.avatarImage ?? cafe.image ?? cafe.coverImage;
+  const coverImage = cafe.coverImage ?? cafe.gallery[0] ?? avatarImage;
   const coverImageAlt = cafe.coverImageAlt ?? `${cafe.name} cover image`;
+  const avatarImageAlt = cafe.avatarImageAlt ?? `${cafe.name} avatar`;
   const communityPhotos =
     cafe.communityPhotos ??
-    [cafe.image, ...cafe.gallery].map((image) => ({
-      image,
-      alt: `${cafe.name} community photo`,
-    }));
+    Array.from(new Set([coverImage, avatarImage, ...cafe.gallery]))
+      .filter((image): image is string => Boolean(image))
+      .map((image) => ({
+        image,
+        alt: `${cafe.name} community photo`,
+      }));
 
   return (
-    <article className="w-full space-y-10 bg-background text-espresso">
-      <section className="space-y-8 pb-10 pt-2">
-        <div className="group relative min-h-[320px] overflow-hidden rounded-md border border-line-soft bg-surface-muted shadow-sm sm:min-h-[420px]">
-          <img
-            alt={coverImageAlt}
-            className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
-            decoding="async"
-            fetchPriority="high"
-            src={coverImage}
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-espresso/75 via-espresso/20 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 p-6 text-white sm:p-10">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-white/75">
-              CafeStory Cover
-            </p>
-            <h2 className="mt-2 max-w-2xl font-serif text-4xl font-medium italic leading-tight sm:text-6xl">
-              {cafe.name}
-            </h2>
+    <article className="w-full space-y-8 bg-background text-espresso">
+      <section className="space-y-8 pb-8 -mt-8 pt-0">
+        <div className="relative">
+          <div className="relative min-h-[240px] overflow-hidden rounded-md border border-line-soft bg-surface-muted shadow-sm sm:min-h-[360px]">
+            {coverImage ? (
+              <img
+                alt={coverImageAlt}
+                className="absolute inset-0 h-full w-full object-cover"
+                decoding="async"
+                fetchPriority="high"
+                src={coverImage}
+              />
+            ) : null}
           </div>
         </div>
 
         <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-          <div className="min-w-0 space-y-3">
-            <h1 className="font-serif text-4xl font-medium leading-tight text-espresso">
-              {cafe.name}
-            </h1>
+          <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
+            <img
+              alt={avatarImageAlt}
+              className="size-36 shrink-0 rounded-full border-4 border-background bg-surface object-cover shadow-sm ring-1 ring-line-soft sm:size-48"
+              decoding="async"
+              src={avatarImage}
+            />
+            <div className="min-w-0 space-y-3">
+              <h1 className="font-serif text-4xl font-medium leading-tight text-espresso">
+                {cafe.name}
+              </h1>
 
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-coffee-muted">
-              <span className="flex items-center gap-1 font-black text-espresso">
-                <StarIcon data-icon="inline-start" />
-                {cafe.rating}
-              </span>
-              <span>{cafe.type}</span>
-              <span>
-                {cafe.status ?? "Open"} - {cafe.hours}
-              </span>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-coffee-muted">
+                <span className="flex items-center gap-1 font-black text-espresso">
+                  <StarIcon data-icon="inline-start" />
+                  {cafe.rating}
+                </span>
+                <span>{cafe.type}</span>
+                <span>
+                  {cafe.status ?? "Open"} - {cafe.hours}
+                </span>
+              </div>
+
+              <p className="text-sm leading-6 text-coffee-muted">
+                {cafe.address}
+              </p>
             </div>
-
-            <p className="text-sm leading-6 text-coffee-muted">
-              {cafe.address}
-            </p>
           </div>
 
-          <CafeActionButtons cafeName={cafe.name} menu={menu} />
+          <CafeActionButtons
+            cafeId={cafe.id}
+            cafeName={cafe.name}
+            isLiked={cafe.isLiked}
+            likeCount={cafe.likeCount}
+            menu={menu}
+            onLikeStateChange={onCafeLikeStateChange}
+          />
         </div>
         <Separator className="mt-10" />
       </section>
@@ -132,7 +169,47 @@ export function CafePage({ cafe, menu, recentReviews = [] }: CafePageProps) {
         </Card>
       </section>
 
-      <CafeRecentReviews reviews={recentReviews} />
+      <section className="space-y-6">
+        {isPostsLoading && cafePosts.length === 0 ? (
+          <div className="rounded-md border border-line-soft bg-surface-muted px-4 py-3 text-sm font-semibold text-muted">
+            Loading cafe posts...
+          </div>
+        ) : (
+          <CafeRecentReviews
+            errorMessage={
+              cafePosts.length === 0 ? postsErrorMessage ?? undefined : undefined
+            }
+            onMapViewClick={() => setIsMapOpen(true)}
+            posts={cafePosts}
+          />
+        )}
+
+        {postsErrorMessage && cafePosts.length > 0 ? (
+          <div className="rounded-md border border-line-soft bg-surface-muted px-4 py-3 text-sm font-semibold text-muted">
+            {postsErrorMessage}
+          </div>
+        ) : null}
+
+        {isPostsLoading && cafePosts.length > 0 ? (
+          <p className="py-2 text-center text-sm font-semibold text-muted">
+            Loading cafe posts...
+          </p>
+        ) : null}
+
+        {hasMorePosts ? (
+          <div className="flex justify-center">
+            <Button
+              className="cursor-pointer rounded-sm border-line-soft px-6 text-sm font-black"
+              disabled={isPostsLoading}
+              onClick={onLoadMorePosts}
+              type="button"
+              variant="outline"
+            >
+              Load more posts
+            </Button>
+          </div>
+        ) : null}
+      </section>
 
       <section className="space-y-6">
         <div className="flex items-center justify-between gap-4">
@@ -161,6 +238,17 @@ export function CafePage({ cafe, menu, recentReviews = [] }: CafePageProps) {
           ))}
         </div>
       </section>
+
+      <CafeMapModal
+        cafeName={cafe.name}
+        onOpenChange={setIsMapOpen}
+        open={isMapOpen}
+        regionArea={cafe.regionArea}
+        regionCity={cafe.regionCity}
+        regionProvince={cafe.regionProvince}
+        regionStreet={cafe.regionStreet}
+        regionWard={cafe.regionWard}
+      />
     </article>
   );
 }

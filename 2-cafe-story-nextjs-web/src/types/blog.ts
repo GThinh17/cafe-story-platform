@@ -2,6 +2,8 @@ export type TrendWindowType = "HOUR_24" | "DAY_7" | "MONTH_1";
 
 export type BlogPostStatus = "PUBLISHED" | "DRAFT" | "ARCHIVED" | string;
 
+export type BlogDisplayAuthorType = "USER" | "CAFE_PAGE";
+
 export type BlogFeedResponse = {
   blogId: string;
   contentPreview: string | null;
@@ -14,11 +16,15 @@ export type BlogFeedResponse = {
   authorUserName: string | null;
   authorUserFullName: string | null;
   authorAvatar: string | null;
+  authorUserAvatar?: string | null;
   pageId: string | null;
   pageName: string | null;
   pageAddress: string | null;
   pageAvatarUrl: string | null;
   pageCoverUrl: string | null;
+  displayAuthorType?: BlogDisplayAuthorType | null;
+  displayName?: string | null;
+  displayAvatarUrl?: string | null;
   regionId: string | null;
   regionCity: string | null;
   regionProvince: string | null;
@@ -52,6 +58,7 @@ export type BlogResponse = {
   ratingScore?: number | null;
   ratingCount?: number | null;
   saveCount?: number | null;
+  displayAuthorType?: BlogDisplayAuthorType | null;
   displayName?: string | null;
   displayAvatarUrl?: string | null;
   createdAt: string | null;

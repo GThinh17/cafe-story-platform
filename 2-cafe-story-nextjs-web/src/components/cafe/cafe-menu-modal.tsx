@@ -1,12 +1,12 @@
 "use client";
 
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { CafeMenuModalHeader } from "@/features/cafes/components/cafe-menu-modal-header";
+import { CafeMenuModalHeader } from "@/components/cafe/cafe-menu-modal-header";
 import { Dialog, DialogOverlay, DialogPortal } from "@/components/ui/dialog";
-import { MenuClassicSection } from "@/features/cafes/components/menu-classic-section";
-import { MenuPastrySection } from "@/features/cafes/components/menu-pastry-section";
-import { MenuSeasonalSection } from "@/features/cafes/components/menu-seasonal-section";
-import { MenuSignatureSection } from "@/features/cafes/components/menu-signature-section";
+import { MenuClassicSection } from "@/components/cafe/menu-classic-section";
+import { MenuPastrySection } from "@/components/cafe/menu-pastry-section";
+import { MenuSeasonalSection } from "@/components/cafe/menu-seasonal-section";
+import { MenuSignatureSection } from "@/components/cafe/menu-signature-section";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import type { CafeMenu } from "@/types/cafe";

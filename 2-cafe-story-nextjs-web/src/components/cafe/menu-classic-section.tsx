@@ -1,5 +1,5 @@
-import { MenuItemCard } from "@/features/cafes/components/menu-item-card";
-import { MenuSectionTitle } from "@/features/cafes/components/menu-section-title";
+import { MenuItemCard } from "@/components/cafe/menu-item-card";
+import { MenuSectionTitle } from "@/components/cafe/menu-section-title";
 import type { CafeMenuItem } from "@/types/cafe";
 
 type MenuClassicSectionProps = {

@@ -70,7 +70,7 @@ function formatLocation(item: BlogFeedResponse) {
     item.regionProvince,
   ]
     .filter(Boolean)
-    .join(", ") || "Cafe Story";
+    .join(", ");
 }
 
 function firstNonEmpty(values: Array<string | null | undefined>) {
@@ -101,10 +101,16 @@ function mapImageUrlsToMedia(
 export function mapBlogFeedToFeedPosts(feed: BlogFeedResponse[]): FeedPost[] {
   return feed.map((item, index) => {
     const authorUsername = firstNonEmpty([item.authorUserName]);
+    const authorAvatar =
+      firstNonEmpty([item.authorAvatar, item.authorUserAvatar]) ??
+      "/images/default-avatar.svg";
+    const pageName = firstNonEmpty([item.pageName]);
+    const pageAvatarUrl = firstNonEmpty([item.pageAvatarUrl]);
+    const locationLabel = formatLocation(item);
     const media = mapImageUrlsToMedia(
       item.imageUrls,
       item.blogId,
-      authorUsername,
+      firstNonEmpty([item.displayName, pageName, authorUsername]),
     );
     const image = firstNonEmpty([
       ...media.map((mediaItem) => mediaItem.src),
@@ -118,17 +124,25 @@ export function mapBlogFeedToFeedPosts(feed: BlogFeedResponse[]): FeedPost[] {
       author: firstNonEmpty([item.authorUserName, item.authorUserFullName]) ?? "cafestory_user",
       authorUserId: item.authorUserId,
       authorUsername,
-      authorAvatar: firstNonEmpty([item.authorAvatar]) ?? "/images/default-avatar.svg",
-      cafe: firstNonEmpty([item.pageName]) ?? "Cafe Story",
+      authorAvatar,
+      cafe: pageName ?? "",
       caption: item.contentPreview?.trim() || "A new Cafe Story post is ready.",
       commentCount: item.commentCount ?? 0,
       comments: formatCount(item.commentCount),
+      displayAuthorType: item.displayAuthorType,
+      displayAvatarUrl: firstNonEmpty([item.displayAvatarUrl]),
+      displayName: firstNonEmpty([item.displayName]),
       image: image ?? fallbackImages[index % fallbackImages.length],
       likeCount: item.likeCount ?? 0,
       likes: formatCount(item.likeCount),
-      location: formatLocation(item),
+      location: locationLabel,
+      locationLabel,
       media,
+      pageAvatarUrl,
+      pageId: item.pageId,
+      pageName,
       rating: item.rankPosition ? `#${item.rankPosition}` : "Feed",
+      shares: formatCount(item.shareCount),
       tags: buildTags(item),
       time: formatRelativeTime(item.createdAt),
     };
@@ -165,16 +179,22 @@ export function mapBlogResponsesToFeedPosts(blogs: BlogResponse[]): FeedPost[] {
           item.authorUserAvatar,
           item.pageAvatarUrl,
         ]) ?? "/images/default-avatar.svg",
-      cafe: firstNonEmpty([item.pageName]) ?? "Cafe Story",
+      cafe: firstNonEmpty([item.pageName]) ?? "",
       caption: item.content?.trim() || "A new Cafe Story post is ready.",
       commentCount: item.commentCount ?? 0,
       comments: formatCount(item.commentCount),
+      displayAuthorType: item.displayAuthorType,
+      displayAvatarUrl: firstNonEmpty([item.displayAvatarUrl]),
+      displayName: firstNonEmpty([item.displayName]),
       image: image ?? fallbackImages[index % fallbackImages.length],
       isLiked: item.isLike ?? false,
       likeCount: item.likeCount ?? 0,
       likes: formatCount(item.likeCount),
-      location: "Cafe Story",
+      location: "",
       media,
+      pageAvatarUrl: firstNonEmpty([item.pageAvatarUrl]),
+      pageId: item.pageId,
+      pageName: firstNonEmpty([item.pageName]),
       rating,
       shares: formatCount(item.shareCount),
       tags: [

@@ -37,6 +37,9 @@ export type AuthUser = {
 export type AuthState = {
   user: AuthUser | null;
   isLoading: boolean;
+  isInitialLoading: boolean;
+  hasResolvedInitialAuth: boolean;
+  isRefreshingAuth: boolean;
   isAuthenticated: boolean;
   error: string | null;
   refetch: () => Promise<void>;

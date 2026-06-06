@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { ReviewerPayoutPanel } from "@/features/reviewer-dashboard/components/reviewer-payout-panel";
+import { ReviewerPayoutPanel } from "@/components/reviewer-dashboard/reviewer-payout-panel";
 import { mockReviewerPayouts } from "@/features/reviewer-dashboard/reviewer-dashboard.mock";
 
 const vndFormatter = new Intl.NumberFormat("vi-VN");

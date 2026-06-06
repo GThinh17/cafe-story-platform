@@ -1,64 +1,165 @@
+"use client";
+
+import {
+  BookmarkIcon,
+  HeartIcon,
+  MessageCircleIcon,
+  Repeat2Icon,
+} from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import type { CafeReviewPost } from "@/types/review";
+import {
+  getFeedPostMediaList,
+} from "@/components/feed/post-media-carousel";
+import { getPostIdentity } from "@/components/feed/post-identity";
+import { PostCommentsModal } from "@/components/feed/post-comments-modal";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { likeBlog, unlikeBlog } from "@/lib/api/blogs";
+import { cn } from "@/lib/utils";
+import type { FeedPost } from "@/types/feed";
 
 type CafeRecentReviewsProps = {
-  reviews: CafeReviewPost[];
+  emptyDescription?: string;
+  emptyTitle?: string;
+  errorMessage?: string | null;
+  onMapViewClick: () => void;
+  posts: FeedPost[];
 };
 
-function ReviewActionIcon({ name }: { name: "heart" | "comment" | "save" }) {
-  const paths: Record<typeof name, string[]> = {
-    heart: [
-      "M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z",
-    ],
-    comment: [
-      "M4 5.5h16v11H8l-4 4v-15Z",
-      "M8 9h8",
-      "M8 13h5",
-    ],
-    save: ["M6 4h12v17l-6-3-6 3V4Z"],
-  };
+const postActions = [
+  {
+    label: "Like",
+    icon: HeartIcon,
+  },
+  {
+    label: "Comment",
+    icon: MessageCircleIcon,
+  },
+  {
+    label: "Share",
+    icon: Repeat2Icon,
+  },
+];
 
-  return (
-    <svg
-      aria-hidden="true"
-      className="h-5 w-5"
-      fill="none"
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="1.6"
-      viewBox="0 0 24 24"
-    >
-      {paths[name].map((path) => (
-        <path d={path} key={path} />
-      ))}
-    </svg>
-  );
+function formatCount(value: number) {
+  return new Intl.NumberFormat("en", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
 }
 
-export function CafeRecentReviews({ reviews }: CafeRecentReviewsProps) {
-  if (reviews.length === 0) {
-    return null;
-  }
+function formatPostCommentCount(post: FeedPost) {
+  return typeof post.commentCount === "number"
+    ? formatCount(post.commentCount)
+    : Array.isArray(post.comments)
+      ? formatCount(post.comments.length)
+      : post.comments;
+}
+
+function formatPostLikeCount(post: FeedPost) {
+  return typeof post.likeCount === "number"
+    ? formatCount(post.likeCount)
+    : post.likes;
+}
+
+function getPostImage(post: FeedPost) {
+  return getFeedPostMediaList(post)[0]?.src ?? post.image;
+}
+
+export function CafeRecentReviews({
+  emptyDescription = "Cafe posts will appear here once this cafe has published stories.",
+  emptyTitle = "No cafe posts yet",
+  errorMessage,
+  onMapViewClick,
+  posts,
+}: CafeRecentReviewsProps) {
+  const { user } = useCurrentUser();
+  const [gridPosts, setGridPosts] = useState(posts);
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const selectedPost = useMemo(
+    () => gridPosts.find((post) => post.id === selectedPostId) ?? null,
+    [gridPosts, selectedPostId],
+  );
+
+  const updatePost = useCallback(
+    (postId: string, updater: (post: FeedPost) => FeedPost) => {
+      setGridPosts((currentPosts) =>
+        currentPosts.map((post) => (post.id === postId ? updater(post) : post)),
+      );
+    },
+    [],
+  );
+
+  const syncPostCounts = useCallback(
+    (postId: string, patch: Pick<FeedPost, "commentCount" | "comments">) => {
+      updatePost(postId, (post) => ({
+        ...post,
+        ...patch,
+      }));
+    },
+    [updatePost],
+  );
+
+  const handleLikeClick = useCallback(
+    async (post: FeedPost) => {
+      if (!post.id) {
+        return;
+      }
+
+      const wasLiked = Boolean(post.isLiked);
+      const previousLikeCount =
+        typeof post.likeCount === "number" ? post.likeCount : 0;
+      const nextLikeCount = Math.max(0, previousLikeCount + (wasLiked ? -1 : 1));
+
+      updatePost(post.id, (currentPost) => ({
+        ...currentPost,
+        isLiked: !wasLiked,
+        likeCount: nextLikeCount,
+        likes: formatCount(nextLikeCount),
+      }));
+
+      try {
+        if (wasLiked) {
+          await unlikeBlog(post.id);
+        } else {
+          await likeBlog(post.id);
+        }
+      } catch {
+        updatePost(post.id, (currentPost) => ({
+          ...currentPost,
+          isLiked: wasLiked,
+          likeCount: previousLikeCount,
+          likes: formatCount(previousLikeCount),
+        }));
+      }
+    },
+    [updatePost],
+  );
+
+  useEffect(() => {
+    setGridPosts(posts);
+  }, [posts]);
 
   return (
     <section className="flex flex-col gap-6">
       <div className="flex items-end justify-between gap-4">
         <h2 className="font-serif text-2xl font-medium text-espresso">
-          Recent Reviews
+          Recent Posts
         </h2>
         <div className="flex items-center gap-5 text-xs font-medium text-coffee-muted">
           <Button
-            className="h-auto border-b border-espresso p-0 pb-1 text-xs font-medium text-espresso"
+            className="h-auto cursor-pointer bg-transparent p-0 text-xs font-black text-primary hover:bg-transparent hover:text-primary"
             type="button"
             variant="ghost"
           >
             Feed
           </Button>
           <Button
-            className="h-auto p-0 pb-1 text-xs font-medium text-coffee-muted hover:text-espresso"
+            className="h-auto cursor-pointer bg-transparent p-0 text-xs font-black text-coffee-muted hover:bg-transparent hover:text-primary"
+            onClick={onMapViewClick}
             type="button"
             variant="ghost"
           >
@@ -67,71 +168,148 @@ export function CafeRecentReviews({ reviews }: CafeRecentReviewsProps) {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {reviews.map((review) => (
-          <Card
-            className="overflow-hidden border-line-soft bg-surface shadow-none"
-            key={review.id}
-          >
-            <div className="relative">
-              <img
-                alt={`${review.cafe} review`}
-                className="aspect-square w-full object-cover"
-                decoding="async"
-                loading="lazy"
-                src={review.image}
-              />
-              <Badge className="absolute right-3 top-3 rounded-sm bg-surface px-2 py-1 text-xs font-black text-espresso shadow-sm">
-                * {review.rating}
-              </Badge>
-            </div>
+      {errorMessage && gridPosts.length === 0 ? (
+        <div className="rounded-md border border-line-soft bg-surface-muted px-5 py-6 text-sm font-semibold text-muted">
+          {errorMessage}
+        </div>
+      ) : gridPosts.length === 0 ? (
+        <div className="rounded-md border border-line-soft bg-surface-muted px-5 py-6">
+          <p className="text-sm font-black text-espresso">{emptyTitle}</p>
+          <p className="mt-2 text-sm leading-6 text-coffee-muted">
+            {emptyDescription}
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-3">
+          {gridPosts.map((post) => {
+            const identity = getPostIdentity(post);
+            const image = getPostImage(post);
+            const commentCount = formatPostCommentCount(post);
+            const actionCounts: Record<string, string> = {
+              Comment: commentCount,
+              Like: formatPostLikeCount(post),
+              Share: post.shares ?? "0",
+            };
 
-            <CardContent className="flex flex-col gap-4 p-4">
-              <div className="flex flex-col gap-1">
-                <h3 className="font-serif text-base font-medium text-espresso">
-                  {review.cafe}
-                </h3>
-                <p className="text-xs font-medium uppercase tracking-[0.03em] text-coffee-muted">
-                  {review.neighborhood}
-                </p>
-              </div>
-
-              <p className="h-12 overflow-hidden text-sm italic leading-6 text-coffee-muted">
-                "{review.excerpt}"
-              </p>
-
-              <div className="flex items-center justify-between pt-1 text-espresso">
-                <div className="flex items-center gap-4">
-                  <Button
-                    aria-label="Like review"
-                    className="h-auto p-0 text-espresso"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <ReviewActionIcon name="heart" />
-                  </Button>
-                  <Button
-                    aria-label="Comment on review"
-                    className="h-auto p-0 text-espresso"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <ReviewActionIcon name="comment" />
-                  </Button>
+            return (
+              <Card
+                className="overflow-hidden border-line-soft bg-surface shadow-none"
+                key={post.id ?? post.cafe}
+              >
+                <div className="relative">
+                  <img
+                    alt={`${identity.primaryName} post`}
+                    className="aspect-square w-full object-cover"
+                    decoding="async"
+                    loading="lazy"
+                    src={image}
+                  />
+                  <Badge className="absolute right-3 top-3 rounded-sm bg-surface px-2 py-1 text-xs font-black text-espresso shadow-sm">
+                    {post.rating}
+                  </Badge>
                 </div>
-                <Button
-                  aria-label="Save review"
-                  className="h-auto p-0 text-espresso"
-                  type="button"
-                  variant="ghost"
-                >
-                  <ReviewActionIcon name="save" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+
+                <CardContent className="flex flex-col gap-4 p-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Link
+                      aria-label={`View ${identity.primaryName}`}
+                      className="block size-10 shrink-0 cursor-pointer overflow-hidden rounded-full border border-border/40 bg-surface-muted"
+                      href={identity.primaryHref}
+                    >
+                      <img
+                        alt={`${identity.primaryName} avatar`}
+                        className="size-full object-cover"
+                        decoding="async"
+                        loading="lazy"
+                        src={identity.primaryAvatar}
+                      />
+                    </Link>
+                    <div className="min-w-0">
+                      <Link
+                        className="block cursor-pointer truncate font-serif text-base font-medium text-espresso hover:text-primary"
+                        href={identity.primaryHref}
+                      >
+                        {identity.primaryName}
+                      </Link>
+                      <p className="truncate text-xs font-medium uppercase tracking-[0.03em] text-coffee-muted">
+                        {post.locationLabel || post.location || post.time}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="h-12 overflow-hidden text-sm leading-6 text-coffee-muted">
+                    {post.caption}
+                  </p>
+
+                  <div className="flex items-center justify-between pt-1 text-espresso">
+                    <div className="flex items-center gap-4">
+                      {postActions.map(({ icon: Icon, label }) => (
+                        <Button
+                          aria-label={label}
+                          className="h-auto cursor-pointer gap-1 px-0 py-0 text-espresso hover:bg-transparent hover:text-primary"
+                          key={label}
+                          onClick={
+                            label === "Comment"
+                              ? () => {
+                                  if (post.id) {
+                                    setSelectedPostId(post.id);
+                                  }
+                                }
+                              : label === "Like"
+                                ? () => void handleLikeClick(post)
+                                : undefined
+                          }
+                          type="button"
+                          variant="ghost"
+                        >
+                          <Icon
+                            className={cn(
+                              "size-5",
+                              label === "Like" &&
+                                post.isLiked &&
+                                "fill-primary text-primary",
+                            )}
+                            strokeWidth={2.2}
+                          />
+                          <span className="text-xs font-black">
+                            {actionCounts[label]}
+                          </span>
+                        </Button>
+                      ))}
+                    </div>
+                    <Button
+                      aria-label="Bookmark"
+                      className="h-auto cursor-pointer px-0 py-0 text-espresso hover:bg-transparent hover:text-primary"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <BookmarkIcon className="size-5" strokeWidth={2.2} />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {errorMessage && gridPosts.length > 0 ? (
+        <div className="rounded-md border border-line-soft bg-surface-muted px-4 py-3 text-sm font-semibold text-muted">
+          {errorMessage}
+        </div>
+      ) : null}
+
+      <PostCommentsModal
+        currentUser={user}
+        onCommentCountChange={syncPostCounts}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedPostId(null);
+          }
+        }}
+        onPostLikeClick={handleLikeClick}
+        post={selectedPost}
+      />
     </section>
   );
 }

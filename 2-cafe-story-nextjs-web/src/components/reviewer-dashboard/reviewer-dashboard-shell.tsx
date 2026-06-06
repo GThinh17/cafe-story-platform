@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ReviewerDashboardSidebar } from "@/features/reviewer-dashboard/components/reviewer-dashboard-sidebar";
+import { ReviewerDashboardSidebar } from "@/components/reviewer-dashboard/reviewer-dashboard-sidebar";
 
 import { mockReviewerProfile } from "@/features/reviewer-dashboard/reviewer-dashboard.mock";
 

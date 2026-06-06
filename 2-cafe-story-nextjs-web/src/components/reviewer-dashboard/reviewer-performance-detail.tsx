@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ReviewerPerformanceChart } from "@/features/reviewer-dashboard/components/reviewer-performance-chart";
-import { ReviewerStatsCards } from "@/features/reviewer-dashboard/components/reviewer-stats-cards";
+import { ReviewerPerformanceChart } from "@/components/reviewer-dashboard/reviewer-performance-chart";
+import { ReviewerStatsCards } from "@/components/reviewer-dashboard/reviewer-stats-cards";
 import {
   mockReviewerPerformance,
   mockReviewerStatsByPeriod,

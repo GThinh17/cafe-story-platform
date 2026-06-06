@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { ReviewerLeaderboardPanel } from "@/features/reviewer-dashboard/components/reviewer-leaderboard-panel";
+import { ReviewerLeaderboardPanel } from "@/components/reviewer-dashboard/reviewer-leaderboard-panel";
 import {
   mockReviewerProfile,
   mockReviewerRanking,

@@ -22,6 +22,7 @@ import { createBlog } from "@/lib/api/blogs";
 import { uploadPostImageToCloudinary } from "@/lib/api/cloudinary";
 import type { BlogResponse } from "@/types/blog";
 import type { ReviewComposerModel, ReviewDraftHint } from "@/types/review";
+import { Input } from "../ui/input";
 
 type SelectedImage = {
   id: string;
@@ -230,7 +231,7 @@ export function CreatePostModal({
                 </Button>
               </div>
 
-              <input
+              <Input
                 accept="image/*"
                 className="hidden"
                 multiple
