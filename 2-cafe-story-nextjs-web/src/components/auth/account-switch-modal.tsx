@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { X } from "lucide-react";
 import { logout } from "@/lib/api/auth";
 import {
   getUserAvatarImage,
@@ -11,6 +12,15 @@ import {
 } from "@/lib/avatar";
 import type { AuthUser } from "@/types/auth";
 import { AvatarImage } from "@/components/ui/avatar-image";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useAuth } from "@/components/providers/auth-provider";
 
 type AccountSwitchModalProps = {
   isOpen: boolean;
@@ -24,14 +34,11 @@ export function AccountSwitchModal({
   user,
 }: AccountSwitchModalProps) {
   const router = useRouter();
+  const { setUser } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const displayName = getUserDisplayName(user);
   const handle = getUserHandle(user);
   const email = getUserEmail(user);
-
-  if (!isOpen) {
-    return null;
-  }
 
   async function handleLogout() {
     setIsLoggingOut(true);
@@ -39,43 +46,35 @@ export function AccountSwitchModal({
     try {
       await logout();
     } finally {
+      setUser?.(null);
       router.replace("/login");
       router.refresh();
     }
   }
 
   return (
-    <div
-      aria-labelledby="account-switch-title"
-      aria-modal="true"
-      className="fixed inset-0 z-50 grid place-items-center bg-black/35 px-4"
-      role="dialog"
-    >
-      <button
-        aria-label="Close account switcher"
-        className="absolute inset-0 cursor-default"
-        onClick={onClose}
-        type="button"
-      />
-      <section className="relative w-full max-w-[360px] rounded-lg border border-border bg-surface p-5 shadow-2xl">
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="w-[min(360px,calc(100vw-32px))] p-5">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p
-              className="text-lg font-black text-foreground"
-              id="account-switch-title"
-            >
+            <DialogTitle className="text-lg font-black text-foreground">
               Account
-            </p>
-            <p className="mt-1 text-sm text-muted">Cafe Story session</p>
+            </DialogTitle>
+            <DialogDescription className="mt-1">
+              Cafe Story session
+            </DialogDescription>
           </div>
-          <button
-            aria-label="Close"
-            className="grid h-8 w-8 place-items-center rounded-full text-xl leading-none text-muted transition hover:bg-surface-muted hover:text-foreground"
-            onClick={onClose}
-            type="button"
-          >
-            x
-          </button>
+          <DialogClose asChild>
+            <Button
+              aria-label="Close"
+              className="text-muted hover:text-foreground"
+              size="icon-sm"
+              type="button"
+              variant="ghost"
+            >
+              <X aria-hidden="true" />
+            </Button>
+          </DialogClose>
         </div>
 
         <div className="mt-5 flex items-center gap-3 rounded-md bg-surface-muted p-3">
@@ -95,15 +94,16 @@ export function AccountSwitchModal({
           </div>
         </div>
 
-        <button
-          className="mt-5 h-11 w-full rounded-md bg-espresso px-4 text-sm font-black text-white transition hover:bg-primary-strong disabled:cursor-not-allowed disabled:opacity-70"
+        <Button
+          className="mt-5 w-full font-black"
           disabled={isLoggingOut}
           onClick={handleLogout}
+          size="lg"
           type="button"
         >
           {isLoggingOut ? "Signing out..." : "Logout"}
-        </button>
-      </section>
-    </div>
+        </Button>
+      </DialogContent>
+    </Dialog>
   );
 }

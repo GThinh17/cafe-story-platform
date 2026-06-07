@@ -1,5 +1,5 @@
-import { ReviewerBadgesDetail } from "@/features/reviewer-dashboard/components/reviewer-badges-detail";
-import { ReviewerDashboardShell } from "@/features/reviewer-dashboard/components/reviewer-dashboard-shell";
+import { ReviewerBadgesDetail } from "@/components/reviewer-dashboard/reviewer-badges-detail";
+import { ReviewerDashboardShell } from "@/components/reviewer-dashboard/reviewer-dashboard-shell";
 
 export default function ReviewerBadgesRoute() {
   return (

@@ -1,5 +1,5 @@
-import { ReviewerDashboardShell } from "@/features/reviewer-dashboard/components/reviewer-dashboard-shell";
-import { ReviewerRankingDetail } from "@/features/reviewer-dashboard/components/reviewer-ranking-detail";
+import { ReviewerDashboardShell } from "@/components/reviewer-dashboard/reviewer-dashboard-shell";
+import { ReviewerRankingDetail } from "@/components/reviewer-dashboard/reviewer-ranking-detail";
 
 export default function ReviewerRankingRoute() {
   return (

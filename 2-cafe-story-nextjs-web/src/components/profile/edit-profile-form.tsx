@@ -9,6 +9,7 @@ import {
   type FormEvent,
 } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Camera, ChevronLeft } from "lucide-react";
 import { AvatarImage } from "@/components/ui/avatar-image";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -28,6 +29,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { uploadAvatarToCloudinary } from "@/lib/api/cloudinary";
+import { ApiError } from "@/lib/api/client";
+import { updateMe, updateMeRegion } from "@/lib/api/users";
 import { DEFAULT_AVATAR_IMAGE } from "@/lib/avatar";
 
 type FormStatus = {
@@ -59,15 +64,38 @@ const emptyStatus: FormStatus = {
   success: null,
 };
 
+const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
+
 function getCityName(province: string) {
   return province
     .replace(/^Thành phố\s+/i, "")
     .replace(/^Tỉnh\s+/i, "")
+    .replace(/^Th\u00e0nh ph\u1ed1\s+/i, "")
+    .replace(/^T\u1ec9nh\s+/i, "")
     .trim();
 }
 
-export function EditProfileForm() {
+function getSubmitErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof ApiError || error instanceof Error) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
+type EditProfileFormProps = {
+  routeUsername?: string;
+};
+
+function normalizeUsername(username: string | null | undefined) {
+  return username?.trim().toLowerCase() ?? "";
+}
+
+export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
+  const router = useRouter();
+  const { user, isLoading: isUserLoading, refetch } = useCurrentUser();
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
   const [selectedAvatarName, setSelectedAvatarName] = useState("");
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [basicInfo, setBasicInfo] = useState({
@@ -100,6 +128,62 @@ export function EditProfileForm() {
       ),
     [provinceOptions, region.provinceId],
   );
+  const profileHref = user?.userName ? `/${user.userName}` : "#";
+  const normalizedRouteUsername = normalizeUsername(routeUsername);
+  const normalizedCurrentUsername = normalizeUsername(user?.userName);
+  const isCurrentUserUnavailable = !isUserLoading && !user;
+  const isRouteMismatch = Boolean(
+    !isUserLoading &&
+      normalizedRouteUsername &&
+      normalizedCurrentUsername &&
+      normalizedRouteUsername !== normalizedCurrentUsername,
+  );
+
+  useEffect(() => {
+    if (isCurrentUserUnavailable) {
+      router.replace("/login");
+      return;
+    }
+
+    if (!isRouteMismatch || !user?.userName) {
+      return;
+    }
+
+    router.replace(`/${user.userName}/edit`);
+  }, [isCurrentUserUnavailable, isRouteMismatch, router, user?.userName]);
+
+  useEffect(() => {
+    if (isUserLoading || !user) {
+      return;
+    }
+
+    setBasicInfo({
+      userFullName: user.userFullName ?? "",
+      userPhone: user.userPhone === null ? "" : String(user.userPhone),
+    });
+    setAvatarUrl(user.userAvatar?.trim() ?? "");
+    setSelectedAvatarFile(null);
+    setSelectedAvatarName("");
+  }, [isUserLoading, user]);
+
+  useEffect(() => {
+    if (isUserLoading || !user) {
+      return;
+    }
+
+    const provinceName = user.regionProvince ?? "";
+    const matchedProvince = provinceOptions.find(
+      (province) => province.name === provinceName,
+    );
+
+    setRegion({
+      provinceId: matchedProvince?.idProvince ?? "",
+      province: provinceName,
+      ward: user.regionWard ?? "",
+      area: user.regionArea ?? "",
+      street: user.regionStreet ?? "",
+    });
+  }, [isUserLoading, provinceOptions, user]);
 
   useEffect(() => {
     let isMounted = true;
@@ -178,20 +262,12 @@ export function EditProfileForm() {
     };
   }, [avatarUrl]);
 
-  function completeUiSubmit(
-    event: FormEvent<HTMLFormElement>,
-    form: "avatar" | "basic" | "region",
-    setStatus: (status: FormStatus) => void,
-    success: string,
-  ) {
-    event.preventDefault();
-    setSubmittingForm(form);
-    setStatus(emptyStatus);
-
-    window.setTimeout(() => {
-      setStatus({ error: null, success });
-      setSubmittingForm(null);
-    }, 300);
+  if (isCurrentUserUnavailable || isRouteMismatch) {
+    return (
+      <p className="text-sm font-semibold text-muted" role="status">
+        Redirecting...
+      </p>
+    );
   }
 
   function changeAvatarFile(event: ChangeEvent<HTMLInputElement>) {
@@ -202,7 +278,19 @@ export function EditProfileForm() {
     }
 
     if (!file.type.startsWith("image/")) {
+      setSelectedAvatarFile(null);
       setAvatarStatus({ error: "Please choose an image file.", success: null });
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_AVATAR_SIZE_BYTES) {
+      setSelectedAvatarFile(null);
+      setAvatarStatus({
+        error: "Avatar image must be 5MB or smaller.",
+        success: null,
+      });
+      event.target.value = "";
       return;
     }
 
@@ -215,23 +303,86 @@ export function EditProfileForm() {
 
       return nextAvatarUrl;
     });
+    setSelectedAvatarFile(file);
     setSelectedAvatarName(file.name);
     setAvatarStatus({ error: null, success: "Avatar preview updated." });
   }
 
-  function submitBasicInfo(event: FormEvent<HTMLFormElement>) {
-    if (basicInfo.userPhone.trim() && !Number.isFinite(Number(basicInfo.userPhone))) {
+  async function submitAvatar(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setAvatarStatus(emptyStatus);
+
+    if (!selectedAvatarFile) {
+      setAvatarStatus({
+        error: "Please choose an avatar image before saving.",
+        success: null,
+      });
+      return;
+    }
+
+    setSubmittingForm("avatar");
+
+    try {
+      const uploadedAvatarUrl = await uploadAvatarToCloudinary(selectedAvatarFile);
+      const updatedUser = await updateMe({ userAvatar: uploadedAvatarUrl });
+      await refetch();
+      setAvatarUrl(updatedUser.userAvatar?.trim() ?? uploadedAvatarUrl);
+      setSelectedAvatarFile(null);
+      setSelectedAvatarName("");
+      setAvatarStatus({
+        error: null,
+        success: "Avatar updated successfully.",
+      });
+      router.refresh();
+    } catch (error) {
+      setAvatarStatus({
+        error: getSubmitErrorMessage(error, "Unable to update avatar."),
+        success: null,
+      });
+    } finally {
+      setSubmittingForm(null);
+    }
+  }
+
+  async function submitBasicInfo(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const phone = basicInfo.userPhone.trim();
+
+    if (phone && !Number.isFinite(Number(phone))) {
       event.preventDefault();
       setBasicStatus({ error: "Phone must be a valid number.", success: null });
       return;
     }
 
-    completeUiSubmit(event, "basic", setBasicStatus, "Basic info ready.");
+    setSubmittingForm("basic");
+    setBasicStatus(emptyStatus);
+
+    try {
+      await updateMe({
+        userFullName: basicInfo.userFullName.trim() || undefined,
+        userPhone: phone ? Number(phone) : undefined,
+      });
+      await refetch();
+      setBasicStatus({
+        error: null,
+        success: "Basic info updated successfully.",
+      });
+      router.refresh();
+    } catch (error) {
+      setBasicStatus({
+        error: getSubmitErrorMessage(error, "Unable to update basic info."),
+        success: null,
+      });
+    } finally {
+      setSubmittingForm(null);
+    }
   }
 
-  function submitRegion(event: FormEvent<HTMLFormElement>) {
+  async function submitRegion(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
     if (!selectedProvince?.name || !region.ward) {
-      event.preventDefault();
       setRegionStatus({
         error: "Province and ward are required.",
         success: null,
@@ -239,18 +390,37 @@ export function EditProfileForm() {
       return;
     }
 
-    completeUiSubmit(event, "region", setRegionStatus, "Address ready.");
+    const area = region.area.trim();
+
+    setSubmittingForm("region");
+    setRegionStatus(emptyStatus);
+
+    try {
+      await updateMeRegion({
+        city: getCityName(selectedProvince.name) || undefined,
+        province: region.province || undefined,
+        ward: region.ward || undefined,
+        area: area || undefined,
+        district: area || undefined,
+        street: region.street.trim() || undefined,
+      });
+      await refetch();
+      setRegionStatus({
+        error: null,
+        success: "Address updated successfully.",
+      });
+    } catch (error) {
+      setRegionStatus({
+        error: getSubmitErrorMessage(error, "Unable to update address."),
+        success: null,
+      });
+    } finally {
+      setSubmittingForm(null);
+    }
   }
 
   return (
     <div className="space-y-6">
-      <Button asChild className="w-fit" size="sm" variant="ghost">
-        <Link href="/profile">
-          <ChevronLeft />
-          Profile
-        </Link>
-      </Button>
-
       <header className="space-y-2">
         <h1 className="text-2xl font-black text-foreground sm:text-3xl">
           Edit profile
@@ -262,9 +432,7 @@ export function EditProfileForm() {
 
       <form
         className="space-y-5 rounded-md border border-border bg-surface p-4 sm:p-5"
-        onSubmit={(event) =>
-          completeUiSubmit(event, "avatar", setAvatarStatus, "Avatar ready.")
-        }
+        onSubmit={submitAvatar}
       >
         <div className="grid gap-4 sm:grid-cols-[112px_minmax(0,1fr)] sm:items-start">
           <div className="flex justify-center sm:justify-start">
@@ -286,7 +454,7 @@ export function EditProfileForm() {
               >
                 <Camera />
               </button>
-              <input
+              <Input
                 accept="image/*"
                 className="sr-only"
                 onChange={changeAvatarFile}
@@ -314,7 +482,7 @@ export function EditProfileForm() {
             <FormStatusMessage status={avatarStatus} />
             <Button
               className="w-full sm:w-fit"
-              disabled={submittingForm === "avatar"}
+              disabled={submittingForm === "avatar" || !selectedAvatarFile}
               type="submit"
             >
               {submittingForm === "avatar" ? "Saving..." : "Save avatar"}

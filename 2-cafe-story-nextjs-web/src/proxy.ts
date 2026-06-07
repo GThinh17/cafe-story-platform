@@ -1,23 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
-import {
-  ACCESS_TOKEN_COOKIE,
-  isAuthRoute,
-  isProtectedRoute,
-} from "@/lib/routes";
+import { ACCESS_TOKEN_COOKIE, isProtectedRoute } from "@/lib/routes";
 
 export function proxy(request: NextRequest) {
   const { nextUrl } = request;
   const pathname = nextUrl.pathname;
   const hasAccessToken = Boolean(request.cookies.get(ACCESS_TOKEN_COOKIE)?.value);
-  const shouldBypassAuth = process.env.NODE_ENV === "development";
-
-  if (shouldBypassAuth) {
-    return NextResponse.next();
-  }
-
-  if (isAuthRoute(pathname) && hasAccessToken) {
-    return NextResponse.redirect(new URL("/", request.url));
-  }
 
   if (isProtectedRoute(pathname) && !hasAccessToken) {
     const loginUrl = new URL("/login", request.url);

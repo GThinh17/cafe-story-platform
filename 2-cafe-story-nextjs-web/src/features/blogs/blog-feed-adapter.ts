@@ -1,5 +1,5 @@
-import type { BlogFeedResponse } from "@/types/blog";
-import type { FeedPost } from "@/types/feed";
+import type { BlogFeedResponse, BlogResponse } from "@/types/blog";
+import type { FeedPost, FeedPostMedia } from "@/types/feed";
 
 const fallbackImages = [
   "/images/cafes/velvet-roast/latte-art.jpg",
@@ -70,35 +70,139 @@ function formatLocation(item: BlogFeedResponse) {
     item.regionProvince,
   ]
     .filter(Boolean)
-    .join(", ") || "Cafe Story";
+    .join(", ");
 }
 
 function firstNonEmpty(values: Array<string | null | undefined>) {
   return values.find((value) => value?.trim())?.trim();
 }
 
+function getNonEmptyImageUrls(imageUrls: string[] | null | undefined) {
+  return (imageUrls ?? [])
+    .map((url) => url.trim())
+    .filter((url) => url.length > 0);
+}
+
+function mapImageUrlsToMedia(
+  imageUrls: string[] | null | undefined,
+  postId: string,
+  authorUsername?: string | null,
+): FeedPostMedia[] {
+  const altPrefix = authorUsername?.trim() || "Cafe Story";
+
+  return getNonEmptyImageUrls(imageUrls).map((url, index) => ({
+    id: `${postId}-${index}`,
+    src: url,
+    alt: `${altPrefix} post photo ${index + 1}`,
+    type: "image",
+  }));
+}
+
 export function mapBlogFeedToFeedPosts(feed: BlogFeedResponse[]): FeedPost[] {
   return feed.map((item, index) => {
+    const authorUsername = firstNonEmpty([item.authorUserName]);
+    const authorAvatar =
+      firstNonEmpty([item.authorAvatar, item.authorUserAvatar]) ??
+      "/images/default-avatar.svg";
+    const pageName = firstNonEmpty([item.pageName]);
+    const pageAvatarUrl = firstNonEmpty([item.pageAvatarUrl]);
+    const locationLabel = formatLocation(item);
+    const media = mapImageUrlsToMedia(
+      item.imageUrls,
+      item.blogId,
+      firstNonEmpty([item.displayName, pageName, authorUsername]),
+    );
     const image = firstNonEmpty([
-      ...(item.imageUrls ?? []),
+      ...media.map((mediaItem) => mediaItem.src),
       item.pageCoverUrl,
       item.pageAvatarUrl,
     ]);
 
     return {
       id: item.blogId,
-      author:
-        firstNonEmpty([item.authorUserFullName, item.authorUserName]) ??
-        "cafestory_user",
-      authorAvatar: firstNonEmpty([item.authorAvatar]) ?? "/images/default-avatar.svg",
-      cafe: firstNonEmpty([item.pageName]) ?? "Cafe Story",
+      allowComment: item.allowComment ?? true,
+      author: firstNonEmpty([item.authorUserName, item.authorUserFullName]) ?? "cafestory_user",
+      authorUserId: item.authorUserId,
+      authorUsername,
+      authorAvatar,
+      cafe: pageName ?? "",
       caption: item.contentPreview?.trim() || "A new Cafe Story post is ready.",
+      commentCount: item.commentCount ?? 0,
       comments: formatCount(item.commentCount),
+      displayAuthorType: item.displayAuthorType,
+      displayAvatarUrl: firstNonEmpty([item.displayAvatarUrl]),
+      displayName: firstNonEmpty([item.displayName]),
       image: image ?? fallbackImages[index % fallbackImages.length],
+      likeCount: item.likeCount ?? 0,
       likes: formatCount(item.likeCount),
-      location: formatLocation(item),
+      location: locationLabel,
+      locationLabel,
+      media,
+      pageAvatarUrl,
+      pageId: item.pageId,
+      pageName,
       rating: item.rankPosition ? `#${item.rankPosition}` : "Feed",
+      shares: formatCount(item.shareCount),
       tags: buildTags(item),
+      time: formatRelativeTime(item.createdAt),
+    };
+  });
+}
+
+export function mapBlogResponsesToFeedPosts(blogs: BlogResponse[]): FeedPost[] {
+  return blogs.map((item, index) => {
+    const authorUsername = firstNonEmpty([
+      item.authorUserName,
+      item.authorUserFullName,
+      item.displayName,
+    ]);
+    const media = mapImageUrlsToMedia(item.imageUrls, item.id, authorUsername);
+    const image = firstNonEmpty([
+      ...media.map((mediaItem) => mediaItem.src),
+      item.pageAvatarUrl,
+      item.displayAvatarUrl,
+    ]);
+    const rating =
+      typeof item.ratingScore === "number"
+        ? item.ratingScore.toFixed(1)
+        : "Profile";
+
+    return {
+      id: item.id,
+      allowComment: item.allowComment ?? true,
+      author: authorUsername ?? "cafestory_user",
+      authorUserId: item.authorUserId,
+      authorUsername: firstNonEmpty([item.authorUserName]),
+      authorAvatar:
+        firstNonEmpty([
+          item.displayAvatarUrl,
+          item.authorUserAvatar,
+          item.pageAvatarUrl,
+        ]) ?? "/images/default-avatar.svg",
+      cafe: firstNonEmpty([item.pageName]) ?? "",
+      caption: item.content?.trim() || "A new Cafe Story post is ready.",
+      commentCount: item.commentCount ?? 0,
+      comments: formatCount(item.commentCount),
+      displayAuthorType: item.displayAuthorType,
+      displayAvatarUrl: firstNonEmpty([item.displayAvatarUrl]),
+      displayName: firstNonEmpty([item.displayName]),
+      image: image ?? fallbackImages[index % fallbackImages.length],
+      isLiked: item.isLike ?? false,
+      likeCount: item.likeCount ?? 0,
+      likes: formatCount(item.likeCount),
+      location: "",
+      media,
+      pageAvatarUrl: firstNonEmpty([item.pageAvatarUrl]),
+      pageId: item.pageId,
+      pageName: firstNonEmpty([item.pageName]),
+      rating,
+      shares: formatCount(item.shareCount),
+      tags: [
+        "Profile",
+        ...[item.pageName, item.status].filter(
+          (value): value is string => Boolean(value?.trim()),
+        ),
+      ],
       time: formatRelativeTime(item.createdAt),
     };
   });

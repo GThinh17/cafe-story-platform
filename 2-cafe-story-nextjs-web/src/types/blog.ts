@@ -2,10 +2,13 @@ export type TrendWindowType = "HOUR_24" | "DAY_7" | "MONTH_1";
 
 export type BlogPostStatus = "PUBLISHED" | "DRAFT" | "ARCHIVED" | string;
 
+export type BlogDisplayAuthorType = "USER" | "CAFE_PAGE";
+
 export type BlogFeedResponse = {
   blogId: string;
   contentPreview: string | null;
   imageUrls: string[] | null;
+  allowComment?: boolean | null;
   likeCount: number | null;
   commentCount: number | null;
   shareCount: number | null;
@@ -13,11 +16,15 @@ export type BlogFeedResponse = {
   authorUserName: string | null;
   authorUserFullName: string | null;
   authorAvatar: string | null;
+  authorUserAvatar?: string | null;
   pageId: string | null;
   pageName: string | null;
   pageAddress: string | null;
   pageAvatarUrl: string | null;
   pageCoverUrl: string | null;
+  displayAuthorType?: BlogDisplayAuthorType | null;
+  displayName?: string | null;
+  displayAvatarUrl?: string | null;
   regionId: string | null;
   regionCity: string | null;
   regionProvince: string | null;
@@ -29,17 +36,73 @@ export type BlogFeedResponse = {
 export type BlogResponse = {
   id: string;
   authorUserId: string;
+  authorUserName?: string | null;
+  authorUserFullName?: string | null;
+  authorUserAvatar?: string | null;
   pageId: string | null;
+  pageName?: string | null;
+  pageAvatarUrl?: string | null;
   regionId: string | null;
   content: string;
-  imageUrls: string[];
+  imageUrls: string[] | null;
   status: BlogPostStatus;
-  isPinned: boolean;
-  allowComment: boolean;
-  likeCount: number;
-  shareCount: number;
+  isPinned: boolean | null;
+  allowComment: boolean | null;
+  likeCount: number | null;
+  shareCount: number | null;
+  commentCount?: number | null;
+  isLike?: boolean | null;
+  isSave?: boolean | null;
+  isRating?: boolean | null;
+  myRating?: number | null;
+  ratingScore?: number | null;
+  ratingCount?: number | null;
+  saveCount?: number | null;
+  displayAuthorType?: BlogDisplayAuthorType | null;
+  displayName?: string | null;
+  displayAvatarUrl?: string | null;
   createdAt: string | null;
   updatedAt: string | null;
+};
+
+export type BlogCreateRequest = {
+  content: string;
+  imageUrls?: string[];
+  allowComment?: boolean;
+  pageId?: string;
+  regionId?: string;
+  isPinned?: boolean;
+};
+
+export type BlogLikeResponse = {
+  id: string;
+  userId: string;
+  blogId: string;
+  createdAt: string | null;
+};
+
+export type CommentResponse = {
+  id: string;
+  blogId: string;
+  userId: string;
+  username?: string | null;
+  userName?: string | null;
+  authorUsername?: string | null;
+  authorUserName?: string | null;
+  replyToUsername?: string | null;
+  parentCommentId: string | null;
+  content: string;
+  imageUrls: string[] | null;
+  status: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type CommentCreateRequest = {
+  blogId: string;
+  parentCommentId?: string;
+  content: string;
+  imageUrls?: string[];
 };
 
 export type BlogTrendingResponse = {

@@ -29,6 +29,7 @@ async function loadHomeFeed(): Promise<HomeFeedState> {
   try {
     const feed = await getBlogFeed(
       {
+        page: 0,
         size: 20,
         windowType: "HOUR_24",
       },
@@ -62,7 +63,10 @@ export default async function Home() {
         <section className="w-full max-w-[630px] space-y-8">
           <FeedPostList
             errorMessage={feedState.errorMessage}
+            initialPage={0}
+            pageSize={20}
             posts={feedState.posts}
+            windowType="HOUR_24"
           />
         </section>
 

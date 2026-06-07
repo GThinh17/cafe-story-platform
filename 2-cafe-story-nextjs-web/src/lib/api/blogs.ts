@@ -1,8 +1,10 @@
 import { apiFetch } from "@/lib/api/client";
 import { apiEndpoints } from "@/lib/api/endpoints";
 import type {
+  BlogCreateRequest,
   BlogFeedParams,
   BlogFeedResponse,
+  BlogLikeResponse,
   BlogResponse,
   BlogTrendingResponse,
 } from "@/types/blog";
@@ -50,6 +52,31 @@ export function getBlogs(options: ApiRequestOptions = {}) {
   });
 }
 
+export function createBlog(
+  request: BlogCreateRequest,
+  options: ApiRequestOptions = {},
+) {
+  return apiFetch<BlogResponse>(apiEndpoints.blogs.list, {
+    body: request,
+    headers: options.headers,
+    method: "POST",
+  });
+}
+
+export function getBlogById(blogId: string, options: ApiRequestOptions = {}) {
+  return apiFetch<BlogResponse>(apiEndpoints.blogs.byId(blogId), {
+    headers: options.headers,
+    method: "GET",
+  });
+}
+
+export function getBlogsByUser(userId: string, options: ApiRequestOptions = {}) {
+  return apiFetch<BlogResponse[]>(apiEndpoints.blogs.byUser(userId), {
+    headers: options.headers,
+    method: "GET",
+  });
+}
+
 export function getTrendingBlogs(
   params: Omit<BlogFeedParams, "regionId"> = {},
   options: ApiRequestOptions = {},
@@ -65,4 +92,25 @@ export function getTrendingBlogs(
       method: "GET",
     },
   );
+}
+
+export function likeBlog(blogId: string, options: ApiRequestOptions = {}) {
+  return apiFetch<BlogLikeResponse>(apiEndpoints.blogs.likes(blogId), {
+    headers: options.headers,
+    method: "POST",
+  });
+}
+
+export function unlikeBlog(blogId: string, options: ApiRequestOptions = {}) {
+  return apiFetch<void>(apiEndpoints.blogs.likes(blogId), {
+    headers: options.headers,
+    method: "DELETE",
+  });
+}
+
+export function getBlogLikesByUser(userId: string, options: ApiRequestOptions = {}) {
+  return apiFetch<BlogLikeResponse[]>(apiEndpoints.blogs.likesByUser(userId), {
+    headers: options.headers,
+    method: "GET",
+  });
 }

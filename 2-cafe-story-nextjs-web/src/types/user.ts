@@ -57,3 +57,32 @@ export type SuggestedUser = {
   username: string;
   initials: string;
 };
+
+export type UserResponse = {
+  avatar?: string | null;
+  imageUrl?: string | null;
+  profileImage?: string | null;
+  userId: string;
+  userName: string;
+  userFullName: string | null;
+  userEmail: string | null;
+  userPhone: number | null;
+  userAvatar: string | null;
+  userLike: number | null;
+  userFollower: number | null;
+  accountStatus: boolean | null;
+  regionId: string | null;
+  regionCity: string | null;
+  regionProvince: string | null;
+  regionWard: string | null;
+  regionArea: string | null;
+  regionStreet: string | null;
+  isFollowing: boolean | null;
+};
+
+export type UserFollowResponse = {
+  id: string;
+  followerUserId: string;
+  followingUserId: string;
+  createdAt: string | null;
+};

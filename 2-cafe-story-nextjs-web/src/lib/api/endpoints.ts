@@ -41,6 +41,14 @@ export const apiEndpoints = {
     pendingMembers: (cafePageId: string) =>
       `/api/cafe-pages/${pathId(cafePageId)}/members/pending`,
   },
+  payments: {
+    list: "/api/payments",
+    byId: (paymentId: string) => `/api/payments/${pathId(paymentId)}`,
+    vnpayReturn: "/api/payments/vnpay/return",
+  },
+  extraFees: {
+    list: "/api/extra-fees",
+  },
   comments: {
     list: "/api/comments",
     byId: (commentId: string) => `/api/comments/${pathId(commentId)}`,
@@ -51,6 +59,7 @@ export const apiEndpoints = {
   users: {
     list: "/api/users",
     byId: (userId: string) => `/api/users/${pathId(userId)}`,
+    byUsername: (username: string) => `/api/users/by-username/${pathId(username)}`,
     me: "/api/users/me",
     meRegion: "/api/users/me/region",
     followers: (userId: string) => `/api/users/${pathId(userId)}/followers`,
