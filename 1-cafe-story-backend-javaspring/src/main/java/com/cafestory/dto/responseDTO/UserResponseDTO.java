@@ -14,6 +14,7 @@ public class UserResponseDTO {
     private String userAvatar;
     private Integer userLike;
     private Integer userFollower;
+    private Integer followingCount;
     private Boolean accountStatus;
     private UUID regionId;
     private String regionCity;

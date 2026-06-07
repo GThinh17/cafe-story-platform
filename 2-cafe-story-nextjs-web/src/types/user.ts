@@ -9,7 +9,7 @@ export type UserProfile = {
   website: string;
   stats: {
     posts: string;
-    cafes: string;
+    following: string;
     followers: string;
   };
 };
@@ -70,6 +70,7 @@ export type UserResponse = {
   userAvatar: string | null;
   userLike: number | null;
   userFollower: number | null;
+  followingCount: number | null;
   accountStatus: boolean | null;
   regionId: string | null;
   regionCity: string | null;

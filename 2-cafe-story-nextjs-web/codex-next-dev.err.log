@@ -1,0 +1,8 @@
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          25536
+- Dir:          D:\cafe-story-platform\2-cafe-story-nextjs-web
+- Log:          .next\dev\logs\next-development.log
+
+Run taskkill /PID 25536 /F to stop it.

@@ -1,6 +1,11 @@
 "use client";
 
-import { HeartIcon, MoreHorizontalIcon } from "lucide-react";
+import {
+  CircleAlertIcon,
+  HeartIcon,
+  LoaderCircleIcon,
+  MoreHorizontalIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { DEFAULT_AVATAR_IMAGE } from "@/lib/avatar";
@@ -68,6 +73,9 @@ export function PostCommentItem({
   const shouldShowReplyToggle = !isReply && (replyCount > 0 || replyItems.length > 0);
   const visibleReplyCount = Math.max(replyCount, replyItems.length);
   const threadRootId = rootCommentId ?? comment.id;
+  const isSending = comment.localStatus === "sending";
+  const isError = comment.localStatus === "error";
+  const canReplyToComment = canReply && !isSending && !isError;
 
   return (
     <article className={cn("min-w-0", isReply && "pl-12")}>
@@ -123,10 +131,25 @@ export function PostCommentItem({
           ) : null}
           <div className="mt-2 flex flex-wrap items-center gap-4 text-xs font-semibold text-muted">
             {comment.time ? <span>{comment.time}</span> : null}
+            <span className="grid min-h-4 min-w-4 place-items-center">
+              {isSending ? (
+                <LoaderCircleIcon
+                  aria-label="Posting comment"
+                  className="size-3 animate-spin"
+                />
+              ) : isError ? (
+                <CircleAlertIcon
+                  aria-label="Comment failed to post"
+                  className="size-3 text-destructive"
+                />
+              ) : (
+                <span className="size-3" />
+              )}
+            </span>
             <button className="cursor-pointer transition hover:text-primary" type="button">
               {formatCount(likeCount)} likes
             </button>
-            {canReply ? (
+            {canReplyToComment ? (
               <button
                 className="cursor-pointer transition hover:text-primary"
                 onClick={() =>
@@ -150,6 +173,11 @@ export function PostCommentItem({
               <MoreHorizontalIcon className="size-4" />
             </button>
           </div>
+          {isError ? (
+            <p className="mt-1 text-xs font-semibold text-destructive">
+              Unable to post comment.
+            </p>
+          ) : null}
         </div>
         <button
           aria-label="Like comment"

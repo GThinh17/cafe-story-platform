@@ -2,6 +2,7 @@ import type { BlogResponse } from "@/types/blog";
 
 export type CafeSummary = {
   id: string;
+  ownerUserId?: string | null;
   name: string;
   location: string;
   address: string;
@@ -15,6 +16,7 @@ export type CafeSummary = {
   photoCount?: string;
   likeCount?: number;
   isLiked?: boolean;
+  pageActive?: boolean | null;
   image: string;
   avatarImage?: string;
   avatarImageAlt?: string;

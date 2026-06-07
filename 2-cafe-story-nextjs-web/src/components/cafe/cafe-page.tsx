@@ -1,15 +1,17 @@
 "use client";
 
-import { InfoIcon, StarIcon } from "lucide-react";
+import { InfoIcon, Settings, StarIcon } from "lucide-react";
 import { useState } from "react";
 import type { CafeMenu, CafeSummary } from "@/types/cafe";
 import { CafeActionButtons } from "@/components/cafe/cafe-action-buttons";
 import { CafeMapModal } from "@/components/cafe/cafe-map-modal";
+import { CafePageSettingsModal } from "@/components/cafe/cafe-page-settings-modal";
 import { CafeRecentReviews } from "@/components/review/cafe-recent-reviews";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import type { FeedPost } from "@/types/feed";
 
 type CafePageProps = {
@@ -42,20 +44,17 @@ export function CafePage({
   onLoadMorePosts,
   postsErrorMessage,
 }: CafePageProps) {
+  const { user: currentUser } = useCurrentUser();
   const [isMapOpen, setIsMapOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const openingHours = cafe.openingHours ?? defaultOpeningHours;
   const avatarImage = cafe.avatarImage ?? cafe.image ?? cafe.coverImage;
   const coverImage = cafe.coverImage ?? cafe.gallery[0] ?? avatarImage;
   const coverImageAlt = cafe.coverImageAlt ?? `${cafe.name} cover image`;
   const avatarImageAlt = cafe.avatarImageAlt ?? `${cafe.name} avatar`;
-  const communityPhotos =
-    cafe.communityPhotos ??
-    Array.from(new Set([coverImage, avatarImage, ...cafe.gallery]))
-      .filter((image): image is string => Boolean(image))
-      .map((image) => ({
-        image,
-        alt: `${cafe.name} community photo`,
-      }));
+ 
+  const isCurrentOwner =
+    Boolean(cafe.ownerUserId) && cafe.ownerUserId === currentUser?.userId;
 
   return (
     <article className="w-full space-y-8 bg-background text-espresso">
@@ -83,9 +82,23 @@ export function CafePage({
               src={avatarImage}
             />
             <div className="min-w-0 space-y-3">
-              <h1 className="font-serif text-4xl font-medium leading-tight text-espresso">
-                {cafe.name}
-              </h1>
+              <div className="flex min-w-0 items-center gap-2">
+                <h1 className="truncate font-serif text-4xl font-medium leading-tight text-espresso">
+                  {cafe.name}
+                </h1>
+                {isCurrentOwner ? (
+                  <Button
+                    aria-label="Cafe page settings"
+                    className="shrink-0"
+                    onClick={() => setIsSettingsOpen(true)}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Settings />
+                  </Button>
+                ) : null}
+              </div>
 
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-coffee-muted">
                 <span className="flex items-center gap-1 font-black text-espresso">
@@ -98,9 +111,11 @@ export function CafePage({
                 </span>
               </div>
 
-              <p className="text-sm leading-6 text-coffee-muted">
-                {cafe.address}
-              </p>
+              {cafe.address ? (
+                <p className="text-sm leading-6 text-coffee-muted">
+                  {cafe.address}
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -211,35 +226,8 @@ export function CafePage({
         ) : null}
       </section>
 
-      <section className="space-y-6">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="font-serif text-3xl font-medium text-espresso">
-            Community Photos
-          </h2>
-          <span className="text-sm font-black text-coffee-muted">
-            {cafe.photoCount ?? cafe.reviewCount} photos
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {communityPhotos.map((photo) => (
-            <article
-              className="aspect-square overflow-hidden bg-surface-muted"
-              key={photo.image}
-            >
-              <img
-                alt={photo.alt}
-                className="h-full w-full object-cover transition duration-500 hover:scale-105"
-                decoding="async"
-                loading="lazy"
-                src={photo.image}
-              />
-            </article>
-          ))}
-        </div>
-      </section>
-
       <CafeMapModal
+        address={cafe.address}
         cafeName={cafe.name}
         onOpenChange={setIsMapOpen}
         open={isMapOpen}
@@ -248,6 +236,11 @@ export function CafePage({
         regionProvince={cafe.regionProvince}
         regionStreet={cafe.regionStreet}
         regionWard={cafe.regionWard}
+      />
+
+      <CafePageSettingsModal
+        onOpenChange={setIsSettingsOpen}
+        open={isSettingsOpen}
       />
     </article>
   );

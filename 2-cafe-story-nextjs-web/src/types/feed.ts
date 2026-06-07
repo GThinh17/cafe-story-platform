@@ -5,6 +5,8 @@ export type StoryItem = {
 
 export type FeedPostComment = {
   id: string;
+  localStatus?: "sending" | "sent" | "error";
+  serverId?: string;
   author: string;
   authorUsername?: string;
   authorAvatar?: string;

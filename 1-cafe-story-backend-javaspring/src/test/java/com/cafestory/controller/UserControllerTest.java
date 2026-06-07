@@ -70,6 +70,33 @@ class UserControllerTest {
     }
 
     @Test
+    void getUserByUsername_success_TC003_1() {
+        String username = "luan123";
+        UUID viewerUserId = UUID.randomUUID();
+        UserResponseDTO response = userResponse();
+
+        when(userService.getUserByUsername(username, viewerUserId)).thenReturn(response);
+
+        UserResponseDTO result = userController.getUserByUsername(username, principal(viewerUserId));
+
+        assertThat(result).isEqualTo(response);
+        verify(userService).getUserByUsername(username, viewerUserId);
+    }
+
+    @Test
+    void getCurrentUser_success_TC003_2() {
+        UUID userId = UUID.randomUUID();
+        UserResponseDTO response = userResponse();
+
+        when(userService.getUserById(userId, userId)).thenReturn(response);
+
+        UserResponseDTO result = userController.getCurrentUser(principal(userId));
+
+        assertThat(result).isEqualTo(response);
+        verify(userService).getUserById(userId, userId);
+    }
+
+    @Test
     void updateUser_success_TC004() {
         UUID userId = UUID.randomUUID();
         UserUpdateDTO request = new UserUpdateDTO();
@@ -134,6 +161,7 @@ class UserControllerTest {
         response.setUserAvatar("https://example.com/avatar.png");
         response.setUserLike(0);
         response.setUserFollower(0);
+        response.setFollowingCount(0);
         response.setAccountStatus(true);
         return response;
     }

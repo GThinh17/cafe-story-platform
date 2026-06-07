@@ -38,7 +38,6 @@ export function CafeActionButtons({
 }: CafeActionButtonsProps) {
   const [isPending, setIsPending] = useState(false);
   const { isOpen, openMenu, setIsOpen } = useCafeMenuModal();
-  const likeLabel = likeCount > 0 ? `Like ${formatCount(likeCount)}` : "Like";
 
   async function handleLikeClick() {
     if (isPending) {
@@ -79,18 +78,17 @@ export function CafeActionButtons({
       <div className="flex flex-col gap-3 sm:flex-row">
         <Button
           className={cn(
-            "flex h-12 cursor-pointer items-center justify-center gap-2 rounded-sm border border-primary/40 bg-primary px-8 text-sm font-black text-white transition hover:bg-primary/90 hover:text-white",
-            isLiked && "bg-primary/90",
+            "flex h-12 cursor-pointer items-center justify-center gap-2 rounded-sm border border-primary/40 bg-primary text-sm font-black text-white transition hover:bg-primary/90 hover:text-white",
+            isLiked && "bg-secondary hover:bg-secondary/90 hover:text-primary/90 text-primary border-secondary",
           )}
-          disabled={isPending}
           onClick={() => void handleLikeClick()}
           type="button"
         >
           <HeartIcon
-            className={cn("size-5", isLiked && "fill-white text-white")}
+            className={cn("size-5", isLiked && "fill-primary text-primary")}
             data-icon="inline-start"
           />
-          {likeLabel}
+           {formatCount(likeCount)}
         </Button>
         <Button
           className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-sm px-8 text-sm font-black transition hover:text-espresso/80"

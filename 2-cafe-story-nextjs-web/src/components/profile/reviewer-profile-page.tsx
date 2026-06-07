@@ -1,5 +1,5 @@
 import { ProfileReviewGrid } from "@/components/profile/profile-review-grid";
-import { ProfileStoryHighlights } from "@/components/profile/profile-story-highlights";
+import { ProfileStoryHighlights } from "@/components/profile/profile-cafe-highlights";
 import type { ProfileReview } from "@/types/review";
 import type { ReviewerProfile } from "@/types/user";
 

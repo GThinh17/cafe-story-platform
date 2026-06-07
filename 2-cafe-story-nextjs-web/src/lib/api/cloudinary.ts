@@ -44,6 +44,10 @@ export function uploadPostImageToCloudinary(file: File) {
   return uploadImageToCloudinary(file, "cafestory/posts", "post image");
 }
 
+export function uploadChatImageToCloudinary(file: File) {
+  return uploadImageToCloudinary(file, "cafestory/messages", "message image");
+}
+
 export function uploadCafeImageToCloudinary(
   file: File,
   imageType: "avatar" | "cover",

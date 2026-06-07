@@ -25,6 +25,7 @@ export type AuthUser = {
   userEmail: string;
   userPhone: number | null;
   userAvatar: string | null;
+  followingCount?: number | null;
   accountStatus: boolean;
   regionCity?: string | null;
   regionProvince?: string | null;

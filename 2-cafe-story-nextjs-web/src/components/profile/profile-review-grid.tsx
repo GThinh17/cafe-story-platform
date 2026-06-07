@@ -12,6 +12,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { PostCommentsModal } from "@/components/feed/post-comments-modal";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { getBlogLikesByUser, likeBlog, unlikeBlog } from "@/lib/api/blogs";
@@ -212,10 +213,7 @@ export function ProfileReviewGrid({
           {isLoading ? (
             <div className="grid grid-cols-3 gap-1">
               {Array.from({ length: 6 }, (_, index) => (
-                <div
-                  className="aspect-square animate-pulse bg-surface-muted"
-                  key={index}
-                />
+                <Skeleton className="aspect-square rounded-none" key={index} />
               ))}
             </div>
           ) : errorMessage ? (

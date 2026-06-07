@@ -150,8 +150,10 @@ function mapCommentResponse(
     body: comment.content,
     isLiked: false,
     likeCount: 0,
+    localStatus: "sent",
     replyToAuthor: replyToUsername,
     replyToUsername,
+    serverId: comment.id,
     time: formatRelativeTime(comment.createdAt ?? undefined),
   };
 }
@@ -210,6 +212,7 @@ function createOptimisticComment(
     body: content,
     isLiked: false,
     likeCount: 0,
+    localStatus: "sending",
     replyToAuthor: replyTarget?.authorUsername ?? replyTarget?.author,
     replyToUsername: replyTarget?.authorUsername ?? replyTarget?.author,
     time: "now",
@@ -240,27 +243,63 @@ function addOptimisticComment(
   });
 }
 
-function removeOptimisticComment(
+function replaceOptimisticComment(
+  comments: FeedPostComment[],
+  optimisticCommentId: string,
+  nextComment: FeedPostComment,
+) {
+  return comments.map((comment) => {
+    if (comment.id === optimisticCommentId) {
+      return nextComment;
+    }
+
+    if (!comment.replyItems?.some((reply) => reply.id === optimisticCommentId)) {
+      return comment;
+    }
+
+    return {
+      ...comment,
+      replyItems: comment.replyItems.map((reply) =>
+        reply.id === optimisticCommentId ? nextComment : reply,
+      ),
+    };
+  });
+}
+
+function markOptimisticCommentError(
   comments: FeedPostComment[],
   optimisticCommentId: string,
 ) {
-  return comments
-    .filter((comment) => comment.id !== optimisticCommentId)
-    .map((comment) => {
-      if (!comment.replyItems?.some((reply) => reply.id === optimisticCommentId)) {
-        return comment;
-      }
-
-      const replyItems = comment.replyItems.filter(
-        (reply) => reply.id !== optimisticCommentId,
-      );
-
+  return comments.map((comment) => {
+    if (comment.id === optimisticCommentId) {
       return {
         ...comment,
-        replies: String(replyItems.length),
-        replyItems,
+        localStatus: "error" as const,
       };
-    });
+    }
+
+    if (!comment.replyItems?.some((reply) => reply.id === optimisticCommentId)) {
+      return comment;
+    }
+
+    const replyItems = comment.replyItems.map((reply) =>
+      reply.id === optimisticCommentId
+        ? {
+            ...reply,
+            localStatus: "error" as const,
+          }
+        : reply,
+    );
+    const sentReplyCount = replyItems.filter(
+      (reply) => reply.localStatus !== "error",
+    ).length;
+
+    return {
+      ...comment,
+      replies: String(sentReplyCount),
+      replyItems,
+    };
+  });
 }
 
 function updateCommentLikeState(
@@ -305,6 +344,8 @@ export function PostCommentsModal({
   const [commentsError, setCommentsError] = useState<string | null>(null);
   const [replyTarget, setReplyTarget] = useState<PostCommentReplyTarget | null>(null);
   const commentInputRef = useRef<HTMLInputElement>(null);
+  const commentCountRef = useRef(0);
+  const loadedCommentsPostIdRef = useRef<string | null>(null);
 
   const loadComments = useCallback(async () => {
     if (!post?.id) {
@@ -320,6 +361,7 @@ export function PostCommentsModal({
         currentUser,
       });
       setComments(visibleComments);
+      commentCountRef.current = response.length;
       onCommentCountChange(post.id, {
         commentCount: response.length,
         comments: formatCount(response.length),
@@ -338,11 +380,24 @@ export function PostCommentsModal({
   useEffect(() => {
     if (!post?.id) {
       setComments([]);
+      commentCountRef.current = 0;
+      loadedCommentsPostIdRef.current = null;
       return;
     }
 
+    if (loadedCommentsPostIdRef.current === post.id) {
+      return;
+    }
+
+    loadedCommentsPostIdRef.current = post.id;
     void loadComments();
   }, [loadComments, post?.id]);
+
+  useEffect(() => {
+    if (typeof post?.commentCount === "number") {
+      commentCountRef.current = post.commentCount;
+    }
+  }, [post?.commentCount, post?.id]);
 
   useEffect(() => {
     if (!post?.id) {
@@ -408,7 +463,6 @@ export function PostCommentsModal({
   const likeCount =
     typeof post.likeCount === "number" ? formatCount(post.likeCount) : post.likes;
   const postId = post.id;
-  const postCommentCount = post.commentCount;
 
   function handleReply(target: PostCommentReplyTarget) {
     if (isCommentDisabled) {
@@ -442,11 +496,13 @@ export function PostCommentsModal({
       currentUser,
       currentReplyTarget,
     );
-    const previousCommentCount = postCommentCount ?? comments.length;
+    const previousCommentCount = commentCountRef.current;
     const nextCommentCount = previousCommentCount + 1;
 
+    commentCountRef.current = nextCommentCount;
     setDraftComment("");
     setReplyTarget(null);
+    setCommentsError(null);
     setComments((currentComments) =>
       addOptimisticComment(currentComments, optimisticComment, currentReplyTarget),
     );
@@ -456,26 +512,39 @@ export function PostCommentsModal({
     });
 
     try {
-      await createComment({
+      const createdComment = await createComment({
         blogId: postId,
         content,
         ...(currentReplyTarget
           ? { parentCommentId: currentReplyTarget.commentId }
           : {}),
       });
+      const confirmedComment = {
+        ...mapCommentResponse(
+          createdComment,
+          { currentUser },
+          currentReplyTarget?.authorUsername ?? currentReplyTarget?.author,
+        ),
+        localStatus: "sent" as const,
+        serverId: createdComment.id,
+      };
 
-      await loadComments();
-    } catch {
       setComments((currentComments) =>
-        removeOptimisticComment(currentComments, optimisticComment.id),
+        replaceOptimisticComment(
+          currentComments,
+          optimisticComment.id,
+          confirmedComment,
+        ),
+      );
+    } catch {
+      commentCountRef.current = previousCommentCount;
+      setComments((currentComments) =>
+        markOptimisticCommentError(currentComments, optimisticComment.id),
       );
       onCommentCountChange(postId, {
         commentCount: previousCommentCount,
         comments: formatCount(previousCommentCount),
       });
-      setDraftComment(content);
-      setReplyTarget(currentReplyTarget);
-      setCommentsError("Unable to post comment.");
     }
   }
 

@@ -33,6 +33,43 @@ export function getUserByUsername(
   });
 }
 
+export function getUserById(
+  userId: string,
+  options: ApiRequestOptions = {},
+) {
+  return apiFetch<UserResponse>(apiEndpoints.users.byId(userId), {
+    headers: options.headers,
+    method: "GET",
+  });
+}
+
+export function getFollowingByUser(
+  userId: string,
+  options: ApiRequestOptions = {},
+) {
+  return getFollowingByUserId(userId, options);
+}
+
+export function getFollowersByUserId(
+  userId: string,
+  options: ApiRequestOptions = {},
+) {
+  return apiFetch<UserFollowResponse[]>(apiEndpoints.users.followers(userId), {
+    headers: options.headers,
+    method: "GET",
+  });
+}
+
+export function getFollowingByUserId(
+  userId: string,
+  options: ApiRequestOptions = {},
+) {
+  return apiFetch<UserFollowResponse[]>(apiEndpoints.users.following(userId), {
+    headers: options.headers,
+    method: "GET",
+  });
+}
+
 export function updateMe(request: UpdateMeRequest) {
   return apiFetch<UserResponse>(apiEndpoints.users.me, {
     method: "PATCH",

@@ -16,6 +16,7 @@ public interface UserMapper {
     @Mapping(source = "region.area", target = "regionArea")
     @Mapping(source = "region.street", target = "regionStreet")
     @Mapping(target = "isFollowing", ignore = true)
+    @Mapping(target = "followingCount", ignore = true)
     UserResponseDTO toUserResponseDTO(User user);
 
     @Mapping(target = "userId", ignore = true)
