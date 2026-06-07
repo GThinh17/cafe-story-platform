@@ -127,6 +127,36 @@ class ChatServiceImplTest {
     }
 
     @Test
+    void getUserConversations_success_returnsRepositorySortedConversations_TC011() {
+        User currentUser = user(UUID.randomUUID());
+        User firstParticipant = user(UUID.randomUUID());
+        User secondParticipant = user(UUID.randomUUID());
+        Conversation newestConversation = conversation(ConversationType.DIRECT);
+        Conversation olderConversation = conversation(ConversationType.DIRECT);
+
+        newestConversation.setUpdatedAt(LocalDateTime.now());
+        olderConversation.setUpdatedAt(newestConversation.getUpdatedAt().minusDays(1));
+
+        when(userValidator.validateUserExists(currentUser.getUserId())).thenReturn(currentUser);
+        when(conversationRepository.findUserConversationsOrderByLatestActivity(currentUser.getUserId()))
+                .thenReturn(List.of(newestConversation, olderConversation));
+        when(chatMemberRepository.findByConversationId(newestConversation.getId()))
+                .thenReturn(List.of(
+                        member(currentUser, MemberRole.MEMBER),
+                        member(firstParticipant, MemberRole.MEMBER)));
+        when(chatMemberRepository.findByConversationId(olderConversation.getId()))
+                .thenReturn(List.of(
+                        member(currentUser, MemberRole.MEMBER),
+                        member(secondParticipant, MemberRole.MEMBER)));
+
+        var result = chatService.getUserConversations(currentUser.getUserId());
+
+        assertThat(result)
+                .extracting("id")
+                .containsExactly(newestConversation.getId(), olderConversation.getId());
+    }
+
+    @Test
     void sendMessage_success_text_updatesFirebaseAndLatestMessage_TC003() {
         Conversation conversation = conversation(ConversationType.DIRECT);
         User sender = user(UUID.randomUUID());

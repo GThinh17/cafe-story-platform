@@ -19,6 +19,7 @@ export const mockConversations: Conversation[] = [
   {
     id: "jessica",
     name: "Jessica Brew",
+    participantUserId: "jessica",
     username: "jessica_brew",
     initials: "JB",
     avatarImage:
@@ -32,6 +33,7 @@ export const mockConversations: Conversation[] = [
   {
     id: "marco",
     name: "Marco Explorer",
+    participantUserId: "marco",
     username: "marco_explorer",
     initials: "ME",
     avatarImage:
@@ -43,6 +45,7 @@ export const mockConversations: Conversation[] = [
   {
     id: "batch",
     name: "Batch Baby",
+    participantUserId: "batch",
     username: "batchbaby",
     initials: "BB",
     avatarImage:
@@ -54,6 +57,7 @@ export const mockConversations: Conversation[] = [
   {
     id: "nora",
     name: "Nora Cups",
+    participantUserId: "nora",
     username: "nora_cups",
     initials: "NC",
     avatarImage:
@@ -70,18 +74,21 @@ export const mockChatMessages: ChatMessage[] = [
     author: "them",
     body: "That roastery looks calm. Was it laptop friendly?",
     time: "09:42",
+    type: "TEXT",
   },
   {
     id: "chat-2",
     author: "me",
     body: "Yes, left wall has sockets and the music stayed soft.",
     time: "09:44",
+    type: "TEXT",
   },
   {
     id: "chat-3",
     author: "them",
     body: "Perfect. Adding it to Saturday.",
     time: "09:45",
+    type: "TEXT",
   },
 ];
 

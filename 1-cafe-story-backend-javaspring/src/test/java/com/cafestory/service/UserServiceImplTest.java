@@ -119,10 +119,12 @@ class UserServiceImplTest {
 
         when(userRepository.findAll()).thenReturn(List.of(user));
         when(userMapper.toUserResponseDTO(user)).thenReturn(response);
+        when(userFollowRepository.countByFollowerUserId(user.getUserId())).thenReturn(2L);
 
         List<UserResponseDTO> result = userService.getAllUsers();
 
         assertThat(result).containsExactly(response);
+        assertThat(result.get(0).getFollowingCount()).isEqualTo(2);
     }
 
     @Test
@@ -132,10 +134,12 @@ class UserServiceImplTest {
 
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
         when(userMapper.toUserResponseDTO(user)).thenReturn(response);
+        when(userFollowRepository.countByFollowerUserId(user.getUserId())).thenReturn(3L);
 
         UserResponseDTO result = userService.getUserById(user.getUserId());
 
         assertThat(result).isEqualTo(response);
+        assertThat(result.getFollowingCount()).isEqualTo(3);
     }
 
     @Test
@@ -146,12 +150,30 @@ class UserServiceImplTest {
 
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
         when(userMapper.toUserResponseDTO(user)).thenReturn(response);
+        when(userFollowRepository.countByFollowerUserId(user.getUserId())).thenReturn(4L);
         when(userFollowRepository.existsByFollowerUserIdAndFollowingUserId(viewerUserId, user.getUserId()))
                 .thenReturn(true);
 
         UserResponseDTO result = userService.getUserById(user.getUserId(), viewerUserId);
 
         assertThat(result.getIsFollowing()).isTrue();
+        assertThat(result.getFollowingCount()).isEqualTo(4);
+    }
+
+    @Test
+    void getUserByUsername_success_enrichesFollowingCount_TC006_1() {
+        User user = user();
+        UUID viewerUserId = UUID.randomUUID();
+        UserResponseDTO response = userResponse(user.getUserId());
+
+        when(userRepository.findByUserName(user.getUserName())).thenReturn(Optional.of(user));
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
+        when(userMapper.toUserResponseDTO(user)).thenReturn(response);
+        when(userFollowRepository.countByFollowerUserId(user.getUserId())).thenReturn(5L);
+
+        UserResponseDTO result = userService.getUserByUsername(user.getUserName(), viewerUserId);
+
+        assertThat(result.getFollowingCount()).isEqualTo(5);
     }
 
     @Test
@@ -428,6 +450,7 @@ class UserServiceImplTest {
         response.setUserAvatar("https://example.com/avatar.png");
         response.setUserLike(0);
         response.setUserFollower(0);
+        response.setFollowingCount(0);
         response.setAccountStatus(true);
         return response;
     }

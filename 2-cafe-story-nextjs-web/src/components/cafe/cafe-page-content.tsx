@@ -3,8 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { CafePage } from "@/components/cafe/cafe-page";
+import { CafePageExpiredModal } from "@/components/cafe/cafe-page-expired-modal";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { mapBlogResponsesToFeedPosts } from "@/features/blogs/blog-feed-adapter";
 import { useBfcacheRestoreEffect } from "@/hooks/use-bfcache-restore";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { ApiError } from "@/lib/api/client";
 import { getBlogsByCafePageId, getCafePageById } from "@/lib/api/cafes";
 import { mockCafeMenu } from "@/mocks/cafes";
@@ -67,7 +71,7 @@ function formatLocation(cafe: CafePageResponse) {
     cafe.regionProvince,
   ]
     .filter(Boolean)
-    .join(", ") || cafe.address;
+    .join(", ");
 }
 
 function buildCafeTags(cafe: CafePageResponse) {
@@ -94,6 +98,7 @@ function mapCafePageResponseToCafeSummary(cafe: CafePageResponse): CafeSummary {
 
   return {
     id: cafe.id,
+    ownerUserId: cafe.ownerUserId,
     name: cafe.name,
     location: formatLocation(cafe),
     address: cafe.address,
@@ -107,6 +112,7 @@ function mapCafePageResponseToCafeSummary(cafe: CafePageResponse): CafeSummary {
     photoCount: `${formatCount(cafe.likeCount)} likes`,
     likeCount: cafe.likeCount ?? 0,
     isLiked: cafe.isLiked ?? false,
+    pageActive: cafe.pageActive,
     image: avatarImage,
     avatarImage,
     avatarImageAlt: `${cafe.name} avatar`,
@@ -144,15 +150,67 @@ function getCafePageErrorMessage(error: unknown) {
 function CafePageLoadingState() {
   return (
     <div className="w-full space-y-8" aria-busy="true">
-      <div className="h-[240px] animate-pulse rounded-md border border-line-soft bg-surface-muted sm:h-[360px]" />
-      <div className="flex gap-5">
-        <div className="h-24 w-24 animate-pulse rounded-full bg-surface-muted sm:h-32 sm:w-32" />
-        <div className="min-w-0 flex-1 space-y-3 pt-4">
-          <div className="h-8 w-2/3 animate-pulse rounded-sm bg-surface-muted" />
-          <div className="h-4 w-1/2 animate-pulse rounded-sm bg-surface-muted" />
-          <div className="h-4 w-3/4 animate-pulse rounded-sm bg-surface-muted" />
+      <section className="space-y-8 pb-8 -mt-8 pt-0">
+        <Skeleton className="h-[240px] rounded-md border border-line-soft sm:h-[360px]" />
+
+        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+          <div className="flex min-w-0 flex-col gap-5 sm:flex-row sm:items-center">
+            <Skeleton className="size-36 shrink-0 rounded-full border-4 border-background shadow-sm ring-1 ring-line-soft sm:size-48" />
+            <div className="min-w-0 space-y-3">
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-10 w-56 max-w-full" />
+                <Skeleton className="size-8 rounded-full" />
+              </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+              <Skeleton className="h-4 w-[min(420px,100%)]" />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2 sm:justify-end">
+            <Skeleton className="h-10 w-24 rounded-sm" />
+            <Skeleton className="h-10 w-24 rounded-sm" />
+            <Skeleton className="h-10 w-28 rounded-sm" />
+          </div>
         </div>
-      </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)]">
+        <Card className="border-line-soft">
+          <CardHeader>
+            <Skeleton className="h-3 w-32" />
+          </CardHeader>
+          <CardContent className="flex flex-col gap-6">
+            <div className="flex flex-wrap gap-3">
+              <Skeleton className="h-8 w-24 rounded-full" />
+              <Skeleton className="h-8 w-28 rounded-full" />
+              <Skeleton className="h-8 w-20 rounded-full" />
+            </div>
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-4/5" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-line-soft shadow-none">
+          <CardHeader>
+            <Skeleton className="h-3 w-28" />
+          </CardHeader>
+          <CardContent className="flex flex-col gap-6">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div className="flex items-center justify-between gap-4" key={index}>
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-28" />
+              </div>
+            ))}
+            <Skeleton className="h-4 w-3/4" />
+          </CardContent>
+        </Card>
+      </section>
     </div>
   );
 }
@@ -167,6 +225,7 @@ function CafePageErrorState({ message }: { message: string }) {
 
 export function CafePageContent({ cafePageId }: CafePageContentProps) {
   const params = useParams<{ id?: string | string[] }>();
+  const { user: currentUser, isLoading: isAuthLoading } = useCurrentUser();
   const cafeRequestIdRef = useRef(0);
   const blogsRequestIdRef = useRef(0);
   const routeCafePageId = getParamValue(params.id) || cafePageId;
@@ -314,7 +373,7 @@ export function CafePageContent({ cafePageId }: CafePageContentProps) {
     void (async () => {
       const loadedCafe = await loadCafe(decodedCafePageId);
 
-      if (loadedCafe) {
+      if (loadedCafe && loadedCafe.pageActive !== false) {
         void loadCafeBlogs(loadedCafe.id);
       }
     })();
@@ -326,7 +385,7 @@ export function CafePageContent({ cafePageId }: CafePageContentProps) {
         preserveExisting: true,
       });
 
-      if (loadedCafe) {
+      if (loadedCafe && loadedCafe.pageActive !== false) {
         void loadCafeBlogs(loadedCafe.id, null, {
           preserveExisting: true,
         });
@@ -358,6 +417,18 @@ export function CafePageContent({ cafePageId }: CafePageContentProps) {
 
   if (cafeError || !cafe) {
     return <CafePageErrorState message={cafeError ?? "Cafe not found."} />;
+  }
+
+  if (cafe.pageActive === false) {
+    if (isAuthLoading) {
+      return <CafePageLoadingState />;
+    }
+
+    return (
+      <CafePageExpiredModal
+        isOwner={Boolean(cafe.ownerUserId && cafe.ownerUserId === currentUser?.userId)}
+      />
+    );
   }
 
   return (
