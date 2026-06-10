@@ -1,6 +1,5 @@
 import type { ApiEnvelope, ApiErrorPayload } from "../../types";
-
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL;
+import { getApiBaseUrl } from "../../config";
 
 type ApiFetchOptions = Omit<RequestInit, "body"> & {
   body?: BodyInit | Record<string, unknown> | null;
@@ -23,11 +22,7 @@ function buildUrl(path: string) {
     return path;
   }
 
-  if (!API_BASE_URL) {
-    throw new Error("EXPO_PUBLIC_API_BASE_URL is not configured");
-  }
-
-  const baseUrl = API_BASE_URL.replace(/\/$/, "");
+  const baseUrl = getApiBaseUrl().replace(/\/$/, "");
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
 
   return `${baseUrl}${normalizedPath}`;
@@ -71,6 +66,7 @@ export async function apiFetch<T>(
     : (body as BodyInit | null | undefined);
 
   const response = await fetch(buildUrl(path), {
+    credentials: "include",
     ...restOptions,
     body: requestBody,
     headers: requestHeaders,
