@@ -11,6 +11,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Avatar } from "../ui/avatar";
 import { CommentModal } from "./comment-modal";
 import { MobilePostCarousel } from "./mobile-post-carousel";
+import { PostOptionsModal } from "./post-options-modal";
+import { ReportPostModal } from "./report-post-modal";
 import { useAuth } from "../../features/auth";
 import {
   followUser,
@@ -108,6 +110,8 @@ function formatTimeAgo(createdAt: string | null) {
 export function BlogFeedCard({ blog }: BlogFeedCardProps) {
   const { user } = useAuth();
   const [isCommentModalVisible, setIsCommentModalVisible] = useState(false);
+  const [isOptionsModalVisible, setIsOptionsModalVisible] = useState(false);
+  const [isReportModalVisible, setIsReportModalVisible] = useState(false);
   const [isFollowPending, setIsFollowPending] = useState(false);
   const [isLikePending, setIsLikePending] = useState(false);
   const [isSavePending, setIsSavePending] = useState(false);
@@ -239,6 +243,11 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
     }
   }
 
+  function handleOpenReport() {
+    setIsOptionsModalVisible(false);
+    setIsReportModalVisible(true);
+  }
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
@@ -273,7 +282,11 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
               {isFollowed ? "Following" : "Follow"}
             </Text>
           </Pressable>
-          <Pressable accessibilityLabel="Open post options" accessibilityRole="button">
+          <Pressable
+            accessibilityLabel="Open post options"
+            accessibilityRole="button"
+            onPress={() => setIsOptionsModalVisible(true)}
+          >
             <MoreHorizontal color={colors.foreground} size={22} strokeWidth={2.4} />
           </Pressable>
         </View>
@@ -361,6 +374,18 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
         onClose={() => setIsCommentModalVisible(false)}
         postAuthorName={displayName}
         visible={isCommentModalVisible}
+      />
+      <PostOptionsModal
+        isSavePending={isSavePending}
+        isSaved={isSaved}
+        onClose={() => setIsOptionsModalVisible(false)}
+        onReport={handleOpenReport}
+        onToggleSave={handleToggleSave}
+        visible={isOptionsModalVisible}
+      />
+      <ReportPostModal
+        onClose={() => setIsReportModalVisible(false)}
+        visible={isReportModalVisible}
       />
     </View>
   );
