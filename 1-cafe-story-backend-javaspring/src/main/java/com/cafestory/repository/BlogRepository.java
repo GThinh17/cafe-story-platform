@@ -21,6 +21,11 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
     @EntityGraph(attributePaths = {"author", "page"})
     List<Blog> findByAuthorUserId(UUID authorUserId);
 
+    @EntityGraph(attributePaths = {"author", "page"})
+    java.util.Optional<Blog> findFirstByAuthorUserIdAndStatusOrderByCreatedAtDescIdDesc(
+            UUID authorUserId,
+            PostStatus status);
+
     @Query("""
             select b
             from Blog b
