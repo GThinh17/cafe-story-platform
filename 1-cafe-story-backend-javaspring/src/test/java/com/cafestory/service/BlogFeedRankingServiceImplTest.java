@@ -45,6 +45,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -293,7 +294,75 @@ class BlogFeedRankingServiceImplTest {
     }
 
     @Test
-    void rebuildRecommendationCache_success_reportPenaltyReducesScore_TC007() {
+    void rebuildRecommendationCache_success_prioritizesCurrentUsersOwnBlogs_TC007() {
+        User user = user();
+        Blog ownBlog = blogWithAuthor(user, user.getRegion().getRegionId());
+        Blog otherBlog = blog(user.getRegion().getRegionId());
+        BlogFeedRankingServiceImpl service = service();
+
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
+        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(otherBlog, ownBlog));
+
+        service.rebuildRecommendationCache(
+                user.getUserId(),
+                TrendWindowType.HOUR_24,
+                null);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<BlogRecommendationScore>> scoresCaptor = ArgumentCaptor.forClass(List.class);
+        verify(blogRecommendationScoreRepository).saveAll(scoresCaptor.capture());
+        List<BlogRecommendationScore> cachedScores = scoresCaptor.getValue();
+        assertThat(cachedScores).hasSize(2);
+        assertThat(cachedScores.getFirst().getBlog().getId()).isEqualTo(ownBlog.getId());
+        assertThat(cachedScores.getFirst().getReason()).contains("ownAuthorScore=40.0");
+        assertThat(cachedScores.getFirst().getFollowedUserScore()).isZero();
+        verify(userFollowRepository, never())
+                .existsByFollowerUserIdAndFollowingUserId(user.getUserId(), user.getUserId());
+    }
+
+    @Test
+    void getPersonalizedFeed_success_rebuildsCacheWhenCurrentUserHasNewerOwnBlog_TC008() {
+        User user = user();
+        UUID regionId = user.getRegion().getRegionId();
+        Blog ownBlog = blogWithAuthor(user, regionId);
+        LocalDateTime oldComputedAt = LocalDateTime.now().minusHours(2);
+        LocalDateTime refreshedComputedAt = LocalDateTime.now();
+        BlogRecommendationScore score = recommendationScore(user, ownBlog, 60.0, 1);
+        BlogFeedRankingServiceImpl service = service();
+
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
+        when(blogRecommendationScoreRepository.findLatestComputedAt(
+                user.getUserId(),
+                TrendWindowType.HOUR_24,
+                regionId)).thenReturn(oldComputedAt, refreshedComputedAt);
+        when(blogRepository.findFirstByAuthorUserIdAndStatusOrderByCreatedAtDescIdDesc(
+                user.getUserId(),
+                PostStatus.PUBLISHED)).thenReturn(Optional.of(ownBlog));
+        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(ownBlog));
+        when(blogRecommendationScoreRepository.findLatestPage(
+                eq(user.getUserId()),
+                eq(TrendWindowType.HOUR_24),
+                eq(regionId),
+                eq(refreshedComputedAt),
+                any(Pageable.class))).thenReturn(List.of(score));
+
+        List<BlogFeedResponse> result = service.getPersonalizedFeed(
+                user.getUserId(),
+                TrendWindowType.HOUR_24,
+                null,
+                0,
+                10);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getBlogId()).isEqualTo(ownBlog.getId());
+        verify(blogRecommendationScoreRepository).deleteByUserWindowAndContextRegion(
+                user.getUserId(),
+                TrendWindowType.HOUR_24,
+                regionId);
+    }
+
+    @Test
+    void rebuildRecommendationCache_success_reportPenaltyReducesScore_TC009() {
         User user = user();
         Blog blog = blog(UUID.randomUUID());
         BlogTrendingScore trendingScore = trendingScore(blog, 100.0);
@@ -404,6 +473,13 @@ class BlogFeedRankingServiceImplTest {
         blog.setCommentCount(3);
         blog.setShareCount(4);
         blog.setCreatedAt(LocalDateTime.now().minusHours(1));
+        return blog;
+    }
+
+    private Blog blogWithAuthor(User author, UUID regionId) {
+        Blog blog = blog(regionId);
+        blog.setAuthor(author);
+        blog.setCreatedAt(LocalDateTime.now().minusMinutes(10));
         return blog;
     }
 
