@@ -11,9 +11,44 @@ import {
 } from "../../components";
 import { useAuth } from "../../features/auth";
 import { mockHomeFeedStories } from "../../mocks";
-import { getBlogFeed } from "../../services/api";
+import {
+  getBlogFeed,
+  getBlogLikesByUser,
+  getBlogSavesByUser,
+  getFollowingByUserId,
+} from "../../services/api";
 import { spacing } from "../../theme";
-import type { BlogFeedResponse, StoryItem } from "../../types";
+import type {
+  BlogFeedResponse,
+  BlogLikeResponse,
+  BlogSaveResponse,
+  StoryItem,
+  UserFollowResponse,
+} from "../../types";
+
+function applyViewerState(
+  blogs: BlogFeedResponse[],
+  following: UserFollowResponse[],
+  likes: BlogLikeResponse[],
+  saves: BlogSaveResponse[],
+  currentUserId?: string,
+) {
+  const followingUserIds = new Set(
+    following.map((item) => item.followingUserId),
+  );
+  const likedBlogIds = new Set(likes.map((item) => item.blogId));
+  const savedBlogIds = new Set(saves.map((item) => item.blogId));
+
+  return blogs.map((blog) => ({
+    ...blog,
+    isFollow:
+      blog.authorUserId === currentUserId
+        ? false
+        : followingUserIds.has(blog.authorUserId),
+    isLike: likedBlogIds.has(blog.blogId),
+    isSave: savedBlogIds.has(blog.blogId),
+  }));
+}
 
 export function HomeScreen() {
   const { user } = useAuth();
@@ -33,7 +68,19 @@ export function HomeScreen() {
 
     try {
       const response = await getBlogFeed({ page: 0, size: 20 });
-      setBlogs(response);
+
+      if (!user?.userId) {
+        setBlogs(response);
+        return;
+      }
+
+      const [following, likes, saves] = await Promise.all([
+        getFollowingByUserId(user.userId).catch(() => []),
+        getBlogLikesByUser(user.userId).catch(() => []),
+        getBlogSavesByUser(user.userId).catch(() => []),
+      ]);
+
+      setBlogs(applyViewerState(response, following, likes, saves, user.userId));
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -44,7 +91,7 @@ export function HomeScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [user?.userId]);
 
   useEffect(() => {
     void loadFeed();

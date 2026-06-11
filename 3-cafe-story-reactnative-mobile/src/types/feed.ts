@@ -10,6 +10,8 @@ export type BlogDisplayAuthorType = "USER" | "CAFE_PAGE";
 
 export type TrendWindowType = "HOUR_24" | "DAY_7" | "MONTH_1";
 
+export type ShareType = "PUBLIC" | "PRIVATE" | "PAGE_ONLY";
+
 export type BlogFeedResponse = {
   authorAvatar?: string | null;
   authorUserAvatar?: string | null;
@@ -24,6 +26,9 @@ export type BlogFeedResponse = {
   displayAvatarUrl?: string | null;
   displayName?: string | null;
   imageUrls: string[] | null;
+  isFollow?: boolean | null;
+  isLike?: boolean | null;
+  isSave?: boolean | null;
   likeCount: number | null;
   pageAddress?: string | null;
   pageAvatarUrl?: string | null;
@@ -53,4 +58,39 @@ export type BlogFeedComment = {
   id: string;
   likeCount: number;
   replyCount?: number;
+};
+
+export type BlogLikeResponse = {
+  blogId: string;
+  createdAt: string | null;
+  id: string;
+  userId: string;
+};
+
+export type BlogSaveResponse = {
+  blogId: string;
+  createdAt: string | null;
+  id: string;
+  saveCount?: number | null;
+  saved?: boolean | null;
+  userId: string;
+};
+
+export type BlogShareRequest = {
+  shareType?: ShareType;
+};
+
+export type BlogShareResponse = {
+  blogId: string;
+  createdAt: string | null;
+  id: string;
+  shareType: ShareType;
+  userId: string;
+};
+
+export type UserFollowResponse = {
+  createdAt: string | null;
+  followerUserId: string;
+  followingUserId: string;
+  id: string;
 };

@@ -1,4 +1,11 @@
-import type { BlogFeedParams, BlogFeedResponse } from "../../types";
+import type {
+  BlogFeedParams,
+  BlogFeedResponse,
+  BlogLikeResponse,
+  BlogSaveResponse,
+  BlogShareRequest,
+  BlogShareResponse,
+} from "../../types";
 import { apiFetch } from "./client";
 import { apiEndpoints } from "./endpoints";
 
@@ -28,4 +35,56 @@ export function getBlogFeed(params: BlogFeedParams = {}) {
       method: "GET",
     },
   );
+}
+
+export function likeBlog(blogId: string) {
+  return apiFetch<BlogLikeResponse>(apiEndpoints.blogs.likes(blogId), {
+    method: "POST",
+  });
+}
+
+export function unlikeBlog(blogId: string) {
+  return apiFetch<void>(apiEndpoints.blogs.likes(blogId), {
+    method: "DELETE",
+  });
+}
+
+export function getBlogLikesByUser(userId: string) {
+  return apiFetch<BlogLikeResponse[]>(apiEndpoints.blogs.likesByUser(userId), {
+    method: "GET",
+  });
+}
+
+export function saveBlog(blogId: string) {
+  return apiFetch<BlogSaveResponse>(apiEndpoints.blogs.saves(blogId), {
+    method: "POST",
+  });
+}
+
+export function unsaveBlog(blogId: string) {
+  return apiFetch<void>(apiEndpoints.blogs.saves(blogId), {
+    method: "DELETE",
+  });
+}
+
+export function getBlogSavesByUser(userId: string) {
+  return apiFetch<BlogSaveResponse[]>(apiEndpoints.blogs.savesByUser(userId), {
+    method: "GET",
+  });
+}
+
+export function getMyBlogSaves() {
+  return apiFetch<BlogSaveResponse[]>(apiEndpoints.blogs.savesMe, {
+    method: "GET",
+  });
+}
+
+export function shareBlog(
+  blogId: string,
+  request: BlogShareRequest = { shareType: "PUBLIC" },
+) {
+  return apiFetch<BlogShareResponse>(apiEndpoints.blogs.shares(blogId), {
+    body: request,
+    method: "POST",
+  });
 }
