@@ -29,6 +29,21 @@ Do not put reusable UI, mock data, API logic, route names, or auth orchestration
 - Do not repeat hardcoded colors, spacing, or typography scale in screens.
 - Use `src/theme` for shared colors, spacing, and typography.
 - Keep screen styling consistent with CafeStory's calm cafe/social review feel.
+- The global CafeStory palette is:
+  - Primary: `#3E2723`
+  - Secondary: `#8D6E63`
+  - Tertiary: `#1D312B`
+  - Neutral: `#757575`
+- Use `colors.primary`, `colors.secondary`, `colors.tertiary`, and `colors.neutral` instead of raw hex values.
+- Button styling must use the shared `Button` component and its supported variants: `primary`, `secondary`, `inverted`, `outlined`.
+- Do not create one-off button colors inside screens. Add a variant to `src/components/ui/button.tsx` only when the design system needs it.
+
+## Icon Rules
+
+- Recommended icon library: `lucide-react-native`.
+- Use icon components from `lucide-react-native` for common actions such as home, search, user, edit, delete, bookmark, heart, comment, notification, and logout.
+- Keep icon color tied to `src/theme/colors.ts`; do not hardcode icon colors in screens.
+- Prefer icon buttons for compact actions. Pair icon plus label only when the action needs text clarity.
 
 ## Navigation Rules
 

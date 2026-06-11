@@ -6,7 +6,7 @@ type ButtonProps = {
   isLoading?: boolean;
   label: string;
   onPress?: () => void;
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "inverted" | "outlined";
 };
 
 export function Button({
@@ -17,6 +17,7 @@ export function Button({
   variant = "primary",
 }: ButtonProps) {
   const isDisabled = disabled || isLoading;
+  const isDarkVariant = variant === "primary" || variant === "inverted";
 
   return (
     <Pressable
@@ -25,18 +26,18 @@ export function Button({
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
-        variant === "primary" ? styles.primary : styles.secondary,
+        styles[variant],
         pressed && !isDisabled && styles.pressed,
         isDisabled && styles.disabled,
       ]}
     >
       {isLoading ? (
-        <ActivityIndicator color={variant === "primary" ? colors.white : colors.espresso} />
+        <ActivityIndicator color={isDarkVariant ? colors.white : colors.primary} />
       ) : (
         <Text
           style={[
             styles.label,
-            variant === "primary" ? styles.primaryLabel : styles.secondaryLabel,
+            isDarkVariant ? styles.darkLabel : styles.lightLabel,
           ]}
         >
           {label}
@@ -65,15 +66,25 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.99 }],
   },
   primary: {
-    backgroundColor: colors.espresso,
+    backgroundColor: colors.primary,
   },
-  primaryLabel: {
+  darkLabel: {
     color: colors.white,
   },
   secondary: {
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.white,
+    borderColor: colors.border,
+    borderWidth: 1,
   },
-  secondaryLabel: {
-    color: colors.espresso,
+  inverted: {
+    backgroundColor: colors.tertiary,
+  },
+  lightLabel: {
+    color: colors.primary,
+  },
+  outlined: {
+    backgroundColor: colors.white,
+    borderColor: colors.secondary,
+    borderWidth: 1,
   },
 });

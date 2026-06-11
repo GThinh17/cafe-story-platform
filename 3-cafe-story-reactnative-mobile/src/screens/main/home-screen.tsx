@@ -1,38 +1,45 @@
-import { StyleSheet, Text, View } from "react-native";
-import { Screen } from "../../components";
-import { colors, spacing, typography } from "../../theme";
+import { Send } from "lucide-react-native";
+import { ScrollView, StyleSheet } from "react-native";
+import { BlogFeedList, Screen, ShareTopBar, StoryRail } from "../../components";
+import { useAuth } from "../../features/auth";
+import { mockBlogFeed, mockHomeFeedStories } from "../../mocks";
+import { spacing } from "../../theme";
+import type { StoryItem } from "../../types";
 
 export function HomeScreen() {
+  const { user } = useAuth();
+
+  const stories: StoryItem[] = [
+    {
+      avatarUri: user?.userAvatar,
+      id: "story-me",
+      initials: user?.userName?.slice(0, 2).toUpperCase() ?? "ME",
+      isSelf: true,
+      label: "Your story",
+    },
+    ...mockHomeFeedStories,
+  ];
+
   return (
-    <Screen>
-      <View style={styles.section}>
-        <Text style={styles.eyebrow}>Feed</Text>
-        <Text style={styles.title}>Cafe stories</Text>
-        <Text style={styles.description}>
-          Home feed foundation is ready for stories, posts, and nearby cafe cards.
-        </Text>
-      </View>
+    <Screen padded={false}>
+      <ShareTopBar
+        rightAccessibilityLabel="Open messages"
+        rightIcon={Send}
+        showRightBadge
+      />
+      <ScrollView
+        contentContainerStyle={styles.feedContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <StoryRail stories={stories} />
+        <BlogFeedList blogs={mockBlogFeed} />
+      </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  description: {
-    color: colors.muted,
-    fontSize: typography.body,
-    lineHeight: 24,
-  },
-  eyebrow: {
-    color: colors.primary,
-    fontWeight: "900",
-    textTransform: "uppercase",
-  },
-  section: {
-    gap: spacing.sm,
-  },
-  title: {
-    color: colors.espresso,
-    fontSize: typography.heading,
-    fontWeight: "900",
+  feedContent: {
+    paddingBottom: 112,
   },
 });
