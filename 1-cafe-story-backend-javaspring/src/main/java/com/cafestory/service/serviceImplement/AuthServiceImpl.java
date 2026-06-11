@@ -92,7 +92,10 @@ public class AuthServiceImpl implements AuthService {
 
         User savedUser = userRepository.save(user);
         assignDefaultUserRole(savedUser);
-        return response(savedUser, roles(savedUser.getUserId()), null, null);
+        List<String> roles = roles(savedUser.getUserId());
+        String accessToken = jwtService.createAccessToken(savedUser, roles);
+        String refreshToken = refreshTokenService.createRefreshToken(savedUser);
+        return response(savedUser, roles, accessToken, refreshToken);
     }
 
     @Override
