@@ -3,11 +3,13 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Button, Screen, TextField } from "../../components";
+import { useAuth } from "../../features/auth";
 import { routes } from "../../navigation";
 import type { AuthStackParamList } from "../../navigation";
 import { colors, spacing, typography } from "../../theme";
 
 export function RegisterScreen() {
+  const { register } = useAuth();
   const navigation =
     useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const [userFullName, setUserFullName] = useState("");
@@ -19,9 +21,21 @@ export function RegisterScreen() {
 
   async function handleRegister() {
     setError("");
+
+    if (!userEmail.trim() || !userName.trim() || !password) {
+      setError("Email, username, and password are required.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
+      await register({
+        password,
+        userEmail: userEmail.trim(),
+        userFullName: userFullName.trim() || undefined,
+        userName: userName.trim(),
+      });
       navigation.navigate(routes.region);
     } catch (requestError) {
       setError(
@@ -75,7 +89,9 @@ export function RegisterScreen() {
         />
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <Button
-          disabled={!userEmail || !userName || !password}
+          disabled={
+            isSubmitting || !userEmail.trim() || !userName.trim() || !password
+          }
           isLoading={isSubmitting}
           label="Create account"
           onPress={handleRegister}

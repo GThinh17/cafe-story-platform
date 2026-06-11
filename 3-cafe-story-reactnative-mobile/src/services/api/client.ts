@@ -5,6 +5,8 @@ type ApiFetchOptions = Omit<RequestInit, "body"> & {
   body?: BodyInit | Record<string, unknown> | null;
 };
 
+let authAccessToken: string | null = null;
+
 export class ApiError extends Error {
   payload: ApiErrorPayload | null;
   statusCode: number;
@@ -15,6 +17,14 @@ export class ApiError extends Error {
     this.payload = payload;
     this.statusCode = statusCode;
   }
+}
+
+export function setAuthAccessToken(token: string | null | undefined) {
+  authAccessToken = token ?? null;
+}
+
+export function clearAuthAccessToken() {
+  authAccessToken = null;
 }
 
 function buildUrl(path: string) {
@@ -59,6 +69,10 @@ export async function apiFetch<T>(
 
   if (shouldSerializeBody && !requestHeaders.has("Content-Type")) {
     requestHeaders.set("Content-Type", "application/json");
+  }
+
+  if (authAccessToken && !requestHeaders.has("Authorization")) {
+    requestHeaders.set("Authorization", `Bearer ${authAccessToken}`);
   }
 
   const requestBody: BodyInit | null | undefined = shouldSerializeBody

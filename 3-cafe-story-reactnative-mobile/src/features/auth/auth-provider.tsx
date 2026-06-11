@@ -7,10 +7,12 @@ import {
   useState,
 } from "react";
 import {
+  clearAuthAccessToken,
   getMe,
   login as loginRequest,
   logout as logoutRequest,
   register as registerRequest,
+  setAuthAccessToken,
 } from "../../services/api";
 import type { AuthResponse, AuthUser, LoginRequest, RegisterRequest } from "../../types";
 
@@ -50,6 +52,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       const response = await getMe();
       setUser(response.user);
     } catch {
+      clearAuthAccessToken();
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -61,18 +64,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, []);
 
   const login = useCallback(async (request: LoginRequest) => {
-    const response = await loginRequest(request);
-    setUser(response.user);
-    return response;
+    const loginResponse = await loginRequest(request);
+    setAuthAccessToken(loginResponse.accessToken);
+
+    const currentUserResponse = await getMe();
+    setUser(currentUserResponse.user);
+
+    return currentUserResponse;
   }, []);
 
   const register = useCallback(async (request: RegisterRequest) => {
-    await registerRequest(request);
-    const response = await loginRequest({
-      identifier: request.userEmail,
-      password: request.password,
-    });
-    setUser(response.user);
+    const response = await registerRequest(request);
+    setAuthAccessToken(response.accessToken);
+
     return response;
   }, []);
 
@@ -80,6 +84,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     try {
       await logoutRequest();
     } finally {
+      clearAuthAccessToken();
       setUser(null);
     }
   }, []);

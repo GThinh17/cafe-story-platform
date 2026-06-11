@@ -9,7 +9,7 @@ import type { AuthStackParamList } from "../../navigation";
 import { colors, spacing, typography } from "../../theme";
 
 export function LoginScreen() {
-  const { continueAsTestUser, login } = useAuth();
+  const { login } = useAuth();
   const navigation =
     useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const [identifier, setIdentifier] = useState("");
@@ -19,16 +19,22 @@ export function LoginScreen() {
 
   async function handleLogin() {
     setError("");
+
+    if (!identifier.trim() || !password) {
+      setError("Email/username and password are required.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      if (identifier && password) {
-        await login({ identifier, password });
-      } else {
-        continueAsTestUser();
-      }
+      await login({ identifier: identifier.trim(), password });
     } catch (requestError) {
-      continueAsTestUser();
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to sign in.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -61,7 +67,7 @@ export function LoginScreen() {
         />
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <Button
-          disabled={isSubmitting}
+          disabled={isSubmitting || !identifier.trim() || !password}
           isLoading={isSubmitting}
           label="Sign in"
           onPress={handleLogin}
