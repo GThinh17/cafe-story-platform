@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 
 type CafeMapModalProps = {
+  address?: string | null;
   cafeName: string;
   onOpenChange: (open: boolean) => void;
   open: boolean;
@@ -21,6 +22,7 @@ type CafeMapModalProps = {
 };
 
 function buildLocationQuery({
+  address,
   regionArea,
   regionCity,
   regionProvince,
@@ -28,12 +30,19 @@ function buildLocationQuery({
   regionWard,
 }: Pick<
   CafeMapModalProps,
+  | "address"
   | "regionArea"
   | "regionCity"
   | "regionProvince"
   | "regionStreet"
   | "regionWard"
 >) {
+  const addressQuery = address?.trim();
+
+  if (addressQuery) {
+    return addressQuery;
+  }
+
   return [
     regionStreet,
     regionWard,
@@ -47,6 +56,7 @@ function buildLocationQuery({
 }
 
 export function CafeMapModal({
+  address,
   cafeName,
   onOpenChange,
   open,
@@ -57,6 +67,7 @@ export function CafeMapModal({
   regionWard,
 }: CafeMapModalProps) {
   const locationQuery = buildLocationQuery({
+    address,
     regionArea,
     regionCity,
     regionProvince,

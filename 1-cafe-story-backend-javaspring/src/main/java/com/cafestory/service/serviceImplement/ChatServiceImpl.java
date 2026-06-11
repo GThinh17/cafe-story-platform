@@ -102,9 +102,8 @@ public class ChatServiceImpl implements ChatService {
     @Transactional(readOnly = true)
     public List<ConversationResponseDTO> getUserConversations(UUID userId) {
         userValidator.validateUserExists(userId);
-        return chatMemberRepository.findByUserUserId(userId)
+        return conversationRepository.findUserConversationsOrderByLatestActivity(userId)
                 .stream()
-                .map(ChatMember::getConversation)
                 .map(this::toConversationResponse)
                 .toList();
     }

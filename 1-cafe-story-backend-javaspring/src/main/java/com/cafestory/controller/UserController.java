@@ -46,6 +46,12 @@ public class UserController {
         return userService.getAllUsers(optionalUserId(principal));
     }
 
+    @GetMapping("/me")
+    public UserResponseDTO getCurrentUser(@AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        UUID currentUserId = requireUserId(principal);
+        return userService.getUserById(currentUserId, currentUserId);
+    }
+
     @GetMapping("/{userId}")
     public UserResponseDTO getUserById(
             @PathVariable UUID userId,

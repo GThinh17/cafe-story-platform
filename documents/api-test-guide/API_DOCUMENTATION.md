@@ -17,6 +17,7 @@ Generated from the current Spring Boot controllers, security config, DTOs, and s
 - [Cafe Pages](#cafe-pages)
 - [Chat](#chat)
 - [Comments](#comments)
+- [Content Reports](#content-reports)
 - [Notifications](#notifications)
 - [Page Follows](#page-follows)
 - [Page Likes](#page-likes)
@@ -379,6 +380,62 @@ Update body:
 ```
 
 Note: create comment `userId` is taken from JWT principal.
+
+## Content Reports
+
+Report APIs use the current user from the `access_token` cookie. The client should load active report reasons, let the user select one, then submit the selected `reasonId`.
+
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| `GET` | `/api/report-reasons?targetType=BLOG` | Cookie | Get active report reasons sorted by `severity desc`, then `sortOrder asc`. |
+| `POST` | `/api/reports` | Cookie | Create a content report as the current user. |
+| `GET` | `/api/admin/reports?status=OPEN&targetType=BLOG&page=0&size=20` | ADMIN cookie | List reports for moderation. |
+| `GET` | `/api/admin/reports/{reportId}` | ADMIN cookie | Get report detail. |
+| `PATCH` | `/api/admin/reports/{reportId}/status` | ADMIN cookie | Update report status. |
+
+Create report body:
+
+```json
+{
+  "targetType": "BLOG",
+  "targetId": "{{blog_id}}",
+  "reasonId": "{{report_reason_id}}",
+  "description": "Optional details. Required when the selected reason requires description."
+}
+```
+
+Reason response example:
+
+```json
+{
+  "id": "{{report_reason_id}}",
+  "code": "SCAM_FRAUD_OR_SPAM",
+  "labelVi": "Lừa đảo, gian lận hoặc spam",
+  "targetType": null,
+  "severity": 4,
+  "requiresDescription": false,
+  "isActive": true,
+  "sortOrder": 70
+}
+```
+
+Report response includes selected reason metadata and the stored label snapshot:
+
+```json
+{
+  "id": "{{report_id}}",
+  "targetType": "BLOG",
+  "targetId": "{{blog_id}}",
+  "reasonId": "{{report_reason_id}}",
+  "reasonCode": "SCAM_FRAUD_OR_SPAM",
+  "reason": "Lừa đảo, gian lận hoặc spam",
+  "reasonLabel": "Lừa đảo, gian lận hoặc spam",
+  "reasonSeverity": 4,
+  "status": "OPEN"
+}
+```
+
+Notes: duplicate active reports are blocked while an existing report for the same reporter and target is `OPEN` or `REVIEWING`. Users cannot report their own blog, comment, account, or cafe page. Blog reports create a `BlogEvent.REPORT` penalty event for ranking/trending.
 
 ## Notifications
 

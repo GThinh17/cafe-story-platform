@@ -30,4 +30,14 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
     Optional<Conversation> findDirectConversation(
             @Param("firstUserId") UUID firstUserId,
             @Param("secondUserId") UUID secondUserId);
+
+    @Query("""
+            select c from Conversation c
+            where exists (
+                select m.id from ChatMember m
+                where m.conversation = c and m.user.userId = :userId
+            )
+            order by coalesce(c.updatedAt, c.createdAt) desc, c.createdAt desc
+            """)
+    List<Conversation> findUserConversationsOrderByLatestActivity(@Param("userId") UUID userId);
 }

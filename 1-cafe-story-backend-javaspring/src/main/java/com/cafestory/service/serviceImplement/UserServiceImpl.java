@@ -194,10 +194,19 @@ public class UserServiceImpl implements UserService {
 
     private UserResponseDTO toUserResponseDTO(User user, UUID viewerUserId) {
         UserResponseDTO response = userMapper.toUserResponseDTO(user);
+        response.setFollowingCount(getFollowingCount(user));
         response.setIsFollowing(viewerUserId != null
                 && user.getUserId() != null
                 && !viewerUserId.equals(user.getUserId())
                 && userFollowRepository.existsByFollowerUserIdAndFollowingUserId(viewerUserId, user.getUserId()));
         return response;
+    }
+
+    private Integer getFollowingCount(User user) {
+        if (user == null || user.getUserId() == null) {
+            return 0;
+        }
+        long followingCount = userFollowRepository.countByFollowerUserId(user.getUserId());
+        return followingCount > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) followingCount;
     }
 }

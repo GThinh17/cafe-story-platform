@@ -1,14 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, usePathname } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
+import {
+  CafePageHighlights,
+  type CafePageHighlight,
+} from "@/components/profile/profile-cafe-highlights";
 import { ProfileHeader } from "@/components/profile/profile-header";
 import { ProfileReviewGrid } from "@/components/profile/profile-review-grid";
+import { ProfileUserListModal } from "@/components/profile/profile-user-list-modal";
 import { CreatePostModal } from "@/components/review/create-post-modal";
 import { mapBlogResponsesToFeedPosts } from "@/features/blogs/blog-feed-adapter";
 import { useBfcacheRestoreEffect } from "@/hooks/use-bfcache-restore";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { getBlogsByUser } from "@/lib/api/blogs";
+import { getCafePagesByOwnerId } from "@/lib/api/cafes";
+import { createDirectConversation } from "@/lib/api/chat";
 import { ApiError } from "@/lib/api/client";
 import { followUser, getUserByUsername, unfollowUser } from "@/lib/api/users";
 import {
@@ -21,6 +28,7 @@ import {
 } from "@/lib/avatar";
 import { mockReviewComposer, mockReviewDraftHints } from "@/mocks/reviews";
 import type { AuthUser } from "@/types/auth";
+import type { CafePageResponse } from "@/types/cafe";
 import type { FeedPost } from "@/types/feed";
 import type { UserProfile, UserResponse } from "@/types/user";
 
@@ -38,7 +46,7 @@ function mapAuthUserToProfile(user: AuthUser | null): UserProfile {
     location: "",
     stats: {
       posts: "0",
-      cafes: "0",
+      following: String(user?.followingCount ?? 0),
       followers: "0",
     },
     username: handle,
@@ -68,7 +76,7 @@ function mapUserResponseToProfile(user: UserResponse): UserProfile {
     location,
     stats: {
       posts: "0",
-      cafes: "0",
+      following: String(user.followingCount ?? 0),
       followers: String(user.userFollower ?? 0),
     },
     username: handle,
@@ -138,12 +146,29 @@ type ProfilePageContentProps = {
   username: string;
 };
 
+type ProfileUserListModalType = "followers" | "following";
+
+function isActiveCafePage(cafe: CafePageResponse) {
+  return cafe.pageActive === true || cafe.status === "ACTIVE";
+}
+
+function mapCafePageToHighlight(cafe: CafePageResponse): CafePageHighlight {
+  return {
+    alt: `${cafe.name} avatar`,
+    href: `/cafes/${cafe.id}`,
+    image: cafe.avatarUrl?.trim() || cafe.coverUrl?.trim() || DEFAULT_AVATAR_IMAGE,
+    label: cafe.name,
+  };
+}
+
 export function ProfilePageContent({ username }: ProfilePageContentProps) {
+  const router = useRouter();
   const pathname = usePathname();
   const params = useParams<{ username?: string | string[] }>();
   const { user, isLoading } = useCurrentUser();
   const profileRequestIdRef = useRef(0);
   const postsRequestIdRef = useRef(0);
+  const cafesRequestIdRef = useRef(0);
   const routeParamUsername = getUsernameParamValue(params.username);
   const routeUsername = useMemo(
     () =>
@@ -157,12 +182,16 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
   const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
+  const [isMessageLoading, setIsMessageLoading] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
   const [profilePosts, setProfilePosts] = useState<FeedPost[]>([]);
   const [isPostsLoading, setIsPostsLoading] = useState(false);
   const [postsError, setPostsError] = useState<string | null>(null);
   const [hasLoadedPosts, setHasLoadedPosts] = useState(false);
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
+  const [activeUserListModal, setActiveUserListModal] =
+    useState<ProfileUserListModalType | null>(null);
+  const [activeCafePages, setActiveCafePages] = useState<CafePageResponse[]>([]);
 
   const loadProfile = useCallback(async (usernameOverride?: string) => {
     const usernameToFetch = usernameOverride || routeUsername;
@@ -250,6 +279,25 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
     }
   }, []);
 
+  const loadProfileCafePages = useCallback(async (userId: string) => {
+    const requestId = cafesRequestIdRef.current + 1;
+    cafesRequestIdRef.current = requestId;
+
+    try {
+      const cafes = await getCafePagesByOwnerId(userId);
+
+      if (cafesRequestIdRef.current !== requestId) {
+        return;
+      }
+
+      setActiveCafePages(cafes.filter(isActiveCafePage));
+    } catch {
+      if (cafesRequestIdRef.current === requestId) {
+        setActiveCafePages([]);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     void loadProfile();
   }, [loadProfile]);
@@ -257,6 +305,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
   useEffect(() => {
     if (!viewedUser?.userId) {
       setProfilePosts([]);
+      setActiveCafePages([]);
       setIsPostsLoading(false);
       setPostsError(null);
       setHasLoadedPosts(false);
@@ -264,7 +313,8 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
     }
 
     void loadProfilePosts(viewedUser.userId);
-  }, [loadProfilePosts, viewedUser?.userId]);
+    void loadProfileCafePages(viewedUser.userId);
+  }, [loadProfileCafePages, loadProfilePosts, viewedUser?.userId]);
 
   const handleBfcacheRestore = useCallback(() => {
     void loadProfile(routeUsername);
@@ -278,7 +328,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
         ...mapUserResponseToProfile(viewedUser),
         stats: {
           posts: String(profilePosts.length),
-          cafes: "0",
+          following: String(viewedUser.followingCount ?? 0),
           followers: String(followerCount),
         },
       };
@@ -295,12 +345,21 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
     };
   }, [
     followerCount,
+    activeCafePages.length,
     isOwnProfile,
     profilePosts.length,
     routeUsername,
     user,
     viewedUser,
   ]);
+
+  const cafeHighlights = useMemo(
+    () => activeCafePages.map(mapCafePageToHighlight),
+    [activeCafePages],
+  );
+  const primaryCafePage = activeCafePages[0] ?? null;
+  const cafePageHref = primaryCafePage ? `/cafes/${primaryCafePage.id}` : undefined;
+  const profileUserId = viewedUser?.userId ?? (isOwnProfile ? user?.userId : undefined);
 
   async function handleFollowToggle() {
     if (!viewedUser?.userId) {
@@ -329,6 +388,28 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
     }
   }
 
+  async function handleMessageClick() {
+    if (!viewedUser?.userId || isMessageLoading) {
+      return;
+    }
+
+    setIsMessageLoading(true);
+
+    try {
+      const conversation = await createDirectConversation(viewedUser.userId);
+
+      router.push(`/messages?conversationId=${conversation.id}`);
+    } catch (requestError) {
+      setProfileError(
+        requestError instanceof ApiError
+          ? requestError.message
+          : "Unable to open conversation.",
+      );
+    } finally {
+      setIsMessageLoading(false);
+    }
+  }
+
   return (
     <>
       {profileError ? (
@@ -339,13 +420,35 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
       <ProfileHeader
         areActionsLoading={isLoading}
         currentUser={user}
+        cafePageHref={isOwnProfile ? cafePageHref : undefined}
         highlights={[]}
         isFollowing={isFollowing}
         isLoading={isProfileLoading && !viewedUser}
+        isMessageLoading={isMessageLoading}
         isOwnProfile={isOwnProfile}
         onFollowToggle={handleFollowToggle}
+        onFollowersClick={
+          profileUserId ? () => setActiveUserListModal("followers") : undefined
+        }
+        onFollowingClick={
+          profileUserId ? () => setActiveUserListModal("following") : undefined
+        }
+        onMessageClick={handleMessageClick}
         profile={profile}
       />
+      {profileUserId && activeUserListModal ? (
+        <ProfileUserListModal
+          onOpenChange={(open) => {
+            if (!open) {
+              setActiveUserListModal(null);
+            }
+          }}
+          open={Boolean(activeUserListModal)}
+          profileUserId={profileUserId}
+          type={activeUserListModal}
+        />
+      ) : null}
+      <CafePageHighlights cafes={cafeHighlights} />
       <ProfileReviewGrid
         canCreatePost={isOwnProfile}
         errorMessage={postsError}
