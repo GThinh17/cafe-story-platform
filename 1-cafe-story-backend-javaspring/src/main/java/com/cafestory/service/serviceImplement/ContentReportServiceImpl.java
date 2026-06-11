@@ -8,6 +8,7 @@ import com.cafestory.entity.BlogEvent;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.Comment;
 import com.cafestory.entity.ContentReport;
+import com.cafestory.entity.ReportReason;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.BlogEventType;
 import com.cafestory.entity.enums.ReportStatus;
@@ -15,6 +16,7 @@ import com.cafestory.entity.enums.ReportTargetType;
 import com.cafestory.repository.BlogEventRepository;
 import com.cafestory.repository.ContentReportRepository;
 import com.cafestory.service.serviceInterface.ContentReportService;
+import com.cafestory.service.serviceInterface.ReportReasonService;
 import com.cafestory.validation.BlogValidator;
 import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.CommentValidator;
@@ -42,6 +44,7 @@ public class ContentReportServiceImpl implements ContentReportService {
     private final CommentValidator commentValidator;
     private final CafePageValidator cafePageValidator;
     private final UserValidator userValidator;
+    private final ReportReasonService reportReasonService;
 
     public ContentReportServiceImpl(
             ContentReportRepository contentReportRepository,
@@ -49,13 +52,15 @@ public class ContentReportServiceImpl implements ContentReportService {
             BlogValidator blogValidator,
             CommentValidator commentValidator,
             CafePageValidator cafePageValidator,
-            UserValidator userValidator) {
+            UserValidator userValidator,
+            ReportReasonService reportReasonService) {
         this.contentReportRepository = contentReportRepository;
         this.blogEventRepository = blogEventRepository;
         this.blogValidator = blogValidator;
         this.commentValidator = commentValidator;
         this.cafePageValidator = cafePageValidator;
         this.userValidator = userValidator;
+        this.reportReasonService = reportReasonService;
     }
 
     @Override
@@ -64,11 +69,14 @@ public class ContentReportServiceImpl implements ContentReportService {
         User reporter = userValidator.validateUserExists(reporterUserId);
         userValidator.validateUserActive(reporter);
         validateRequest(request);
+        ReportReason reason = reportReasonService.validateActiveReportReason(request.getReasonId(), request.getTargetType());
+        validateReasonDescription(reason, request.getDescription());
 
         ContentReport report = new ContentReport();
         report.setReporter(reporter);
         report.setTargetType(request.getTargetType());
-        report.setReason(request.getReason().trim());
+        report.setReason(reason);
+        report.setReasonSnapshot(reason.getLabelVi());
         report.setDescription(normalizeDescription(request.getDescription()));
 
         switch (request.getTargetType()) {
@@ -200,8 +208,15 @@ public class ContentReportServiceImpl implements ContentReportService {
         if (request.getTargetId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Report target id is required");
         }
-        if (request.getReason() == null || request.getReason().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Report reason is required");
+        if (request.getReasonId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Report reason id is required");
+        }
+    }
+
+    private void validateReasonDescription(ReportReason reason, String description) {
+        if (Boolean.TRUE.equals(reason.getRequiresDescription())
+                && (description == null || description.isBlank())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Report description is required for this reason");
         }
     }
 
@@ -223,7 +238,11 @@ public class ContentReportServiceImpl implements ContentReportService {
         response.setCommentId(report.getComment() == null ? null : report.getComment().getId());
         response.setReportedUserId(report.getReportedUser() == null ? null : report.getReportedUser().getUserId());
         response.setCafePageId(report.getCafePage() == null ? null : report.getCafePage().getId());
-        response.setReason(report.getReason());
+        response.setReasonId(report.getReason() == null ? null : report.getReason().getId());
+        response.setReasonCode(report.getReason() == null ? null : report.getReason().getCode());
+        response.setReason(report.getReasonSnapshot());
+        response.setReasonLabel(report.getReasonSnapshot());
+        response.setReasonSeverity(report.getReason() == null ? null : report.getReason().getSeverity());
         response.setDescription(report.getDescription());
         response.setStatus(report.getStatus());
         response.setCreatedAt(report.getCreatedAt());

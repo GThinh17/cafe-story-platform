@@ -33,7 +33,7 @@ class ContentReportControllerTest {
         ContentReportRequestDTO request = new ContentReportRequestDTO();
         request.setTargetType(ReportTargetType.BLOG);
         request.setTargetId(UUID.randomUUID());
-        request.setReason("SPAM");
+        request.setReasonId(UUID.randomUUID());
         ContentReportResponseDTO response = new ContentReportResponseDTO();
         response.setId(UUID.randomUUID());
 

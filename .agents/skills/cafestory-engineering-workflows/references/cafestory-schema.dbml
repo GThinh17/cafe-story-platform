@@ -742,6 +742,22 @@ Table payouts {
   paid_at datetime
 }
 
+Table report_reasons {
+  id uuid [pk]
+  code varchar(80) [not null, unique]
+  label_vi varchar(160) [not null]
+  description_vi text
+  target_type report_target_type
+  severity int [not null, default: 1]
+  requires_description boolean [not null, default: false]
+  is_active boolean [not null, default: true]
+  sort_order int [not null, default: 0]
+  created_at datetime [not null]
+  updated_at datetime
+
+  Note: "Catalog of selectable report reasons. target_type null means the reason can be used for any target type. Active reasons are returned sorted by severity desc, sort_order asc."
+}
+
 Table content_reports {
   id uuid [pk]
   reporter_user_id uuid [not null]
@@ -750,13 +766,14 @@ Table content_reports {
   comment_id uuid
   reported_user_id uuid
   cafe_page_id uuid
+  reason_id uuid [not null]
   reason varchar(160) [not null]
   description text
   status report_status [not null, default: "OPEN"]
   created_at datetime [not null]
   resolved_at datetime
 
-  Note: "Use target_type with exactly one matching target FK: blog_id, comment_id, reported_user_id, or cafe_page_id."
+  Note: "Use target_type with exactly one matching target FK: blog_id, comment_id, reported_user_id, or cafe_page_id. reason stores the label snapshot selected from report_reasons."
 }
 
 Ref: user_roles.user_id > users.user_id
@@ -834,5 +851,6 @@ Ref: content_reports.blog_id > blogs.id
 Ref: content_reports.comment_id > comments.id
 Ref: content_reports.reported_user_id > users.user_id
 Ref: content_reports.cafe_page_id > cafe_pages.id
+Ref: content_reports.reason_id > report_reasons.id
 Ref: ai_moderation_results.blog_id > blogs.id
 Ref: ai_moderation_results.comment_id > comments.id
