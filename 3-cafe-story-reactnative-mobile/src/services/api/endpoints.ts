@@ -24,6 +24,15 @@ export const apiEndpoints = {
     byBlog: (blogId: string) => `/api/comments/blogs/${pathId(blogId)}`,
     replies: (commentId: string) => `/api/comments/${pathId(commentId)}/replies`,
   },
+  reportReasons: {
+    list: (targetType?: string) =>
+      targetType
+        ? `/api/report-reasons?targetType=${pathId(targetType)}`
+        : "/api/report-reasons",
+  },
+  reports: {
+    list: "/api/reports",
+  },
   users: {
     follow: (followingUserId: string) =>
       `/api/users/${pathId(followingUserId)}/followers`,

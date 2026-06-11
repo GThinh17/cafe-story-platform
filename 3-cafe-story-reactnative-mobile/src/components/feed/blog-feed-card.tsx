@@ -245,7 +245,9 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
 
   function handleOpenReport() {
     setIsOptionsModalVisible(false);
-    setIsReportModalVisible(true);
+    setTimeout(() => {
+      setIsReportModalVisible(true);
+    }, 120);
   }
 
   return (
@@ -285,7 +287,12 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
           <Pressable
             accessibilityLabel="Open post options"
             accessibilityRole="button"
+            hitSlop={10}
             onPress={() => setIsOptionsModalVisible(true)}
+            style={({ pressed }) => [
+              styles.moreButton,
+              pressed && styles.pressed,
+            ]}
           >
             <MoreHorizontal color={colors.foreground} size={22} strokeWidth={2.4} />
           </Pressable>
@@ -384,6 +391,7 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
         visible={isOptionsModalVisible}
       />
       <ReportPostModal
+        blogId={blog.blogId}
         onClose={() => setIsReportModalVisible(false)}
         visible={isReportModalVisible}
       />
@@ -496,6 +504,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     lineHeight: 15,
     textTransform: "uppercase",
+  },
+  moreButton: {
+    alignItems: "center",
+    height: 40,
+    justifyContent: "center",
+    width: 40,
   },
   pressed: {
     opacity: 0.72,
