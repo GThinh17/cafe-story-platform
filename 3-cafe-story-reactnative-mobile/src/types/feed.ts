@@ -44,3 +44,13 @@ export type BlogFeedParams = {
   size?: number;
   windowType?: TrendWindowType;
 };
+
+export type BlogFeedComment = {
+  authorAvatar?: string | null;
+  authorName: string;
+  content: string;
+  createdAt: string;
+  id: string;
+  likeCount: number;
+  replyCount?: number;
+};

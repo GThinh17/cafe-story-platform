@@ -1,4 +1,6 @@
-import { Image, StyleSheet, Text, View } from "react-native";
+import { UserRound } from "lucide-react-native";
+import { useEffect, useState } from "react";
+import { Image, StyleSheet, View } from "react-native";
 import { colors } from "../../theme";
 
 type AvatarProps = {
@@ -7,17 +9,24 @@ type AvatarProps = {
   uri?: string | null;
 };
 
-export function Avatar({ initials = "CS", size = 48, uri }: AvatarProps) {
+export function Avatar({ size = 48, uri }: AvatarProps) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const sourceUri = uri?.trim() ? uri : null;
   const avatarStyle = {
     borderRadius: size / 2,
     height: size,
     width: size,
   };
 
-  if (uri) {
+  useEffect(() => {
+    setImageFailed(false);
+  }, [sourceUri]);
+
+  if (sourceUri && !imageFailed) {
     return (
       <Image
-        source={{ uri }}
+        onError={() => setImageFailed(true)}
+        source={{ uri: sourceUri }}
         style={[styles.avatar, avatarStyle]}
       />
     );
@@ -25,7 +34,11 @@ export function Avatar({ initials = "CS", size = 48, uri }: AvatarProps) {
 
   return (
     <View style={[styles.avatar, styles.fallback, avatarStyle]}>
-      <Text style={styles.initials}>{initials}</Text>
+      <UserRound
+        color={colors.primaryStrong}
+        size={Math.max(18, size * 0.52)}
+        strokeWidth={2.4}
+      />
     </View>
   );
 }
@@ -36,11 +49,9 @@ const styles = StyleSheet.create({
   },
   fallback: {
     alignItems: "center",
-    backgroundColor: colors.surfaceMuted,
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.border,
+    borderWidth: 1,
     justifyContent: "center",
-  },
-  initials: {
-    color: colors.primaryStrong,
-    fontWeight: "900",
   },
 });

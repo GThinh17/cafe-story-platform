@@ -5,6 +5,7 @@ import {
   MoreHorizontal,
   Send,
 } from "lucide-react-native";
+import { useState } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -13,6 +14,7 @@ import {
 } from "react-native";
 
 import { Avatar } from "../ui/avatar";
+import { CommentModal } from "./comment-modal";
 import { MobilePostCarousel } from "./mobile-post-carousel";
 import { colors, spacing, typography } from "../../theme";
 import type { BlogFeedResponse } from "../../types";
@@ -33,21 +35,26 @@ function compactCount(value: number | null) {
 
 function getDisplayName(blog: BlogFeedResponse) {
   return (
-    blog.displayName ||
-    blog.pageName ||
-    blog.authorUserName ||
-    blog.authorUserFullName ||
+    firstNonBlank(
+      blog.displayName,
+      blog.pageName,
+      blog.authorUserName,
+      blog.authorUserFullName,
+    ) ||
     "CafeStory"
   );
 }
 
+function firstNonBlank(...values: Array<string | null | undefined>) {
+  return values.find((value) => value?.trim())?.trim() ?? null;
+}
+
 function getDisplayAvatar(blog: BlogFeedResponse) {
-  return (
-    blog.displayAvatarUrl ||
-    blog.pageAvatarUrl ||
-    blog.authorUserAvatar ||
-    blog.authorAvatar ||
-    null
+  return firstNonBlank(
+    blog.displayAvatarUrl,
+    blog.pageAvatarUrl,
+    blog.authorUserAvatar,
+    blog.authorAvatar,
   );
 }
 
@@ -95,6 +102,7 @@ function formatTimeAgo(createdAt: string | null) {
 }
 
 export function BlogFeedCard({ blog }: BlogFeedCardProps) {
+  const [isCommentModalVisible, setIsCommentModalVisible] = useState(false);
   const displayName = getDisplayName(blog);
   const images = (
     blog.imageUrls?.length ? blog.imageUrls : [blog.pageCoverUrl]
@@ -134,7 +142,11 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
             <Pressable accessibilityLabel="Like post" accessibilityRole="button">
               <Heart color={colors.foreground} size={24} strokeWidth={2.2} />
             </Pressable>
-            <Pressable accessibilityLabel="Comment on post" accessibilityRole="button">
+            <Pressable
+              accessibilityLabel="Comment on post"
+              accessibilityRole="button"
+              onPress={() => setIsCommentModalVisible(true)}
+            >
               <MessageSquare color={colors.foreground} size={24} strokeWidth={2.2} />
             </Pressable>
             <Pressable accessibilityLabel="Share post" accessibilityRole="button">
@@ -151,13 +163,27 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
           <Text style={styles.captionAuthor}>{displayName} </Text>
           {blog.contentPreview ?? ""}
         </Text>
-        <Text style={styles.comments}>View all {blog.commentCount} comments</Text>
+        <Pressable
+          accessibilityLabel="View post comments"
+          accessibilityRole="button"
+          onPress={() => setIsCommentModalVisible(true)}
+        >
+          <Text style={styles.comments}>
+            View all {compactCount(blog.commentCount)} comments
+          </Text>
+        </Pressable>
         <Text style={styles.meta}>
           {formatTimeAgo(blog.createdAt)}
           {blog.shareCount ? ` · ${compactCount(blog.shareCount)} SHARES` : ""}
           {blog.rankPosition ? ` · #${blog.rankPosition}` : ""}
         </Text>
       </View>
+      <CommentModal
+        blogId={blog.blogId}
+        onClose={() => setIsCommentModalVisible(false)}
+        postAuthorName={displayName}
+        visible={isCommentModalVisible}
+      />
     </View>
   );
 }
