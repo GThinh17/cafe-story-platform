@@ -1,6 +1,7 @@
 export * from "./feed";
 export * from "./layout/bottom-bar";
 export * from "./layout/share-top-bar";
+export * from "./profile";
 export * from "./ui/avatar";
 export * from "./ui/button";
 export * from "./ui/empty-state";
