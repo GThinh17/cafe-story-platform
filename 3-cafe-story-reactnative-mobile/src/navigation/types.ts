@@ -3,6 +3,7 @@ import type { routes } from "./routes";
 
 export type AuthStackParamList = {
   [routes.login]: undefined;
+  [routes.region]: undefined;
   [routes.register]: undefined;
 };
 

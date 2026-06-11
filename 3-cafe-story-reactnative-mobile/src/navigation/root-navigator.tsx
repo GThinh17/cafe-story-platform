@@ -26,9 +26,9 @@ export function RootNavigator() {
       }}
     >
       {isAuthenticated ? (
-        <Stack.Screen component={AuthNavigator} name={routes.main} />
+        <Stack.Screen component={MainTabs} name={routes.main} />
       ) : (
-        <Stack.Screen component={MainTabs} name={routes.auth} />
+        <Stack.Screen component={AuthNavigator} name={routes.auth} />
       )}
     </Stack.Navigator>
   );

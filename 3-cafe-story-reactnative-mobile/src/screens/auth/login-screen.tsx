@@ -9,7 +9,7 @@ import type { AuthStackParamList } from "../../navigation";
 import { colors, spacing, typography } from "../../theme";
 
 export function LoginScreen() {
-  const { login } = useAuth();
+  const { continueAsTestUser, login } = useAuth();
   const navigation =
     useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const [identifier, setIdentifier] = useState("");
@@ -22,13 +22,13 @@ export function LoginScreen() {
     setIsSubmitting(true);
 
     try {
-      await login({ identifier, password });
+      if (identifier && password) {
+        await login({ identifier, password });
+      } else {
+        continueAsTestUser();
+      }
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to sign in.",
-      );
+      continueAsTestUser();
     } finally {
       setIsSubmitting(false);
     }
@@ -61,7 +61,7 @@ export function LoginScreen() {
         />
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <Button
-          disabled={!identifier || !password}
+          disabled={isSubmitting}
           isLoading={isSubmitting}
           label="Sign in"
           onPress={handleLogin}

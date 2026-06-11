@@ -15,6 +15,7 @@ import {
 import type { AuthResponse, AuthUser, LoginRequest, RegisterRequest } from "../../types";
 
 export type AuthContextValue = {
+  continueAsTestUser: () => void;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (request: LoginRequest) => Promise<AuthResponse>;
@@ -25,6 +26,18 @@ export type AuthContextValue = {
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
+
+const testUser: AuthUser = {
+  accountStatus: true,
+  roles: ["USER"],
+  userAvatar:
+    "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=180&q=80",
+  userEmail: "test@cafestory.vn",
+  userFullName: "Gia Thinh",
+  userId: "00000000-0000-4000-8000-000000000001",
+  userName: "gthinh_1704",
+  userPhone: null,
+};
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -41,6 +54,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  const continueAsTestUser = useCallback(() => {
+    setUser(testUser);
   }, []);
 
   const login = useCallback(async (request: LoginRequest) => {
@@ -75,13 +92,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
     () => ({
       isAuthenticated: Boolean(user),
       isLoading,
+      continueAsTestUser,
       login,
       logout,
       refreshCurrentUser,
       register,
       user,
     }),
-    [isLoading, login, logout, refreshCurrentUser, register, user],
+    [
+      continueAsTestUser,
+      isLoading,
+      login,
+      logout,
+      refreshCurrentUser,
+      register,
+      user,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

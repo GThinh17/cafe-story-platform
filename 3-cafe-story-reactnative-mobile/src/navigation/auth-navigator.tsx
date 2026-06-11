@@ -1,5 +1,5 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { LoginScreen, RegisterScreen } from "../screens";
+import { LoginScreen, RegionScreen, RegisterScreen } from "../screens";
 import { routes } from "./routes";
 import type { AuthStackParamList } from "./types";
 
@@ -13,6 +13,7 @@ export function AuthNavigator() {
       }}
     >
       <Stack.Screen component={LoginScreen} name={routes.login} />
+      <Stack.Screen component={RegionScreen} name={routes.region} />
       <Stack.Screen component={RegisterScreen} name={routes.register} />
     </Stack.Navigator>
   );

@@ -10,5 +10,6 @@ export const routes = {
   main: "Main",
   notifications: "Notifications",
   profile: "Profile",
+  region: "Region",
   register: "Register",
 } as const;

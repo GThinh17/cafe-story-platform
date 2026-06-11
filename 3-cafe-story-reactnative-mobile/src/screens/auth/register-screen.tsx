@@ -3,13 +3,11 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Button, Screen, TextField } from "../../components";
-import { useAuth } from "../../features/auth";
 import { routes } from "../../navigation";
 import type { AuthStackParamList } from "../../navigation";
 import { colors, spacing, typography } from "../../theme";
 
 export function RegisterScreen() {
-  const { register } = useAuth();
   const navigation =
     useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
   const [userFullName, setUserFullName] = useState("");
@@ -24,12 +22,7 @@ export function RegisterScreen() {
     setIsSubmitting(true);
 
     try {
-      await register({
-        password,
-        userEmail,
-        userFullName,
-        userName,
-      });
+      navigation.navigate(routes.region);
     } catch (requestError) {
       setError(
         requestError instanceof Error

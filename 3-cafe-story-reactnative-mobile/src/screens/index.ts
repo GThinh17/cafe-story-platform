@@ -1,4 +1,5 @@
 export * from "./auth/login-screen";
+export * from "./auth/region-screen";
 export * from "./auth/register-screen";
 export * from "./main/create-screen";
 export * from "./main/explore-screen";
