@@ -1,15 +1,14 @@
-import { UserPlus } from "lucide-react-native";
+import { AtSign, Grid3X3, Plus, Repeat2, SquarePlay, UserPlus, UserRound } from "lucide-react-native";
 import {
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { Avatar, ProfileTopBar, Screen } from "../../components";
+import { Avatar, ProfileTopBar, Screen, UserPostGrid } from "../../components";
 import { useAuth } from "../../features/auth";
-import { mockBlogFeed, mockHomeFeedStories } from "../../mocks";
+import { mockUserPosts } from "../../mocks";
 import { colors, spacing, typography } from "../../theme";
 
 function initialsFor(name?: string | null) {
@@ -32,8 +31,6 @@ export function ProfileScreen() {
   const displayName = user?.userFullName || user?.userName || "Cafe Story user";
   const userName = user?.userName || "cafestory";
   const avatarUri = user?.userAvatar;
-
-  const postImages = mockBlogFeed.flatMap((blog) => blog.imageUrls).slice(0, 6);
 
   return (
     <Screen padded={false}>
@@ -74,6 +71,20 @@ export function ProfileScreen() {
           Collecting calm cafes, good filters, and corners worth returning to.
         </Text>
 
+        <View style={styles.profileChips}>
+          <View style={styles.profileChip}>
+            <AtSign color={colors.foreground} size={16} strokeWidth={2.4} />
+            <Text numberOfLines={1} style={styles.profileChipText}>
+              {userName}
+            </Text>
+          </View>
+
+          <View style={styles.profileChip}>
+            <Plus color={colors.muted} size={18} strokeWidth={2.4} />
+            <Text style={styles.profileChipMuted}>Add</Text>
+          </View>
+        </View>
+
         <View style={styles.actions}>
           <Pressable
             accessibilityLabel="Edit profile"
@@ -109,31 +120,23 @@ export function ProfileScreen() {
           </Pressable>
         </View>
 
-        <ScrollView
-          contentContainerStyle={styles.highlights}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-        >
-          {mockHomeFeedStories.slice(0, 4).map((story) => (
-            <View key={story.id} style={styles.highlight}>
-              <Avatar initials={story.initials} size={58} uri={story.avatarUri} />
-
-              <Text numberOfLines={1} style={styles.highlightLabel}>
-                {story.label}
-              </Text>
-            </View>
-          ))}
-        </ScrollView>
+        <View style={styles.profileTabs}>
+          <View style={[styles.profileTab, styles.profileTabActive]}>
+            <Grid3X3 color={colors.foreground} size={23} strokeWidth={2.8} />
+          </View>
+          <View style={styles.profileTab}>
+            <SquarePlay color={colors.foreground} size={24} strokeWidth={2.4} />
+          </View>
+          <View style={styles.profileTab}>
+            <Repeat2 color={colors.foreground} size={24} strokeWidth={2.4} />
+          </View>
+          <View style={styles.profileTab}>
+            <UserRound color={colors.muted} size={24} strokeWidth={2.4} />
+          </View>
+        </View>
 
         <View style={styles.grid}>
-          {postImages.map((imageUrl, index) => (
-            <Image
-              key={`${imageUrl}-${index}`}
-              resizeMode="cover"
-              source={{ uri: imageUrl }}
-              style={styles.gridImage}
-            />
-          ))}
+          <UserPostGrid posts={mockUserPosts} />
         </View>
       </ScrollView>
     </Screen>
@@ -166,14 +169,14 @@ const styles = StyleSheet.create({
   },
 
   stats: {
-    alignItems: "center",
+    alignItems: "flex-start",
     flex: 1,
     flexDirection: "row",
     justifyContent: "space-between",
   },
 
   statItem: {
-    alignItems: "center",
+    alignItems: "flex-start",
     flex: 1,
     gap: 2,
   },
@@ -235,43 +238,59 @@ const styles = StyleSheet.create({
     opacity: 0.72,
   },
 
-  highlights: {
-    gap: spacing.md,
+  profileChips: {
+    flexDirection: "row",
+    gap: spacing.sm,
     paddingHorizontal: spacing.lg,
   },
 
-  highlight: {
+  profileChip: {
     alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: "row",
     gap: spacing.xs,
-    width: 74,
+    minHeight: 36,
+    paddingHorizontal: spacing.md,
   },
 
-  highlightLabel: {
+  profileChipMuted: {
+    color: colors.muted,
+    fontSize: typography.label,
+    fontWeight: "800",
+  },
+
+  profileChipText: {
     color: colors.foreground,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    maxWidth: 72,
-    textAlign: "center",
+    fontSize: typography.label,
+    fontWeight: "900",
+  },
+
+  profileTabs: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingTop: spacing.sm,
+  },
+
+  profileTab: {
+    alignItems: "center",
+    borderBottomColor: "transparent",
+    borderBottomWidth: 2,
+    flex: 1,
+    height: 48,
+    justifyContent: "center",
+  },
+
+  profileTabActive: {
+    borderBottomColor: colors.foreground,
   },
 
   grid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 2,
-  },
-
-  gridImage: {
-    aspectRatio: 1,
-    backgroundColor: colors.surfaceMuted,
-    width: "33%",
-  },
-  nameBlock: {
-    gap: 2,
-  },
-
-  userName: {
-    color: colors.muted,
-    fontSize: typography.caption,
-    fontWeight: "600",
   },
 });
