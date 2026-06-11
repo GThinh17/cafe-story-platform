@@ -1,5 +1,13 @@
-import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Avatar, Button, ProfileTopBar, Screen } from "../../components";
+import { UserPlus } from "lucide-react-native";
+import {
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { Avatar, ProfileTopBar, Screen } from "../../components";
 import { useAuth } from "../../features/auth";
 import { mockBlogFeed, mockHomeFeedStories } from "../../mocks";
 import { colors, spacing, typography } from "../../theme";
@@ -19,48 +27,86 @@ function initialsFor(name?: string | null) {
 }
 
 export function ProfileScreen() {
-  const { logout, user } = useAuth();
+  const { user } = useAuth();
+
   const displayName = user?.userFullName || user?.userName || "Cafe Story user";
   const userName = user?.userName || "cafestory";
   const avatarUri = user?.userAvatar;
+
   const postImages = mockBlogFeed.flatMap((blog) => blog.imageUrls).slice(0, 6);
 
   return (
     <Screen padded={false}>
       <ProfileTopBar userName={userName} />
+
       <ScrollView
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.summary}>
+        <View style={styles.identity}>
           <Avatar initials={initialsFor(displayName)} size={88} uri={avatarUri} />
-          <View style={styles.stats}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>42</Text>
-              <Text style={styles.statLabel}>posts</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>118</Text>
-              <Text style={styles.statLabel}>cafes</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>3.2k</Text>
-              <Text style={styles.statLabel}>followers</Text>
+
+          <View style={styles.identityContent}>
+            <Text numberOfLines={1} style={styles.title}>
+              {displayName}
+            </Text>
+
+            <View style={styles.stats}>
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>42</Text>
+                <Text style={styles.statLabel}>posts</Text>
+              </View>
+
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>3.2k</Text>
+                <Text style={styles.statLabel}>followers</Text>
+              </View>
+
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>215</Text>
+                <Text style={styles.statLabel}>following</Text>
+              </View>
             </View>
           </View>
         </View>
 
-        <View style={styles.bio}>
-          <Text style={styles.title}>{displayName}</Text>
-          <Text style={styles.meta}>
-            Collecting calm cafes, good filters, and corners worth returning to.
-          </Text>
-          <Text style={styles.link}>cafestory.vn/{userName}</Text>
-        </View>
+        <Text style={styles.description}>
+          Collecting calm cafes, good filters, and corners worth returning to.
+        </Text>
 
         <View style={styles.actions}>
-          <Button label="Edit profile" variant="outlined" />
-          <Button label="Logout" onPress={logout} variant="secondary" />
+          <Pressable
+            accessibilityLabel="Edit profile"
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.profileActionButton,
+              pressed && styles.actionPressed,
+            ]}
+          >
+            <Text style={styles.profileActionText}>Edit Profile</Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityLabel="Share profile"
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.profileActionButton,
+              pressed && styles.actionPressed,
+            ]}
+          >
+            <Text style={styles.profileActionText}>Share Profile</Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityLabel="Open profile suggestions"
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.addFriendButton,
+              pressed && styles.actionPressed,
+            ]}
+          >
+            <UserPlus color={colors.foreground} size={19} strokeWidth={2.5} />
+          </Pressable>
         </View>
 
         <ScrollView
@@ -71,6 +117,7 @@ export function ProfileScreen() {
           {mockHomeFeedStories.slice(0, 4).map((story) => (
             <View key={story.id} style={styles.highlight}>
               <Avatar initials={story.initials} size={58} uri={story.avatarUri} />
+
               <Text numberOfLines={1} style={styles.highlightLabel}>
                 {story.label}
               </Text>
@@ -94,34 +141,111 @@ export function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  actions: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    paddingHorizontal: spacing.lg,
-  },
-  bio: {
-    gap: spacing.xs,
-    paddingHorizontal: spacing.lg,
-  },
   content: {
-    gap: spacing.lg,
+    gap: spacing.md,
     paddingBottom: 112,
   },
-  grid: {
+
+  identity: {
+    alignItems: "center",
     flexDirection: "row",
-    flexWrap: "wrap",
+    gap: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+  },
+
+  identityContent: {
+    flex: 1,
+    gap: spacing.md,
+  },
+
+  title: {
+    color: colors.foreground,
+    fontSize: typography.body,
+    fontWeight: "900",
+  },
+
+  stats: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+
+  statItem: {
+    alignItems: "center",
+    flex: 1,
     gap: 2,
   },
-  gridImage: {
-    aspectRatio: 1,
-    backgroundColor: colors.surfaceMuted,
-    width: "33%",
+
+  statValue: {
+    color: colors.foreground,
+    fontSize: typography.body,
+    fontWeight: "900",
   },
+
+  statLabel: {
+    color: colors.muted,
+    fontSize: typography.caption,
+  },
+
+  description: {
+    color: colors.foreground,
+    fontSize: typography.label,
+    lineHeight: 20,
+    paddingHorizontal: spacing.lg,
+  },
+
+  actions: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: spacing.lg,
+  },
+
+  profileActionButton: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 10,
+    borderWidth: 1,
+    flex: 1,
+    height: 36,
+    justifyContent: "center",
+  },
+
+  profileActionText: {
+    color: colors.foreground,
+    fontSize: typography.caption,
+    fontWeight: "800",
+  },
+
+  addFriendButton: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 10,
+    borderWidth: 1,
+    height: 36,
+    justifyContent: "center",
+    width: 42,
+  },
+
+  actionPressed: {
+    opacity: 0.72,
+  },
+
+  highlights: {
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+
   highlight: {
     alignItems: "center",
     gap: spacing.xs,
     width: 74,
   },
+
   highlightLabel: {
     color: colors.foreground,
     fontSize: typography.caption,
@@ -129,50 +253,25 @@ const styles = StyleSheet.create({
     maxWidth: 72,
     textAlign: "center",
   },
-  highlights: {
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-  },
-  link: {
-    color: colors.tertiary,
-    fontSize: typography.label,
-    fontWeight: "900",
-  },
-  meta: {
-    color: colors.foreground,
-    fontSize: typography.label,
-    lineHeight: 20,
-  },
-  statItem: {
-    alignItems: "center",
-    flex: 1,
+
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 2,
   },
-  stats: {
-    alignItems: "center",
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
+
+  gridImage: {
+    aspectRatio: 1,
+    backgroundColor: colors.surfaceMuted,
+    width: "33%",
   },
-  statLabel: {
+  nameBlock: {
+    gap: 2,
+  },
+
+  userName: {
     color: colors.muted,
     fontSize: typography.caption,
-  },
-  statValue: {
-    color: colors.foreground,
-    fontSize: typography.body,
-    fontWeight: "900",
-  },
-  summary: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.lg,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-  },
-  title: {
-    color: colors.foreground,
-    fontSize: typography.body,
-    fontWeight: "900",
+    fontWeight: "600",
   },
 });
