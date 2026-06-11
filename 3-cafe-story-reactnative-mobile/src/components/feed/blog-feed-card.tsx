@@ -21,12 +21,14 @@ type BlogFeedCardProps = {
   blog: BlogFeedResponse;
 };
 
-function compactCount(value: number) {
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k`;
+function compactCount(value: number | null) {
+  const count = value ?? 0;
+
+  if (count >= 1000) {
+    return `${(count / 1000).toFixed(count >= 10000 ? 0 : 1)}k`;
   }
 
-  return String(value);
+  return String(count);
 }
 
 function getDisplayName(blog: BlogFeedResponse) {
@@ -66,7 +68,11 @@ function getInitials(name: string) {
     .join("");
 }
 
-function formatTimeAgo(createdAt: string) {
+function formatTimeAgo(createdAt: string | null) {
+  if (!createdAt) {
+    return "JUST NOW";
+  }
+
   const created = new Date(createdAt).getTime();
 
   if (Number.isNaN(created)) {
@@ -91,7 +97,7 @@ function formatTimeAgo(createdAt: string) {
 export function BlogFeedCard({ blog }: BlogFeedCardProps) {
   const displayName = getDisplayName(blog);
   const images = (
-    blog.imageUrls.length ? blog.imageUrls : [blog.pageCoverUrl]
+    blog.imageUrls?.length ? blog.imageUrls : [blog.pageCoverUrl]
   ).filter((uri): uri is string => Boolean(uri));
 
   return (
@@ -143,7 +149,7 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
         <Text style={styles.likes}>{compactCount(blog.likeCount)} likes</Text>
         <Text numberOfLines={2} style={styles.caption}>
           <Text style={styles.captionAuthor}>{displayName} </Text>
-          {blog.contentPreview}
+          {blog.contentPreview ?? ""}
         </Text>
         <Text style={styles.comments}>View all {blog.commentCount} comments</Text>
         <Text style={styles.meta}>

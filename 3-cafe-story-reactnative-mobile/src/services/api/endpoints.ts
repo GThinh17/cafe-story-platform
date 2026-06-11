@@ -6,4 +6,7 @@ export const apiEndpoints = {
     logout: "/api/auth/logout",
     refresh: "/api/auth/refresh",
   },
+  blogs: {
+    feed: "/api/blogs/feed",
+  },
 } as const;

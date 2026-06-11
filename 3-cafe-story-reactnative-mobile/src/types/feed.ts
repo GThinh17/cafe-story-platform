@@ -8,21 +8,23 @@ export type StoryItem = {
 
 export type BlogDisplayAuthorType = "USER" | "CAFE_PAGE";
 
+export type TrendWindowType = "HOUR_24" | "DAY_7" | "MONTH_1";
+
 export type BlogFeedResponse = {
   authorAvatar?: string | null;
   authorUserAvatar?: string | null;
   authorUserFullName?: string | null;
-  authorUserId?: string | null;
+  authorUserId: string;
   authorUserName?: string | null;
   blogId: string;
-  commentCount: number;
-  contentPreview: string;
-  createdAt: string;
-  displayAuthorType: BlogDisplayAuthorType;
+  commentCount: number | null;
+  contentPreview: string | null;
+  createdAt: string | null;
+  displayAuthorType?: BlogDisplayAuthorType | null;
   displayAvatarUrl?: string | null;
   displayName?: string | null;
-  imageUrls: string[];
-  likeCount: number;
+  imageUrls: string[] | null;
+  likeCount: number | null;
   pageAddress?: string | null;
   pageAvatarUrl?: string | null;
   pageCoverUrl?: string | null;
@@ -33,5 +35,12 @@ export type BlogFeedResponse = {
   regionCity?: string | null;
   regionId?: string | null;
   regionProvince?: string | null;
-  shareCount: number;
+  shareCount: number | null;
+};
+
+export type BlogFeedParams = {
+  page?: number;
+  regionId?: string;
+  size?: number;
+  windowType?: TrendWindowType;
 };
