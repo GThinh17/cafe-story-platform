@@ -116,6 +116,7 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
   const [isLiked, setIsLiked] = useState(Boolean(blog.isLike));
   const [isSaved, setIsSaved] = useState(Boolean(blog.isSave));
   const [likeCount, setLikeCount] = useState(blog.likeCount ?? 0);
+  const [commentCount, setCommentCount] = useState(blog.commentCount ?? 0);
   const [shareCount, setShareCount] = useState(blog.shareCount ?? 0);
   const displayName = getDisplayName(blog);
   const images = (
@@ -140,6 +141,10 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
   useEffect(() => {
     setLikeCount(blog.likeCount ?? 0);
   }, [blog.blogId, blog.likeCount]);
+
+  useEffect(() => {
+    setCommentCount(blog.commentCount ?? 0);
+  }, [blog.blogId, blog.commentCount]);
 
   useEffect(() => {
     setShareCount(blog.shareCount ?? 0);
@@ -341,7 +346,7 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
           onPress={() => setIsCommentModalVisible(true)}
         >
           <Text style={styles.comments}>
-            View all {compactCount(blog.commentCount)} comments
+            View all {compactCount(commentCount)} comments
           </Text>
         </Pressable>
         <Text style={styles.meta}>
@@ -352,6 +357,7 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
       </View>
       <CommentModal
         blogId={blog.blogId}
+        onCommentCreated={() => setCommentCount((currentCount) => currentCount + 1)}
         onClose={() => setIsCommentModalVisible(false)}
         postAuthorName={displayName}
         visible={isCommentModalVisible}

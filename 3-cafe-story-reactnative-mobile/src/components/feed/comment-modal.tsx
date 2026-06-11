@@ -1,4 +1,4 @@
-import { Send, X } from "lucide-react-native";
+import { Heart, Send, X } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
@@ -13,20 +13,36 @@ import {
 } from "react-native";
 
 import { Avatar } from "../ui/avatar";
-import { EmptyState } from "../ui/empty-state";
 import { LoadingState } from "../ui/loading-state";
-import { getMockCommentsByBlogId } from "../../mocks";
+import { useAuth } from "../../features/auth";
+import { createComment, getCommentsByBlog } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
-import type { BlogFeedComment } from "../../types";
+import type { CommentResponse } from "../../types";
 
 type CommentModalProps = {
   blogId: string;
   onClose: () => void;
+  onCommentCreated?: () => void;
   postAuthorName: string;
   visible: boolean;
 };
 
-function formatCommentTime(value: string) {
+type CommentItemProps = {
+  comment: CommentResponse;
+  isLiked: boolean;
+  likeCount: number;
+  level?: number;
+  onReply: (comment: CommentResponse) => void;
+  onToggleLike: (commentId: string) => void;
+};
+
+const reactions = ["❤️", "🙌", "🔥", "👏", "🥲", "😍", "😮", "😂"];
+
+function formatCommentTime(value: string | null) {
+  if (!value) {
+    return "now";
+  }
+
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
@@ -52,6 +68,10 @@ function formatCommentTime(value: string) {
   return `${Math.floor(diffHours / 24)}d`;
 }
 
+function getCommentAuthor(comment: CommentResponse) {
+  return comment.authorUserName || "CafeStory user";
+}
+
 function getInitials(name: string) {
   return name
     .split(/\s|_/)
@@ -61,31 +81,71 @@ function getInitials(name: string) {
     .join("");
 }
 
-function CommentItem({ comment }: { comment: BlogFeedComment }) {
+function renderCommentContent(content: string) {
+  const parts = content.split(/(@[\w._-]+)/g);
+
+  return parts.map((part, index) => {
+    if (part.startsWith("@")) {
+      return (
+        <Text key={`${part}-${index}`} style={styles.mention}>
+          {part}
+        </Text>
+      );
+    }
+
+    return <Text key={`${part}-${index}`}>{part}</Text>;
+  });
+}
+
+function CommentItem({
+  comment,
+  isLiked,
+  likeCount,
+  level = 0,
+  onReply,
+  onToggleLike,
+}: CommentItemProps) {
+  const authorName = getCommentAuthor(comment);
+  const isReply = level > 0;
+
   return (
-    <View style={styles.commentItem}>
-      <Avatar
-        initials={getInitials(comment.authorName)}
-        size={38}
-        uri={comment.authorAvatar}
-      />
+    <View style={[styles.commentItem, isReply && styles.replyItem]}>
+      <Avatar initials={getInitials(authorName)} size={isReply ? 30 : 38} uri={null} />
       <View style={styles.commentBody}>
-        <View style={styles.commentBubble}>
-          <Text numberOfLines={1} style={styles.commentAuthor}>
-            {comment.authorName}
-          </Text>
-          <Text style={styles.commentText}>{comment.content}</Text>
-        </View>
-        <View style={styles.commentMetaRow}>
-          <Text style={styles.commentMeta}>{formatCommentTime(comment.createdAt)}</Text>
-          <Text style={styles.commentMeta}>Like</Text>
-          <Text style={styles.commentMeta}>Reply</Text>
-          {comment.likeCount ? (
-            <Text style={styles.commentMeta}>{comment.likeCount} likes</Text>
-          ) : null}
-          {comment.replyCount ? (
-            <Text style={styles.commentMeta}>{comment.replyCount} replies</Text>
-          ) : null}
+        <View style={styles.commentContentRow}>
+          <View style={styles.commentTextBlock}>
+            <Text style={styles.commentLine}>
+              <Text style={styles.commentAuthor}>{authorName} </Text>
+              {renderCommentContent(comment.content)}
+            </Text>
+            <View style={styles.commentMetaRow}>
+              <Text style={styles.commentMeta}>{formatCommentTime(comment.createdAt)}</Text>
+              <Pressable
+                accessibilityLabel={`Reply to ${authorName}`}
+                accessibilityRole="button"
+                onPress={() => onReply(comment)}
+              >
+                <Text style={styles.commentMeta}>Reply</Text>
+              </Pressable>
+            </View>
+          </View>
+          <Pressable
+            accessibilityLabel={isLiked ? "Unlike comment" : "Like comment"}
+            accessibilityRole="button"
+            onPress={() => onToggleLike(comment.id)}
+            style={({ pressed }) => [
+              styles.commentHeartButton,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Heart
+              color={isLiked ? colors.danger : colors.muted}
+              fill={isLiked ? colors.danger : "none"}
+              size={20}
+              strokeWidth={2.2}
+            />
+            {likeCount ? <Text style={styles.commentLikeCount}>{likeCount}</Text> : null}
+          </Pressable>
         </View>
       </View>
     </View>
@@ -95,27 +155,48 @@ function CommentItem({ comment }: { comment: BlogFeedComment }) {
 export function CommentModal({
   blogId,
   onClose,
+  onCommentCreated,
   postAuthorName,
   visible,
 }: CommentModalProps) {
-  const [comments, setComments] = useState<BlogFeedComment[]>([]);
+  const { user } = useAuth();
+  const [comments, setComments] = useState<CommentResponse[]>([]);
   const [draft, setDraft] = useState("");
+  const [error, setError] = useState("");
+  const [expandedReplyIds, setExpandedReplyIds] = useState<Set<string>>(new Set());
+  const [likedCommentIds, setLikedCommentIds] = useState<Set<string>>(new Set());
+  const [localLikeCounts, setLocalLikeCounts] = useState<Record<string, number>>({});
+  const [replyTarget, setReplyTarget] = useState<CommentResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isPosting, setIsPosting] = useState(false);
 
   useEffect(() => {
     let isActive = true;
 
     if (!visible) {
       setDraft("");
+      setError("");
+      setReplyTarget(null);
       return;
     }
 
     setIsLoading(true);
+    setError("");
 
-    getMockCommentsByBlogId(blogId)
+    getCommentsByBlog(blogId)
       .then((response) => {
         if (isActive) {
           setComments(response);
+        }
+      })
+      .catch((requestError) => {
+        if (isActive) {
+          setComments([]);
+          setError(
+            requestError instanceof Error
+              ? requestError.message
+              : "Unable to load comments.",
+          );
         }
       })
       .finally(() => {
@@ -129,30 +210,110 @@ export function CommentModal({
     };
   }, [blogId, visible]);
 
-  const title = useMemo(
-    () => `${postAuthorName}'s comments`,
-    [postAuthorName],
+  const parentComments = useMemo(
+    () => comments.filter((comment) => !comment.parentCommentId),
+    [comments],
   );
 
-  function handlePostComment() {
+  const repliesByParentId = useMemo(() => {
+    const groupedReplies: Record<string, CommentResponse[]> = {};
+
+    for (const comment of comments) {
+      if (!comment.parentCommentId) {
+        continue;
+      }
+
+      groupedReplies[comment.parentCommentId] = [
+        ...(groupedReplies[comment.parentCommentId] ?? []),
+        comment,
+      ];
+    }
+
+    return groupedReplies;
+  }, [comments]);
+
+  const placeholder = replyTarget
+    ? `Reply to ${getCommentAuthor(replyTarget)}...`
+    : `Comment for ${postAuthorName}...`;
+
+  function handleToggleCommentLike(commentId: string) {
+    setLikedCommentIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+      const nextIsLiked = !nextIds.has(commentId);
+
+      if (nextIsLiked) {
+        nextIds.add(commentId);
+      } else {
+        nextIds.delete(commentId);
+      }
+
+      setLocalLikeCounts((currentCounts) => ({
+        ...currentCounts,
+        [commentId]: Math.max(
+          0,
+          (currentCounts[commentId] ?? 0) + (nextIsLiked ? 1 : -1),
+        ),
+      }));
+
+      return nextIds;
+    });
+  }
+
+  function handleToggleReplies(commentId: string) {
+    setExpandedReplyIds((currentIds) => {
+      const nextIds = new Set(currentIds);
+
+      if (nextIds.has(commentId)) {
+        nextIds.delete(commentId);
+      } else {
+        nextIds.add(commentId);
+      }
+
+      return nextIds;
+    });
+  }
+
+  async function handlePostComment() {
     const content = draft.trim();
 
-    if (!content) {
+    if (!content || isPosting) {
       return;
     }
 
-    setComments((currentComments) => [
-      {
-        authorAvatar: null,
-        authorName: "you",
+    setIsPosting(true);
+    setError("");
+
+    try {
+      const createdComment = await createComment({
+        blogId,
         content,
-        createdAt: new Date().toISOString(),
-        id: `local-comment-${Date.now()}`,
-        likeCount: 0,
-      },
-      ...currentComments,
-    ]);
-    setDraft("");
+        parentCommentId: replyTarget?.id,
+      });
+
+      setComments((currentComments) =>
+        replyTarget ? [...currentComments, createdComment] : [createdComment, ...currentComments],
+      );
+
+      if (replyTarget) {
+        setExpandedReplyIds((currentIds) => {
+          const nextIds = new Set(currentIds);
+          nextIds.add(replyTarget.id);
+          return nextIds;
+        });
+      }
+
+      setDraft("");
+      setReplyTarget(null);
+      onCommentCreated?.();
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to post comment.",
+      );
+    } finally {
+      setIsPosting(false);
+    }
   }
 
   return (
@@ -175,7 +336,7 @@ export function CommentModal({
           <View style={styles.handle} />
           <View style={styles.header}>
             <Text numberOfLines={1} style={styles.title}>
-              {title}
+              Comments
             </Text>
             <Pressable
               accessibilityLabel="Close comments"
@@ -190,49 +351,145 @@ export function CommentModal({
             </Pressable>
           </View>
 
-          {isLoading ? (
-            <LoadingState label="Loading comments..." />
-          ) : comments.length ? (
-            <FlatList
-              contentContainerStyle={styles.commentsList}
-              data={comments}
-              keyExtractor={(comment) => comment.id}
-              keyboardShouldPersistTaps="handled"
-              renderItem={({ item }) => <CommentItem comment={item} />}
-              showsVerticalScrollIndicator={false}
-            />
-          ) : (
-            <EmptyState
-              description="Start the conversation with your first thought."
-              title="No comments yet"
-            />
-          )}
+          <View style={styles.content}>
+            {isLoading ? (
+              <LoadingState label="Loading comments..." />
+            ) : error ? (
+              <View style={styles.emptyBlock}>
+                <Text style={styles.emptyTitle}>Comments unavailable</Text>
+                <Text style={styles.emptyDescription}>{error}</Text>
+              </View>
+            ) : comments.length ? (
+              <FlatList
+                contentContainerStyle={styles.commentsList}
+                data={parentComments}
+                keyExtractor={(comment) => comment.id}
+                keyboardShouldPersistTaps="handled"
+                renderItem={({ item }) => {
+                  const replies = repliesByParentId[item.id] ?? [];
+                  const isExpanded = expandedReplyIds.has(item.id);
+                  const visibleReplies = isExpanded ? replies : [];
 
-          <View style={styles.composer}>
-            <Avatar size={34} uri={null} />
-            <View style={styles.inputWrap}>
-              <TextInput
-                multiline
-                onChangeText={setDraft}
-                placeholder="Add a comment..."
-                placeholderTextColor={colors.muted}
-                style={styles.input}
-                value={draft}
+                  return (
+                    <View style={styles.thread}>
+                      <CommentItem
+                        comment={item}
+                        isLiked={likedCommentIds.has(item.id)}
+                        likeCount={localLikeCounts[item.id] ?? 0}
+                        onReply={setReplyTarget}
+                        onToggleLike={handleToggleCommentLike}
+                      />
+                      {visibleReplies.map((reply) => (
+                        <CommentItem
+                          comment={reply}
+                          isLiked={likedCommentIds.has(reply.id)}
+                          key={reply.id}
+                          level={1}
+                          likeCount={localLikeCounts[reply.id] ?? 0}
+                          onReply={setReplyTarget}
+                          onToggleLike={handleToggleCommentLike}
+                        />
+                      ))}
+                      {replies.length ? (
+                        <Pressable
+                          accessibilityLabel={
+                            isExpanded ? "Hide replies" : `View ${replies.length} replies`
+                          }
+                          accessibilityRole="button"
+                          onPress={() => handleToggleReplies(item.id)}
+                          style={({ pressed }) => [
+                            styles.viewRepliesButton,
+                            pressed && styles.pressed,
+                          ]}
+                        >
+                          <View style={styles.replyLine} />
+                          <Text style={styles.viewRepliesText}>
+                            {isExpanded
+                              ? "Hide replies"
+                              : `View ${replies.length} ${
+                                  replies.length === 1 ? "reply" : "replies"
+                                }`}
+                          </Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  );
+                }}
+                showsVerticalScrollIndicator={false}
               />
+            ) : (
+              <View style={styles.emptyBlock}>
+                <Text style={styles.emptyTitle}>No comments yet</Text>
+                <Text style={styles.emptyDescription}>
+                  Be the first to start the conversation.
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.composerBlock}>
+            <View style={styles.reactionRail}>
+              {reactions.map((reaction) => (
+                <Pressable
+                  accessibilityLabel={`Add ${reaction} reaction`}
+                  accessibilityRole="button"
+                  key={reaction}
+                  onPress={() => setDraft((currentDraft) => `${currentDraft}${reaction}`)}
+                  style={({ pressed }) => [
+                    styles.reactionButton,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.reactionText}>{reaction}</Text>
+                </Pressable>
+              ))}
             </View>
-            <Pressable
-              accessibilityLabel="Post comment"
-              accessibilityRole="button"
-              disabled={!draft.trim()}
-              onPress={handlePostComment}
-              style={({ pressed }) => [
-                styles.sendButton,
-                !draft.trim() && styles.sendButtonDisabled,
-                pressed && draft.trim() && styles.pressed,
-              ]}
-            >
-              <Send color={colors.white} size={18} strokeWidth={2.4} />
-            </Pressable>
+
+            {replyTarget ? (
+              <View style={styles.replyTargetRow}>
+                <Text numberOfLines={1} style={styles.replyTargetText}>
+                  Replying to {getCommentAuthor(replyTarget)}
+                </Text>
+                <Pressable
+                  accessibilityLabel="Cancel reply"
+                  accessibilityRole="button"
+                  onPress={() => setReplyTarget(null)}
+                >
+                  <Text style={styles.cancelReplyText}>Cancel</Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            <View style={styles.composer}>
+              <Avatar
+                initials={getInitials(user?.userName || "Me")}
+                size={34}
+                uri={user?.userAvatar}
+              />
+              <View style={styles.inputWrap}>
+                <TextInput
+                  multiline
+                  onChangeText={setDraft}
+                  placeholder={placeholder}
+                  placeholderTextColor={colors.muted}
+                  style={styles.input}
+                  value={draft}
+                />
+              </View>
+              <Pressable
+                accessibilityLabel="Post comment"
+                accessibilityRole="button"
+                disabled={!draft.trim() || isPosting}
+                onPress={handlePostComment}
+                style={({ pressed }) => [
+                  styles.sendButton,
+                  (!draft.trim() || isPosting) && styles.sendButtonDisabled,
+                  pressed && draft.trim() && !isPosting && styles.pressed,
+                ]}
+              >
+                <Send color={colors.white} size={18} strokeWidth={2.4} />
+              </Pressable>
+            </View>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -245,6 +502,11 @@ const styles = StyleSheet.create({
     flex: 1,
     width: "100%",
   },
+  cancelReplyText: {
+    color: colors.primary,
+    fontSize: typography.caption,
+    fontWeight: "900",
+  },
   closeButton: {
     alignItems: "center",
     backgroundColor: colors.surfaceMuted,
@@ -255,23 +517,36 @@ const styles = StyleSheet.create({
   },
   commentAuthor: {
     color: colors.foreground,
-    fontSize: typography.label,
     fontWeight: "900",
   },
   commentBody: {
     flex: 1,
-    gap: spacing.xs,
   },
-  commentBubble: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 16,
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+  commentContentRow: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  commentHeartButton: {
+    alignItems: "center",
+    minHeight: 34,
+    paddingTop: 4,
+    width: 36,
   },
   commentItem: {
     flexDirection: "row",
     gap: spacing.md,
+  },
+  commentLikeCount: {
+    color: colors.muted,
+    fontSize: typography.caption,
+    fontWeight: "800",
+    marginTop: 2,
+  },
+  commentLine: {
+    color: colors.foreground,
+    fontSize: typography.body,
+    lineHeight: 22,
   },
   commentMeta: {
     color: colors.muted,
@@ -280,14 +555,11 @@ const styles = StyleSheet.create({
   },
   commentMetaRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
     gap: spacing.md,
-    paddingLeft: spacing.sm,
+    marginTop: spacing.xs,
   },
-  commentText: {
-    color: colors.secondaryStrong,
-    fontSize: typography.label,
-    lineHeight: 20,
+  commentTextBlock: {
+    flex: 1,
   },
   commentsList: {
     gap: spacing.lg,
@@ -296,11 +568,36 @@ const styles = StyleSheet.create({
   },
   composer: {
     alignItems: "flex-end",
-    borderTopColor: colors.border,
-    borderTopWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+  },
+  composerBlock: {
+    borderTopColor: colors.border,
+    borderTopWidth: 1,
+    paddingBottom: spacing.lg,
+  },
+  content: {
+    flex: 1,
+  },
+  emptyBlock: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: spacing.xl,
+  },
+  emptyDescription: {
+    color: colors.muted,
+    fontSize: typography.body,
+    marginTop: spacing.md,
+    textAlign: "center",
+  },
+  emptyTitle: {
+    color: colors.foreground,
+    fontSize: 24,
+    fontWeight: "900",
+    textAlign: "center",
   },
   handle: {
     alignSelf: "center",
@@ -321,16 +618,21 @@ const styles = StyleSheet.create({
   },
   input: {
     color: colors.foreground,
-    fontSize: typography.label,
+    fontSize: typography.body,
     maxHeight: 92,
-    minHeight: 38,
+    minHeight: 40,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
   inputWrap: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 22,
+    borderWidth: 1,
     flex: 1,
+  },
+  mention: {
+    color: colors.link,
   },
   overlay: {
     backgroundColor: "rgba(33, 29, 28, 0.42)",
@@ -340,29 +642,84 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.72,
   },
+  reactionButton: {
+    alignItems: "center",
+    height: 38,
+    justifyContent: "center",
+    width: 42,
+  },
+  reactionRail: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+  },
+  reactionText: {
+    fontSize: 28,
+  },
+  replyItem: {
+    marginLeft: 52,
+    marginTop: spacing.md,
+  },
+  replyLine: {
+    backgroundColor: colors.border,
+    height: 1,
+    width: 42,
+  },
+  replyTargetRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.md,
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+  },
+  replyTargetText: {
+    color: colors.muted,
+    flex: 1,
+    fontSize: typography.caption,
+    fontWeight: "800",
+  },
   sendButton: {
     alignItems: "center",
     backgroundColor: colors.primary,
-    borderRadius: 19,
-    height: 38,
+    borderRadius: 20,
+    height: 40,
     justifyContent: "center",
-    width: 38,
+    width: 40,
   },
   sendButtonDisabled: {
     opacity: 0.45,
   },
   sheet: {
     backgroundColor: colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     maxHeight: "86%",
-    minHeight: "62%",
+    minHeight: "64%",
     overflow: "hidden",
+  },
+  thread: {
+    gap: spacing.xs,
   },
   title: {
     color: colors.foreground,
     flex: 1,
     fontSize: typography.body,
+    fontWeight: "900",
+    textAlign: "center",
+  },
+  viewRepliesButton: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.md,
+    marginLeft: 52,
+    marginTop: spacing.sm,
+    minHeight: 28,
+  },
+  viewRepliesText: {
+    color: colors.muted,
+    fontSize: typography.label,
     fontWeight: "900",
   },
 });

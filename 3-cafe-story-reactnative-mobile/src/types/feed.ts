@@ -50,14 +50,24 @@ export type BlogFeedParams = {
   windowType?: TrendWindowType;
 };
 
-export type BlogFeedComment = {
-  authorAvatar?: string | null;
-  authorName: string;
+export type CommentResponse = {
+  authorUserName?: string | null;
+  blogId: string;
   content: string;
-  createdAt: string;
+  createdAt: string | null;
   id: string;
-  likeCount: number;
-  replyCount?: number;
+  imageUrls: string[] | null;
+  parentCommentId: string | null;
+  status: string | null;
+  updatedAt: string | null;
+  userId: string;
+};
+
+export type CommentCreateRequest = {
+  blogId: string;
+  content: string;
+  imageUrls?: string[];
+  parentCommentId?: string;
 };
 
 export type BlogLikeResponse = {

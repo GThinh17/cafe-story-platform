@@ -19,6 +19,11 @@ export const apiEndpoints = {
     savesMe: "/api/blogs/saves/me",
     shares: (blogId: string) => `/api/blogs/${pathId(blogId)}/shares`,
   },
+  comments: {
+    list: "/api/comments",
+    byBlog: (blogId: string) => `/api/comments/blogs/${pathId(blogId)}`,
+    replies: (commentId: string) => `/api/comments/${pathId(commentId)}/replies`,
+  },
   users: {
     follow: (followingUserId: string) =>
       `/api/users/${pathId(followingUserId)}/followers`,

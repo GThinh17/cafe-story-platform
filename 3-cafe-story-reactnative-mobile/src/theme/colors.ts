@@ -5,6 +5,7 @@ export const colors = {
   danger: "#C62828",
   espresso: "#3E2723",
   foreground: "#211D1C",
+  link: "#405DE6",
   muted: "#757575",
   neutral: "#757575",
   neutralDark: "#3D3D3D",
