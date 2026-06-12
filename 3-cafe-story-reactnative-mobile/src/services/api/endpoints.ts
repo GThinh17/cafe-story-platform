@@ -10,6 +10,12 @@ export const apiEndpoints = {
     logout: "/api/auth/logout",
     refresh: "/api/auth/refresh",
   },
+  chat: {
+    conversations: "/api/chat/conversations",
+    directConversation: "/api/chat/conversations/direct",
+    messages: (conversationId: string) =>
+      `/api/chat/conversations/${pathId(conversationId)}/messages`,
+  },
   blogs: {
     byUser: (userId: string) => `/api/blogs/users/${pathId(userId)}`,
     feed: "/api/blogs/feed",

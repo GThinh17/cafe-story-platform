@@ -1,5 +1,6 @@
 import { useNavigation } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Send } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet } from "react-native";
@@ -21,7 +22,7 @@ import {
 } from "../../services/api";
 import { spacing } from "../../theme";
 import { routes } from "../../navigation";
-import type { MainTabParamList } from "../../navigation";
+import type { MainTabParamList, RootStackParamList } from "../../navigation";
 import type {
   BlogFeedResponse,
   BlogLikeResponse,
@@ -56,7 +57,10 @@ function applyViewerState(
 
 export function HomeScreen() {
   const navigation =
-    useNavigation<BottomTabNavigationProp<MainTabParamList, typeof routes.home>>();
+    useNavigation<
+      BottomTabNavigationProp<MainTabParamList, typeof routes.home> &
+        NativeStackNavigationProp<RootStackParamList>
+    >();
   const { user } = useAuth();
   const [blogs, setBlogs] = useState<BlogFeedResponse[]>([]);
   const [error, setError] = useState("");
@@ -123,9 +127,9 @@ export function HomeScreen() {
   return (
     <Screen padded={false}>
       <ShareTopBar
+        onRightPress={() => navigation.navigate(routes.conversations)}
         rightAccessibilityLabel="Open messages"
         rightIcon={Send}
-        showRightBadge
       />
       <ScrollView
         contentContainerStyle={styles.feedContent}

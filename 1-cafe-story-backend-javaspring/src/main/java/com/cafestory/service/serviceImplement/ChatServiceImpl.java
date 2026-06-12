@@ -72,7 +72,7 @@ public class ChatServiceImpl implements ChatService {
         User secondUser = userValidator.validateUserExists(request.getSecondUserId());
 
         return conversationRepository.findDirectConversation(firstUser.getUserId(), secondUser.getUserId())
-                .map(this::toConversationResponse)
+                .map(conversation -> toConversationResponse(conversation, firstUser.getUserId()))
                 .orElseGet(() -> createDirectConversation(firstUser, secondUser));
     }
 
@@ -93,7 +93,7 @@ public class ChatServiceImpl implements ChatService {
             }
         }
 
-        ConversationResponseDTO response = toConversationResponse(savedConversation);
+        ConversationResponseDTO response = toConversationResponse(savedConversation, creator.getUserId());
         firebaseChatService.saveConversation(response);
         return response;
     }
@@ -104,7 +104,7 @@ public class ChatServiceImpl implements ChatService {
         userValidator.validateUserExists(userId);
         return conversationRepository.findUserConversationsOrderByLatestActivity(userId)
                 .stream()
-                .map(this::toConversationResponse)
+                .map(conversation -> toConversationResponse(conversation, userId))
                 .toList();
     }
 
@@ -141,6 +141,7 @@ public class ChatServiceImpl implements ChatService {
         message.setStickerUrl(blankToNull(request.getStickerUrl()));
         message.setStickerId(blankToNull(request.getStickerId()));
         message.setStatus(MessageStatus.SENT);
+        message.setRead(false);
 
         ChatMessage savedMessage = chatMessageRepository.save(message);
         conversation.setLatestMessageId(savedMessage.getId());
@@ -148,7 +149,10 @@ public class ChatServiceImpl implements ChatService {
         Conversation savedConversation = conversationRepository.save(conversation);
 
         ChatMessageResponseDTO messageResponse = chatMapper.toChatMessageResponseDTO(savedMessage);
-        ConversationResponseDTO conversationResponse = toConversationResponse(savedConversation);
+        ConversationResponseDTO conversationResponse = toConversationResponse(
+                savedConversation,
+                sender.getUserId(),
+                savedMessage);
         firebaseChatService.saveMessage(messageResponse);
         firebaseChatService.updateLatestMessage(conversationResponse, messageResponse);
         createMessageNotifications(conversationId, sender.getUserId(), savedMessage.getId());
@@ -163,7 +167,7 @@ public class ChatServiceImpl implements ChatService {
         if (!chatMemberRepository.existsByConversationIdAndUserUserId(conversationId, memberUserId)) {
             addMemberEntity(conversation, userValidator.validateUserExists(memberUserId), MemberRole.MEMBER);
         }
-        ConversationResponseDTO response = toConversationResponse(conversation);
+        ConversationResponseDTO response = toConversationResponse(conversation, actorUserId);
         firebaseChatService.saveConversation(response);
         return response;
     }
@@ -178,7 +182,7 @@ public class ChatServiceImpl implements ChatService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot remove group owner");
         }
         chatMemberRepository.delete(member);
-        ConversationResponseDTO response = toConversationResponse(conversation);
+        ConversationResponseDTO response = toConversationResponse(conversation, actorUserId);
         firebaseChatService.saveConversation(response);
         return response;
     }
@@ -192,7 +196,7 @@ public class ChatServiceImpl implements ChatService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Owner must transfer ownership before leaving");
         }
         chatMemberRepository.delete(member);
-        firebaseChatService.saveConversation(toConversationResponse(conversation));
+        firebaseChatService.saveConversation(toConversationResponse(conversation, actorUserId));
     }
 
     @Override
@@ -210,7 +214,7 @@ public class ChatServiceImpl implements ChatService {
             conversation.setGroupAvatar(blankToNull(request.getGroupAvatar()));
         }
         Conversation savedConversation = conversationRepository.save(conversation);
-        ConversationResponseDTO response = toConversationResponse(savedConversation);
+        ConversationResponseDTO response = toConversationResponse(savedConversation, request.getActorUserId());
         firebaseChatService.saveConversation(response);
         return response;
     }
@@ -221,7 +225,7 @@ public class ChatServiceImpl implements ChatService {
         Conversation savedConversation = conversationRepository.save(conversation);
         addMemberEntity(savedConversation, firstUser, MemberRole.MEMBER);
         addMemberEntity(savedConversation, secondUser, MemberRole.MEMBER);
-        ConversationResponseDTO response = toConversationResponse(savedConversation);
+        ConversationResponseDTO response = toConversationResponse(savedConversation, firstUser.getUserId());
         firebaseChatService.saveConversation(response);
         return response;
     }
@@ -317,10 +321,29 @@ public class ChatServiceImpl implements ChatService {
         return "[message]";
     }
 
-    private ConversationResponseDTO toConversationResponse(Conversation conversation) {
+    private ConversationResponseDTO toConversationResponse(Conversation conversation, UUID viewerUserId) {
+        ChatMessage latestMessage = conversation.getLatestMessageId() == null
+                ? null
+                : chatMessageRepository.findById(conversation.getLatestMessageId()).orElse(null);
+        return toConversationResponse(conversation, viewerUserId, latestMessage);
+    }
+
+    private ConversationResponseDTO toConversationResponse(
+            Conversation conversation,
+            UUID viewerUserId,
+            ChatMessage latestMessage) {
+        long unreadCount = latestMessage != null
+                && viewerUserId != null
+                && !viewerUserId.equals(latestMessage.getSender().getUserId())
+                && !latestMessage.isRead()
+                ? 1
+                : 0;
         return chatMapper.toConversationResponseDTO(
                 conversation,
-                chatMemberRepository.findByConversationId(conversation.getId()));
+                chatMemberRepository.findByConversationId(conversation.getId()),
+                viewerUserId,
+                latestMessage,
+                unreadCount);
     }
 
     private Set<UUID> distinctMemberIds(List<UUID> memberIds) {

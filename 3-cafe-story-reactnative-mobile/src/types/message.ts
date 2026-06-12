@@ -1,17 +1,4 @@
-export type MessageContact = {
-  name: string;
-  initials: string;
-};
-
-export type MessageDockData = {
-  title: string;
-  unreadCount: number;
-  contacts: MessageContact[];
-};
-
 export type ChatMessageType = "TEXT" | "IMAGE" | "STICKER" | "MIXED";
-export type LocalMessageStatus = "sent" | "sending" | "error";
-export type LocalConversationStatus = "creating" | "ready" | "error";
 
 export type ChatMemberResponse = {
   id: string;
@@ -58,54 +45,53 @@ export type ChatMessageResponse = {
   readAt: string | null;
 };
 
-export type SendChatMessageRequest = {
-  type: ChatMessageType;
-  text?: string;
-  imageUrls?: string[];
-  stickerUrl?: string;
-  stickerId?: string;
-};
-
-export type ChatMessage = {
+export type MockOnlineUser = {
+  avatarUri: string | null;
   id: string;
-  serverId?: string;
-  author: "me" | "them";
-  body?: string;
-  imageUrls?: string[];
-  stickerUrl?: string;
-  stickerId?: string;
-  type: ChatMessageType;
-  time: string;
-  timestamp?: number;
-  localStatus?: LocalMessageStatus;
-};
-
-export type Conversation = {
-  id: string;
-  serverId?: string;
-  participantUserId: string;
+  isOnline: boolean;
   name: string;
-  username: string;
-  avatarImage: string;
-  preview: string;
+};
+
+export type MockConversation = {
+  avatarUri: string | null;
+  id: string;
+  isMuted?: boolean;
+  isOnline?: boolean;
+  lastMessage: string;
+  name: string;
   time: string;
-  active?: boolean;
-  unread?: boolean;
-  isTemporary?: boolean;
-  localStatus?: LocalConversationStatus;
-  initials?: string;
-  status?: string;
+  userName: string;
 };
 
-export type MessageThread = {
-  recipientName: string;
-  recipientUsername: string;
-  recipientAvatar: string;
-  recipientStatus: string;
-  messages: ChatMessage[];
-};
-
-export type SendMessageDraft = {
+export type MockChatMessage = {
+  id: string;
+  isMine: boolean;
   text: string;
-  file: File | null;
+  time: string;
+};
+
+export type ConversationListItem = {
+  avatarUri: string | null;
+  id: string;
+  isMuted?: boolean;
+  isOnline?: boolean;
+  lastMessage: string;
+  name: string;
+  time: string;
+  userName: string;
+};
+
+export type ChatIdentity = {
+  avatarUri: string | null;
+  id: string;
+  isOnline?: boolean;
+  name: string;
+  userName: string;
+};
+
+export type ChatMessageListItem = {
+  id: string;
+  isMine: boolean;
+  text: string;
+  time: string;
 };

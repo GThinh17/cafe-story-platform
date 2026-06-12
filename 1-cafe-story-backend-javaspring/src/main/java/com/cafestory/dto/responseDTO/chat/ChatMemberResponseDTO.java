@@ -13,6 +13,12 @@ public class ChatMemberResponseDTO {
 
     private UUID userId;
 
+    private String userName;
+
+    private String userFullName;
+
+    private String userAvatar;
+
     private MemberRole role;
 
     private LocalDateTime joinedAt;
