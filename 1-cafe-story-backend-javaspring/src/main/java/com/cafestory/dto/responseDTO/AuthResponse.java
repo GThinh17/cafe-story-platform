@@ -7,7 +7,6 @@ import lombok.Data;
 public class AuthResponse {
     private AuthUserResponse user;
 
-    @JsonIgnore
     private String accessToken;
 
     @JsonIgnore

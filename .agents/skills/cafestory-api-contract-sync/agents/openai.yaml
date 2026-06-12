@@ -1,0 +1,4 @@
+interface:
+  display_name: "CafeStory API Contract Sync"
+  short_description: "Keep backend, web, and mobile API contracts aligned."
+  default_prompt: "Use CafeStory API contract sync for this cross-app API work."

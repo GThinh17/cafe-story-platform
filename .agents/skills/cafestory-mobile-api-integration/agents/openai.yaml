@@ -1,0 +1,4 @@
+interface:
+  display_name: "CafeStory Mobile API Integration"
+  short_description: "Connect React Native screens to CafeStory APIs."
+  default_prompt: "Use CafeStory mobile API integration rules for this React Native feature."

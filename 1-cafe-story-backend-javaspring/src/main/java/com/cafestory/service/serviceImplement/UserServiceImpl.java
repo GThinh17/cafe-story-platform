@@ -123,6 +123,9 @@ public class UserServiceImpl implements UserService {
         if (userUpdateDTO.getUserAvatar() != null) {
             user.setUserAvatar(userUpdateDTO.getUserAvatar());
         }
+        if (userUpdateDTO.getUserDescription() != null) {
+            user.setUserDescription(userUpdateDTO.getUserDescription());
+        }
         if (userUpdateDTO.getRegionId() != null) {
             user.setRegion(regionRepository.findById(userUpdateDTO.getRegionId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Region not found")));

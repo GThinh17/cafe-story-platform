@@ -9,6 +9,7 @@ import com.cafestory.service.serviceInterface.AuthService;
 import com.cafestory.service.serviceInterface.RefreshTokenService;
 import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import com.cafestory.until.security.JwtService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,14 +47,24 @@ class AuthControllerTest {
     @Test
     void register_success_TC001() {
         RegisterRequest request = registerRequest();
-        AuthResponse response = authResponse(null, null);
+        AuthResponse response = authResponse("access-token", "refresh-token");
+        MockHttpServletResponse servletResponse = new MockHttpServletResponse();
 
         when(authService.register(request)).thenReturn(response);
+        when(jwtService.getAccessTokenSeconds()).thenReturn(900L);
+        when(refreshTokenService.getRefreshTokenSeconds()).thenReturn(604800L);
 
-        AuthResponse result = authController.register(request);
+        AuthResponse result = authController.register(request, servletResponse);
 
         assertThat(result).isEqualTo(response);
         verify(authService).register(request);
+        assertThat(servletResponse.getHeaders("Set-Cookie"))
+                .anyMatch(cookie -> cookie.contains("access_token=access-token")
+                        && cookie.contains("HttpOnly")
+                        && cookie.contains("Path=/"))
+                .anyMatch(cookie -> cookie.contains("refresh_token=refresh-token")
+                        && cookie.contains("HttpOnly")
+                        && cookie.contains("Path=/api/auth"));
     }
 
     @Test
@@ -137,6 +148,17 @@ class AuthControllerTest {
                 .anyMatch(cookie -> cookie.contains("refresh_token=")
                         && cookie.contains("Max-Age=0")
                         && cookie.contains("Path=/api/auth"));
+    }
+
+    @Test
+    void authResponse_serializesAccessTokenButNotRefreshToken_TC007() throws Exception {
+        AuthResponse response = authResponse("access-token", "refresh-token");
+
+        String json = new ObjectMapper().writeValueAsString(response);
+
+        assertThat(json).contains("\"accessToken\":\"access-token\"");
+        assertThat(json).doesNotContain("refreshToken");
+        assertThat(json).doesNotContain("refresh-token");
     }
 
     private RegisterRequest registerRequest() {

@@ -26,4 +26,6 @@ public class RegisterRequest {
     private Long userPhone;
 
     private String userAvatar;
+
+    private String userDescription;
 }

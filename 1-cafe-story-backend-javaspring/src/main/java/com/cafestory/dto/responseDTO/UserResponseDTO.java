@@ -12,6 +12,7 @@ public class UserResponseDTO {
     private String userEmail;
     private Long userPhone;
     private String userAvatar;
+    private String userDescription;
     private Integer userLike;
     private Integer userFollower;
     private Integer followingCount;

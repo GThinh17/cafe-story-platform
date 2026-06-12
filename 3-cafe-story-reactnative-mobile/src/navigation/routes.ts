@@ -1,0 +1,15 @@
+export const routes = {
+  auth: "Auth",
+  blogDetail: "BlogDetail",
+  cafeDetail: "CafeDetail",
+  create: "Create",
+  createPostModal: "CreatePostModal",
+  explore: "Explore",
+  home: "Home",
+  login: "Login",
+  main: "Main",
+  notifications: "Notifications",
+  profile: "Profile",
+  region: "Region",
+  register: "Register",
+} as const;

@@ -68,6 +68,7 @@ export type UserResponse = {
   userEmail: string | null;
   userPhone: number | null;
   userAvatar: string | null;
+  userDescription?: string | null;
   userLike: number | null;
   userFollower: number | null;
   followingCount: number | null;
