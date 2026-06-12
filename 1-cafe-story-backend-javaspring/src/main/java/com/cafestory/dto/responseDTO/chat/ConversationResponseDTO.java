@@ -18,9 +18,23 @@ public class ConversationResponseDTO {
 
     private String groupAvatar;
 
+    private String chatName;
+
+    private String userName;
+
+    private String chatAvatar;
+
     private UUID latestMessageId;
 
     private String latestMessagePreview;
+
+    private String lastMessage;
+
+    private LocalDateTime lastMessageAt;
+
+    private boolean isRead;
+
+    private long unreadCount;
 
     private LocalDateTime createdAt;
 

@@ -32,4 +32,8 @@ public class ChatMessageResponseDTO {
     private LocalDateTime updatedAt;
 
     private MessageStatus status;
+
+    private boolean isRead;
+
+    private LocalDateTime readAt;
 }

@@ -70,6 +70,13 @@ public class ChatMessage {
     private MessageStatus status = MessageStatus.SENT;
 
     @NotNull
+    @Column(name = "is_read", nullable = false, columnDefinition = "boolean default false")
+    private boolean read = false;
+
+    @Column(name = "read_at")
+    private LocalDateTime readAt;
+
+    @NotNull
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
