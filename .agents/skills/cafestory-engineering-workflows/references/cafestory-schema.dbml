@@ -489,6 +489,8 @@ Table chat_messages {
   sticker_url varchar(255)
   sticker_id varchar(255)
   status message_status [not null, default: "SENT"]
+  is_read boolean [not null, default: false]
+  read_at datetime
   created_at datetime [not null]
   updated_at datetime [not null]
 }
