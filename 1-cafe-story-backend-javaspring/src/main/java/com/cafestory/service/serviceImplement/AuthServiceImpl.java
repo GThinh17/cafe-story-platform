@@ -88,6 +88,7 @@ public class AuthServiceImpl implements AuthService {
         user.setUserEmail(request.getUserEmail());
         user.setUserPhone(request.getUserPhone());
         user.setUserAvatar(request.getUserAvatar());
+        user.setUserDescription(request.getUserDescription());
         user.setAccountStatus(true);
 
         User savedUser = userRepository.save(user);
@@ -335,6 +336,7 @@ public class AuthServiceImpl implements AuthService {
         userResponse.setUserEmail(user.getUserEmail());
         userResponse.setUserPhone(user.getUserPhone());
         userResponse.setUserAvatar(user.getUserAvatar());
+        userResponse.setUserDescription(user.getUserDescription());
         userResponse.setAccountStatus(user.getAccountStatus());
         userResponse.setRoles(roles);
 

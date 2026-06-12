@@ -11,6 +11,7 @@ export const apiEndpoints = {
     refresh: "/api/auth/refresh",
   },
   blogs: {
+    byUser: (userId: string) => `/api/blogs/users/${pathId(userId)}`,
     feed: "/api/blogs/feed",
     likes: (blogId: string) => `/api/blogs/${pathId(blogId)}/likes`,
     likesByUser: (userId: string) => `/api/blogs/likes/users/${pathId(userId)}`,
@@ -34,8 +35,11 @@ export const apiEndpoints = {
     list: "/api/reports",
   },
   users: {
+    byId: (userId: string) => `/api/users/${pathId(userId)}`,
+    byUsername: (username: string) => `/api/users/by-username/${pathId(username)}`,
     follow: (followingUserId: string) =>
       `/api/users/${pathId(followingUserId)}/followers`,
     following: (userId: string) => `/api/users/${pathId(userId)}/following`,
+    me: "/api/users/me",
   },
 } as const;

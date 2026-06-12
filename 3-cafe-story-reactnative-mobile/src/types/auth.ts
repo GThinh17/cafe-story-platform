@@ -5,6 +5,7 @@ export type AuthUser = {
   userEmail: string;
   userPhone: number | null;
   userAvatar: string | null;
+  userDescription?: string | null;
   accountStatus: boolean;
   roles: string[];
 };
@@ -26,4 +27,5 @@ export type RegisterRequest = {
   userEmail: string;
   userPhone?: number;
   userAvatar?: string;
+  userDescription?: string;
 };

@@ -2,6 +2,7 @@ import type {
   BlogFeedParams,
   BlogFeedResponse,
   BlogLikeResponse,
+  BlogResponse,
   BlogSaveResponse,
   BlogShareRequest,
   BlogShareResponse,
@@ -35,6 +36,12 @@ export function getBlogFeed(params: BlogFeedParams = {}) {
       method: "GET",
     },
   );
+}
+
+export function getBlogsByUser(userId: string) {
+  return apiFetch<BlogResponse[]>(apiEndpoints.blogs.byUser(userId), {
+    method: "GET",
+  });
 }
 
 export function likeBlog(blogId: string) {

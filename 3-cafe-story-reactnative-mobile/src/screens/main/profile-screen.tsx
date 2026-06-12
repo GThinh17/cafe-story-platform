@@ -1,15 +1,27 @@
-import { AtSign, Grid3X3, Plus, Repeat2, SquarePlay, UserPlus, UserRound } from "lucide-react-native";
+import {
+  AtSign,
+  Grid3X3,
+  Pencil,
+  Plus,
+  Repeat2,
+  SquarePlay,
+  UserPlus,
+  UserRound,
+} from "lucide-react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from "react-native";
-import { Avatar, ProfileTopBar, Screen, UserPostGrid } from "../../components";
+import { Avatar, EmptyState, LoadingState, ProfileTopBar, Screen, UserPostGrid } from "../../components";
 import { useAuth } from "../../features/auth";
-import { mockUserPosts } from "../../mocks";
+import { getBlogsByUser, getMyProfile } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
+import type { BlogResponse, UserPostPreview, UserResponse } from "../../types";
 
 function initialsFor(name?: string | null) {
   if (!name) {
@@ -25,12 +37,116 @@ function initialsFor(name?: string | null) {
     .toUpperCase();
 }
 
+function formatCount(value?: number | null) {
+  const safeValue = value ?? 0;
+
+  if (safeValue >= 1000000) {
+    return `${(safeValue / 1000000).toFixed(safeValue >= 10000000 ? 0 : 1)}m`;
+  }
+
+  if (safeValue >= 1000) {
+    return `${(safeValue / 1000).toFixed(safeValue >= 10000 ? 0 : 1)}k`;
+  }
+
+  return String(safeValue);
+}
+
+function toPostPreview(blog: BlogResponse): UserPostPreview {
+  return {
+    caption: blog.content,
+    commentCount: blog.commentCount ?? 0,
+    id: blog.id,
+    imageUri: blog.imageUrls?.[0] ?? null,
+    likeCount: blog.likeCount ?? 0,
+  };
+}
+
 export function ProfileScreen() {
   const { user } = useAuth();
+  const [profile, setProfile] = useState<UserResponse | null>(null);
+  const [posts, setPosts] = useState<UserPostPreview[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const displayName = user?.userFullName || user?.userName || "Cafe Story user";
-  const userName = user?.userName || "cafestory";
-  const avatarUri = user?.userAvatar;
+  const loadProfile = useCallback(async (refreshing = false) => {
+    if (refreshing) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
+
+    try {
+      const nextProfile = await getMyProfile();
+      const userBlogs = await getBlogsByUser(nextProfile.userId);
+
+      setProfile(nextProfile);
+      setPosts(userBlogs.map(toPostPreview));
+      setError(null);
+    } catch (nextError) {
+      setError(
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to load your profile.",
+      );
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadProfile();
+  }, [loadProfile]);
+
+  const onRefresh = useCallback(() => {
+    void loadProfile(true);
+  }, [loadProfile]);
+
+  const activeProfile = profile ?? (user
+    ? {
+        accountStatus: user.accountStatus,
+        followingCount: null,
+        isFollowing: false,
+        regionArea: null,
+        regionCity: null,
+        regionId: null,
+        regionProvince: null,
+        regionStreet: null,
+        regionWard: null,
+        userAvatar: user.userAvatar,
+        userDescription: user.userDescription ?? null,
+        userEmail: user.userEmail,
+        userFollower: null,
+        userFullName: user.userFullName,
+        userId: user.userId,
+        userLike: null,
+        userName: user.userName,
+        userPhone: user.userPhone,
+      }
+    : null);
+
+  const displayName = activeProfile?.userFullName || activeProfile?.userName || "Cafe Story user";
+  const userName = activeProfile?.userName || "cafestory";
+  const avatarUri = activeProfile?.userAvatar;
+  const userDescription = activeProfile?.userDescription?.trim();
+  const stats = useMemo(
+    () => [
+      { label: "posts", value: formatCount(posts.length) },
+      { label: "followers", value: formatCount(activeProfile?.userFollower) },
+      { label: "following", value: formatCount(activeProfile?.followingCount) },
+    ],
+    [activeProfile?.followingCount, activeProfile?.userFollower, posts.length],
+  );
+
+  if (isLoading && !activeProfile) {
+    return (
+      <Screen padded={false}>
+        <ProfileTopBar userName={userName} />
+        <LoadingState label="Loading profile..." />
+      </Screen>
+    );
+  }
 
   return (
     <Screen padded={false}>
@@ -38,8 +154,17 @@ export function ProfileScreen() {
 
       <ScrollView
         contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+        }
         showsVerticalScrollIndicator={false}
       >
+        {error ? (
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
+
         <View style={styles.identity}>
           <Avatar initials={initialsFor(displayName)} size={88} uri={avatarUri} />
 
@@ -49,27 +174,33 @@ export function ProfileScreen() {
             </Text>
 
             <View style={styles.stats}>
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>42</Text>
-                <Text style={styles.statLabel}>posts</Text>
-              </View>
-
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>3.2k</Text>
-                <Text style={styles.statLabel}>followers</Text>
-              </View>
-
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>215</Text>
-                <Text style={styles.statLabel}>following</Text>
-              </View>
+              {stats.map((stat) => (
+                <View key={stat.label} style={styles.statItem}>
+                  <Text style={styles.statValue}>{stat.value}</Text>
+                  <Text style={styles.statLabel}>{stat.label}</Text>
+                </View>
+              ))}
             </View>
           </View>
         </View>
 
-        <Text style={styles.description}>
-          Collecting calm cafes, good filters, and corners worth returning to.
-        </Text>
+        {userDescription ? (
+          <Text style={styles.description}>{userDescription}</Text>
+        ) : (
+          <Pressable
+            accessibilityLabel="Add profile description"
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.descriptionPrompt,
+              pressed && styles.actionPressed,
+            ]}
+          >
+            <Pencil color={colors.muted} size={16} strokeWidth={2.3} />
+            <Text style={styles.descriptionPromptText}>
+              Add a short description about you here
+            </Text>
+          </Pressable>
+        )}
 
         <View style={styles.profileChips}>
           <View style={styles.profileChip}>
@@ -136,7 +267,16 @@ export function ProfileScreen() {
         </View>
 
         <View style={styles.grid}>
-          <UserPostGrid posts={mockUserPosts} />
+          {posts.length > 0 ? (
+            <UserPostGrid posts={posts} />
+          ) : (
+            <View style={styles.emptyPosts}>
+              <EmptyState
+                description="Your cafe stories will appear here after you publish them."
+                title="No blogs yet"
+              />
+            </View>
+          )}
         </View>
       </ScrollView>
     </Screen>
@@ -147,6 +287,43 @@ const styles = StyleSheet.create({
   content: {
     gap: spacing.md,
     paddingBottom: 112,
+  },
+
+  descriptionPrompt: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+
+  descriptionPromptText: {
+    color: colors.muted,
+    flex: 1,
+    fontSize: typography.label,
+    fontWeight: "700",
+    lineHeight: 20,
+  },
+
+  emptyPosts: {
+    minHeight: 220,
+    width: "100%",
+  },
+
+  errorBanner: {
+    backgroundColor: colors.secondarySoft,
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    padding: spacing.md,
+  },
+
+  errorText: {
+    color: colors.primaryStrong,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 18,
   },
 
   identity: {

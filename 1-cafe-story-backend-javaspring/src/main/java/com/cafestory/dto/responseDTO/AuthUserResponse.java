@@ -13,6 +13,7 @@ public class AuthUserResponse {
     private String userEmail;
     private Long userPhone;
     private String userAvatar;
+    private String userDescription;
     private Boolean accountStatus;
     private List<String> roles;
 }

@@ -1,6 +1,6 @@
-import { Image, Pressable, StyleSheet, useWindowDimensions } from "react-native";
+import { Image, Pressable, StyleSheet, Text, useWindowDimensions } from "react-native";
 import type { UserPostPreview } from "../../types";
-import { colors } from "../../theme";
+import { colors, spacing, typography } from "../../theme";
 
 const GRID_GAP = 2;
 const COLUMN_COUNT = 3;
@@ -16,27 +16,53 @@ export function UserPostGrid({ posts }: UserPostGridProps) {
   return (
     <>
       {posts.map((post) => (
-        <Pressable
-          accessibilityLabel={post.caption}
-          accessibilityRole="imagebutton"
-          key={post.id}
-          style={({ pressed }) => [
-            styles.item,
-            {
-              height: itemSize,
-              width: itemSize,
-            },
-            pressed && styles.itemPressed,
-          ]}
-        >
-          <Image resizeMode="cover" source={post.image} style={styles.image} />
-        </Pressable>
+        <PostGridItem itemSize={itemSize} key={post.id} post={post} />
       ))}
     </>
   );
 }
 
+type PostGridItemProps = {
+  itemSize: number;
+  post: UserPostPreview;
+};
+
+function PostGridItem({ itemSize, post }: PostGridItemProps) {
+  const imageSource = post.image ?? (post.imageUri ? { uri: post.imageUri } : null);
+
+  return (
+    <Pressable
+      accessibilityLabel={post.caption}
+      accessibilityRole="imagebutton"
+      style={({ pressed }) => [
+        styles.item,
+        {
+          height: itemSize,
+          width: itemSize,
+        },
+        pressed && styles.itemPressed,
+      ]}
+    >
+      {imageSource ? (
+        <Image resizeMode="cover" source={imageSource} style={styles.image} />
+      ) : (
+        <Text numberOfLines={5} style={styles.caption}>
+          {post.caption || "CafeStory post"}
+        </Text>
+      )}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
+  caption: {
+    color: colors.foreground,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 17,
+    padding: spacing.sm,
+  },
+
   image: {
     height: "100%",
     width: "100%",

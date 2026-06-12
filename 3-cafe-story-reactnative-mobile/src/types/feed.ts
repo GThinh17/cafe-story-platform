@@ -43,6 +43,41 @@ export type BlogFeedResponse = {
   shareCount: number | null;
 };
 
+export type BlogPostStatus = "PUBLISHED" | "DRAFT" | "ARCHIVED" | string;
+
+export type BlogResponse = {
+  allowComment: boolean | null;
+  authorUserAvatar?: string | null;
+  authorUserFullName?: string | null;
+  authorUserId: string;
+  authorUserName?: string | null;
+  commentCount?: number | null;
+  content: string;
+  createdAt: string | null;
+  displayAuthorType?: BlogDisplayAuthorType | null;
+  displayAvatarUrl?: string | null;
+  displayName?: string | null;
+  id: string;
+  imageUrls: string[] | null;
+  isLike?: boolean | null;
+  isPinned: boolean | null;
+  isRating?: boolean | null;
+  isSave?: boolean | null;
+  likeCount: number | null;
+  myRating?: number | null;
+  pageAvatarUrl?: string | null;
+  pageId: string | null;
+  pageName?: string | null;
+  ratingCount?: number | null;
+  ratingScore?: number | null;
+  regionId: string | null;
+  saveCount?: number | null;
+  shareCount: number | null;
+  status: BlogPostStatus;
+  taggedUsers?: unknown[] | null;
+  updatedAt: string | null;
+};
+
 export type BlogFeedParams = {
   page?: number;
   regionId?: string;
