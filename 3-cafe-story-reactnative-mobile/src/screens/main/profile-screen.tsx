@@ -17,11 +17,20 @@ import {
   Text,
   View,
 } from "react-native";
-import { Avatar, EmptyState, LoadingState, ProfileTopBar, Screen, UserPostGrid } from "../../components";
+import {
+  Avatar,
+  BioEditorModal,
+  EditProfileModal,
+  EmptyState,
+  LoadingState,
+  ProfileTopBar,
+  Screen,
+  UserPostGrid,
+} from "../../components";
 import { useAuth } from "../../features/auth";
-import { getBlogsByUser, getMyProfile } from "../../services/api";
+import { getBlogsByUser, getMyProfile, updateMyProfile } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
-import type { BlogResponse, UserPostPreview, UserResponse } from "../../types";
+import type { BlogResponse, UserPostPreview, UserResponse, UserUpdateRequest } from "../../types";
 
 function initialsFor(name?: string | null) {
   if (!name) {
@@ -68,6 +77,12 @@ export function ProfileScreen() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isBioModalVisible, setIsBioModalVisible] = useState(false);
+  const [bioError, setBioError] = useState<string | null>(null);
+  const [isSavingBio, setIsSavingBio] = useState(false);
+  const [isEditProfileVisible, setIsEditProfileVisible] = useState(false);
+  const [editProfileError, setEditProfileError] = useState<string | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
   const loadProfile = useCallback(async (refreshing = false) => {
     if (refreshing) {
@@ -103,27 +118,95 @@ export function ProfileScreen() {
     void loadProfile(true);
   }, [loadProfile]);
 
+  const openBioModal = useCallback(() => {
+    setBioError(null);
+    setIsBioModalVisible(true);
+  }, []);
+
+  const closeBioModal = useCallback(() => {
+    if (!isSavingBio) {
+      setIsBioModalVisible(false);
+      setBioError(null);
+    }
+  }, [isSavingBio]);
+
+  const saveBio = useCallback(async (bio: string) => {
+    const nextDescription = bio.trim();
+
+    setIsSavingBio(true);
+    setBioError(null);
+
+    try {
+      const nextProfile = await updateMyProfile({
+        userDescription: nextDescription,
+      });
+
+      setProfile(nextProfile);
+      setIsBioModalVisible(false);
+    } catch (nextError) {
+      setBioError(
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to update your bio.",
+      );
+    } finally {
+      setIsSavingBio(false);
+    }
+  }, []);
+
+  const openEditProfile = useCallback(() => {
+    setEditProfileError(null);
+    setIsEditProfileVisible(true);
+  }, []);
+
+  const closeEditProfile = useCallback(() => {
+    if (!isSavingProfile) {
+      setIsEditProfileVisible(false);
+      setEditProfileError(null);
+    }
+  }, [isSavingProfile]);
+
+  const saveProfile = useCallback(async (request: UserUpdateRequest) => {
+    setIsSavingProfile(true);
+    setEditProfileError(null);
+
+    try {
+      const nextProfile = await updateMyProfile(request);
+
+      setProfile(nextProfile);
+      setIsEditProfileVisible(false);
+    } catch (nextError) {
+      setEditProfileError(
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to update your profile.",
+      );
+    } finally {
+      setIsSavingProfile(false);
+    }
+  }, []);
+
   const activeProfile = profile ?? (user
     ? {
-        accountStatus: user.accountStatus,
-        followingCount: null,
-        isFollowing: false,
-        regionArea: null,
-        regionCity: null,
-        regionId: null,
-        regionProvince: null,
-        regionStreet: null,
-        regionWard: null,
-        userAvatar: user.userAvatar,
-        userDescription: user.userDescription ?? null,
-        userEmail: user.userEmail,
-        userFollower: null,
-        userFullName: user.userFullName,
-        userId: user.userId,
-        userLike: null,
-        userName: user.userName,
-        userPhone: user.userPhone,
-      }
+      accountStatus: user.accountStatus,
+      followingCount: null,
+      isFollowing: false,
+      regionArea: null,
+      regionCity: null,
+      regionId: null,
+      regionProvince: null,
+      regionStreet: null,
+      regionWard: null,
+      userAvatar: user.userAvatar,
+      userDescription: user.userDescription ?? null,
+      userEmail: user.userEmail,
+      userFollower: null,
+      userFullName: user.userFullName,
+      userId: user.userId,
+      userLike: null,
+      userName: user.userName,
+      userPhone: user.userPhone,
+    }
     : null);
 
   const displayName = activeProfile?.userFullName || activeProfile?.userName || "Cafe Story user";
@@ -185,11 +268,26 @@ export function ProfileScreen() {
         </View>
 
         {userDescription ? (
-          <Text style={styles.description}>{userDescription}</Text>
+          <Pressable
+            accessibilityLabel="Edit profile bio"
+            accessibilityRole="button"
+            onPress={openBioModal}
+            style={({ pressed }) => [
+              styles.bioInlineRow,
+              pressed && styles.actionPressed,
+            ]}
+          >
+            {/* <Text style={styles.bioInlineLabel}>Bio</Text> */}
+            <Text numberOfLines={2} style={styles.bioInlineText}>
+              {userDescription}
+            </Text>
+            <Pencil color={colors.muted} size={14} strokeWidth={2.4} />
+          </Pressable>
         ) : (
           <Pressable
             accessibilityLabel="Add profile description"
             accessibilityRole="button"
+            onPress={openBioModal}
             style={({ pressed }) => [
               styles.descriptionPrompt,
               pressed && styles.actionPressed,
@@ -220,6 +318,7 @@ export function ProfileScreen() {
           <Pressable
             accessibilityLabel="Edit profile"
             accessibilityRole="button"
+            onPress={openEditProfile}
             style={({ pressed }) => [
               styles.profileActionButton,
               pressed && styles.actionPressed,
@@ -279,6 +378,24 @@ export function ProfileScreen() {
           )}
         </View>
       </ScrollView>
+
+      <BioEditorModal
+        error={bioError}
+        initialBio={activeProfile?.userDescription}
+        isSaving={isSavingBio}
+        onClose={closeBioModal}
+        onSave={saveBio}
+        visible={isBioModalVisible}
+      />
+
+      <EditProfileModal
+        error={editProfileError}
+        isSaving={isSavingProfile}
+        onClose={closeEditProfile}
+        onSave={saveProfile}
+        profile={activeProfile}
+        visible={isEditProfileVisible}
+      />
     </Screen>
   );
 }
@@ -287,6 +404,27 @@ const styles = StyleSheet.create({
   content: {
     gap: spacing.md,
     paddingBottom: 112,
+  },
+
+  bioInlineLabel: {
+    color: colors.foreground,
+    fontSize: typography.caption,
+    fontWeight: "900",
+  },
+
+  bioInlineRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+
+  bioInlineText: {
+    color: colors.foreground,
+
+    flex: 1,
+    fontSize: typography.label,
+    lineHeight: 18,
   },
 
   descriptionPrompt: {

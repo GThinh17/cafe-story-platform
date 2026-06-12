@@ -24,6 +24,54 @@ type ReportPostModalProps = {
   visible: boolean;
 };
 
+type ReportReasonCopy = {
+  description?: string;
+  label: string;
+};
+
+const REPORT_REASON_COPY: Record<string, ReportReasonCopy> = {
+  BULLYING_OR_UNWANTED_CONTACT: {
+    label: "Bullying or unwanted contact",
+  },
+  DISLIKE_CONTENT: {
+    label: "I just don't like this content",
+  },
+  FALSE_INFORMATION: {
+    label: "False information",
+  },
+  INTELLECTUAL_PROPERTY: {
+    description:
+      "Tell CafeStory what rights may be affected so the team can review the report accurately.",
+    label: "Intellectual property",
+  },
+  NUDITY_OR_SEXUAL_ACTIVITY: {
+    label: "Nudity or sexual activity",
+  },
+  RESTRICTED_GOODS: {
+    label: "Selling or promoting restricted goods",
+  },
+  SCAM_FRAUD_OR_SPAM: {
+    label: "Scam, fraud, or spam",
+  },
+  SELF_HARM_OR_ABNORMAL_EATING: {
+    label: "Self-harm or disordered eating",
+  },
+  VIOLENCE_HATE_OR_EXPLOITATION: {
+    label: "Violence, hate, or exploitation",
+  },
+};
+
+function reportReasonLabel(reason: ReportReasonResponse) {
+  return REPORT_REASON_COPY[reason.code]?.label ?? reason.labelVi;
+}
+
+function reportReasonDescription(reason: ReportReasonResponse) {
+  return (
+    REPORT_REASON_COPY[reason.code]?.description ??
+    "Tell CafeStory a little more so the team can review this accurately."
+  );
+}
+
 export function ReportPostModal({
   blogId,
   onClose,
@@ -63,7 +111,7 @@ export function ReportPostModal({
           setError(
             requestError instanceof Error
               ? requestError.message
-              : "Không thể tải lý do báo cáo.",
+              : "Unable to load report reasons.",
           );
         }
       })
@@ -121,7 +169,7 @@ export function ReportPostModal({
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Không thể gửi báo cáo.",
+          : "Unable to submit this report.",
       );
     } finally {
       setIsSubmitting(false);
@@ -133,7 +181,7 @@ export function ReportPostModal({
       return (
         <View style={styles.stateBlock}>
           <ActivityIndicator color={colors.primary} />
-          <Text style={styles.stateText}>Đang tải lý do báo cáo...</Text>
+          <Text style={styles.stateText}>Loading report reasons...</Text>
         </View>
       );
     }
@@ -141,7 +189,7 @@ export function ReportPostModal({
     if (error && !reasons.length) {
       return (
         <View style={styles.stateBlock}>
-          <Text style={styles.stateTitle}>Không tải được lý do báo cáo</Text>
+          <Text style={styles.stateTitle}>Unable to load report reasons</Text>
           <Text style={styles.stateText}>{error}</Text>
         </View>
       );
@@ -150,9 +198,9 @@ export function ReportPostModal({
     if (!reasons.length) {
       return (
         <View style={styles.stateBlock}>
-          <Text style={styles.stateTitle}>Chưa có lý do báo cáo</Text>
+          <Text style={styles.stateTitle}>No report reasons yet</Text>
           <Text style={styles.stateText}>
-            Vui lòng thử lại sau khi hệ thống đã cấu hình report_reason.
+            Please try again after report reasons have been configured.
           </Text>
         </View>
       );
@@ -164,17 +212,17 @@ export function ReportPostModal({
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.hero}>
-          <Text style={styles.question}>Tại sao bạn báo cáo bài viết này?</Text>
+          <Text style={styles.question}>Why are you reporting this post?</Text>
           <Text style={styles.description}>
-            Báo cáo của bạn sẽ được ẩn danh. Nếu ai đó đang gặp nguy hiểm,
-            đừng chần chừ mà hãy báo ngay cho dịch vụ khẩn cấp tại địa phương.
+            Your report is anonymous. If someone is in immediate danger,
+            contact your local emergency services right away.
           </Text>
         </View>
 
         <View style={styles.reasons}>
           {reasons.map((reason) => (
             <Pressable
-              accessibilityLabel={reason.labelVi}
+              accessibilityLabel={reportReasonLabel(reason)}
               accessibilityRole="button"
               key={reason.id}
               onPress={() => {
@@ -184,7 +232,7 @@ export function ReportPostModal({
               }}
               style={({ pressed }) => [styles.reasonRow, pressed && styles.pressed]}
             >
-              <Text style={styles.reasonText}>{reason.labelVi}</Text>
+              <Text style={styles.reasonText}>{reportReasonLabel(reason)}</Text>
               <ChevronRight color={colors.muted} size={28} strokeWidth={2.2} />
             </Pressable>
           ))}
@@ -201,9 +249,9 @@ export function ReportPostModal({
     if (submittedReportId) {
       return (
         <View style={styles.successBlock}>
-          <Text style={styles.detailTitle}>Cảm ơn bạn đã báo cáo</Text>
+          <Text style={styles.detailTitle}>Thanks for your report</Text>
           <Text style={styles.detailText}>
-            Báo cáo của bạn đã được gửi và sẽ được CafeStory xem xét.
+            Your report has been submitted and will be reviewed by CafeStory.
           </Text>
           <Pressable
             accessibilityLabel="Close report"
@@ -211,7 +259,7 @@ export function ReportPostModal({
             onPress={onClose}
             style={({ pressed }) => [styles.submitButton, pressed && styles.pressed]}
           >
-            <Text style={styles.submitText}>Đóng</Text>
+            <Text style={styles.submitText}>Close</Text>
           </Pressable>
         </View>
       );
@@ -227,20 +275,19 @@ export function ReportPostModal({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.detailTitle}>{selectedReason.labelVi}</Text>
+          <Text style={styles.detailTitle}>{reportReasonLabel(selectedReason)}</Text>
           <Text style={styles.detailText}>
-            {selectedReason.descriptionVi ||
-              "Hãy cho CafeStory biết thêm chi tiết để đội ngũ có thể xem xét chính xác hơn."}
+            {reportReasonDescription(selectedReason)}
           </Text>
 
           <View style={styles.inputBlock}>
             <Text style={styles.inputLabel}>
-              Lý do cụ thể {isDescriptionRequired ? "(bắt buộc)" : "(không bắt buộc)"}
+              Details {isDescriptionRequired ? "(required)" : "(optional)"}
             </Text>
             <TextInput
               multiline
               onChangeText={setDescription}
-              placeholder="Nhập chi tiết báo cáo..."
+              placeholder="Add report details..."
               placeholderTextColor={colors.muted}
               style={styles.input}
               textAlignVertical="top"
@@ -266,7 +313,7 @@ export function ReportPostModal({
             {isSubmitting ? (
               <ActivityIndicator color={colors.white} />
             ) : (
-              <Text style={styles.submitText}>Báo cáo</Text>
+              <Text style={styles.submitText}>Report</Text>
             )}
           </Pressable>
         </View>
@@ -286,7 +333,7 @@ export function ReportPostModal({
           >
             <ArrowLeft color={colors.foreground} size={30} strokeWidth={2.5} />
           </Pressable>
-          <Text style={styles.title}>Báo cáo</Text>
+          <Text style={styles.title}>Report</Text>
           <Pressable
             accessibilityLabel="Close report"
             accessibilityRole="button"

@@ -40,6 +40,7 @@ Before editing:
 - Mock data: `src/mocks`
 
 Do not put reusable UI, mock data, endpoint paths, API functions, or auth orchestration directly inside screen files.
+Keep screens focused on data orchestration and composition. Put domain-specific forms, modals, sheets, cards, and repeated UI pieces in `src/components/<domain>` so they stay easy to edit and maintain.
 
 ## Integration Workflow
 
@@ -63,6 +64,7 @@ Do not put reusable UI, mock data, endpoint paths, API functions, or auth orches
 ## UI State Rules
 
 - Use existing `LoadingState`, `EmptyState`, `Screen`, `Button`, and theme tokens when possible.
+- Keep mobile UI copy in English by default. Do not introduce hardcoded Vietnamese labels, placeholders, empty states, errors, or action text unless the user explicitly requests Vietnamese for that screen.
 - Do not create one-off colors, spacing, or button variants in screens.
 - Keep social actions responsive: like, unlike, comment, follow, save, share, and report should show pending/error feedback when wired.
 - Do not add new state or data-fetching libraries unless the project already uses them or the user explicitly asks.

@@ -86,7 +86,7 @@ export function PostOptionsModal({
                   strokeWidth={2.4}
                 />
               </View>
-              <Text style={styles.quickLabel}>{isSaved ? "Đã lưu" : "Lưu"}</Text>
+              <Text style={styles.quickLabel}>{isSaved ? "Saved" : "Save"}</Text>
             </Pressable>
 
             <Pressable
@@ -97,28 +97,28 @@ export function PostOptionsModal({
               <View style={styles.quickIcon}>
                 <QrCode color={colors.foreground} size={34} strokeWidth={2.4} />
               </View>
-              <Text style={styles.quickLabel}>Mã QR</Text>
+              <Text style={styles.quickLabel}>QR code</Text>
             </Pressable>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.rows}>
-            <OptionRow Icon={Info} label="Tại sao bạn nhìn thấy bài viết này" />
-            <OptionRow Icon={EyeOff} label="Không quan tâm" />
-            <OptionRow Icon={Eye} label="Quan tâm" />
-            <OptionRow Icon={CircleUserRound} label="Giới thiệu về tài khoản này" />
+            <OptionRow Icon={Info} label="Why you're seeing this post" />
+            <OptionRow Icon={EyeOff} label="Not interested" />
+            <OptionRow Icon={Eye} label="Interested" />
+            <OptionRow Icon={CircleUserRound} label="About this account" />
             <OptionRow
               Icon={MessageSquareWarning}
               color={colors.danger}
-              label="Báo cáo"
+              label="Report"
               onPress={onReport}
             />
           </View>
 
           <View style={styles.divider} />
 
-          <OptionRow Icon={SlidersHorizontal} label="Quản lý tùy chọn về nội dung" />
+          <OptionRow Icon={SlidersHorizontal} label="Manage content preferences" />
         </View>
       </View>
     </Modal>

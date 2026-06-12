@@ -21,6 +21,18 @@ export type UserResponse = {
   userPhone: number | null;
 };
 
+export type UserUpdateRequest = {
+  accountStatus?: boolean;
+  regionId?: string;
+  userAvatar?: string;
+  userDescription?: string;
+  userEmail?: string;
+  userFullName?: string;
+  userName?: string;
+  userPassword?: string;
+  userPhone?: number;
+};
+
 export type UserPostPreview = {
   caption: string;
   commentCount: number;

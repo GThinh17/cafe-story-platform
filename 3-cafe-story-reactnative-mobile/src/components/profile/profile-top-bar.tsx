@@ -47,15 +47,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     flexDirection: "row",
     justifyContent: "space-between",
-    minHeight: 56,
-    paddingHorizontal: spacing.xs,
+    minHeight: 64,
+    paddingHorizontal: spacing.sm,
     width: "100%",
   },
   iconButton: {
     alignItems: "center",
-    height: 44,
+    height: 48,
     justifyContent: "center",
-    width: 44,
+    width: 48,
   },
   pressed: {
     opacity: 0.62,
@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
   title: {
     color: colors.foreground,
     flex: 1,
-    fontSize: typography.body,
+    fontSize: typography.title,
     fontWeight: "900",
     textAlign: "center",
   },
