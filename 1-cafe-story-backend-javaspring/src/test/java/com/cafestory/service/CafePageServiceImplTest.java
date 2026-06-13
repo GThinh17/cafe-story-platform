@@ -11,6 +11,7 @@ import com.cafestory.entity.CafePage;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.PageStatus;
+import com.cafestory.entity.enums.RegionRequirement;
 import com.cafestory.mapper.BlogMapper;
 import com.cafestory.mapper.CafePageMapper;
 import com.cafestory.repository.BlogRepository;
@@ -21,6 +22,7 @@ import com.cafestory.repository.PageLikeRepository;
 import com.cafestory.repository.PageMemberRepository;
 import com.cafestory.repository.RegionRepository;
 import com.cafestory.service.serviceImplement.CafePageServiceImpl;
+import com.cafestory.service.serviceInterface.RegionService;
 import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.UserValidator;
 import org.junit.jupiter.api.Test;
@@ -69,6 +71,9 @@ class CafePageServiceImplTest {
     private RegionRepository regionRepository;
 
     @Mock
+    private RegionService regionService;
+
+    @Mock
     private CafePageMapper cafePageMapper;
 
     @Mock
@@ -93,7 +98,8 @@ class CafePageServiceImplTest {
         request.setRegionId(region.getRegionId());
 
         when(userValidator.validateUserExists(request.getOwnerUserId())).thenReturn(owner);
-        when(regionRepository.findById(region.getRegionId())).thenReturn(java.util.Optional.of(region));
+        when(regionService.resolveExistingRegion(region.getRegionId(), RegionRequirement.FULL_ADDRESS))
+                .thenReturn(region);
         when(cafePageMapper.toCafePage(request)).thenReturn(cafePage);
         when(cafePageRepository.save(cafePage)).thenReturn(cafePage);
         when(cafePageMapper.toCafePageResponseDTO(cafePage)).thenReturn(response);
@@ -284,7 +290,8 @@ class CafePageServiceImplTest {
         CafePageResponseDTO response = response(cafePageId, cafePage.getOwner().getUserId());
 
         when(cafePageValidator.validateCafePageExists(cafePageId)).thenReturn(cafePage);
-        when(regionRepository.findById(region.getRegionId())).thenReturn(java.util.Optional.of(region));
+        when(regionService.resolveExistingRegion(region.getRegionId(), RegionRequirement.FULL_ADDRESS))
+                .thenReturn(region);
         when(cafePageRepository.save(cafePage)).thenReturn(cafePage);
         when(cafePageMapper.toCafePageResponseDTO(cafePage)).thenReturn(response);
 

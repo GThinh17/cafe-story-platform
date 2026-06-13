@@ -5,10 +5,13 @@ export type UserResponse = {
   followingCount: number | null;
   isFollowing: boolean | null;
   regionArea: string | null;
+  regionCityCode?: string | null;
   regionCity: string | null;
   regionId: string | null;
+  regionProvinceCode?: string | null;
   regionProvince: string | null;
   regionStreet: string | null;
+  regionWardCode?: string | null;
   regionWard: string | null;
   userAvatar: string | null;
   userDescription: string | null;

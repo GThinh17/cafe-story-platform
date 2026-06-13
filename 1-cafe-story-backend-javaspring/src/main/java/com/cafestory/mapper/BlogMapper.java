@@ -19,6 +19,8 @@ public interface BlogMapper {
     @Mapping(source = "page.id", target = "pageId")
     @Mapping(source = "page.name", target = "pageName")
     @Mapping(source = "page.avatarUrl", target = "pageAvatarUrl")
+    @Mapping(target = "regionCity", ignore = true)
+    @Mapping(target = "regionProvince", ignore = true)
     @Mapping(target = "isLike", ignore = true)
     @Mapping(target = "isSave", ignore = true)
     @Mapping(target = "isRating", ignore = true)

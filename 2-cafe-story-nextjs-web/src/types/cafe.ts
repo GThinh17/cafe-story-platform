@@ -28,8 +28,11 @@ export type CafeSummary = {
   popularDrinks: string[];
   description: string;
   regionCity?: string | null;
+  regionCityCode?: string | null;
   regionProvince?: string | null;
+  regionProvinceCode?: string | null;
   regionWard?: string | null;
+  regionWardCode?: string | null;
   regionArea?: string | null;
   regionStreet?: string | null;
   featureSummary?: string;
@@ -49,8 +52,11 @@ export type CafePageResponse = {
   id: string;
   ownerUserId: string | null;
   regionId: string | null;
+  regionCityCode?: string | null;
   regionCity: string | null;
+  regionProvinceCode?: string | null;
   regionProvince: string | null;
+  regionWardCode?: string | null;
   regionWard: string | null;
   regionArea: string | null;
   regionStreet: string | null;

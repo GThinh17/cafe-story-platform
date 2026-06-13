@@ -6,10 +6,11 @@ import com.cafestory.dto.requestDTO.UserUpdateDTO;
 import com.cafestory.dto.responseDTO.UserResponseDTO;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
+import com.cafestory.entity.enums.RegionRequirement;
 import com.cafestory.mapper.UserMapper;
-import com.cafestory.repository.RegionRepository;
 import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRepository;
+import com.cafestory.service.serviceInterface.RegionService;
 import com.cafestory.service.serviceInterface.UserService;
 import com.cafestory.validation.UserValidator;
 import org.springframework.http.HttpStatus;
@@ -26,7 +27,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final UserFollowRepository userFollowRepository;
-    private final RegionRepository regionRepository;
+    private final RegionService regionService;
     private final UserMapper userMapper;
     private final UserValidator userValidator;
     private final PasswordEncoder passwordEncoder;
@@ -34,13 +35,13 @@ public class UserServiceImpl implements UserService {
     public UserServiceImpl(
             UserRepository userRepository,
             UserFollowRepository userFollowRepository,
-            RegionRepository regionRepository,
+            RegionService regionService,
             UserMapper userMapper,
             UserValidator userValidator,
             PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.userFollowRepository = userFollowRepository;
-        this.regionRepository = regionRepository;
+        this.regionService = regionService;
         this.userMapper = userMapper;
         this.userValidator = userValidator;
         this.passwordEncoder = passwordEncoder;
@@ -55,8 +56,9 @@ public class UserServiceImpl implements UserService {
         User user = userMapper.toUser(userCreateDTO);
         user.setUserPassword(passwordEncoder.encode(userCreateDTO.getUserPassword()));
         if (userCreateDTO.getRegionId() != null) {
-            user.setRegion(regionRepository.findById(userCreateDTO.getRegionId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Region not found")));
+            user.setRegion(regionService.resolveExistingRegion(
+                    userCreateDTO.getRegionId(),
+                    RegionRequirement.FULL_ADDRESS));
         }
         User savedUser = userRepository.save(user);
 
@@ -127,8 +129,9 @@ public class UserServiceImpl implements UserService {
             user.setUserDescription(userUpdateDTO.getUserDescription());
         }
         if (userUpdateDTO.getRegionId() != null) {
-            user.setRegion(regionRepository.findById(userUpdateDTO.getRegionId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Region not found")));
+            user.setRegion(regionService.resolveExistingRegion(
+                    userUpdateDTO.getRegionId(),
+                    RegionRequirement.FULL_ADDRESS));
         }
 
         User updatedUser = userRepository.save(user);
@@ -139,30 +142,10 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public UserResponseDTO updateUserRegion(UUID userId, RegionRequestDTO regionRequestDTO) {
         User user = userValidator.validateUserExists(userId);
-        Region region = user.getRegion();
-        if (region == null) {
-            region = new Region();
-            user.setRegion(region);
-        }
-
-        if (regionRequestDTO.getCity() != null) {
-            region.setCity(regionRequestDTO.getCity());
-        }
-        if (regionRequestDTO.getProvince() != null) {
-            region.setProvince(regionRequestDTO.getProvince());
-        }
-        if (regionRequestDTO.getWard() != null) {
-            region.setWard(regionRequestDTO.getWard());
-        }
-        String area = firstNonBlank(regionRequestDTO.getArea(), regionRequestDTO.getDistrict());
-        if (area != null) {
-            region.setArea(area);
-        }
-        if (regionRequestDTO.getStreet() != null) {
-            region.setStreet(regionRequestDTO.getStreet());
-        }
-
-        Region savedRegion = regionRepository.save(region);
+        Region savedRegion = regionService.upsertRegion(
+                user.getRegion(),
+                regionRequestDTO,
+                RegionRequirement.FULL_ADDRESS);
         user.setRegion(savedRegion);
         User updatedUser = userRepository.save(user);
         return userMapper.toUserResponseDTO(updatedUser);
@@ -189,10 +172,6 @@ public class UserServiceImpl implements UserService {
                 .ifPresent(user -> {
                     throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already exists");
                 });
-    }
-
-    private String firstNonBlank(String first, String second) {
-        return first != null && !first.isBlank() ? first : second;
     }
 
     private UserResponseDTO toUserResponseDTO(User user, UUID viewerUserId) {

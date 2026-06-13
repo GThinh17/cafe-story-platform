@@ -18,6 +18,8 @@ public class BlogResponseDTO {
     private String pageName;
     private String pageAvatarUrl;
     private UUID regionId;
+    private String regionCity;
+    private String regionProvince;
     private String content;
     private List<String> imageUrls;
     private PostStatus status;

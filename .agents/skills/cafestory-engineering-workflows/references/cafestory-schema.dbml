@@ -205,14 +205,46 @@ Table refresh_tokens {
 
 Table regions {
   region_id uuid [pk]
+  city_code varchar(16)
   city varchar(255)
+  province_code varchar(16)
   province varchar(255)
+  ward_code varchar(16)
   ward varchar(255)
   area varchar(255)
   street varchar(255)
   created_at datetime [not null]
   updated_at datetime
-  Note: "Shared address table for users and cafe pages. area replaces the old user district field. country, latitude, and longitude are not used by the current backend."
+  Note: "Shared location/address table. province_code/city_code/ward_code point to normalized Vietnam lookup tables while text fields keep display snapshots. Blog locations require province and city. User and cafe page addresses require province, city, ward, and street."
+}
+
+Table region_provinces {
+  province_code varchar(16) [pk]
+  name varchar(160) [not null, unique]
+}
+
+Table region_cities {
+  city_code varchar(16) [pk]
+  province_code varchar(16) [not null]
+  name varchar(160) [not null]
+
+  Indexes {
+    (province_code)
+    (province_code, name) [unique]
+  }
+}
+
+Table region_wards {
+  ward_code varchar(16) [pk]
+  province_code varchar(16) [not null]
+  city_code varchar(16) [not null]
+  name varchar(160) [not null]
+
+  Indexes {
+    (province_code)
+    (city_code)
+    (province_code, name)
+  }
 }
 
 Table cafe_pages {
@@ -785,6 +817,12 @@ Ref: refresh_tokens.user_id > users.user_id
 Ref: cafe_pages.owner_user_id > users.user_id
 Ref: users.region_id > regions.region_id
 Ref: cafe_pages.region_id > regions.region_id
+Ref: regions.province_code > region_provinces.province_code
+Ref: regions.city_code > region_cities.city_code
+Ref: regions.ward_code > region_wards.ward_code
+Ref: region_cities.province_code > region_provinces.province_code
+Ref: region_wards.province_code > region_provinces.province_code
+Ref: region_wards.city_code > region_cities.city_code
 Ref: page_members.page_id > cafe_pages.id
 Ref: page_members.user_id > users.user_id
 

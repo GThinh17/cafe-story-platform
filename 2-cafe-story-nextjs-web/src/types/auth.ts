@@ -28,8 +28,11 @@ export type AuthUser = {
   userDescription?: string | null;
   followingCount?: number | null;
   accountStatus: boolean;
+  regionCityCode?: string | null;
   regionCity?: string | null;
+  regionProvinceCode?: string | null;
   regionProvince?: string | null;
+  regionWardCode?: string | null;
   regionWard?: string | null;
   regionArea?: string | null;
   regionStreet?: string | null;

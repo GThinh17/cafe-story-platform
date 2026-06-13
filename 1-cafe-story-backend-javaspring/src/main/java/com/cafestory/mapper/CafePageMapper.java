@@ -11,8 +11,11 @@ public interface CafePageMapper {
 
     @Mapping(source = "owner.userId", target = "ownerUserId")
     @Mapping(source = "region.regionId", target = "regionId")
+    @Mapping(source = "region.cityRef.cityCode", target = "regionCityCode")
     @Mapping(source = "region.city", target = "regionCity")
+    @Mapping(source = "region.provinceRef.provinceCode", target = "regionProvinceCode")
     @Mapping(source = "region.province", target = "regionProvince")
+    @Mapping(source = "region.wardRef.wardCode", target = "regionWardCode")
     @Mapping(source = "region.ward", target = "regionWard")
     @Mapping(source = "region.area", target = "regionArea")
     @Mapping(source = "region.street", target = "regionStreet")
