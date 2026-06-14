@@ -13,6 +13,7 @@ import com.cafestory.entity.PageMemberId;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.PageMemberStatus;
+import com.cafestory.entity.enums.RegionRequirement;
 import com.cafestory.mapper.BlogMapper;
 import com.cafestory.mapper.CafePageMapper;
 import com.cafestory.repository.BlogRepository;
@@ -21,7 +22,7 @@ import com.cafestory.repository.CafePageRatingRepository;
 import com.cafestory.repository.PageFollowRepository;
 import com.cafestory.repository.PageLikeRepository;
 import com.cafestory.repository.PageMemberRepository;
-import com.cafestory.repository.RegionRepository;
+import com.cafestory.service.serviceInterface.RegionService;
 import com.cafestory.service.serviceInterface.CafePageService;
 import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.UserValidator;
@@ -62,7 +63,7 @@ public class CafePageServiceImpl implements CafePageService {
     private final PageLikeRepository pageLikeRepository;
     private final CafePageRatingRepository cafePageRatingRepository;
     private final PageMemberRepository pageMemberRepository;
-    private final RegionRepository regionRepository;
+    private final RegionService regionService;
     private final CafePageMapper cafePageMapper;
     private final BlogMapper blogMapper;
     private final CafePageValidator cafePageValidator;
@@ -75,7 +76,7 @@ public class CafePageServiceImpl implements CafePageService {
             PageLikeRepository pageLikeRepository,
             CafePageRatingRepository cafePageRatingRepository,
             PageMemberRepository pageMemberRepository,
-            RegionRepository regionRepository,
+            RegionService regionService,
             CafePageMapper cafePageMapper,
             BlogMapper blogMapper,
             CafePageValidator cafePageValidator,
@@ -86,7 +87,7 @@ public class CafePageServiceImpl implements CafePageService {
         this.pageLikeRepository = pageLikeRepository;
         this.cafePageRatingRepository = cafePageRatingRepository;
         this.pageMemberRepository = pageMemberRepository;
-        this.regionRepository = regionRepository;
+        this.regionService = regionService;
         this.cafePageMapper = cafePageMapper;
         this.blogMapper = blogMapper;
         this.cafePageValidator = cafePageValidator;
@@ -103,8 +104,9 @@ public class CafePageServiceImpl implements CafePageService {
         CafePage cafePage = cafePageMapper.toCafePage(cafePageCreateDTO);
         cafePage.setOwner(owner);
         if (cafePageCreateDTO.getRegionId() != null) {
-            cafePage.setRegion(regionRepository.findById(cafePageCreateDTO.getRegionId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Region not found")));
+            cafePage.setRegion(regionService.resolveExistingRegion(
+                    cafePageCreateDTO.getRegionId(),
+                    RegionRequirement.FULL_ADDRESS));
         }
 
         CafePage savedCafePage = cafePageRepository.save(cafePage);
@@ -244,8 +246,9 @@ public class CafePageServiceImpl implements CafePageService {
         CafePage cafePage = cafePageValidator.validateCafePageExists(cafePageId);
 
         if (cafePageUpdateDTO.getRegionId() != null) {
-            cafePage.setRegion(regionRepository.findById(cafePageUpdateDTO.getRegionId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Region not found")));
+            cafePage.setRegion(regionService.resolveExistingRegion(
+                    cafePageUpdateDTO.getRegionId(),
+                    RegionRequirement.FULL_ADDRESS));
         }
         if (cafePageUpdateDTO.getName() != null) {
             cafePage.setName(cafePageUpdateDTO.getName());

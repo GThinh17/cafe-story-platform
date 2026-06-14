@@ -15,8 +15,11 @@ export type UpdateMeRequest = {
 };
 
 export type UpdateMeRegionRequest = {
+  cityCode?: string;
   city?: string;
+  provinceCode?: string;
   province?: string;
+  wardCode?: string;
   district?: string;
   ward?: string;
   area?: string;

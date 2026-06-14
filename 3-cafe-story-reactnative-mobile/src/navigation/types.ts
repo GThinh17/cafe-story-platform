@@ -22,6 +22,7 @@ export type RootStackParamList = {
   [routes.cafeDetail]: { cafeId: string };
   [routes.blogDetail]: { blogId: string };
   [routes.conversations]: undefined;
+  [routes.settings]: undefined;
   [routes.chatDetail]: {
     chatAvatar?: string | null;
     chatName?: string | null;

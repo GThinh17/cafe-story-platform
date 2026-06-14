@@ -1,7 +1,12 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { LoadingState, Screen } from "../components";
 import { useAuth } from "../features/auth";
-import { ChatDetailScreen, ConversationScreen, NewChatScreen } from "../screens";
+import {
+  ChatDetailScreen,
+  ConversationScreen,
+  NewChatScreen,
+  SettingsScreen,
+} from "../screens";
 import { AuthNavigator } from "./auth-navigator";
 import { MainTabs } from "./main-tabs";
 import { routes } from "./routes";
@@ -34,6 +39,7 @@ export function RootNavigator() {
             name={routes.conversations}
           />
           <Stack.Screen component={NewChatScreen} name={routes.newChat} />
+          <Stack.Screen component={SettingsScreen} name={routes.settings} />
           <Stack.Screen component={ChatDetailScreen} name={routes.chatDetail} />
         </>
       ) : (

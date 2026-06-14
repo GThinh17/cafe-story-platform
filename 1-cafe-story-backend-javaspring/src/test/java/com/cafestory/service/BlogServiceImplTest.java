@@ -6,15 +6,19 @@ import com.cafestory.dto.responseDTO.BlogResponseDTO;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogRating;
 import com.cafestory.entity.CafePage;
+import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.PostStatus;
+import com.cafestory.entity.enums.RegionRequirement;
 import com.cafestory.mapper.BlogMapper;
 import com.cafestory.repository.BlogLikeRepository;
 import com.cafestory.repository.BlogRatingRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.BlogSaveRepository;
+import com.cafestory.repository.RegionRepository;
 import com.cafestory.service.serviceImplement.BlogServiceImpl;
 import com.cafestory.service.serviceInterface.BlogTagService;
+import com.cafestory.service.serviceInterface.RegionService;
 import com.cafestory.validation.BlogValidator;
 import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.UserValidator;
@@ -53,6 +57,9 @@ class BlogServiceImplTest {
     private BlogRatingRepository blogRatingRepository;
 
     @Mock
+    private RegionRepository regionRepository;
+
+    @Mock
     private BlogMapper blogMapper;
 
     @Mock
@@ -67,6 +74,9 @@ class BlogServiceImplTest {
     @Mock
     private BlogTagService blogTagService;
 
+    @Mock
+    private RegionService regionService;
+
     @InjectMocks
     private BlogServiceImpl blogService;
 
@@ -80,11 +90,14 @@ class BlogServiceImplTest {
         Blog blog = blog();
         Blog savedBlog = blog();
         BlogResponseDTO response = blogResponse(savedBlog.getId(), actorUserId);
+        Region region = region(request.getRegionId());
 
         when(userValidator.validateUserExists(actorUserId)).thenReturn(author);
         when(cafePageValidator.validateUserCanCreateBlogOnPage(request.getPageId(), actorUserId))
                 .thenReturn(page);
         when(blogMapper.toBlog(request)).thenReturn(blog);
+        when(regionService.resolveExistingRegion(request.getRegionId(), RegionRequirement.BLOG_LOCATION))
+                .thenReturn(region);
         when(blogRepository.save(blog)).thenReturn(savedBlog);
         when(blogMapper.toBlogResponseDTO(savedBlog)).thenReturn(response);
 
@@ -113,9 +126,12 @@ class BlogServiceImplTest {
         blog.setIsPinned(false);
         blog.setAllowComment(true);
         BlogResponseDTO response = blogResponse(blog.getId(), actorUserId);
+        Region region = region(request.getRegionId());
 
         when(userValidator.validateUserExists(actorUserId)).thenReturn(author);
         when(blogMapper.toBlog(request)).thenReturn(blog);
+        when(regionService.resolveExistingRegion(request.getRegionId(), RegionRequirement.BLOG_LOCATION))
+                .thenReturn(region);
         when(blogRepository.save(blog)).thenReturn(blog);
         when(blogMapper.toBlogResponseDTO(blog)).thenReturn(response);
 
@@ -304,10 +320,13 @@ class BlogServiceImplTest {
         Blog blog = blog();
         UUID actorUserId = blog.getAuthor().getUserId();
         BlogResponseDTO response = blogResponse(blogId, UUID.randomUUID());
+        Region region = region(request.getRegionId());
 
         when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
         when(cafePageValidator.validateUserCanCreateBlogOnPage(request.getPageId(), actorUserId))
                 .thenReturn(cafePage(request.getPageId()));
+        when(regionService.resolveExistingRegion(request.getRegionId(), RegionRequirement.BLOG_LOCATION))
+                .thenReturn(region);
         when(blogRepository.save(blog)).thenReturn(blog);
         when(blogMapper.toBlogResponseDTO(blog)).thenReturn(response);
 
@@ -451,6 +470,14 @@ class BlogServiceImplTest {
         cafePage.setName("Cafe Story Roastery");
         cafePage.setAvatarUrl("https://example.com/cafe-avatar.png");
         return cafePage;
+    }
+
+    private Region region(UUID regionId) {
+        Region region = new Region();
+        region.setRegionId(regionId);
+        region.setCity("Ho Chi Minh");
+        region.setProvince("Ho Chi Minh");
+        return region;
     }
 
     private BlogResponseDTO blogResponse(UUID blogId, UUID authorUserId) {

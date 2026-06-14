@@ -7,6 +7,15 @@ export type AuthUser = {
   userAvatar: string | null;
   userDescription?: string | null;
   accountStatus: boolean;
+  regionArea?: string | null;
+  regionCity?: string | null;
+  regionCityCode?: string | null;
+  regionId?: string | null;
+  regionProvince?: string | null;
+  regionProvinceCode?: string | null;
+  regionStreet?: string | null;
+  regionWard?: string | null;
+  regionWardCode?: string | null;
   roles: string[];
 };
 

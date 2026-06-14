@@ -374,10 +374,14 @@ export function AuthCard({ mode }: AuthCardProps) {
     }
 
     const area = region.area.trim();
+    const wardCode = wardOptions.find((ward) => ward.name === region.ward)?.idWard;
 
     return {
+      cityCode: region.provinceId || undefined,
       city: trimToUndefined(getCityName(selectedProvince.name)),
+      provinceCode: region.provinceId || undefined,
       province: trimToUndefined(region.province),
+      wardCode,
       ward: trimToUndefined(region.ward),
       area: area || undefined,
       district: area || undefined,
@@ -577,6 +581,7 @@ export function AuthCard({ mode }: AuthCardProps) {
                         )?.name ?? "",
                       ward: "",
                       area: "",
+                      street: current.street,
                     }))
                   }
                   value={region.provinceId}

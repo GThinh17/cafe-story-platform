@@ -5,6 +5,9 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -22,6 +25,18 @@ public class Region {
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "region_id", updatable = false, nullable = false)
     private UUID regionId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "city_code")
+    private RegionCity cityRef;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "province_code")
+    private RegionProvince provinceRef;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ward_code")
+    private RegionWard wardRef;
 
     @Column(name = "city")
     private String city;

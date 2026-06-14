@@ -43,6 +43,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login", "/api/auth/refresh")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/usernames/suggestions").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/regions/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/payments/vnpay/return", "/api/payments/vnpay/ipn")
                         .permitAll()

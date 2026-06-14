@@ -173,11 +173,13 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
 
     const provinceName = user.regionProvince ?? "";
     const matchedProvince = provinceOptions.find(
-      (province) => province.name === provinceName,
+      (province) =>
+        province.idProvince === user.regionProvinceCode
+        || province.name === provinceName,
     );
 
     setRegion({
-      provinceId: matchedProvince?.idProvince ?? "",
+      provinceId: user.regionProvinceCode ?? matchedProvince?.idProvince ?? "",
       province: provinceName,
       ward: user.regionWard ?? "",
       area: user.regionArea ?? "",
@@ -391,14 +393,18 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
     }
 
     const area = region.area.trim();
+    const wardCode = wardOptions.find((ward) => ward.name === region.ward)?.idWard;
 
     setSubmittingForm("region");
     setRegionStatus(emptyStatus);
 
     try {
       await updateMeRegion({
+        cityCode: region.provinceId || undefined,
         city: getCityName(selectedProvince.name) || undefined,
+        provinceCode: region.provinceId || undefined,
         province: region.province || undefined,
+        wardCode,
         ward: region.ward || undefined,
         area: area || undefined,
         district: area || undefined,

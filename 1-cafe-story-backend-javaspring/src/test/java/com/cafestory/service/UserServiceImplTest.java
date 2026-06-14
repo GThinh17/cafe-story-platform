@@ -6,11 +6,13 @@ import com.cafestory.dto.requestDTO.UserUpdateDTO;
 import com.cafestory.dto.responseDTO.UserResponseDTO;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
+import com.cafestory.entity.enums.RegionRequirement;
 import com.cafestory.mapper.UserMapper;
 import com.cafestory.repository.RegionRepository;
 import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceImplement.UserServiceImpl;
+import com.cafestory.service.serviceInterface.RegionService;
 import com.cafestory.validation.UserValidator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,6 +47,9 @@ class UserServiceImplTest {
     private RegionRepository regionRepository;
 
     @Mock
+    private RegionService regionService;
+
+    @Mock
     private UserMapper userMapper;
 
     @Mock
@@ -69,7 +74,8 @@ class UserServiceImplTest {
         when(userRepository.findByUserEmail(request.getUserEmail())).thenReturn(Optional.empty());
         when(userMapper.toUser(request)).thenReturn(user);
         when(passwordEncoder.encode(request.getUserPassword())).thenReturn("encoded-password");
-        when(regionRepository.findById(region.getRegionId())).thenReturn(Optional.of(region));
+        when(regionService.resolveExistingRegion(region.getRegionId(), RegionRequirement.FULL_ADDRESS))
+                .thenReturn(region);
         when(userRepository.save(user)).thenReturn(savedUser);
         when(userMapper.toUserResponseDTO(savedUser)).thenReturn(response);
 
@@ -207,7 +213,8 @@ class UserServiceImplTest {
         when(userRepository.findByUserName(request.getUserName())).thenReturn(Optional.empty());
         when(userRepository.findByUserEmail(request.getUserEmail())).thenReturn(Optional.empty());
         when(passwordEncoder.encode(request.getUserPassword())).thenReturn("encoded-updated-password");
-        when(regionRepository.findById(region.getRegionId())).thenReturn(Optional.of(region));
+        when(regionService.resolveExistingRegion(region.getRegionId(), RegionRequirement.FULL_ADDRESS))
+                .thenReturn(region);
         when(userRepository.save(user)).thenReturn(user);
         when(userMapper.toUserResponseDTO(user)).thenReturn(response);
 
@@ -323,11 +330,14 @@ class UserServiceImplTest {
         UserResponseDTO response = userResponse(user.getUserId());
 
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
-        when(regionRepository.save(any(Region.class))).thenAnswer(invocation -> {
-            Region region = invocation.getArgument(0);
-            region.setRegionId(UUID.randomUUID());
-            return region;
-        });
+        Region savedRegion = region();
+        savedRegion.setCity("Ho Chi Minh");
+        savedRegion.setProvince("Ho Chi Minh");
+        savedRegion.setWard("Ben Nghe");
+        savedRegion.setArea("District 1");
+        savedRegion.setStreet("Nguyen Hue");
+
+        when(regionService.upsertRegion(null, request, RegionRequirement.FULL_ADDRESS)).thenReturn(savedRegion);
         when(userRepository.save(user)).thenReturn(user);
         when(userMapper.toUserResponseDTO(user)).thenReturn(response);
 
@@ -340,7 +350,7 @@ class UserServiceImplTest {
         assertThat(user.getRegion().getWard()).isEqualTo("Ben Nghe");
         assertThat(user.getRegion().getArea()).isEqualTo("District 1");
         assertThat(user.getRegion().getStreet()).isEqualTo("Nguyen Hue");
-        verify(regionRepository).save(any(Region.class));
+        verify(regionService).upsertRegion(null, request, RegionRequirement.FULL_ADDRESS);
         verify(userRepository).save(user);
     }
 
@@ -355,7 +365,11 @@ class UserServiceImplTest {
         UserResponseDTO response = userResponse(user.getUserId());
 
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
-        when(regionRepository.save(existingRegion)).thenReturn(existingRegion);
+        existingRegion.setArea("Area 1");
+        existingRegion.setStreet("Nguyen Hue");
+
+        when(regionService.upsertRegion(existingRegion, request, RegionRequirement.FULL_ADDRESS))
+                .thenReturn(existingRegion);
         when(userRepository.save(user)).thenReturn(user);
         when(userMapper.toUserResponseDTO(user)).thenReturn(response);
 
@@ -364,7 +378,7 @@ class UserServiceImplTest {
         assertThat(result).isEqualTo(response);
         assertThat(existingRegion.getArea()).isEqualTo("Area 1");
         assertThat(existingRegion.getStreet()).isEqualTo("Nguyen Hue");
-        verify(regionRepository).save(existingRegion);
+        verify(regionService).upsertRegion(existingRegion, request, RegionRequirement.FULL_ADDRESS);
         verify(userRepository).save(user);
     }
 
