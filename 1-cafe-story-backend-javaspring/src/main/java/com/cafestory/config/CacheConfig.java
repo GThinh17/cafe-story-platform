@@ -31,6 +31,9 @@ public class CacheConfig implements CachingConfigurer {
     public static final String REGION_WARDS_CACHE = "regionWards";
     public static final String REPORT_REASONS_CACHE = "reportReasons";
     public static final String ORGANIC_FEED_CACHE = "organicFeed";
+    public static final String BLOG_DETAIL_CACHE = "blogDetails";
+    public static final String USER_PROFILE_BY_ID_CACHE = "userProfilesById";
+    public static final String USER_PROFILE_BY_USERNAME_CACHE = "userProfilesByUsername";
 
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory redisConnectionFactory, ObjectMapper objectMapper) {
@@ -45,7 +48,10 @@ public class CacheConfig implements CachingConfigurer {
                         REGION_CITIES_CACHE, cacheConfiguration(jsonSerializer, Duration.ofHours(24)),
                         REGION_WARDS_CACHE, cacheConfiguration(jsonSerializer, Duration.ofHours(24)),
                         REPORT_REASONS_CACHE, cacheConfiguration(jsonSerializer, Duration.ofMinutes(30)),
-                        ORGANIC_FEED_CACHE, cacheConfiguration(jsonSerializer, Duration.ofSeconds(45))))
+                        ORGANIC_FEED_CACHE, cacheConfiguration(jsonSerializer, Duration.ofSeconds(45)),
+                        BLOG_DETAIL_CACHE, cacheConfiguration(jsonSerializer, Duration.ofMinutes(5)),
+                        USER_PROFILE_BY_ID_CACHE, cacheConfiguration(jsonSerializer, Duration.ofMinutes(5)),
+                        USER_PROFILE_BY_USERNAME_CACHE, cacheConfiguration(jsonSerializer, Duration.ofMinutes(5))))
                 .transactionAware()
                 .build();
     }

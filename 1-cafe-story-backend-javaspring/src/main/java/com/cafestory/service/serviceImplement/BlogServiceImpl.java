@@ -1,5 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.requestDTO.BlogCreateDTO;
 import com.cafestory.dto.requestDTO.BlogUpdateDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
@@ -21,6 +22,9 @@ import com.cafestory.service.serviceInterface.RegionService;
 import com.cafestory.validation.BlogValidator;
 import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.UserValidator;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -71,6 +75,7 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true)
     public BlogResponseDTO createBlog(BlogCreateDTO blogCreateDTO, UUID actorUserId) {
         User author = userValidator.validateUserExists(actorUserId);
         userValidator.validateUserActive(author);
@@ -140,18 +145,24 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0")
     public BlogResponseDTO getBlogById(UUID blogId) {
         return getBlogById(blogId, null);
     }
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0", condition = "#p1 == null")
     public BlogResponseDTO getBlogById(UUID blogId, UUID viewerUserId) {
         return toBlogResponseDTO(blogValidator.validateBlogExists(blogId), viewerUserId);
     }
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0")
+    })
     public BlogResponseDTO updateBlog(UUID blogId, UUID actorUserId, BlogUpdateDTO blogUpdateDTO) {
         Blog blog = blogValidator.validateBlogExists(blogId);
         validateBlogOwner(blog, actorUserId);
@@ -191,6 +202,10 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0")
+    })
     public void deleteBlog(UUID blogId, UUID actorUserId) {
         Blog blog = blogValidator.validateBlogExists(blogId);
         validateBlogOwner(blog, actorUserId);

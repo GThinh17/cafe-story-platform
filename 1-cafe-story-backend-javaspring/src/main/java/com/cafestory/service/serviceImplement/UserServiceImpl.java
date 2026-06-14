@@ -1,5 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.requestDTO.RegionRequestDTO;
 import com.cafestory.dto.requestDTO.UserCreateDTO;
 import com.cafestory.dto.requestDTO.UserUpdateDTO;
@@ -13,6 +14,9 @@ import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.RegionService;
 import com.cafestory.service.serviceInterface.UserService;
 import com.cafestory.validation.UserValidator;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -82,18 +86,21 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.USER_PROFILE_BY_ID_CACHE, key = "#p0")
     public UserResponseDTO getUserById(UUID userId) {
         return getUserById(userId, null);
     }
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.USER_PROFILE_BY_ID_CACHE, key = "#p0", condition = "#p1 == null")
     public UserResponseDTO getUserById(UUID userId, UUID viewerUserId) {
         return toUserResponseDTO(userValidator.validateUserExists(userId), viewerUserId);
     }
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.USER_PROFILE_BY_USERNAME_CACHE, key = "#p0", condition = "#p1 == null")
     public UserResponseDTO getUserByUsername(String username, UUID viewerUserId) {
         User user = userRepository.findByUserName(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
@@ -102,6 +109,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_ID_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_USERNAME_CACHE, allEntries = true)
+    })
     public UserResponseDTO updateUser(UUID userId, UserUpdateDTO userUpdateDTO) {
         User user = userValidator.validateUserExists(userId);
 
@@ -140,6 +151,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_ID_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_USERNAME_CACHE, allEntries = true)
+    })
     public UserResponseDTO updateUserRegion(UUID userId, RegionRequestDTO regionRequestDTO) {
         User user = userValidator.validateUserExists(userId);
         Region savedRegion = regionService.upsertRegion(
@@ -153,6 +168,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_ID_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_USERNAME_CACHE, allEntries = true)
+    })
     public void deleteUser(UUID userId) {
         User user = userValidator.validateUserExists(userId);
         userRepository.delete(user);

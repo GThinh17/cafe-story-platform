@@ -1,20 +1,43 @@
 package com.cafestory.service;
 
 import com.cafestory.config.CacheConfig;
+import com.cafestory.dto.requestDTO.BlogUpdateDTO;
+import com.cafestory.dto.requestDTO.UserUpdateDTO;
+import com.cafestory.dto.responseDTO.BlogResponseDTO;
+import com.cafestory.dto.responseDTO.UserResponseDTO;
+import com.cafestory.entity.Blog;
+import com.cafestory.entity.CafePage;
 import com.cafestory.entity.RegionCity;
 import com.cafestory.entity.RegionProvince;
 import com.cafestory.entity.RegionWard;
 import com.cafestory.entity.ReportReason;
+import com.cafestory.entity.User;
+import com.cafestory.mapper.BlogMapper;
 import com.cafestory.entity.enums.ReportTargetType;
+import com.cafestory.mapper.UserMapper;
+import com.cafestory.repository.BlogLikeRepository;
+import com.cafestory.repository.BlogRatingRepository;
+import com.cafestory.repository.BlogRepository;
+import com.cafestory.repository.BlogSaveRepository;
 import com.cafestory.repository.RegionCityRepository;
 import com.cafestory.repository.RegionProvinceRepository;
 import com.cafestory.repository.RegionRepository;
 import com.cafestory.repository.RegionWardRepository;
 import com.cafestory.repository.ReportReasonRepository;
+import com.cafestory.repository.UserFollowRepository;
+import com.cafestory.repository.UserRepository;
+import com.cafestory.service.serviceImplement.BlogServiceImpl;
 import com.cafestory.service.serviceImplement.RegionServiceImpl;
 import com.cafestory.service.serviceImplement.ReportReasonServiceImpl;
+import com.cafestory.service.serviceImplement.UserServiceImpl;
+import com.cafestory.service.serviceInterface.BlogService;
+import com.cafestory.service.serviceInterface.BlogTagService;
 import com.cafestory.service.serviceInterface.RegionService;
 import com.cafestory.service.serviceInterface.ReportReasonService;
+import com.cafestory.service.serviceInterface.UserService;
+import com.cafestory.validation.BlogValidator;
+import com.cafestory.validation.CafePageValidator;
+import com.cafestory.validation.UserValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -23,13 +46,16 @@ import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -45,6 +71,12 @@ class CacheableServiceTest {
     private ReportReasonService reportReasonService;
 
     @jakarta.annotation.Resource
+    private BlogService blogService;
+
+    @jakarta.annotation.Resource
+    private UserService userService;
+
+    @jakarta.annotation.Resource
     private RegionProvinceRepository provinceRepository;
 
     @jakarta.annotation.Resource
@@ -57,15 +89,55 @@ class CacheableServiceTest {
     private ReportReasonRepository reportReasonRepository;
 
     @jakarta.annotation.Resource
+    private BlogValidator blogValidator;
+
+    @jakarta.annotation.Resource
+    private BlogMapper blogMapper;
+
+    @jakarta.annotation.Resource
+    private BlogRepository blogRepository;
+
+    @jakarta.annotation.Resource
+    private BlogTagService blogTagService;
+
+    @jakarta.annotation.Resource
+    private UserValidator userValidator;
+
+    @jakarta.annotation.Resource
+    private UserMapper userMapper;
+
+    @jakarta.annotation.Resource
+    private UserRepository userRepository;
+
+    @jakarta.annotation.Resource
+    private UserFollowRepository userFollowRepository;
+
+    @jakarta.annotation.Resource
     private CacheManager cacheManager;
 
     @BeforeEach
     void setUp() {
-        reset(provinceRepository, cityRepository, wardRepository, reportReasonRepository);
+        reset(
+                provinceRepository,
+                cityRepository,
+                wardRepository,
+                reportReasonRepository,
+                blogValidator,
+                blogMapper,
+                blogRepository,
+                blogTagService,
+                userValidator,
+                userMapper,
+                userRepository,
+                userFollowRepository);
         clearCache(CacheConfig.REGION_PROVINCES_CACHE);
         clearCache(CacheConfig.REGION_CITIES_CACHE);
         clearCache(CacheConfig.REGION_WARDS_CACHE);
         clearCache(CacheConfig.REPORT_REASONS_CACHE);
+        clearCache(CacheConfig.ORGANIC_FEED_CACHE);
+        clearCache(CacheConfig.BLOG_DETAIL_CACHE);
+        clearCache(CacheConfig.USER_PROFILE_BY_ID_CACHE);
+        clearCache(CacheConfig.USER_PROFILE_BY_USERNAME_CACHE);
     }
 
     @Test
@@ -127,8 +199,88 @@ class CacheableServiceTest {
         verify(reportReasonRepository, times(1)).findActiveReasonsForTargetType(ReportTargetType.USER);
     }
 
+    @Test
+    void getBlogById_success_cachesAnonymousButNotViewerSpecific_TC005() {
+        UUID blogId = UUID.randomUUID();
+        UUID viewerUserId = UUID.randomUUID();
+        Blog blog = blog(blogId);
+        BlogResponseDTO anonymousResponse = blogResponse(blogId);
+        BlogResponseDTO viewerResponse = blogResponse(blogId);
+
+        when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
+        when(blogMapper.toBlogResponseDTO(blog)).thenReturn(anonymousResponse, viewerResponse, viewerResponse);
+
+        assertThat(blogService.getBlogById(blogId, null)).isEqualTo(anonymousResponse);
+        assertThat(blogService.getBlogById(blogId, null)).isEqualTo(anonymousResponse);
+        assertThat(blogService.getBlogById(blogId, viewerUserId)).isEqualTo(viewerResponse);
+        assertThat(blogService.getBlogById(blogId, viewerUserId)).isEqualTo(viewerResponse);
+
+        verify(blogValidator, times(3)).validateBlogExists(blogId);
+    }
+
+    @Test
+    void updateBlog_success_evictsBlogDetailAndOrganicFeed_TC006() {
+        UUID blogId = UUID.randomUUID();
+        Blog blog = blog(blogId);
+        BlogUpdateDTO request = new BlogUpdateDTO();
+        request.setContent("Updated content");
+
+        cache(CacheConfig.BLOG_DETAIL_CACHE).put(blogId, blogResponse(blogId));
+        cache(CacheConfig.ORGANIC_FEED_CACHE).put("first:20", "cached-feed");
+        when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
+        when(blogRepository.save(blog)).thenReturn(blog);
+        when(blogMapper.toBlogResponseDTO(blog)).thenReturn(blogResponse(blogId));
+
+        blogService.updateBlog(blogId, blog.getAuthor().getUserId(), request);
+
+        assertThat(cache(CacheConfig.BLOG_DETAIL_CACHE).get(blogId)).isNull();
+        assertThat(cache(CacheConfig.ORGANIC_FEED_CACHE).get("first:20")).isNull();
+    }
+
+    @Test
+    void getUserById_success_cachesAnonymousButNotViewerSpecific_TC007() {
+        UUID userId = UUID.randomUUID();
+        UUID viewerUserId = UUID.randomUUID();
+        User user = user(userId);
+        UserResponseDTO anonymousResponse = userResponse(userId);
+        UserResponseDTO viewerResponse = userResponse(userId);
+
+        when(userValidator.validateUserExists(userId)).thenReturn(user);
+        when(userMapper.toUserResponseDTO(user)).thenReturn(anonymousResponse, viewerResponse, viewerResponse);
+
+        assertThat(userService.getUserById(userId, null)).isEqualTo(anonymousResponse);
+        assertThat(userService.getUserById(userId, null)).isEqualTo(anonymousResponse);
+        assertThat(userService.getUserById(userId, viewerUserId)).isEqualTo(viewerResponse);
+        assertThat(userService.getUserById(userId, viewerUserId)).isEqualTo(viewerResponse);
+
+        verify(userValidator, times(3)).validateUserExists(userId);
+    }
+
+    @Test
+    void updateUser_success_evictsUserProfileCaches_TC008() {
+        UUID userId = UUID.randomUUID();
+        User user = user(userId);
+        UserUpdateDTO request = new UserUpdateDTO();
+        request.setUserFullName("Updated User");
+
+        cache(CacheConfig.USER_PROFILE_BY_ID_CACHE).put(userId, userResponse(userId));
+        cache(CacheConfig.USER_PROFILE_BY_USERNAME_CACHE).put(user.getUserName(), userResponse(userId));
+        when(userValidator.validateUserExists(userId)).thenReturn(user);
+        when(userRepository.save(user)).thenReturn(user);
+        when(userMapper.toUserResponseDTO(user)).thenReturn(userResponse(userId));
+
+        userService.updateUser(userId, request);
+
+        assertThat(cache(CacheConfig.USER_PROFILE_BY_ID_CACHE).get(userId)).isNull();
+        assertThat(cache(CacheConfig.USER_PROFILE_BY_USERNAME_CACHE).get(user.getUserName())).isNull();
+    }
+
     private void clearCache(String cacheName) {
-        Objects.requireNonNull(cacheManager.getCache(cacheName)).clear();
+        cache(cacheName).clear();
+    }
+
+    private org.springframework.cache.Cache cache(String cacheName) {
+        return Objects.requireNonNull(cacheManager.getCache(cacheName));
     }
 
     private RegionProvince province(String provinceCode, String name) {
@@ -168,6 +320,39 @@ class CacheableServiceTest {
         return reason;
     }
 
+    private Blog blog(UUID blogId) {
+        Blog blog = new Blog();
+        blog.setId(blogId);
+        blog.setAuthor(user(UUID.randomUUID()));
+        blog.setContent("Cafe Story post");
+        return blog;
+    }
+
+    private BlogResponseDTO blogResponse(UUID blogId) {
+        BlogResponseDTO response = new BlogResponseDTO();
+        response.setId(blogId);
+        response.setContent("Cafe Story post");
+        return response;
+    }
+
+    private User user(UUID userId) {
+        User user = new User();
+        user.setUserId(userId);
+        user.setUserName("cafestory_user");
+        user.setUserEmail("user@example.com");
+        user.setUserPassword("encoded");
+        user.setAccountStatus(true);
+        return user;
+    }
+
+    private UserResponseDTO userResponse(UUID userId) {
+        UserResponseDTO response = new UserResponseDTO();
+        response.setUserId(userId);
+        response.setUserName("cafestory_user");
+        response.setAccountStatus(true);
+        return response;
+    }
+
     @Configuration
     @EnableCaching
     static class TestCacheConfig {
@@ -178,7 +363,11 @@ class CacheableServiceTest {
                     CacheConfig.REGION_PROVINCES_CACHE,
                     CacheConfig.REGION_CITIES_CACHE,
                     CacheConfig.REGION_WARDS_CACHE,
-                    CacheConfig.REPORT_REASONS_CACHE);
+                    CacheConfig.REPORT_REASONS_CACHE,
+                    CacheConfig.ORGANIC_FEED_CACHE,
+                    CacheConfig.BLOG_DETAIL_CACHE,
+                    CacheConfig.USER_PROFILE_BY_ID_CACHE,
+                    CacheConfig.USER_PROFILE_BY_USERNAME_CACHE);
         }
 
         @Bean
@@ -193,6 +382,50 @@ class CacheableServiceTest {
         @Bean
         ReportReasonService reportReasonService(ReportReasonRepository reportReasonRepository) {
             return new ReportReasonServiceImpl(reportReasonRepository);
+        }
+
+        @Bean
+        BlogService blogService(
+                BlogRepository blogRepository,
+                BlogLikeRepository blogLikeRepository,
+                BlogSaveRepository blogSaveRepository,
+                BlogRatingRepository blogRatingRepository,
+                RegionRepository regionRepository,
+                BlogMapper blogMapper,
+                BlogValidator blogValidator,
+                CafePageValidator cafePageValidator,
+                UserValidator userValidator,
+                BlogTagService blogTagService,
+                RegionService regionService) {
+            return new BlogServiceImpl(
+                    blogRepository,
+                    blogLikeRepository,
+                    blogSaveRepository,
+                    blogRatingRepository,
+                    regionRepository,
+                    blogMapper,
+                    blogValidator,
+                    cafePageValidator,
+                    userValidator,
+                    blogTagService,
+                    regionService);
+        }
+
+        @Bean
+        UserService userService(
+                UserRepository userRepository,
+                UserFollowRepository userFollowRepository,
+                RegionService regionService,
+                UserMapper userMapper,
+                UserValidator userValidator,
+                PasswordEncoder passwordEncoder) {
+            return new UserServiceImpl(
+                    userRepository,
+                    userFollowRepository,
+                    regionService,
+                    userMapper,
+                    userValidator,
+                    passwordEncoder);
         }
 
         @Bean
@@ -218,6 +451,71 @@ class CacheableServiceTest {
         @Bean
         ReportReasonRepository reportReasonRepository() {
             return Mockito.mock(ReportReasonRepository.class);
+        }
+
+        @Bean
+        BlogRepository blogRepository() {
+            return Mockito.mock(BlogRepository.class);
+        }
+
+        @Bean
+        BlogLikeRepository blogLikeRepository() {
+            return Mockito.mock(BlogLikeRepository.class);
+        }
+
+        @Bean
+        BlogSaveRepository blogSaveRepository() {
+            return Mockito.mock(BlogSaveRepository.class);
+        }
+
+        @Bean
+        BlogRatingRepository blogRatingRepository() {
+            return Mockito.mock(BlogRatingRepository.class);
+        }
+
+        @Bean
+        BlogMapper blogMapper() {
+            return Mockito.mock(BlogMapper.class);
+        }
+
+        @Bean
+        BlogValidator blogValidator() {
+            return Mockito.mock(BlogValidator.class);
+        }
+
+        @Bean
+        CafePageValidator cafePageValidator() {
+            return Mockito.mock(CafePageValidator.class);
+        }
+
+        @Bean
+        BlogTagService blogTagService() {
+            return Mockito.mock(BlogTagService.class);
+        }
+
+        @Bean
+        UserRepository userRepository() {
+            return Mockito.mock(UserRepository.class);
+        }
+
+        @Bean
+        UserFollowRepository userFollowRepository() {
+            return Mockito.mock(UserFollowRepository.class);
+        }
+
+        @Bean
+        UserMapper userMapper() {
+            return Mockito.mock(UserMapper.class);
+        }
+
+        @Bean
+        UserValidator userValidator() {
+            return Mockito.mock(UserValidator.class);
+        }
+
+        @Bean
+        PasswordEncoder passwordEncoder() {
+            return Mockito.mock(PasswordEncoder.class);
         }
     }
 }

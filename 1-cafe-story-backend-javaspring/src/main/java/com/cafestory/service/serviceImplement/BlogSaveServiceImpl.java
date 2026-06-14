@@ -1,5 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.responseDTO.BlogSaveResponseDTO;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogEvent;
@@ -13,6 +14,8 @@ import com.cafestory.repository.BlogSaveRepository;
 import com.cafestory.service.serviceInterface.BlogSaveService;
 import com.cafestory.validation.BlogValidator;
 import com.cafestory.validation.UserValidator;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,6 +48,10 @@ public class BlogSaveServiceImpl implements BlogSaveService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0")
+    })
     public BlogSaveResponseDTO saveBlog(UUID blogId, UUID userId) {
         Blog blog = validatePublishedBlog(blogId);
         User user = userValidator.validateUserExists(userId);
@@ -58,6 +65,10 @@ public class BlogSaveServiceImpl implements BlogSaveService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0")
+    })
     public void unsaveBlog(UUID blogId, UUID userId) {
         blogValidator.validateBlogExists(blogId);
         User user = userValidator.validateUserExists(userId);

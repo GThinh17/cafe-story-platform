@@ -1,5 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.responseDTO.BlogRatingResponseDTO;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogRating;
@@ -10,6 +11,8 @@ import com.cafestory.repository.BlogRatingRepository;
 import com.cafestory.service.serviceInterface.BlogRatingService;
 import com.cafestory.validation.BlogValidator;
 import com.cafestory.validation.UserValidator;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +42,10 @@ public class BlogRatingServiceImpl implements BlogRatingService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0")
+    })
     public BlogRatingResponseDTO rateBlog(UUID blogId, UUID userId, Integer rating) {
         validateRating(rating);
         Blog blog = validatePublishedBlog(blogId);
@@ -55,6 +62,10 @@ public class BlogRatingServiceImpl implements BlogRatingService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0")
+    })
     public void deleteRating(UUID blogId, UUID userId) {
         blogValidator.validateBlogExists(blogId);
         User user = userValidator.validateUserExists(userId);
