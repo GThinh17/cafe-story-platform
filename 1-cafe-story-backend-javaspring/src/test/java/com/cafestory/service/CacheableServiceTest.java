@@ -29,6 +29,7 @@ import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceImplement.BlogServiceImpl;
 import com.cafestory.service.serviceImplement.RegionServiceImpl;
 import com.cafestory.service.serviceImplement.ReportReasonServiceImpl;
+import com.cafestory.service.serviceImplement.UserProfileCacheService;
 import com.cafestory.service.serviceImplement.UserServiceImpl;
 import com.cafestory.service.serviceInterface.BlogService;
 import com.cafestory.service.serviceInterface.BlogTagService;
@@ -138,6 +139,8 @@ class CacheableServiceTest {
         clearCache(CacheConfig.BLOG_DETAIL_CACHE);
         clearCache(CacheConfig.USER_PROFILE_BY_ID_CACHE);
         clearCache(CacheConfig.USER_PROFILE_BY_USERNAME_CACHE);
+        clearCache(CacheConfig.USER_PROFILE_BLOGS_CACHE);
+        clearCache(CacheConfig.USER_FOLLOWING_COUNT_CACHE);
     }
 
     @Test
@@ -227,6 +230,7 @@ class CacheableServiceTest {
 
         cache(CacheConfig.BLOG_DETAIL_CACHE).put(blogId, blogResponse(blogId));
         cache(CacheConfig.ORGANIC_FEED_CACHE).put("first:20", "cached-feed");
+        cache(CacheConfig.USER_PROFILE_BLOGS_CACHE).put(blog.getAuthor().getUserId() + ":anon", List.of(blogResponse(blogId)));
         when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
         when(blogRepository.save(blog)).thenReturn(blog);
         when(blogMapper.toBlogResponseDTO(blog)).thenReturn(blogResponse(blogId));
@@ -235,6 +239,7 @@ class CacheableServiceTest {
 
         assertThat(cache(CacheConfig.BLOG_DETAIL_CACHE).get(blogId)).isNull();
         assertThat(cache(CacheConfig.ORGANIC_FEED_CACHE).get("first:20")).isNull();
+        assertThat(cache(CacheConfig.USER_PROFILE_BLOGS_CACHE).get(blog.getAuthor().getUserId() + ":anon")).isNull();
     }
 
     @Test
@@ -273,6 +278,57 @@ class CacheableServiceTest {
 
         assertThat(cache(CacheConfig.USER_PROFILE_BY_ID_CACHE).get(userId)).isNull();
         assertThat(cache(CacheConfig.USER_PROFILE_BY_USERNAME_CACHE).get(user.getUserName())).isNull();
+    }
+
+    @Test
+    void getUserById_success_cachesSelfProfile_TC009() {
+        UUID userId = UUID.randomUUID();
+        User user = user(userId);
+
+        when(userValidator.validateUserExists(userId)).thenReturn(user);
+        when(userMapper.toUserResponseDTO(user)).thenAnswer(invocation -> userResponse(userId));
+
+        assertThat(userService.getUserById(userId, userId).getUserId()).isEqualTo(userId);
+        assertThat(userService.getUserById(userId, userId).getUserId()).isEqualTo(userId);
+
+        verify(userValidator, times(1)).validateUserExists(userId);
+    }
+
+    @Test
+    void getAllBlogsByUserId_success_cachesSelfProfileBlogsButNotOtherViewer_TC010() {
+        UUID userId = UUID.randomUUID();
+        UUID otherViewerId = UUID.randomUUID();
+        UUID blogId = UUID.randomUUID();
+        Blog blog = blog(blogId);
+        blog.setAuthor(user(userId));
+
+        when(userValidator.validateUserExists(userId)).thenReturn(user(userId));
+        when(blogRepository.findByAuthorUserId(userId)).thenReturn(List.of(blog));
+        when(blogMapper.toBlogResponseDTO(blog)).thenAnswer(invocation -> blogResponse(blogId));
+
+        assertThat(blogService.getAllBlogsByUserId(userId, userId)).hasSize(1);
+        assertThat(blogService.getAllBlogsByUserId(userId, userId)).hasSize(1);
+        assertThat(blogService.getAllBlogsByUserId(userId, otherViewerId)).hasSize(1);
+        assertThat(blogService.getAllBlogsByUserId(userId, otherViewerId)).hasSize(1);
+
+        verify(blogRepository, times(3)).findByAuthorUserId(userId);
+    }
+
+    @Test
+    void getUserById_success_cachesFollowingCountAcrossViewerSpecificProfiles_TC011() {
+        UUID userId = UUID.randomUUID();
+        UUID firstViewerId = UUID.randomUUID();
+        UUID secondViewerId = UUID.randomUUID();
+        User user = user(userId);
+
+        when(userValidator.validateUserExists(userId)).thenReturn(user);
+        when(userMapper.toUserResponseDTO(user)).thenAnswer(invocation -> userResponse(userId));
+        when(userFollowRepository.countByFollowerUserId(userId)).thenReturn(5L);
+
+        assertThat(userService.getUserById(userId, firstViewerId).getFollowingCount()).isEqualTo(5);
+        assertThat(userService.getUserById(userId, secondViewerId).getFollowingCount()).isEqualTo(5);
+
+        verify(userFollowRepository, times(1)).countByFollowerUserId(userId);
     }
 
     private void clearCache(String cacheName) {
@@ -367,7 +423,9 @@ class CacheableServiceTest {
                     CacheConfig.ORGANIC_FEED_CACHE,
                     CacheConfig.BLOG_DETAIL_CACHE,
                     CacheConfig.USER_PROFILE_BY_ID_CACHE,
-                    CacheConfig.USER_PROFILE_BY_USERNAME_CACHE);
+                    CacheConfig.USER_PROFILE_BY_USERNAME_CACHE,
+                    CacheConfig.USER_PROFILE_BLOGS_CACHE,
+                    CacheConfig.USER_FOLLOWING_COUNT_CACHE);
         }
 
         @Bean
@@ -418,14 +476,21 @@ class CacheableServiceTest {
                 RegionService regionService,
                 UserMapper userMapper,
                 UserValidator userValidator,
-                PasswordEncoder passwordEncoder) {
+                PasswordEncoder passwordEncoder,
+                UserProfileCacheService userProfileCacheService) {
             return new UserServiceImpl(
                     userRepository,
                     userFollowRepository,
                     regionService,
                     userMapper,
                     userValidator,
-                    passwordEncoder);
+                    passwordEncoder,
+                    userProfileCacheService);
+        }
+
+        @Bean
+        UserProfileCacheService userProfileCacheService(UserFollowRepository userFollowRepository) {
+            return new UserProfileCacheService(userFollowRepository);
         }
 
         @Bean

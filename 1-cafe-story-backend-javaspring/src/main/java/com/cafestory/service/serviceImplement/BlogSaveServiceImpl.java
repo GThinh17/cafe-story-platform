@@ -50,7 +50,8 @@ public class BlogSaveServiceImpl implements BlogSaveService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
-            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0")
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0"),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })
     public BlogSaveResponseDTO saveBlog(UUID blogId, UUID userId) {
         Blog blog = validatePublishedBlog(blogId);
@@ -67,7 +68,8 @@ public class BlogSaveServiceImpl implements BlogSaveService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
-            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0")
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0"),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })
     public void unsaveBlog(UUID blogId, UUID userId) {
         blogValidator.validateBlogExists(blogId);

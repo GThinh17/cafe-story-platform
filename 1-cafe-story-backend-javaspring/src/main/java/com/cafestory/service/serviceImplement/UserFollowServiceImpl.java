@@ -39,7 +39,8 @@ public class UserFollowServiceImpl implements UserFollowService {
     @Caching(evict = {
             @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_ID_CACHE, allEntries = true),
             @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_USERNAME_CACHE, allEntries = true),
-            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true)
+            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_FOLLOWING_COUNT_CACHE, key = "#p1")
     })
     public UserFollowResponseDTO followUser(UUID followingUserId, UUID followerUserId) {
         validateNotSelfFollow(followingUserId, followerUserId);
@@ -66,7 +67,8 @@ public class UserFollowServiceImpl implements UserFollowService {
     @Caching(evict = {
             @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_ID_CACHE, allEntries = true),
             @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_USERNAME_CACHE, allEntries = true),
-            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true)
+            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_FOLLOWING_COUNT_CACHE, key = "#p1")
     })
     public void unfollowUser(UUID followingUserId, UUID followerUserId) {
         validateNotSelfFollow(followingUserId, followerUserId);

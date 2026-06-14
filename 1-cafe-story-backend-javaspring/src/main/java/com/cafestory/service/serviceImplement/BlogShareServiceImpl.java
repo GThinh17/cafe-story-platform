@@ -44,7 +44,8 @@ public class BlogShareServiceImpl implements BlogShareService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
-            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0")
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0"),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })
     public BlogShareResponseDTO shareBlog(UUID blogId, UUID userId, ShareType shareType) {
         Blog blog = blogValidator.validateBlogExists(blogId);

@@ -35,6 +35,7 @@ public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final UserValidator userValidator;
     private final PasswordEncoder passwordEncoder;
+    private final UserProfileCacheService userProfileCacheService;
 
     public UserServiceImpl(
             UserRepository userRepository,
@@ -42,13 +43,15 @@ public class UserServiceImpl implements UserService {
             RegionService regionService,
             UserMapper userMapper,
             UserValidator userValidator,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            UserProfileCacheService userProfileCacheService) {
         this.userRepository = userRepository;
         this.userFollowRepository = userFollowRepository;
         this.regionService = regionService;
         this.userMapper = userMapper;
         this.userValidator = userValidator;
         this.passwordEncoder = passwordEncoder;
+        this.userProfileCacheService = userProfileCacheService;
     }
 
     @Override
@@ -93,7 +96,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = CacheConfig.USER_PROFILE_BY_ID_CACHE, key = "#p0", condition = "#p1 == null")
+    @Cacheable(
+            cacheNames = CacheConfig.USER_PROFILE_BY_ID_CACHE,
+            key = "#p0",
+            condition = "#p1 == null || #p0.equals(#p1)")
     public UserResponseDTO getUserById(UUID userId, UUID viewerUserId) {
         return toUserResponseDTO(userValidator.validateUserExists(userId), viewerUserId);
     }
@@ -170,7 +176,8 @@ public class UserServiceImpl implements UserService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_ID_CACHE, allEntries = true),
-            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_USERNAME_CACHE, allEntries = true)
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_USERNAME_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_FOLLOWING_COUNT_CACHE, key = "#p0")
     })
     public void deleteUser(UUID userId) {
         User user = userValidator.validateUserExists(userId);
@@ -195,19 +202,11 @@ public class UserServiceImpl implements UserService {
 
     private UserResponseDTO toUserResponseDTO(User user, UUID viewerUserId) {
         UserResponseDTO response = userMapper.toUserResponseDTO(user);
-        response.setFollowingCount(getFollowingCount(user));
+        response.setFollowingCount(userProfileCacheService.getFollowingCount(user.getUserId()));
         response.setIsFollowing(viewerUserId != null
                 && user.getUserId() != null
                 && !viewerUserId.equals(user.getUserId())
                 && userFollowRepository.existsByFollowerUserIdAndFollowingUserId(viewerUserId, user.getUserId()));
         return response;
-    }
-
-    private Integer getFollowingCount(User user) {
-        if (user == null || user.getUserId() == null) {
-            return 0;
-        }
-        long followingCount = userFollowRepository.countByFollowerUserId(user.getUserId());
-        return followingCount > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) followingCount;
     }
 }

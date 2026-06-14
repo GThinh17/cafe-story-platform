@@ -75,7 +75,10 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     @Transactional
-    @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
+    })
     public BlogResponseDTO createBlog(BlogCreateDTO blogCreateDTO, UUID actorUserId) {
         User author = userValidator.validateUserExists(actorUserId);
         userValidator.validateUserActive(author);
@@ -129,12 +132,17 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, key = "#p0 + ':anon'")
     public List<BlogResponseDTO> getAllBlogsByUserId(UUID userId) {
         return getAllBlogsByUserId(userId, null);
     }
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE,
+            key = "#p0 + ':' + (#p1 == null ? 'anon' : #p1)",
+            condition = "#p1 == null || #p0.equals(#p1)")
     public List<BlogResponseDTO> getAllBlogsByUserId(UUID userId, UUID viewerUserId) {
         userValidator.validateUserExists(userId);
         return blogRepository.findByAuthorUserId(userId)
@@ -161,7 +169,8 @@ public class BlogServiceImpl implements BlogService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
-            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0")
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0"),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })
     public BlogResponseDTO updateBlog(UUID blogId, UUID actorUserId, BlogUpdateDTO blogUpdateDTO) {
         Blog blog = blogValidator.validateBlogExists(blogId);
@@ -204,7 +213,8 @@ public class BlogServiceImpl implements BlogService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
-            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0")
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0"),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })
     public void deleteBlog(UUID blogId, UUID actorUserId) {
         Blog blog = blogValidator.validateBlogExists(blogId);

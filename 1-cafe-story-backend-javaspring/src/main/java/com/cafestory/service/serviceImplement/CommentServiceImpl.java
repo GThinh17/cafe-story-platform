@@ -49,7 +49,8 @@ public class CommentServiceImpl implements CommentService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
-            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0.blogId")
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0.blogId"),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })
     public CommentResponseDTO createComment(CommentCreateDTO commentCreateDTO) {
         Blog blog = blogValidator.validateBlogExists(commentCreateDTO.getBlogId());
@@ -116,7 +117,8 @@ public class CommentServiceImpl implements CommentService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
-            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, allEntries = true)
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })
     public CommentResponseDTO updateComment(UUID commentId, UUID actorUserId, CommentUpdateDTO commentUpdateDTO) {
         Comment comment = commentValidator.validateCommentExists(commentId);
@@ -140,7 +142,8 @@ public class CommentServiceImpl implements CommentService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
-            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, allEntries = true)
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })
     public void deleteComment(UUID commentId, UUID actorUserId) {
         Comment comment = commentValidator.validateCommentExists(commentId);

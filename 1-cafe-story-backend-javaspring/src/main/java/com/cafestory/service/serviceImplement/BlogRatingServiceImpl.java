@@ -44,7 +44,8 @@ public class BlogRatingServiceImpl implements BlogRatingService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
-            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0")
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0"),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })
     public BlogRatingResponseDTO rateBlog(UUID blogId, UUID userId, Integer rating) {
         validateRating(rating);
@@ -64,7 +65,8 @@ public class BlogRatingServiceImpl implements BlogRatingService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
-            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0")
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0"),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })
     public void deleteRating(UUID blogId, UUID userId) {
         blogValidator.validateBlogExists(blogId);

@@ -11,6 +11,7 @@ import com.cafestory.mapper.UserMapper;
 import com.cafestory.repository.RegionRepository;
 import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRepository;
+import com.cafestory.service.serviceImplement.UserProfileCacheService;
 import com.cafestory.service.serviceImplement.UserServiceImpl;
 import com.cafestory.service.serviceInterface.RegionService;
 import com.cafestory.validation.UserValidator;
@@ -57,6 +58,9 @@ class UserServiceImplTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private UserProfileCacheService userProfileCacheService;
 
     @InjectMocks
     private UserServiceImpl userService;
@@ -125,7 +129,7 @@ class UserServiceImplTest {
 
         when(userRepository.findAll()).thenReturn(List.of(user));
         when(userMapper.toUserResponseDTO(user)).thenReturn(response);
-        when(userFollowRepository.countByFollowerUserId(user.getUserId())).thenReturn(2L);
+        when(userProfileCacheService.getFollowingCount(user.getUserId())).thenReturn(2);
 
         List<UserResponseDTO> result = userService.getAllUsers();
 
@@ -140,7 +144,7 @@ class UserServiceImplTest {
 
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
         when(userMapper.toUserResponseDTO(user)).thenReturn(response);
-        when(userFollowRepository.countByFollowerUserId(user.getUserId())).thenReturn(3L);
+        when(userProfileCacheService.getFollowingCount(user.getUserId())).thenReturn(3);
 
         UserResponseDTO result = userService.getUserById(user.getUserId());
 
@@ -156,7 +160,7 @@ class UserServiceImplTest {
 
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
         when(userMapper.toUserResponseDTO(user)).thenReturn(response);
-        when(userFollowRepository.countByFollowerUserId(user.getUserId())).thenReturn(4L);
+        when(userProfileCacheService.getFollowingCount(user.getUserId())).thenReturn(4);
         when(userFollowRepository.existsByFollowerUserIdAndFollowingUserId(viewerUserId, user.getUserId()))
                 .thenReturn(true);
 
@@ -175,7 +179,7 @@ class UserServiceImplTest {
         when(userRepository.findByUserName(user.getUserName())).thenReturn(Optional.of(user));
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
         when(userMapper.toUserResponseDTO(user)).thenReturn(response);
-        when(userFollowRepository.countByFollowerUserId(user.getUserId())).thenReturn(5L);
+        when(userProfileCacheService.getFollowingCount(user.getUserId())).thenReturn(5);
 
         UserResponseDTO result = userService.getUserByUsername(user.getUserName(), viewerUserId);
 

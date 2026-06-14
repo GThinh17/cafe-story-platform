@@ -24,7 +24,7 @@ import {
   BioEditorModal,
   EditProfileModal,
   EmptyState,
-  LoadingState,
+  ProfileSkeleton,
   ProfileTopBar,
   Screen,
   UserPostGrid,
@@ -98,8 +98,14 @@ export function ProfileScreen() {
     }
 
     try {
-      const nextProfile = await getMyProfile();
-      const userBlogs = await getBlogsByUser(nextProfile.userId);
+      const profilePromise = getMyProfile();
+      const blogsPromise = user?.userId
+        ? getBlogsByUser(user.userId)
+        : profilePromise.then((nextProfile) => getBlogsByUser(nextProfile.userId));
+      const [nextProfile, userBlogs] = await Promise.all([
+        profilePromise,
+        blogsPromise,
+      ]);
 
       setProfile(nextProfile);
       setPosts(userBlogs.map(toPostPreview));
@@ -114,7 +120,7 @@ export function ProfileScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [user?.userId]);
 
   useEffect(() => {
     void loadProfile();
@@ -236,7 +242,7 @@ export function ProfileScreen() {
           onSettingsPress={() => navigation.navigate(routes.settings)}
           userName={userName}
         />
-        <LoadingState label="Loading profile..." />
+        <ProfileSkeleton />
       </Screen>
     );
   }

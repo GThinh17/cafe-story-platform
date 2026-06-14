@@ -34,6 +34,8 @@ public class CacheConfig implements CachingConfigurer {
     public static final String BLOG_DETAIL_CACHE = "blogDetails";
     public static final String USER_PROFILE_BY_ID_CACHE = "userProfilesById";
     public static final String USER_PROFILE_BY_USERNAME_CACHE = "userProfilesByUsername";
+    public static final String USER_PROFILE_BLOGS_CACHE = "userProfileBlogs";
+    public static final String USER_FOLLOWING_COUNT_CACHE = "userFollowingCounts";
 
     @Bean
     public RedisCacheManager cacheManager(RedisConnectionFactory redisConnectionFactory, ObjectMapper objectMapper) {
@@ -51,7 +53,9 @@ public class CacheConfig implements CachingConfigurer {
                         ORGANIC_FEED_CACHE, cacheConfiguration(jsonSerializer, Duration.ofSeconds(45)),
                         BLOG_DETAIL_CACHE, cacheConfiguration(jsonSerializer, Duration.ofMinutes(5)),
                         USER_PROFILE_BY_ID_CACHE, cacheConfiguration(jsonSerializer, Duration.ofMinutes(5)),
-                        USER_PROFILE_BY_USERNAME_CACHE, cacheConfiguration(jsonSerializer, Duration.ofMinutes(5))))
+                        USER_PROFILE_BY_USERNAME_CACHE, cacheConfiguration(jsonSerializer, Duration.ofMinutes(5)),
+                        USER_PROFILE_BLOGS_CACHE, cacheConfiguration(jsonSerializer, Duration.ofSeconds(90)),
+                        USER_FOLLOWING_COUNT_CACHE, cacheConfiguration(jsonSerializer, Duration.ofMinutes(5))))
                 .transactionAware()
                 .build();
     }

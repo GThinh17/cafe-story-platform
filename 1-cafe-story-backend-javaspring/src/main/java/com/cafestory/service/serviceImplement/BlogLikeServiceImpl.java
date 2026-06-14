@@ -47,7 +47,8 @@ public class BlogLikeServiceImpl implements BlogLikeService {
             @CacheEvict(cacheNames = {
                     CacheConfig.USER_PROFILE_BY_ID_CACHE,
                     CacheConfig.USER_PROFILE_BY_USERNAME_CACHE
-            }, allEntries = true)
+            }, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })
     public BlogLikeResponseDTO likeBlog(UUID blogId, UUID userId) {
         Blog blog = blogValidator.validateBlogExists(blogId);
@@ -75,7 +76,8 @@ public class BlogLikeServiceImpl implements BlogLikeService {
             @CacheEvict(cacheNames = {
                     CacheConfig.USER_PROFILE_BY_ID_CACHE,
                     CacheConfig.USER_PROFILE_BY_USERNAME_CACHE
-            }, allEntries = true)
+            }, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })
     public void unlikeBlog(UUID blogId, UUID userId) {
         blogValidator.validateBlogExists(blogId);
