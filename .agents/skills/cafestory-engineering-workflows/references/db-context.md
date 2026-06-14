@@ -86,7 +86,7 @@ Payments:
 - `trend_window_type`: `HOUR_24`, `DAY_7`, `MONTH_1`
 - `message_type`: `TEXT`, `IMAGE`, `STICKER`, `MIXED`
 - `message_status`: `SENT`, `FAILED`, `DELETED`
-- `notification_type`: `LIKE`, `SHARE`, `COMMENT`, `MESSAGE`, `FOLLOW`
+- `notification_type`: `LIKE`, `SHARE`, `COMMENT`, `MESSAGE`, `FOLLOW`, `TAG`
 - `reviewer_badge`: `IRON`, `BRONZE`, `SILVER`, `GOLD`, `DIAMOND`
 - `reviewer_payout_status`: `CALCULATED`, `PAID`, `CANCELLED`
 

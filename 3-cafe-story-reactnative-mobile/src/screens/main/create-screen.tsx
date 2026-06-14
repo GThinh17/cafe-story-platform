@@ -7,6 +7,8 @@ import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import {
   CreatePostComposeStep,
   CreatePostHeader,
+  CreatePostLocationPickerModal,
+  CreatePostPeoplePickerModal,
   CreatePostSettingsStep,
   Screen,
 } from "../../components";
@@ -15,7 +17,7 @@ import { routes } from "../../navigation";
 import type { MainTabParamList } from "../../navigation";
 import { createBlog, getMyProfile } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
-import type { CreatePostDraft } from "../../types";
+import type { CreatePostDraft, UserResponse } from "../../types";
 
 type CreatePostStep = "compose" | "settings";
 
@@ -56,6 +58,9 @@ export function CreateScreen() {
     ...initialDraft,
     location: locationNameFromUser(user),
   });
+  const [selectedTaggedUsers, setSelectedTaggedUsers] = useState<UserResponse[]>([]);
+  const [isPeoplePickerVisible, setIsPeoplePickerVisible] = useState(false);
+  const [isLocationPickerVisible, setIsLocationPickerVisible] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -109,6 +114,7 @@ export function CreateScreen() {
       ...initialDraft,
       location: locationNameFromUser(user),
     });
+    setSelectedTaggedUsers([]);
     setCurrentStep("compose");
     setError("");
   }, [user]);
@@ -181,6 +187,20 @@ export function CreateScreen() {
     });
   }, []);
 
+  const handleApplyTaggedUsers = useCallback((profiles: UserResponse[]) => {
+    setSelectedTaggedUsers(profiles);
+    updateDraft({
+      taggedUserIds: profiles.map((profile) => profile.userId),
+    });
+  }, [updateDraft]);
+
+  const handleApplyLocation = useCallback(
+    (location: NonNullable<CreatePostDraft["location"]>) => {
+      updateDraft({ location });
+    },
+    [updateDraft],
+  );
+
   const payload = useMemo(
     () => ({
       allowComment: draft.allowComments,
@@ -252,12 +272,29 @@ export function CreateScreen() {
         <CreatePostComposeStep
           draft={draft}
           onAddMedia={handleAddMedia}
+          onOpenLocationPicker={() => setIsLocationPickerVisible(true)}
+          onOpenPeoplePicker={() => setIsPeoplePickerVisible(true)}
           onRemoveMedia={() => updateDraft({ mediaUrls: [] })}
           onToggleTag={handleToggleTag}
           onUpdateDraft={updateDraft}
+          selectedTaggedUsers={selectedTaggedUsers}
           user={user}
         />
       )}
+
+      <CreatePostPeoplePickerModal
+        currentUserId={user?.userId}
+        onApply={handleApplyTaggedUsers}
+        onClose={() => setIsPeoplePickerVisible(false)}
+        selectedUserIds={draft.taggedUserIds}
+        visible={isPeoplePickerVisible}
+      />
+
+      <CreatePostLocationPickerModal
+        onApply={handleApplyLocation}
+        onClose={() => setIsLocationPickerVisible(false)}
+        visible={isLocationPickerVisible}
+      />
     </Screen>
   );
 }

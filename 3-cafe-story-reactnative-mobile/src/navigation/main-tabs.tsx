@@ -18,7 +18,15 @@ export function MainTabs() {
       screenOptions={{
         headerShown: false,
       }}
-      tabBar={(props) => <BottomBar {...props} />}
+      tabBar={(props) => {
+        const activeRoute = props.state.routes[props.state.index];
+
+        if (activeRoute?.name === routes.create) {
+          return null;
+        }
+
+        return <BottomBar {...props} />;
+      }}
     >
       <Tab.Screen component={HomeScreen} name={routes.home} />
       <Tab.Screen component={ExploreScreen} name={routes.explore} />

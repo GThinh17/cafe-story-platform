@@ -20,36 +20,51 @@ import {
 import { MobilePostCarousel } from "../feed/mobile-post-carousel";
 import { Avatar } from "../ui/avatar";
 import { colors, spacing, typography } from "../../theme";
-import type { AuthUser, CreatePostDraft } from "../../types";
+import type { AuthUser, CreatePostDraft, UserResponse } from "../../types";
 
 type CreatePostComposeStepProps = {
   draft: CreatePostDraft;
   onAddMedia: () => void;
+  onOpenLocationPicker: () => void;
+  onOpenPeoplePicker: () => void;
   onRemoveMedia: () => void;
   onToggleTag: (tag: string) => void;
   onUpdateDraft: (patch: Partial<CreatePostDraft>) => void;
+  selectedTaggedUsers: UserResponse[];
   user: AuthUser | null;
 };
-
-const quickActions = [
-  { Icon: Music, label: "Music" },
-  { Icon: Users, label: "Everyone" },
-  { Icon: MapPin, label: "Location" },
-  { Icon: SmilePlus, label: "Mood" },
-];
 
 const commonTags = ["Coffee", "Brunch", "Quiet", "Work friendly", "Hidden gem"];
 
 export function CreatePostComposeStep({
   draft,
   onAddMedia,
+  onOpenLocationPicker,
+  onOpenPeoplePicker,
   onRemoveMedia,
   onToggleTag,
   onUpdateDraft,
+  selectedTaggedUsers,
   user,
 }: CreatePostComposeStepProps) {
   const displayName = user?.userFullName || user?.userName || "CafeStory user";
   const hasMedia = draft.mediaUrls.length > 0;
+  const quickActions = [
+    { Icon: Music, label: "Music" },
+    {
+      Icon: Users,
+      label: selectedTaggedUsers.length
+        ? `${selectedTaggedUsers.length} people`
+        : "Everyone",
+      onPress: onOpenPeoplePicker,
+    },
+    {
+      Icon: MapPin,
+      label: draft.location?.name ?? "Location",
+      onPress: onOpenLocationPicker,
+    },
+    { Icon: SmilePlus, label: "Mood" },
+  ];
 
   return (
     <View style={styles.container}>
@@ -75,11 +90,23 @@ export function CreatePostComposeStep({
           horizontal
           showsHorizontalScrollIndicator={false}
         >
-          {quickActions.map(({ Icon, label }) => (
-            <View key={label} style={styles.quickChip}>
+          {quickActions.map(({ Icon, label, onPress }) => (
+            <Pressable
+              accessibilityLabel={label}
+              accessibilityRole={onPress ? "button" : undefined}
+              disabled={!onPress}
+              key={label}
+              onPress={onPress}
+              style={({ pressed }) => [
+                styles.quickChip,
+                pressed && onPress && styles.pressed,
+              ]}
+            >
               <Icon color={colors.foreground} size={18} strokeWidth={2.4} />
-              <Text style={styles.quickChipText}>{label}</Text>
-            </View>
+              <Text numberOfLines={1} style={styles.quickChipText}>
+                {label}
+              </Text>
+            </Pressable>
           ))}
         </ScrollView>
 
@@ -158,18 +185,56 @@ export function CreatePostComposeStep({
           <OptionRow
             Icon={Users}
             label="Tag people"
+            onPress={onOpenPeoplePicker}
             value={
-              draft.taggedUserIds.length
-                ? `${draft.taggedUserIds.length} selected`
+              selectedTaggedUsers.length
+                ? `${selectedTaggedUsers.length} selected`
                 : "Optional"
             }
           />
           <OptionRow
             Icon={MapPin}
             label="Location"
+            onPress={onOpenLocationPicker}
             value={draft.location?.name ?? "Use profile location"}
           />
         </View>
+
+        {selectedTaggedUsers.length || draft.location?.name ? (
+          <View style={styles.selectedSection}>
+            {selectedTaggedUsers.length ? (
+              <View style={styles.selectedGroup}>
+                <Text style={styles.selectedLabel}>Tagged people</Text>
+                <View style={styles.selectedChips}>
+                  {selectedTaggedUsers.map((profile) => (
+                    <View key={profile.userId} style={styles.selectedChip}>
+                      <Avatar
+                        initials={profile.userName.slice(0, 2).toUpperCase()}
+                        size={24}
+                        uri={profile.userAvatar}
+                      />
+                      <Text numberOfLines={1} style={styles.selectedChipText}>
+                        {profile.userName}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {draft.location?.name ? (
+              <View style={styles.selectedGroup}>
+                <Text style={styles.selectedLabel}>Location</Text>
+                <View style={styles.selectedLocation}>
+                  <MapPin color={colors.primary} size={17} strokeWidth={2.5} />
+                  <Text numberOfLines={2} style={styles.selectedLocationText}>
+                    {draft.location.name}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
 
         <View style={styles.tagsSection}>
           <View style={styles.sectionTitleRow}>
@@ -226,12 +291,22 @@ export function CreatePostComposeStep({
 type OptionRowProps = {
   Icon: typeof Store;
   label: string;
+  onPress?: () => void;
   value: string;
 };
 
-function OptionRow({ Icon, label, value }: OptionRowProps) {
+function OptionRow({ Icon, label, onPress, value }: OptionRowProps) {
   return (
-    <View style={styles.optionRow}>
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole={onPress ? "button" : undefined}
+      disabled={!onPress}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.optionRow,
+        pressed && onPress && styles.pressed,
+      ]}
+    >
       <View style={styles.optionIcon}>
         <Icon color={colors.foreground} size={20} strokeWidth={2.4} />
       </View>
@@ -241,7 +316,7 @@ function OptionRow({ Icon, label, value }: OptionRowProps) {
           {value}
         </Text>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -256,8 +331,8 @@ const styles = StyleSheet.create({
   },
   captionInput: {
     color: colors.foreground,
-    fontSize: 30,
-    lineHeight: 38,
+    fontSize: 24,
+    lineHeight: 32,
     minHeight: 150,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.lg,
@@ -399,6 +474,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.xs,
     minHeight: 42,
+    maxWidth: 180,
     paddingHorizontal: spacing.md,
   },
   quickChipText: {
@@ -413,6 +489,60 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginHorizontal: spacing.lg,
     overflow: "hidden",
+  },
+  selectedChip: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.xs,
+    maxWidth: 180,
+    minHeight: 36,
+    paddingHorizontal: spacing.sm,
+  },
+  selectedChipText: {
+    color: colors.foreground,
+    fontSize: typography.label,
+    fontWeight: "800",
+  },
+  selectedChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  selectedGroup: {
+    gap: spacing.sm,
+  },
+  selectedLabel: {
+    color: colors.muted,
+    fontSize: typography.caption,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
+  selectedLocation: {
+    alignItems: "center",
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.sm,
+    minHeight: 44,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  selectedLocationText: {
+    color: colors.foreground,
+    flex: 1,
+    fontSize: typography.label,
+    fontWeight: "900",
+    lineHeight: 20,
+  },
+  selectedSection: {
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
   sectionTitle: {
     color: colors.foreground,

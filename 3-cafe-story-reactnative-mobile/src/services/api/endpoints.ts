@@ -42,6 +42,10 @@ export const apiEndpoints = {
         : "/api/report-reasons",
   },
   regions: {
+    create: (requirement?: string) =>
+      requirement
+        ? `/api/regions?requirement=${pathId(requirement)}`
+        : "/api/regions",
     provinces: "/api/regions/provinces",
     cities: (provinceCode?: string) =>
       provinceCode

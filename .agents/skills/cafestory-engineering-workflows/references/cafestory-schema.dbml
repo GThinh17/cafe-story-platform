@@ -122,6 +122,7 @@ Enum notification_type {
   COMMENT
   MESSAGE
   FOLLOW
+  TAG
 }
 
 Enum reviewer_badge {
