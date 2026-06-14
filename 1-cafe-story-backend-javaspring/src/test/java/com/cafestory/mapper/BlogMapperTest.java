@@ -32,7 +32,7 @@ class BlogMapperTest {
         assertThat(result.getAuthorUserAvatar()).isEqualTo("/images/users/reader.png");
         assertThat(result.getPageId()).isNull();
         assertThat(result.getDisplayAuthorType()).isEqualTo(BlogDisplayAuthorType.USER);
-        assertThat(result.getDisplayName()).isEqualTo("Reader Name");
+        assertThat(result.getDisplayName()).isEqualTo("reader");
         assertThat(result.getDisplayAvatarUrl()).isEqualTo("/images/users/reader.png");
     }
 

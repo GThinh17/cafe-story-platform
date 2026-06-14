@@ -69,7 +69,7 @@ public interface BlogMapper {
             return null;
         }
 
-        return firstNonBlank(author.getUserFullName(), author.getUserName());
+        return firstNonBlank(author.getUserName(), author.getUserFullName());
     }
 
     default String resolveDisplayAvatarUrl(Blog blog) {

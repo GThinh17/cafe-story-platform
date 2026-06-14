@@ -45,11 +45,14 @@ function firstNonBlank(...values: Array<string | null | undefined>) {
 }
 
 function getDisplayName(blog: BlogFeedResponse) {
+  if (blog.displayAuthorType === "CAFE_PAGE") {
+    return firstNonBlank(blog.pageName, blog.displayName) || "CafeStory";
+  }
+
   return (
     firstNonBlank(
-      blog.displayName,
-      blog.pageName,
       blog.authorUserName,
+      blog.displayName,
       blog.authorUserFullName,
     ) || "CafeStory"
   );

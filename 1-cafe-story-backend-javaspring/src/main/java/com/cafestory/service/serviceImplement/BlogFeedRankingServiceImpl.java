@@ -353,7 +353,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         }
 
         response.setDisplayAuthorType(BlogDisplayAuthorType.USER);
-        response.setDisplayName(firstNonBlank(author.getUserFullName(), author.getUserName()));
+        response.setDisplayName(firstNonBlank(author.getUserName(), author.getUserFullName()));
         response.setDisplayAvatarUrl(author.getUserAvatar());
     }
 
