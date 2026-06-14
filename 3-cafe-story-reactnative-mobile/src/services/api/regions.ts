@@ -1,23 +1,10 @@
+import type {
+  RegionCityResponse,
+  RegionProvinceResponse,
+  RegionWardResponse,
+} from "../../types";
 import { apiFetch } from "./client";
 import { apiEndpoints } from "./endpoints";
-
-export type RegionProvinceResponse = {
-  name: string;
-  provinceCode: string;
-};
-
-export type RegionCityResponse = {
-  cityCode: string;
-  name: string;
-  provinceCode: string;
-};
-
-export type RegionWardResponse = {
-  cityCode: string;
-  name: string;
-  provinceCode: string;
-  wardCode: string;
-};
 
 export function getRegionProvinces() {
   return apiFetch<RegionProvinceResponse[]>(apiEndpoints.regions.provinces, {

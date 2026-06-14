@@ -1,4 +1,9 @@
-import type { UserFollowResponse, UserResponse, UserUpdateRequest } from "../../types";
+import type {
+  UserFollowResponse,
+  UserRegionUpdateRequest,
+  UserResponse,
+  UserUpdateRequest,
+} from "../../types";
 import { apiFetch } from "./client";
 import { apiEndpoints } from "./endpoints";
 
@@ -22,6 +27,13 @@ export function getUserProfileByUsername(username: string) {
 
 export function updateMyProfile(request: UserUpdateRequest) {
   return apiFetch<UserResponse>(apiEndpoints.users.me, {
+    body: request,
+    method: "PATCH",
+  });
+}
+
+export function updateMyRegion(request: UserRegionUpdateRequest) {
+  return apiFetch<UserResponse>(apiEndpoints.users.meRegion, {
     body: request,
     method: "PATCH",
   });

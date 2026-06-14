@@ -36,6 +36,16 @@ export type UserUpdateRequest = {
   userPhone?: number;
 };
 
+export type UserRegionUpdateRequest = {
+  city?: string;
+  cityCode?: string;
+  province?: string;
+  provinceCode?: string;
+  street?: string;
+  ward?: string;
+  wardCode?: string;
+};
+
 export type UserPostPreview = {
   caption: string;
   commentCount: number;

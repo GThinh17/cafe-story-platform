@@ -9,3 +9,4 @@ export * from "./main/home-screen";
 export * from "./main/new-chat-screen";
 export * from "./main/notifications-screen";
 export * from "./main/profile-screen";
+export * from "./main/settings-screen";

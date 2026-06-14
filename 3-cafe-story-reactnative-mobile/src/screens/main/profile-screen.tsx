@@ -17,6 +17,8 @@ import {
   Text,
   View,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   Avatar,
   BioEditorModal,
@@ -28,6 +30,8 @@ import {
   UserPostGrid,
 } from "../../components";
 import { useAuth } from "../../features/auth";
+import { routes } from "../../navigation";
+import type { RootStackParamList } from "../../navigation";
 import { getBlogsByUser, getMyProfile, updateMyProfile } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type { BlogResponse, UserPostPreview, UserResponse, UserUpdateRequest } from "../../types";
@@ -71,6 +75,8 @@ function toPostPreview(blog: BlogResponse): UserPostPreview {
 }
 
 export function ProfileScreen() {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserResponse | null>(null);
   const [posts, setPosts] = useState<UserPostPreview[]>([]);
@@ -225,7 +231,11 @@ export function ProfileScreen() {
   if (isLoading && !activeProfile) {
     return (
       <Screen padded={false}>
-        <ProfileTopBar userName={userName} />
+        <ProfileTopBar
+          onMessagePress={() => navigation.navigate(routes.conversations)}
+          onSettingsPress={() => navigation.navigate(routes.settings)}
+          userName={userName}
+        />
         <LoadingState label="Loading profile..." />
       </Screen>
     );
@@ -233,7 +243,11 @@ export function ProfileScreen() {
 
   return (
     <Screen padded={false}>
-      <ProfileTopBar userName={userName} />
+      <ProfileTopBar
+        onMessagePress={() => navigation.navigate(routes.conversations)}
+        onSettingsPress={() => navigation.navigate(routes.settings)}
+        userName={userName}
+      />
 
       <ScrollView
         contentContainerStyle={styles.content}

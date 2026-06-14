@@ -83,6 +83,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const logout = useCallback(async () => {
     try {
       await logoutRequest();
+    } catch {
+      // Mobile uses bearer auth, so the backend may not receive the refresh cookie.
+      // Local credentials must still be cleared so the app returns to auth flow.
     } finally {
       clearAuthAccessToken();
       setUser(null);
