@@ -30,4 +30,9 @@ export type RootStackParamList = {
     userName?: string | null;
   };
   [routes.newChat]: undefined;
+  [routes.userPosts]: {
+    initialBlogId?: string;
+    userId: string;
+    userName?: string | null;
+  };
 };

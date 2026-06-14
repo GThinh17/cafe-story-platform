@@ -1,13 +1,10 @@
 import {
   AtSign,
-  Grid3X3,
   Pencil,
   Plus,
-  Repeat2,
-  SquarePlay,
   UserPlus,
-  UserRound,
 } from "lucide-react-native";
+import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Pressable,
@@ -24,17 +21,29 @@ import {
   BioEditorModal,
   EditProfileModal,
   EmptyState,
+  ProfileContentTabs,
   ProfileSkeleton,
   ProfileTopBar,
   Screen,
   UserPostGrid,
 } from "../../components";
+import type { ProfileContentTab } from "../../components";
 import { useAuth } from "../../features/auth";
 import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
-import { getBlogsByUser, getMyProfile, updateMyProfile } from "../../services/api";
+import {
+  getBlogsByUser,
+  getMyProfile,
+  updateMyProfile,
+  uploadMyAvatar,
+} from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
-import type { BlogResponse, UserPostPreview, UserResponse, UserUpdateRequest } from "../../types";
+import type {
+  BlogResponse,
+  UserPostPreview,
+  UserResponse,
+  UserUpdateRequest,
+} from "../../types";
 
 function initialsFor(name?: string | null) {
   if (!name) {
@@ -89,6 +98,9 @@ export function ProfileScreen() {
   const [isEditProfileVisible, setIsEditProfileVisible] = useState(false);
   const [editProfileError, setEditProfileError] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [activeContentTab, setActiveContentTab] =
+    useState<ProfileContentTab>("posts");
 
   const loadProfile = useCallback(async (refreshing = false) => {
     if (refreshing) {
@@ -198,6 +210,49 @@ export function ProfileScreen() {
     }
   }, []);
 
+  const pickAndUploadAvatar = useCallback(async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      setEditProfileError("Photo access is required to update your avatar.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.86,
+    });
+
+    if (result.canceled || !result.assets[0]?.uri) {
+      return;
+    }
+
+    const asset = result.assets[0];
+
+    setIsUploadingAvatar(true);
+    setEditProfileError(null);
+
+    try {
+      const nextProfile = await uploadMyAvatar({
+        name: asset.fileName ?? `avatar-${Date.now()}.jpg`,
+        type: asset.mimeType ?? "image/jpeg",
+        uri: asset.uri,
+      });
+
+      setProfile(nextProfile);
+    } catch (nextError) {
+      setEditProfileError(
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to upload your avatar.",
+      );
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  }, []);
+
   const activeProfile = profile ?? (user
     ? {
       accountStatus: user.accountStatus,
@@ -234,7 +289,19 @@ export function ProfileScreen() {
     [activeProfile?.followingCount, activeProfile?.userFollower, posts.length],
   );
 
-  if (isLoading && !activeProfile) {
+  const openUserPosts = useCallback((post?: UserPostPreview) => {
+    if (!activeProfile?.userId) {
+      return;
+    }
+
+    navigation.navigate(routes.userPosts, {
+      initialBlogId: post?.id,
+      userId: activeProfile.userId,
+      userName,
+    });
+  }, [activeProfile?.userId, navigation, userName]);
+
+  if (isLoading && !profile) {
     return (
       <Screen padded={false}>
         <ProfileTopBar
@@ -370,29 +437,40 @@ export function ProfileScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.profileTabs}>
-          <View style={[styles.profileTab, styles.profileTabActive]}>
-            <Grid3X3 color={colors.foreground} size={23} strokeWidth={2.8} />
-          </View>
-          <View style={styles.profileTab}>
-            <SquarePlay color={colors.foreground} size={24} strokeWidth={2.4} />
-          </View>
-          <View style={styles.profileTab}>
-            <Repeat2 color={colors.foreground} size={24} strokeWidth={2.4} />
-          </View>
-          <View style={styles.profileTab}>
-            <UserRound color={colors.muted} size={24} strokeWidth={2.4} />
-          </View>
-        </View>
+        <ProfileContentTabs
+          activeTab={activeContentTab}
+          onChange={setActiveContentTab}
+        />
 
         <View style={styles.grid}>
-          {posts.length > 0 ? (
-            <UserPostGrid posts={posts} />
-          ) : (
+          {activeContentTab === "posts" && posts.length > 0 ? (
+            <UserPostGrid onPostPress={openUserPosts} posts={posts} />
+          ) : activeContentTab === "posts" ? (
             <View style={styles.emptyPosts}>
               <EmptyState
                 description="Your cafe stories will appear here after you publish them."
                 title="No blogs yet"
+              />
+            </View>
+          ) : activeContentTab === "videos" ? (
+            <View style={styles.emptyPosts}>
+              <EmptyState
+                description="Short cafe videos you share will appear here."
+                title="No videos yet"
+              />
+            </View>
+          ) : activeContentTab === "reposts" ? (
+            <View style={styles.emptyPosts}>
+              <EmptyState
+                description="Stories you repost will appear here."
+                title="No reposts yet"
+              />
+            </View>
+          ) : (
+            <View style={styles.emptyPosts}>
+              <EmptyState
+                description="Posts that tag you will appear here."
+                title="No tagged posts yet"
               />
             </View>
           )}
@@ -410,7 +488,9 @@ export function ProfileScreen() {
 
       <EditProfileModal
         error={editProfileError}
+        isUploadingAvatar={isUploadingAvatar}
         isSaving={isSavingProfile}
+        onAvatarPress={pickAndUploadAvatar}
         onClose={closeEditProfile}
         onSave={saveProfile}
         profile={activeProfile}

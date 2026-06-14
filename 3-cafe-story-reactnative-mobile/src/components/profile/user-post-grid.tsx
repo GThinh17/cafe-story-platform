@@ -6,17 +6,23 @@ const GRID_GAP = 2;
 const COLUMN_COUNT = 3;
 
 type UserPostGridProps = {
+  onPostPress?: (post: UserPostPreview) => void;
   posts: UserPostPreview[];
 };
 
-export function UserPostGrid({ posts }: UserPostGridProps) {
+export function UserPostGrid({ onPostPress, posts }: UserPostGridProps) {
   const { width } = useWindowDimensions();
   const itemSize = (width - GRID_GAP * (COLUMN_COUNT - 1)) / COLUMN_COUNT;
 
   return (
     <>
       {posts.map((post) => (
-        <PostGridItem itemSize={itemSize} key={post.id} post={post} />
+        <PostGridItem
+          itemSize={itemSize}
+          key={post.id}
+          onPress={onPostPress}
+          post={post}
+        />
       ))}
     </>
   );
@@ -24,16 +30,18 @@ export function UserPostGrid({ posts }: UserPostGridProps) {
 
 type PostGridItemProps = {
   itemSize: number;
+  onPress?: (post: UserPostPreview) => void;
   post: UserPostPreview;
 };
 
-function PostGridItem({ itemSize, post }: PostGridItemProps) {
+function PostGridItem({ itemSize, onPress, post }: PostGridItemProps) {
   const imageSource = post.image ?? (post.imageUri ? { uri: post.imageUri } : null);
 
   return (
     <Pressable
       accessibilityLabel={post.caption}
       accessibilityRole="imagebutton"
+      onPress={() => onPress?.(post)}
       style={({ pressed }) => [
         styles.item,
         {

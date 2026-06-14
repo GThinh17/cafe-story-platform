@@ -65,6 +65,7 @@ export const apiEndpoints = {
       `/api/users/${pathId(followingUserId)}/followers`,
     following: (userId: string) => `/api/users/${pathId(userId)}/following`,
     me: "/api/users/me",
+    meAvatar: "/api/users/me/avatar",
     meRegion: "/api/users/me/region",
   },
 } as const;

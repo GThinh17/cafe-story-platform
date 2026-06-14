@@ -20,7 +20,9 @@ const BIO_MAX_LENGTH = 150;
 
 type EditProfileModalProps = {
   error?: string | null;
+  isUploadingAvatar?: boolean;
   isSaving: boolean;
+  onAvatarPress?: () => void;
   onClose: () => void;
   onSave: (request: UserUpdateRequest) => void;
   profile: UserResponse | null;
@@ -29,7 +31,9 @@ type EditProfileModalProps = {
 
 export function EditProfileModal({
   error,
+  isUploadingAvatar = false,
   isSaving,
+  onAvatarPress,
   onClose,
   onSave,
   profile,
@@ -125,9 +129,15 @@ export function EditProfileModal({
             <Pressable
               accessibilityLabel="Edit photo or avatar"
               accessibilityRole="button"
+              disabled={isSaving || isUploadingAvatar}
+              onPress={onAvatarPress}
               style={({ pressed }) => [styles.photoLink, pressed && styles.pressed]}
             >
-              <Text style={styles.photoLinkText}>Edit photo or avatar</Text>
+              {isUploadingAvatar ? (
+                <ActivityIndicator color={colors.link} />
+              ) : (
+                <Text style={styles.photoLinkText}>Edit photo or avatar</Text>
+              )}
             </Pressable>
           </View>
 
