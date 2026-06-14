@@ -1,5 +1,6 @@
 export * from "./bio-editor-modal";
 export * from "./edit-profile-modal";
+export * from "./location-editor-modal";
 export * from "./profile-content-tabs";
 export * from "./profile-skeleton";
 export * from "./profile-top-bar";
