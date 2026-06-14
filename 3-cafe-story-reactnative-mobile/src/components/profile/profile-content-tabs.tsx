@@ -1,8 +1,7 @@
-import { Grid3X3, Repeat2, SquarePlay, UserRound } from "lucide-react-native";
+import { Bookmark, Grid3X3, Repeat2, UserRound } from "lucide-react-native";
 import { Pressable, StyleSheet, View } from "react-native";
 import { colors, spacing } from "../../theme";
-
-export type ProfileContentTab = "posts" | "videos" | "reposts" | "tagged";
+import type { ProfileContentTab } from "../../types";
 
 const tabs: Array<{
   accessibilityLabel: string;
@@ -15,14 +14,14 @@ const tabs: Array<{
     value: "posts",
   },
   {
-    accessibilityLabel: "Show profile videos",
-    icon: SquarePlay,
-    value: "videos",
+    accessibilityLabel: "Show saved posts",
+    icon: Bookmark,
+    value: "saved",
   },
   {
-    accessibilityLabel: "Show reposted stories",
+    accessibilityLabel: "Show shared posts",
     icon: Repeat2,
-    value: "reposts",
+    value: "shared",
   },
   {
     accessibilityLabel: "Show tagged posts",

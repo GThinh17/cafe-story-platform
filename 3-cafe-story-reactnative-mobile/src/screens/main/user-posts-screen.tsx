@@ -11,38 +11,73 @@ import {
   View,
 } from "react-native";
 import { BlogFeedCard, EmptyState, LoadingState, Screen } from "../../components";
-import { getBlogsByUser } from "../../services/api";
+import {
+  blogResponseToFeedBlog,
+  getBlogsByUser,
+  getSavedBlogsByUser,
+  getSharedBlogsByUser,
+  getTaggedBlogsByUser,
+} from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
-import type { BlogFeedResponse, BlogResponse } from "../../types";
+import type { BlogFeedResponse, BlogResponse, ProfileContentTab } from "../../types";
 import type { RootStackParamList } from "../../navigation";
 import { routes } from "../../navigation";
 
 type UserPostsRouteProp = RouteProp<RootStackParamList, typeof routes.userPosts>;
 
-function toFeedBlog(blog: BlogResponse): BlogFeedResponse {
-  return {
-    authorUserAvatar: blog.authorUserAvatar ?? null,
-    authorUserFullName: blog.authorUserFullName ?? null,
-    authorUserId: blog.authorUserId,
-    authorUserName: blog.authorUserName ?? null,
-    blogId: blog.id,
-    commentCount: blog.commentCount ?? 0,
-    contentPreview: blog.content,
-    createdAt: blog.createdAt,
-    displayAuthorType: blog.displayAuthorType ?? null,
-    displayAvatarUrl: blog.displayAvatarUrl ?? null,
-    displayName: blog.displayName ?? null,
-    imageUrls: blog.imageUrls ?? [],
-    isFollow: null,
-    isLike: blog.isLike ?? false,
-    isSave: blog.isSave ?? false,
-    likeCount: blog.likeCount ?? 0,
-    pageAvatarUrl: blog.pageAvatarUrl ?? null,
-    pageId: blog.pageId ?? null,
-    pageName: blog.pageName ?? null,
-    regionId: blog.regionId ?? null,
-    shareCount: blog.shareCount ?? 0,
-  };
+function getTabTitle(contentTab: ProfileContentTab) {
+  switch (contentTab) {
+    case "saved":
+      return "Saved";
+    case "shared":
+      return "Shared";
+    case "tagged":
+      return "Tagged";
+    default:
+      return "Posts";
+  }
+}
+
+function getEmptyTitle(contentTab: ProfileContentTab) {
+  switch (contentTab) {
+    case "saved":
+      return "No saved posts yet";
+    case "shared":
+      return "No shared posts yet";
+    case "tagged":
+      return "No tagged posts yet";
+    default:
+      return "No posts yet";
+  }
+}
+
+function getEmptyDescription(contentTab: ProfileContentTab) {
+  switch (contentTab) {
+    case "saved":
+      return "Posts saved by this profile will appear here.";
+    case "shared":
+      return "Posts shared by this profile will appear here.";
+    case "tagged":
+      return "Posts that mention this profile will appear here.";
+    default:
+      return "Published posts from this profile will appear here.";
+  }
+}
+
+function loadBlogsForTab(
+  contentTab: ProfileContentTab,
+  userId: string,
+): Promise<BlogResponse[]> {
+  switch (contentTab) {
+    case "saved":
+      return getSavedBlogsByUser(userId);
+    case "shared":
+      return getSharedBlogsByUser(userId);
+    case "tagged":
+      return getTaggedBlogsByUser(userId);
+    default:
+      return getBlogsByUser(userId);
+  }
 }
 
 function prioritizeInitialPost(
@@ -69,7 +104,7 @@ export function UserPostsScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<UserPostsRouteProp>();
-  const { initialBlogId, userId, userName } = route.params;
+  const { contentTab = "posts", initialBlogId, userId, userName } = route.params;
   const [posts, setPosts] = useState<BlogFeedResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -83,8 +118,8 @@ export function UserPostsScreen() {
     }
 
     try {
-      const nextBlogs = await getBlogsByUser(userId);
-      setPosts(nextBlogs.map(toFeedBlog));
+      const nextBlogs = await loadBlogsForTab(contentTab, userId);
+      setPosts(nextBlogs.map(blogResponseToFeedBlog));
       setError(null);
     } catch (nextError) {
       setError(
@@ -96,7 +131,7 @@ export function UserPostsScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [userId]);
+  }, [contentTab, userId]);
 
   useEffect(() => {
     void loadPosts();
@@ -127,7 +162,7 @@ export function UserPostsScreen() {
           <ArrowLeft color={colors.foreground} size={32} strokeWidth={2.5} />
         </Pressable>
         <View style={styles.headerCopy}>
-          <Text style={styles.headerTitle}>Posts</Text>
+          <Text style={styles.headerTitle}>{getTabTitle(contentTab)}</Text>
           {userName ? (
             <Text numberOfLines={1} style={styles.headerSubtitle}>
               {userName}
@@ -148,8 +183,8 @@ export function UserPostsScreen() {
           keyExtractor={(item) => item.blogId}
           ListEmptyComponent={
             <EmptyState
-              description="Published posts from this profile will appear here."
-              title={error ?? "No posts yet"}
+              description={getEmptyDescription(contentTab)}
+              title={error ?? getEmptyTitle(contentTab)}
             />
           }
           refreshControl={

@@ -21,6 +21,12 @@ public interface BlogService {
 
     List<BlogResponseDTO> getAllBlogsByUserId(UUID userId, UUID viewerUserId);
 
+    List<BlogResponseDTO> getSavedBlogsByUserId(UUID userId, UUID viewerUserId);
+
+    List<BlogResponseDTO> getSharedBlogsByUserId(UUID userId, UUID viewerUserId);
+
+    List<BlogResponseDTO> getTaggedBlogsByUserId(UUID userId, UUID viewerUserId);
+
     BlogResponseDTO getBlogById(UUID blogId);
 
     BlogResponseDTO getBlogById(UUID blogId, UUID viewerUserId);

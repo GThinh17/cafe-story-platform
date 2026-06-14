@@ -31,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.UUID;
 
 @Service
@@ -146,6 +147,36 @@ public class BlogServiceImpl implements BlogService {
     public List<BlogResponseDTO> getAllBlogsByUserId(UUID userId, UUID viewerUserId) {
         userValidator.validateUserExists(userId);
         return blogRepository.findByAuthorUserId(userId)
+                .stream()
+                .map(blog -> toBlogResponseDTO(blog, viewerUserId))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BlogResponseDTO> getSavedBlogsByUserId(UUID userId, UUID viewerUserId) {
+        userValidator.validateUserExists(userId);
+        return blogRepository.findSavedBlogsByUserId(userId)
+                .stream()
+                .map(blog -> toBlogResponseDTO(blog, viewerUserId))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BlogResponseDTO> getSharedBlogsByUserId(UUID userId, UUID viewerUserId) {
+        userValidator.validateUserExists(userId);
+        return distinctByBlogId(blogRepository.findSharedBlogsByUserId(userId))
+                .stream()
+                .map(blog -> toBlogResponseDTO(blog, viewerUserId))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<BlogResponseDTO> getTaggedBlogsByUserId(UUID userId, UUID viewerUserId) {
+        userValidator.validateUserExists(userId);
+        return blogRepository.findTaggedBlogsByUserId(userId)
                 .stream()
                 .map(blog -> toBlogResponseDTO(blog, viewerUserId))
                 .toList();
@@ -269,6 +300,18 @@ public class BlogServiceImpl implements BlogService {
                             response.setMyRating(null);
                         });
         return response;
+    }
+
+    private List<Blog> distinctByBlogId(List<Blog> blogs) {
+        LinkedHashMap<UUID, Blog> distinctBlogs = new LinkedHashMap<>();
+
+        for (Blog blog : blogs) {
+            if (blog.getId() != null) {
+                distinctBlogs.putIfAbsent(blog.getId(), blog);
+            }
+        }
+
+        return distinctBlogs.values().stream().toList();
     }
 
     private double resolveRatingScore(UUID blogId) {

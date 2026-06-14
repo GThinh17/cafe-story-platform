@@ -54,3 +54,5 @@ export type UserPostPreview = {
   imageUri?: string | null;
   likeCount: number;
 };
+
+export type ProfileContentTab = "posts" | "saved" | "shared" | "tagged";

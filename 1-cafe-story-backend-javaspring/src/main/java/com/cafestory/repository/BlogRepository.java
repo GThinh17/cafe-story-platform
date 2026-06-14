@@ -21,6 +21,33 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
     @EntityGraph(attributePaths = {"author", "page"})
     List<Blog> findByAuthorUserId(UUID authorUserId);
 
+    @Query("""
+            select save.blog
+            from BlogSave save
+            where save.user.userId = :userId
+            order by save.createdAt desc
+            """)
+    @EntityGraph(attributePaths = {"author", "page"})
+    List<Blog> findSavedBlogsByUserId(@Param("userId") UUID userId);
+
+    @Query("""
+            select share.blog
+            from BlogShare share
+            where share.user.userId = :userId
+            order by share.createdAt desc
+            """)
+    @EntityGraph(attributePaths = {"author", "page"})
+    List<Blog> findSharedBlogsByUserId(@Param("userId") UUID userId);
+
+    @Query("""
+            select tag.blog
+            from BlogTaggedUser tag
+            where tag.taggedUser.userId = :userId
+            order by tag.createdAt desc
+            """)
+    @EntityGraph(attributePaths = {"author", "page"})
+    List<Blog> findTaggedBlogsByUserId(@Param("userId") UUID userId);
+
     @EntityGraph(attributePaths = {"author", "page"})
     java.util.Optional<Blog> findFirstByAuthorUserIdAndStatusOrderByCreatedAtDescIdDesc(
             UUID authorUserId,

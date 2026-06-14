@@ -22,9 +22,12 @@ export const apiEndpoints = {
     likes: (blogId: string) => `/api/blogs/${pathId(blogId)}/likes`,
     likesByUser: (userId: string) => `/api/blogs/likes/users/${pathId(userId)}`,
     saves: (blogId: string) => `/api/blogs/${pathId(blogId)}/saves`,
+    savedByUser: (userId: string) => `/api/blogs/users/${pathId(userId)}/saved`,
     savesByUser: (userId: string) => `/api/blogs/saves/users/${pathId(userId)}`,
     savesMe: "/api/blogs/saves/me",
     shares: (blogId: string) => `/api/blogs/${pathId(blogId)}/shares`,
+    sharedByUser: (userId: string) => `/api/blogs/users/${pathId(userId)}/shared`,
+    taggedByUser: (userId: string) => `/api/blogs/users/${pathId(userId)}/tagged`,
   },
   comments: {
     list: "/api/comments",
