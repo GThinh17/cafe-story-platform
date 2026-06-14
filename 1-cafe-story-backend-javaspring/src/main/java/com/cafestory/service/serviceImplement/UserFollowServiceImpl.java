@@ -1,5 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.responseDTO.UserFollowResponseDTO;
 import com.cafestory.entity.User;
 import com.cafestory.entity.UserFollow;
@@ -7,6 +8,8 @@ import com.cafestory.mapper.UserFollowMapper;
 import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.service.serviceInterface.UserFollowService;
 import com.cafestory.validation.UserValidator;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +36,12 @@ public class UserFollowServiceImpl implements UserFollowService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_ID_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_USERNAME_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_FOLLOWING_COUNT_CACHE, key = "#p1")
+    })
     public UserFollowResponseDTO followUser(UUID followingUserId, UUID followerUserId) {
         validateNotSelfFollow(followingUserId, followerUserId);
         User followingUser = userValidator.validateUserExists(followingUserId);
@@ -55,6 +64,12 @@ public class UserFollowServiceImpl implements UserFollowService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_ID_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_USERNAME_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_FOLLOWING_COUNT_CACHE, key = "#p1")
+    })
     public void unfollowUser(UUID followingUserId, UUID followerUserId) {
         validateNotSelfFollow(followingUserId, followerUserId);
         User followingUser = userValidator.validateUserExists(followingUserId);

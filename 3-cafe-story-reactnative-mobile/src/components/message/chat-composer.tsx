@@ -23,9 +23,11 @@ export function ChatComposer({
       <View style={styles.inputWrap}>
         <TextInput
           editable={!disabled}
+          onSubmitEditing={canSend ? onSend : undefined}
           onChangeText={onChangeText}
           placeholder="Message..."
           placeholderTextColor={colors.muted}
+          returnKeyType="send"
           style={styles.input}
           value={value}
         />

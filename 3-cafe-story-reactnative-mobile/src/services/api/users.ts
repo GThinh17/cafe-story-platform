@@ -7,6 +7,12 @@ import type {
 import { apiFetch } from "./client";
 import { apiEndpoints } from "./endpoints";
 
+export type AvatarUploadFile = {
+  name: string;
+  type: string;
+  uri: string;
+};
+
 export function getMyProfile() {
   return apiFetch<UserResponse>(apiEndpoints.users.me, {
     method: "GET",
@@ -28,6 +34,16 @@ export function getUserProfileByUsername(username: string) {
 export function updateMyProfile(request: UserUpdateRequest) {
   return apiFetch<UserResponse>(apiEndpoints.users.me, {
     body: request,
+    method: "PATCH",
+  });
+}
+
+export function uploadMyAvatar(file: AvatarUploadFile) {
+  const formData = new FormData();
+  formData.append("avatar", file as unknown as Blob);
+
+  return apiFetch<UserResponse>(apiEndpoints.users.meAvatar, {
+    body: formData,
     method: "PATCH",
   });
 }

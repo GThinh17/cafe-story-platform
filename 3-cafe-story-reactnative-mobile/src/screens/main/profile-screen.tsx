@@ -1,13 +1,10 @@
 import {
   AtSign,
-  Grid3X3,
   Pencil,
   Plus,
-  Repeat2,
-  SquarePlay,
   UserPlus,
-  UserRound,
 } from "lucide-react-native";
+import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Pressable,
@@ -24,7 +21,8 @@ import {
   BioEditorModal,
   EditProfileModal,
   EmptyState,
-  LoadingState,
+  ProfileContentTabs,
+  ProfileSkeleton,
   ProfileTopBar,
   Screen,
   UserPostGrid,
@@ -32,9 +30,31 @@ import {
 import { useAuth } from "../../features/auth";
 import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
-import { getBlogsByUser, getMyProfile, updateMyProfile } from "../../services/api";
+import {
+  getBlogsByUser,
+  getSavedBlogsByUser,
+  getSharedBlogsByUser,
+  getTaggedBlogsByUser,
+  blogResponseToPostPreview,
+  getMyProfile,
+  updateMyProfile,
+  uploadMyAvatar,
+} from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
-import type { BlogResponse, UserPostPreview, UserResponse, UserUpdateRequest } from "../../types";
+import type {
+  BlogResponse,
+  ProfileContentTab,
+  UserPostPreview,
+  UserResponse,
+  UserUpdateRequest,
+} from "../../types";
+
+const emptyTabPosts: Record<ProfileContentTab, UserPostPreview[]> = {
+  posts: [],
+  saved: [],
+  shared: [],
+  tagged: [],
+};
 
 function initialsFor(name?: string | null) {
   if (!name) {
@@ -64,14 +84,42 @@ function formatCount(value?: number | null) {
   return String(safeValue);
 }
 
-function toPostPreview(blog: BlogResponse): UserPostPreview {
-  return {
-    caption: blog.content,
-    commentCount: blog.commentCount ?? 0,
-    id: blog.id,
-    imageUri: blog.imageUrls?.[0] ?? null,
-    likeCount: blog.likeCount ?? 0,
-  };
+function getEmptyCopy(tab: ProfileContentTab) {
+  switch (tab) {
+    case "saved":
+      return {
+        description: "Posts you save will appear here.",
+        title: "No saved posts yet",
+      };
+    case "shared":
+      return {
+        description: "Posts you share will appear here.",
+        title: "No shared posts yet",
+      };
+    case "tagged":
+      return {
+        description: "Posts that tag you will appear here.",
+        title: "No tagged posts yet",
+      };
+    default:
+      return {
+        description: "Your cafe stories will appear here after you publish them.",
+        title: "No blogs yet",
+      };
+  }
+}
+
+function loadBlogsForProfileTab(tab: ProfileContentTab, userId: string): Promise<BlogResponse[]> {
+  switch (tab) {
+    case "saved":
+      return getSavedBlogsByUser(userId);
+    case "shared":
+      return getSharedBlogsByUser(userId);
+    case "tagged":
+      return getTaggedBlogsByUser(userId);
+    default:
+      return getBlogsByUser(userId);
+  }
 }
 
 export function ProfileScreen() {
@@ -79,9 +127,14 @@ export function ProfileScreen() {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserResponse | null>(null);
-  const [posts, setPosts] = useState<UserPostPreview[]>([]);
+  const [tabPosts, setTabPosts] =
+    useState<Record<ProfileContentTab, UserPostPreview[]>>(emptyTabPosts);
+  const [loadedTabs, setLoadedTabs] =
+    useState<Partial<Record<ProfileContentTab, boolean>>>({});
   const [error, setError] = useState<string | null>(null);
+  const [contentError, setContentError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isContentLoading, setIsContentLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isBioModalVisible, setIsBioModalVisible] = useState(false);
   const [bioError, setBioError] = useState<string | null>(null);
@@ -89,6 +142,9 @@ export function ProfileScreen() {
   const [isEditProfileVisible, setIsEditProfileVisible] = useState(false);
   const [editProfileError, setEditProfileError] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [activeContentTab, setActiveContentTab] =
+    useState<ProfileContentTab>("posts");
 
   const loadProfile = useCallback(async (refreshing = false) => {
     if (refreshing) {
@@ -98,12 +154,26 @@ export function ProfileScreen() {
     }
 
     try {
-      const nextProfile = await getMyProfile();
-      const userBlogs = await getBlogsByUser(nextProfile.userId);
+      const profilePromise = getMyProfile();
+      const blogsPromise = user?.userId
+        ? getBlogsByUser(user.userId)
+        : profilePromise.then((nextProfile) => getBlogsByUser(nextProfile.userId));
+      const [nextProfile, userBlogs] = await Promise.all([
+        profilePromise,
+        blogsPromise,
+      ]);
 
       setProfile(nextProfile);
-      setPosts(userBlogs.map(toPostPreview));
+      setTabPosts((currentPosts) => ({
+        ...currentPosts,
+        posts: userBlogs.map(blogResponseToPostPreview),
+      }));
+      setLoadedTabs((currentTabs) => ({
+        ...currentTabs,
+        posts: true,
+      }));
       setError(null);
+      setContentError(null);
     } catch (nextError) {
       setError(
         nextError instanceof Error
@@ -114,6 +184,40 @@ export function ProfileScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
+  }, [user?.userId]);
+
+  const loadContentTab = useCallback(async (
+    tab: ProfileContentTab,
+    userId: string,
+    refreshing = false,
+  ) => {
+    if (refreshing) {
+      setIsRefreshing(true);
+    } else {
+      setIsContentLoading(true);
+    }
+
+    try {
+      const blogs = await loadBlogsForProfileTab(tab, userId);
+      setTabPosts((currentPosts) => ({
+        ...currentPosts,
+        [tab]: blogs.map(blogResponseToPostPreview),
+      }));
+      setLoadedTabs((currentTabs) => ({
+        ...currentTabs,
+        [tab]: true,
+      }));
+      setContentError(null);
+    } catch (nextError) {
+      setContentError(
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to load this profile section.",
+      );
+    } finally {
+      setIsContentLoading(false);
+      setIsRefreshing(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -121,8 +225,17 @@ export function ProfileScreen() {
   }, [loadProfile]);
 
   const onRefresh = useCallback(() => {
-    void loadProfile(true);
-  }, [loadProfile]);
+    const currentUserId = profile?.userId ?? user?.userId;
+
+    if (activeContentTab === "posts") {
+      void loadProfile(true);
+      return;
+    }
+
+    if (currentUserId) {
+      void loadContentTab(activeContentTab, currentUserId, true);
+    }
+  }, [activeContentTab, loadContentTab, loadProfile, profile?.userId, user?.userId]);
 
   const openBioModal = useCallback(() => {
     setBioError(null);
@@ -192,6 +305,49 @@ export function ProfileScreen() {
     }
   }, []);
 
+  const pickAndUploadAvatar = useCallback(async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      setEditProfileError("Photo access is required to update your avatar.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.86,
+    });
+
+    if (result.canceled || !result.assets[0]?.uri) {
+      return;
+    }
+
+    const asset = result.assets[0];
+
+    setIsUploadingAvatar(true);
+    setEditProfileError(null);
+
+    try {
+      const nextProfile = await uploadMyAvatar({
+        name: asset.fileName ?? `avatar-${Date.now()}.jpg`,
+        type: asset.mimeType ?? "image/jpeg",
+        uri: asset.uri,
+      });
+
+      setProfile(nextProfile);
+    } catch (nextError) {
+      setEditProfileError(
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to upload your avatar.",
+      );
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  }, []);
+
   const activeProfile = profile ?? (user
     ? {
       accountStatus: user.accountStatus,
@@ -221,14 +377,39 @@ export function ProfileScreen() {
   const userDescription = activeProfile?.userDescription?.trim();
   const stats = useMemo(
     () => [
-      { label: "posts", value: formatCount(posts.length) },
+      { label: "posts", value: formatCount(tabPosts.posts.length) },
       { label: "followers", value: formatCount(activeProfile?.userFollower) },
       { label: "following", value: formatCount(activeProfile?.followingCount) },
     ],
-    [activeProfile?.followingCount, activeProfile?.userFollower, posts.length],
+    [activeProfile?.followingCount, activeProfile?.userFollower, tabPosts.posts.length],
   );
+  const visiblePosts = tabPosts[activeContentTab];
+  const visibleEmptyCopy = getEmptyCopy(activeContentTab);
 
-  if (isLoading && !activeProfile) {
+  const openUserPosts = useCallback((post?: UserPostPreview) => {
+    if (!activeProfile?.userId) {
+      return;
+    }
+
+    navigation.navigate(routes.userPosts, {
+      contentTab: activeContentTab,
+      initialBlogId: post?.id,
+      userId: activeProfile.userId,
+      userName,
+    });
+  }, [activeContentTab, activeProfile?.userId, navigation, userName]);
+
+  useEffect(() => {
+    const currentUserId = activeProfile?.userId;
+
+    if (!currentUserId || loadedTabs[activeContentTab]) {
+      return;
+    }
+
+    void loadContentTab(activeContentTab, currentUserId);
+  }, [activeContentTab, activeProfile?.userId, loadContentTab, loadedTabs]);
+
+  if (isLoading && !profile) {
     return (
       <Screen padded={false}>
         <ProfileTopBar
@@ -236,7 +417,7 @@ export function ProfileScreen() {
           onSettingsPress={() => navigation.navigate(routes.settings)}
           userName={userName}
         />
-        <LoadingState label="Loading profile..." />
+        <ProfileSkeleton />
       </Screen>
     );
   }
@@ -364,29 +545,33 @@ export function ProfileScreen() {
           </Pressable>
         </View>
 
-        <View style={styles.profileTabs}>
-          <View style={[styles.profileTab, styles.profileTabActive]}>
-            <Grid3X3 color={colors.foreground} size={23} strokeWidth={2.8} />
-          </View>
-          <View style={styles.profileTab}>
-            <SquarePlay color={colors.foreground} size={24} strokeWidth={2.4} />
-          </View>
-          <View style={styles.profileTab}>
-            <Repeat2 color={colors.foreground} size={24} strokeWidth={2.4} />
-          </View>
-          <View style={styles.profileTab}>
-            <UserRound color={colors.muted} size={24} strokeWidth={2.4} />
-          </View>
-        </View>
+        <ProfileContentTabs
+          activeTab={activeContentTab}
+          onChange={setActiveContentTab}
+        />
 
         <View style={styles.grid}>
-          {posts.length > 0 ? (
-            <UserPostGrid posts={posts} />
+          {isContentLoading ? (
+            <View style={styles.emptyPosts}>
+              <EmptyState
+                description="This profile section is being prepared."
+                title="Loading posts..."
+              />
+            </View>
+          ) : contentError ? (
+            <View style={styles.emptyPosts}>
+              <EmptyState
+                description="Pull down to refresh and try again."
+                title={contentError}
+              />
+            </View>
+          ) : visiblePosts.length > 0 ? (
+            <UserPostGrid onPostPress={openUserPosts} posts={visiblePosts} />
           ) : (
             <View style={styles.emptyPosts}>
               <EmptyState
-                description="Your cafe stories will appear here after you publish them."
-                title="No blogs yet"
+                description={visibleEmptyCopy.description}
+                title={visibleEmptyCopy.title}
               />
             </View>
           )}
@@ -404,7 +589,9 @@ export function ProfileScreen() {
 
       <EditProfileModal
         error={editProfileError}
+        isUploadingAvatar={isUploadingAvatar}
         isSaving={isSavingProfile}
+        onAvatarPress={pickAndUploadAvatar}
         onClose={closeEditProfile}
         onSave={saveProfile}
         profile={activeProfile}

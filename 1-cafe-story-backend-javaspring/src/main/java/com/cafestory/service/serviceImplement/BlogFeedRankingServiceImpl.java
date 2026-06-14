@@ -1,5 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.responseDTO.BlogDisplayAuthorType;
 import com.cafestory.dto.responseDTO.BlogFeedCursorPageResponseDTO;
 import com.cafestory.dto.responseDTO.BlogFeedResponse;
@@ -32,6 +33,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -99,6 +101,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, key = "(#p0 == null ? 'first' : #p0) + ':' + #p1")
     public FeedResponseDTO getOrganicFeed(String cursor, int size) {
         int safeSize = normalizeOrganicFeedSize(size);
         OrganicFeedCursor organicCursor = decodeOrganicCursor(cursor);
@@ -350,7 +353,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         }
 
         response.setDisplayAuthorType(BlogDisplayAuthorType.USER);
-        response.setDisplayName(firstNonBlank(author.getUserFullName(), author.getUserName()));
+        response.setDisplayName(firstNonBlank(author.getUserName(), author.getUserFullName()));
         response.setDisplayAvatarUrl(author.getUserAvatar());
     }
 

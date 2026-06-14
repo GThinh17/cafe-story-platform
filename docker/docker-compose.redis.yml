@@ -1,0 +1,12 @@
+services:
+  redis:
+    image: redis:7.2-alpine
+    container_name: cafestory-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - cafestory_redis_data:/data
+
+volumes:
+  cafestory_redis_data:

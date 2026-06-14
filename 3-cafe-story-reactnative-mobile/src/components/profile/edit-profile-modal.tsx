@@ -1,4 +1,4 @@
-import { ArrowLeft, Camera, ChevronDown, UserRound } from "lucide-react-native";
+import { ArrowLeft, Camera, ChevronDown } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -15,12 +15,15 @@ import {
 } from "react-native";
 import { colors, spacing, typography } from "../../theme";
 import type { UserResponse, UserUpdateRequest } from "../../types";
+import { Avatar } from "../ui/avatar";
 
 const BIO_MAX_LENGTH = 150;
 
 type EditProfileModalProps = {
   error?: string | null;
+  isUploadingAvatar?: boolean;
   isSaving: boolean;
+  onAvatarPress?: () => void;
   onClose: () => void;
   onSave: (request: UserUpdateRequest) => void;
   profile: UserResponse | null;
@@ -29,7 +32,9 @@ type EditProfileModalProps = {
 
 export function EditProfileModal({
   error,
+  isUploadingAvatar = false,
   isSaving,
+  onAvatarPress,
   onClose,
   onSave,
   profile,
@@ -114,20 +119,40 @@ export function EditProfileModal({
         >
           <View style={styles.avatarSection}>
             <View style={styles.avatarActions}>
-              <View style={styles.avatarCircle}>
+              <Pressable
+                accessibilityLabel="Choose a new profile photo"
+                accessibilityRole="button"
+                disabled={isSaving || isUploadingAvatar}
+                onPress={onAvatarPress}
+                style={({ pressed }) => [
+                  styles.avatarCircle,
+                  pressed && styles.pressed,
+                  (isSaving || isUploadingAvatar) && styles.disabled,
+                ]}
+              >
                 <Camera color={colors.foreground} size={34} strokeWidth={2.7} />
-              </View>
+              </Pressable>
               <View style={styles.avatarCircle}>
-                <UserRound color={colors.foreground} size={36} strokeWidth={2.5} />
+                <Avatar
+                  initials={profile?.userName?.slice(0, 2).toUpperCase() ?? "CS"}
+                  size={104}
+                  uri={profile?.userAvatar}
+                />
               </View>
             </View>
 
             <Pressable
               accessibilityLabel="Edit photo or avatar"
               accessibilityRole="button"
+              disabled={isSaving || isUploadingAvatar}
+              onPress={onAvatarPress}
               style={({ pressed }) => [styles.photoLink, pressed && styles.pressed]}
             >
-              <Text style={styles.photoLinkText}>Edit photo or avatar</Text>
+              {isUploadingAvatar ? (
+                <ActivityIndicator color={colors.link} />
+              ) : (
+                <Text style={styles.photoLinkText}>Edit photo or avatar</Text>
+              )}
             </Pressable>
           </View>
 

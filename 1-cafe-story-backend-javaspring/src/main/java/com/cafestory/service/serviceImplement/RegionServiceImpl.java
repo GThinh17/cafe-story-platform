@@ -1,5 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.requestDTO.RegionRequestDTO;
 import com.cafestory.dto.responseDTO.RegionCityResponseDTO;
 import com.cafestory.dto.responseDTO.RegionProvinceResponseDTO;
@@ -15,6 +16,7 @@ import com.cafestory.repository.RegionProvinceRepository;
 import com.cafestory.repository.RegionRepository;
 import com.cafestory.repository.RegionWardRepository;
 import com.cafestory.service.serviceInterface.RegionService;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +52,7 @@ public class RegionServiceImpl implements RegionService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.REGION_PROVINCES_CACHE, key = "'all'")
     public List<RegionProvinceResponseDTO> getProvinces() {
         return provinceRepository.findAllByOrderByNameAsc()
                 .stream()
@@ -59,6 +62,7 @@ public class RegionServiceImpl implements RegionService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.REGION_CITIES_CACHE, key = "#p0 == null ? 'all' : #p0.trim()")
     public List<RegionCityResponseDTO> getCities(String provinceCode) {
         List<RegionCity> cities = hasText(provinceCode)
                 ? cityRepository.findByProvinceProvinceCodeOrderByNameAsc(provinceCode.trim())
@@ -71,6 +75,9 @@ public class RegionServiceImpl implements RegionService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = CacheConfig.REGION_WARDS_CACHE,
+            key = "(#p0 == null ? 'all' : #p0.trim()) + ':' + (#p1 == null ? 'all' : #p1.trim())")
     public List<RegionWardResponseDTO> getWards(String provinceCode, String cityCode) {
         List<RegionWard> wards;
         if (hasText(cityCode)) {

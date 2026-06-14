@@ -16,4 +16,5 @@ export const routes = {
   region: "Region",
   register: "Register",
   settings: "Settings",
+  userPosts: "UserPosts",
 } as const;

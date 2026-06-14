@@ -1,10 +1,12 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.responseDTO.ReportReasonResponseDTO;
 import com.cafestory.entity.ReportReason;
 import com.cafestory.entity.enums.ReportTargetType;
 import com.cafestory.repository.ReportReasonRepository;
 import com.cafestory.service.serviceInterface.ReportReasonService;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,7 @@ public class ReportReasonServiceImpl implements ReportReasonService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.REPORT_REASONS_CACHE, key = "#p0 == null ? 'all' : #p0.name()")
     public List<ReportReasonResponseDTO> getActiveReportReasons(ReportTargetType targetType) {
         List<ReportReason> reasons = targetType == null
                 ? reportReasonRepository.findByActiveTrueOrderBySeverityDescSortOrderAscLabelViAsc()

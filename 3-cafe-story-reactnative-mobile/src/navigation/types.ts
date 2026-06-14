@@ -1,5 +1,6 @@
 import type { NavigatorScreenParams } from "@react-navigation/native";
 import type { routes } from "./routes";
+import type { ProfileContentTab } from "../types";
 
 export type AuthStackParamList = {
   [routes.login]: undefined;
@@ -30,4 +31,10 @@ export type RootStackParamList = {
     userName?: string | null;
   };
   [routes.newChat]: undefined;
+  [routes.userPosts]: {
+    contentTab?: ProfileContentTab;
+    initialBlogId?: string;
+    userId: string;
+    userName?: string | null;
+  };
 };

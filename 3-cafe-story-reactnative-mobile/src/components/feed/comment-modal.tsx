@@ -2,6 +2,7 @@ import { Heart, Send, X } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -304,6 +305,7 @@ export function CommentModal({
 
       setDraft("");
       setReplyTarget(null);
+      Keyboard.dismiss();
       onCommentCreated?.();
     } catch (requestError) {
       setError(

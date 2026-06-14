@@ -1,5 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.requestDTO.CommentCreateDTO;
 import com.cafestory.dto.requestDTO.CommentUpdateDTO;
 import com.cafestory.dto.responseDTO.CommentResponseDTO;
@@ -12,6 +13,8 @@ import com.cafestory.service.serviceInterface.CommentService;
 import com.cafestory.validation.BlogValidator;
 import com.cafestory.validation.CommentValidator;
 import com.cafestory.validation.UserValidator;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +47,11 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0.blogId"),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
+    })
     public CommentResponseDTO createComment(CommentCreateDTO commentCreateDTO) {
         Blog blog = blogValidator.validateBlogExists(commentCreateDTO.getBlogId());
         validateBlogAllowComment(blog);
@@ -107,6 +115,11 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
+    })
     public CommentResponseDTO updateComment(UUID commentId, UUID actorUserId, CommentUpdateDTO commentUpdateDTO) {
         Comment comment = commentValidator.validateCommentExists(commentId);
         validateCommentOwner(comment, actorUserId);
@@ -127,6 +140,11 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
+    })
     public void deleteComment(UUID commentId, UUID actorUserId) {
         Comment comment = commentValidator.validateCommentExists(commentId);
         validateCommentOwner(comment, actorUserId);

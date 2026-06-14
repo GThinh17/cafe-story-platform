@@ -1,5 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.requestDTO.AdminContentReportStatusUpdateRequestDTO;
 import com.cafestory.dto.requestDTO.ContentReportRequestDTO;
 import com.cafestory.dto.responseDTO.ContentReportResponseDTO;
@@ -21,6 +22,7 @@ import com.cafestory.validation.BlogValidator;
 import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.CommentValidator;
 import com.cafestory.validation.UserValidator;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -65,6 +67,7 @@ public class ContentReportServiceImpl implements ContentReportService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true)
     public ContentReportResponseDTO createReport(UUID reporterUserId, ContentReportRequestDTO request) {
         User reporter = userValidator.validateUserExists(reporterUserId);
         userValidator.validateUserActive(reporter);

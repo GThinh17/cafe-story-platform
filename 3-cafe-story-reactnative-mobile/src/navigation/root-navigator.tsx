@@ -6,6 +6,7 @@ import {
   ConversationScreen,
   NewChatScreen,
   SettingsScreen,
+  UserPostsScreen,
 } from "../screens";
 import { AuthNavigator } from "./auth-navigator";
 import { MainTabs } from "./main-tabs";
@@ -41,6 +42,7 @@ export function RootNavigator() {
           <Stack.Screen component={NewChatScreen} name={routes.newChat} />
           <Stack.Screen component={SettingsScreen} name={routes.settings} />
           <Stack.Screen component={ChatDetailScreen} name={routes.chatDetail} />
+          <Stack.Screen component={UserPostsScreen} name={routes.userPosts} />
         </>
       ) : (
         <Stack.Screen component={AuthNavigator} name={routes.auth} />

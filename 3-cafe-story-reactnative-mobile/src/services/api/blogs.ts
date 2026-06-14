@@ -44,6 +44,24 @@ export function getBlogsByUser(userId: string) {
   });
 }
 
+export function getSavedBlogsByUser(userId: string) {
+  return apiFetch<BlogResponse[]>(apiEndpoints.blogs.savedByUser(userId), {
+    method: "GET",
+  });
+}
+
+export function getSharedBlogsByUser(userId: string) {
+  return apiFetch<BlogResponse[]>(apiEndpoints.blogs.sharedByUser(userId), {
+    method: "GET",
+  });
+}
+
+export function getTaggedBlogsByUser(userId: string) {
+  return apiFetch<BlogResponse[]>(apiEndpoints.blogs.taggedByUser(userId), {
+    method: "GET",
+  });
+}
+
 export function likeBlog(blogId: string) {
   return apiFetch<BlogLikeResponse>(apiEndpoints.blogs.likes(blogId), {
     method: "POST",

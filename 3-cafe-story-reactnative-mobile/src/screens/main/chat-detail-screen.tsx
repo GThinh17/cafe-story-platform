@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FlatList,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -133,6 +134,7 @@ export function ChatDetailScreen() {
         mapMessageToListItem(response, user?.userId),
       ]);
       setDraft("");
+      Keyboard.dismiss();
     } catch (requestError) {
       setError(
         requestError instanceof Error
