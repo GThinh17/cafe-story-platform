@@ -21,6 +21,7 @@ Core capabilities:
 - `1-cafe-story-backend-javaspring`: Java Spring Boot backend.
 - `2-cafe-story-nextjs-web`: Next.js TypeScript web app.
 - `3-cafe-story-reactnative-mobile`: React Native mobile app.
+- `docker`: Dockerfiles, Docker Compose files, and container runtime configs.
 
 
 ## Stack
@@ -96,6 +97,12 @@ Generated plans and summaries should include:
 - Business assumptions.
 - Validation commands.
 - Risks or TODOs that remain.
+
+## Docker Placement
+
+- Place every Docker-related file under the repository-root `docker/` folder.
+- This includes `Dockerfile*`, `docker-compose*.yml`, `compose*.yml`, Redis/PostgreSQL/service compose files, and container runtime configs.
+- Do not add Docker files at the repository root or inside app source folders unless the user explicitly requests that exact location.
 
 ## Database Context
 
