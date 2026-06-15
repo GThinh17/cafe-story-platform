@@ -94,6 +94,7 @@ export function NewChatScreen() {
           selectedUser.userFullName ||
           selectedUser.userName,
         conversationId: conversation.id,
+        targetUserId: selectedUser.userId,
         userName: conversation.userName || selectedUser.userName,
       });
     } catch (requestError) {

@@ -1,4 +1,6 @@
 import { Heart, Send, X } from "lucide-react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
@@ -16,6 +18,8 @@ import {
 import { Avatar } from "../ui/avatar";
 import { LoadingState } from "../ui/loading-state";
 import { useAuth } from "../../features/auth";
+import { routes } from "../../navigation";
+import type { RootStackParamList } from "../../navigation";
 import { createComment, getCommentsByBlog } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type { CommentResponse } from "../../types";
@@ -33,6 +37,7 @@ type CommentItemProps = {
   isLiked: boolean;
   likeCount: number;
   level?: number;
+  onOpenProfile: (userId: string, userName?: string | null) => void;
   onReply: (comment: CommentResponse) => void;
   onToggleLike: (commentId: string) => void;
 };
@@ -103,6 +108,7 @@ function CommentItem({
   isLiked,
   likeCount,
   level = 0,
+  onOpenProfile,
   onReply,
   onToggleLike,
 }: CommentItemProps) {
@@ -111,7 +117,14 @@ function CommentItem({
 
   return (
     <View style={[styles.commentItem, isReply && styles.replyItem]}>
-      <Avatar initials={getInitials(authorName)} size={isReply ? 30 : 38} uri={null} />
+      <Pressable
+        accessibilityLabel={`Open ${authorName} profile`}
+        accessibilityRole="button"
+        onPress={() => onOpenProfile(comment.userId, comment.authorUserName)}
+        style={({ pressed }) => pressed && styles.pressed}
+      >
+        <Avatar initials={getInitials(authorName)} size={isReply ? 30 : 38} uri={null} />
+      </Pressable>
       <View style={styles.commentBody}>
         <View style={styles.commentContentRow}>
           <View style={styles.commentTextBlock}>
@@ -160,6 +173,8 @@ export function CommentModal({
   postAuthorName,
   visible,
 }: CommentModalProps) {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
   const [comments, setComments] = useState<CommentResponse[]>([]);
   const [draft, setDraft] = useState("");
@@ -318,6 +333,16 @@ export function CommentModal({
     }
   }
 
+  function handleOpenProfile(userId: string, userName?: string | null) {
+    onClose();
+    setTimeout(() => {
+      navigation.navigate(routes.otherUserProfile, {
+        userId,
+        userName,
+      });
+    }, 120);
+  }
+
   return (
     <Modal
       animationType="slide"
@@ -378,6 +403,7 @@ export function CommentModal({
                         comment={item}
                         isLiked={likedCommentIds.has(item.id)}
                         likeCount={localLikeCounts[item.id] ?? 0}
+                        onOpenProfile={handleOpenProfile}
                         onReply={setReplyTarget}
                         onToggleLike={handleToggleCommentLike}
                       />
@@ -388,6 +414,7 @@ export function CommentModal({
                           key={reply.id}
                           level={1}
                           likeCount={localLikeCounts[reply.id] ?? 0}
+                          onOpenProfile={handleOpenProfile}
                           onReply={setReplyTarget}
                           onToggleLike={handleToggleCommentLike}
                         />

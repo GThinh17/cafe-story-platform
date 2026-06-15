@@ -33,12 +33,21 @@ const tabs: Array<{
 type ProfileContentTabsProps = {
   activeTab: ProfileContentTab;
   onChange: (tab: ProfileContentTab) => void;
+  visibleTabs?: ProfileContentTab[];
 };
 
-export function ProfileContentTabs({ activeTab, onChange }: ProfileContentTabsProps) {
+export function ProfileContentTabs({
+  activeTab,
+  onChange,
+  visibleTabs,
+}: ProfileContentTabsProps) {
+  const renderedTabs = visibleTabs
+    ? tabs.filter((tab) => visibleTabs.includes(tab.value))
+    : tabs;
+
   return (
     <View style={styles.container}>
-      {tabs.map((tab) => {
+      {renderedTabs.map((tab) => {
         const Icon = tab.icon;
         const isActive = activeTab === tab.value;
 

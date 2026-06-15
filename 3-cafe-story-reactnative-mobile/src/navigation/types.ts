@@ -28,9 +28,14 @@ export type RootStackParamList = {
     chatAvatar?: string | null;
     chatName?: string | null;
     conversationId: string;
+    targetUserId?: string | null;
     userName?: string | null;
   };
   [routes.newChat]: undefined;
+  [routes.otherUserProfile]: {
+    userId: string;
+    userName?: string | null;
+  };
   [routes.userPosts]: {
     contentTab?: ProfileContentTab;
     initialBlogId?: string;

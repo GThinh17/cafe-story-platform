@@ -7,11 +7,13 @@ import type { ChatIdentity } from "../../types";
 type ChatDetailHeaderProps = {
   conversation: ChatIdentity;
   onBackPress: () => void;
+  onProfilePress?: () => void;
 };
 
 export function ChatDetailHeader({
   conversation,
   onBackPress,
+  onProfilePress,
 }: ChatDetailHeaderProps) {
   return (
     <View style={styles.container}>
@@ -24,7 +26,15 @@ export function ChatDetailHeader({
         <ChevronLeft color={colors.foreground} size={32} strokeWidth={2.4} />
       </Pressable>
 
-      <Avatar size={40} uri={conversation.avatarUri} />
+      <Pressable
+        accessibilityLabel="Open chat profile"
+        accessibilityRole="button"
+        disabled={!onProfilePress}
+        onPress={onProfilePress}
+        style={({ pressed }) => pressed && styles.pressed}
+      >
+        <Avatar size={40} uri={conversation.avatarUri} />
+      </Pressable>
 
       <View style={styles.identity}>
         <Text numberOfLines={1} style={styles.name}>

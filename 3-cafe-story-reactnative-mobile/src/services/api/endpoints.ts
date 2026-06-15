@@ -66,6 +66,9 @@ export const apiEndpoints = {
   reports: {
     list: "/api/reports",
   },
+  reviewers: {
+    byUser: (userId: string) => `/api/reviewers/${pathId(userId)}`,
+  },
   users: {
     byId: (userId: string) => `/api/users/${pathId(userId)}`,
     byUsername: (username: string) => `/api/users/by-username/${pathId(username)}`,

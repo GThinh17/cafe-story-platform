@@ -6,5 +6,6 @@ export * from "./client";
 export * from "./comments";
 export * from "./endpoints";
 export * from "./reports";
+export * from "./reviewers";
 export * from "./regions";
 export * from "./users";

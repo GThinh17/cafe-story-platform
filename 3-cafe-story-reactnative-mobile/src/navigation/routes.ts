@@ -12,6 +12,7 @@ export const routes = {
   main: "Main",
   newChat: "NewChat",
   notifications: "Notifications",
+  otherUserProfile: "OtherUserProfile",
   profile: "Profile",
   region: "Region",
   register: "Register",

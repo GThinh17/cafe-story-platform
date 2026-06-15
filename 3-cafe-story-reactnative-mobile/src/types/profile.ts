@@ -56,3 +56,26 @@ export type UserPostPreview = {
 };
 
 export type ProfileContentTab = "posts" | "saved" | "shared" | "tagged";
+
+export type ReviewerBadge =
+  | "IRON"
+  | "BRONZE"
+  | "SILVER"
+  | "GOLD"
+  | "PLATINUM"
+  | "DIAMOND"
+  | string;
+
+export type ReviewerResponse = {
+  avatar: string | null;
+  badge: ReviewerBadge | null;
+  expireDate: string | null;
+  follow: number;
+  follower: number;
+  like: number;
+  name: string | null;
+  reviewerId: string;
+  role: string | null;
+  score: number;
+  userId: string;
+};

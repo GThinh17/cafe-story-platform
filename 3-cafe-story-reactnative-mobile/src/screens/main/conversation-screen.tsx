@@ -11,6 +11,7 @@ import {
   OnlineUserRail,
   Screen,
 } from "../../components";
+import { useAuth } from "../../features/auth";
 import { mockOnlineUsers } from "../../mocks";
 import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
@@ -47,25 +48,37 @@ function formatConversationTime(value: string | null) {
 
 function mapConversationToListItem(
   conversation: ConversationResponse,
+  currentUserId?: string,
 ): ConversationListItem {
+  const targetMember = conversation.members?.find(
+    (member) => member.userId !== currentUserId,
+  );
+
   return {
-    avatarUri: conversation.chatAvatar,
+    avatarUri: conversation.chatAvatar || targetMember?.userAvatar || null,
     id: conversation.id,
     lastMessage:
       conversation.lastMessage ||
       conversation.latestMessagePreview ||
       "No messages yet",
-    name: conversation.chatName || conversation.userName || "CafeStory user",
+    name:
+      conversation.chatName ||
+      targetMember?.userFullName ||
+      targetMember?.userName ||
+      conversation.userName ||
+      "CafeStory user",
+    targetUserId: targetMember?.userId ?? null,
     time: formatConversationTime(
       conversation.lastMessageAt || conversation.updatedAt || conversation.createdAt,
     ),
-    userName: conversation.userName || "",
+    userName: conversation.userName || targetMember?.userName || "",
   };
 }
 
 export function ConversationScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { user } = useAuth();
   const [conversationItems, setConversationItems] = useState<
     ConversationListItem[]
   >([]);
@@ -85,7 +98,11 @@ export function ConversationScreen() {
 
     try {
       const response = await getConversations();
-      setConversationItems(response.map(mapConversationToListItem));
+      setConversationItems(
+        response.map((conversation) =>
+          mapConversationToListItem(conversation, user?.userId),
+        ),
+      );
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -96,7 +113,7 @@ export function ConversationScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [user?.userId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -124,6 +141,7 @@ export function ConversationScreen() {
       chatAvatar: conversation.avatarUri,
       chatName: conversation.name,
       conversationId: conversation.id,
+      targetUserId: conversation.targetUserId,
       userName: conversation.userName,
     });
   }
