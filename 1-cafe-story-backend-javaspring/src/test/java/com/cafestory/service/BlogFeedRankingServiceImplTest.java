@@ -44,6 +44,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -279,11 +280,13 @@ class BlogFeedRankingServiceImplTest {
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<BlogRecommendationScore>> scoresCaptor = ArgumentCaptor.forClass(List.class);
-        verify(blogRecommendationScoreRepository).deleteByUserWindowAndContextRegion(
+        var repositoryOrder = inOrder(blogRecommendationScoreRepository);
+        repositoryOrder.verify(blogRecommendationScoreRepository).deleteByUserWindowAndContextRegion(
                 user.getUserId(),
                 TrendWindowType.HOUR_24,
                 regionId);
-        verify(blogRecommendationScoreRepository).saveAll(scoresCaptor.capture());
+        repositoryOrder.verify(blogRecommendationScoreRepository).flush();
+        repositoryOrder.verify(blogRecommendationScoreRepository).saveAll(scoresCaptor.capture());
         BlogRecommendationScore cachedScore = scoresCaptor.getValue().getFirst();
         assertThat(cachedScore.getTrendingScore()).isEqualTo(100.0);
         assertThat(cachedScore.getFollowedPageScore()).isEqualTo(30.0);

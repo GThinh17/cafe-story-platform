@@ -46,7 +46,7 @@ public interface BlogRecommendationScoreRepository extends JpaRepository<BlogRec
             @Param("computedAt") LocalDateTime computedAt,
             Pageable pageable);
 
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             delete from BlogRecommendationScore s
             where s.user.userId = :userId

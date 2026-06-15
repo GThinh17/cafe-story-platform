@@ -49,6 +49,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -61,6 +63,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
     private static final ObjectMapper CURSOR_OBJECT_MAPPER = JsonMapper.builder()
             .addModule(new JavaTimeModule())
             .build();
+    private final ConcurrentMap<RecommendationCacheKey, Object> recommendationRebuildLocks = new ConcurrentHashMap<>();
 
     private final BlogRepository blogRepository;
     private final BlogTrendingScoreRepository blogTrendingScoreRepository;
@@ -171,6 +174,19 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             UUID regionId) {
         User user = validateActiveUser(userId);
         UUID contextRegionId = resolveContextRegionId(user, regionId);
+        RecommendationCacheKey cacheKey = new RecommendationCacheKey(userId, windowType, contextRegionId);
+        Object lock = recommendationRebuildLocks.computeIfAbsent(cacheKey, ignored -> new Object());
+
+        synchronized (lock) {
+            return rebuildRecommendationCacheLocked(user, windowType, contextRegionId);
+        }
+    }
+
+    private List<BlogFeedResponse> rebuildRecommendationCacheLocked(
+            User user,
+            TrendWindowType windowType,
+            UUID contextRegionId) {
+        UUID userId = user.getUserId();
         LocalDateTime now = LocalDateTime.now();
         Map<UUID, BlogTrendingScore> trendingScores = latestTrendingScores(windowType);
 
@@ -195,6 +211,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         }
 
         blogRecommendationScoreRepository.deleteByUserWindowAndContextRegion(userId, windowType, contextRegionId);
+        blogRecommendationScoreRepository.flush();
         blogRecommendationScoreRepository.saveAll(scores);
         return toFeedResponses(scores);
     }
@@ -656,5 +673,11 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             UUID afterId,
             String scoredAt,
             int version) {
+    }
+
+    private record RecommendationCacheKey(
+            UUID userId,
+            TrendWindowType windowType,
+            UUID contextRegionId) {
     }
 }

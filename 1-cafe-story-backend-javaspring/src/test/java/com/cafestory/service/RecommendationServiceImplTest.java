@@ -84,7 +84,7 @@ class RecommendationServiceImplTest {
         assertThat(result.get(0).getUsername()).isEqualTo("minhanh");
         assertThat(result.get(0).getFullName()).isEqualTo("Nguyen Minh Anh");
         assertThat(result.get(0).getCity()).isEqualTo("Ho Chi Minh");
-        assertThat(result.get(0).getReason()).isEqualTo("Cùng khu vực với bạn");
+        assertThat(result.get(0).getReason()).isEqualTo("In your area");
     }
 
     @Test
@@ -108,7 +108,7 @@ class RecommendationServiceImplTest {
         assertThat(result.get(0).getTargetId()).isEqualTo(reviewer.getReviewerId());
         assertThat(result.get(0).getUsername()).isEqualTo("coffeehunter");
         assertThat(result.get(0).getFullName()).isEqualTo("Coffee Hunter");
-        assertThat(result.get(0).getReason()).isEqualTo("Reviewer nổi bật gần bạn");
+        assertThat(result.get(0).getReason()).isEqualTo("Reviewer near you");
     }
 
     @Test
@@ -134,7 +134,7 @@ class RecommendationServiceImplTest {
         assertThat(result.get(0).getUsername()).isEqualTo("Cafe Story Nguyen Hue");
         assertThat(result.get(0).getFullName()).isEqualTo("Cafe Story Nguyen Hue");
         assertThat(result.get(0).getCity()).isEqualTo("Ho Chi Minh");
-        assertThat(result.get(0).getReason()).isEqualTo("Gần khu vực của bạn");
+        assertThat(result.get(0).getReason()).isEqualTo("Near your area");
     }
 
     @Test
