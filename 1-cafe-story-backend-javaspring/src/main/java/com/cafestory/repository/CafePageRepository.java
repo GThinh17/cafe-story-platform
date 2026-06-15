@@ -42,4 +42,22 @@ public interface CafePageRepository extends JpaRepository<CafePage, UUID> {
     List<CafePage> findActiveCafePagesForRegionalRanking(
             @Param("regionId") UUID regionId,
             @Param("city") String city);
+
+    @Query("""
+            select distinct p
+            from CafePage p
+            left join fetch p.region r
+            left join fetch p.owner o
+            where p.status = com.cafestory.entity.enums.PageStatus.ACTIVE
+            and p.pageActive = true
+            and not exists (
+                select pf
+                from PageFollow pf
+                where pf.user.userId = :currentUserId
+                and pf.cafePage.id = p.id
+            )
+            """)
+    List<CafePage> findRecommendationCandidates(
+            @Param("currentUserId") UUID currentUserId,
+            Pageable pageable);
 }
