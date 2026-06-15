@@ -21,6 +21,7 @@ import {
   BioEditorModal,
   EditProfileModal,
   EmptyState,
+  LocationEditorModal,
   ProfileContentTabs,
   ProfileSkeleton,
   ProfileTopBar,
@@ -38,6 +39,7 @@ import {
   blogResponseToPostPreview,
   getMyProfile,
   updateMyProfile,
+  updateMyRegion,
   uploadMyAvatar,
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
@@ -45,6 +47,7 @@ import type {
   BlogResponse,
   ProfileContentTab,
   UserPostPreview,
+  UserRegionUpdateRequest,
   UserResponse,
   UserUpdateRequest,
 } from "../../types";
@@ -143,6 +146,9 @@ export function ProfileScreen() {
   const [editProfileError, setEditProfileError] = useState<string | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const [isSavingLocation, setIsSavingLocation] = useState(false);
   const [activeContentTab, setActiveContentTab] =
     useState<ProfileContentTab>("posts");
 
@@ -302,6 +308,38 @@ export function ProfileScreen() {
       );
     } finally {
       setIsSavingProfile(false);
+    }
+  }, []);
+
+  const openLocationModal = useCallback(() => {
+    setLocationError(null);
+    setIsLocationModalVisible(true);
+  }, []);
+
+  const closeLocationModal = useCallback(() => {
+    if (!isSavingLocation) {
+      setIsLocationModalVisible(false);
+      setLocationError(null);
+    }
+  }, [isSavingLocation]);
+
+  const saveLocation = useCallback(async (request: UserRegionUpdateRequest) => {
+    setIsSavingLocation(true);
+    setLocationError(null);
+
+    try {
+      const nextProfile = await updateMyRegion(request);
+
+      setProfile(nextProfile);
+      setIsLocationModalVisible(false);
+    } catch (nextError) {
+      setLocationError(
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to update your location.",
+      );
+    } finally {
+      setIsSavingLocation(false);
     }
   }, []);
 
@@ -593,9 +631,19 @@ export function ProfileScreen() {
         isSaving={isSavingProfile}
         onAvatarPress={pickAndUploadAvatar}
         onClose={closeEditProfile}
+        onLocationPress={openLocationModal}
         onSave={saveProfile}
         profile={activeProfile}
         visible={isEditProfileVisible}
+      />
+
+      <LocationEditorModal
+        error={locationError}
+        isSaving={isSavingLocation}
+        onClose={closeLocationModal}
+        onSave={saveLocation}
+        profile={activeProfile}
+        visible={isLocationModalVisible}
       />
     </Screen>
   );

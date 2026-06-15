@@ -1,6 +1,7 @@
 import type {
   BlogFeedParams,
   BlogFeedResponse,
+  BlogCreateRequest,
   BlogLikeResponse,
   BlogResponse,
   BlogSaveResponse,
@@ -36,6 +37,13 @@ export function getBlogFeed(params: BlogFeedParams = {}) {
       method: "GET",
     },
   );
+}
+
+export function createBlog(request: BlogCreateRequest) {
+  return apiFetch<BlogResponse>(apiEndpoints.blogs.list, {
+    body: request,
+    method: "POST",
+  });
 }
 
 export function getBlogsByUser(userId: string) {

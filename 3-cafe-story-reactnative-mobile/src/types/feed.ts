@@ -78,6 +78,35 @@ export type BlogResponse = {
   updatedAt: string | null;
 };
 
+export type BlogCreateRequest = {
+  allowComment?: boolean;
+  content: string;
+  imageUrls?: string[];
+  isPinned?: boolean;
+  pageId?: string;
+  regionId?: string;
+  taggedUserIds?: string[];
+};
+
+export type PostVisibility = "PUBLIC" | "PRIVATE";
+
+export type CreatePostDraft = {
+  allowComments: boolean;
+  cafePageId?: string;
+  caption: string;
+  location?: {
+    latitude?: number;
+    longitude?: number;
+    name: string;
+    regionId?: string;
+  };
+  mediaUrls: string[];
+  pinToProfile: boolean;
+  taggedUserIds: string[];
+  tags: string[];
+  visibility: PostVisibility;
+};
+
 export type BlogFeedParams = {
   page?: number;
   regionId?: string;

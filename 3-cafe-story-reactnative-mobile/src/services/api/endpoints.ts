@@ -19,6 +19,7 @@ export const apiEndpoints = {
   blogs: {
     byUser: (userId: string) => `/api/blogs/users/${pathId(userId)}`,
     feed: "/api/blogs/feed",
+    list: "/api/blogs",
     likes: (blogId: string) => `/api/blogs/${pathId(blogId)}/likes`,
     likesByUser: (userId: string) => `/api/blogs/likes/users/${pathId(userId)}`,
     saves: (blogId: string) => `/api/blogs/${pathId(blogId)}/saves`,
@@ -41,6 +42,10 @@ export const apiEndpoints = {
         : "/api/report-reasons",
   },
   regions: {
+    create: (requirement?: string) =>
+      requirement
+        ? `/api/regions?requirement=${pathId(requirement)}`
+        : "/api/regions",
     provinces: "/api/regions/provinces",
     cities: (provinceCode?: string) =>
       provinceCode

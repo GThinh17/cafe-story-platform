@@ -1,6 +1,9 @@
 import type {
   RegionCityResponse,
   RegionProvinceResponse,
+  RegionRequest,
+  RegionRequirement,
+  RegionResponse,
   RegionWardResponse,
 } from "../../types";
 import { apiFetch } from "./client";
@@ -9,6 +12,16 @@ import { apiEndpoints } from "./endpoints";
 export function getRegionProvinces() {
   return apiFetch<RegionProvinceResponse[]>(apiEndpoints.regions.provinces, {
     method: "GET",
+  });
+}
+
+export function createRegion(
+  request: RegionRequest,
+  requirement: RegionRequirement = "FULL_ADDRESS",
+) {
+  return apiFetch<RegionResponse>(apiEndpoints.regions.create(requirement), {
+    body: request,
+    method: "POST",
   });
 }
 

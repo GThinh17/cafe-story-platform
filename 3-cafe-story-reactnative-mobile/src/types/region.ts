@@ -16,6 +16,8 @@ export type RegionWardResponse = {
   wardCode: string;
 };
 
+export type RegionRequirement = "FULL_ADDRESS" | "BLOG_LOCATION";
+
 export type RegionRequest = {
   city?: string;
   cityCode?: string;
@@ -24,4 +26,16 @@ export type RegionRequest = {
   street?: string;
   ward?: string;
   wardCode?: string;
+};
+
+export type RegionResponse = {
+  area: string | null;
+  city: string | null;
+  cityCode: string | null;
+  province: string | null;
+  provinceCode: string | null;
+  regionId: string;
+  street: string | null;
+  ward: string | null;
+  wardCode: string | null;
 };

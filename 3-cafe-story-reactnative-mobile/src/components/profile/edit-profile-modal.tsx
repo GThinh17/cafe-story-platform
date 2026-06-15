@@ -1,4 +1,4 @@
-import { ArrowLeft, Camera, ChevronDown } from "lucide-react-native";
+import { ArrowLeft, Camera, ChevronDown, MapPin } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -25,6 +25,7 @@ type EditProfileModalProps = {
   isSaving: boolean;
   onAvatarPress?: () => void;
   onClose: () => void;
+  onLocationPress?: () => void;
   onSave: (request: UserUpdateRequest) => void;
   profile: UserResponse | null;
   visible: boolean;
@@ -36,13 +37,13 @@ export function EditProfileModal({
   isSaving,
   onAvatarPress,
   onClose,
+  onLocationPress,
   onSave,
   profile,
   visible,
 }: EditProfileModalProps) {
   const [fullName, setFullName] = useState("");
   const [userName, setUserName] = useState("");
-  const [pronouns, setPronouns] = useState("");
   const [bio, setBio] = useState("");
   const [gender, setGender] = useState("Male");
   const [isAiCreator, setIsAiCreator] = useState(false);
@@ -51,7 +52,6 @@ export function EditProfileModal({
     if (visible) {
       setFullName(profile?.userFullName ?? "");
       setUserName(profile?.userName ?? "");
-      setPronouns("");
       setBio(profile?.userDescription ?? "");
       setGender("Male");
       setIsAiCreator(false);
@@ -168,11 +168,10 @@ export function EditProfileModal({
               onChangeText={setUserName}
               value={userName}
             />
-            <ProfileField
-              label="Pronouns"
-              onChangeText={setPronouns}
-              placeholder="Add pronouns"
-              value={pronouns}
+            <LocationField
+              disabled={isSaving}
+              onPress={onLocationPress}
+              profile={profile}
             />
             <ProfileField
               label="Bio"
@@ -250,6 +249,49 @@ export function EditProfileModal({
         </ScrollView>
       </KeyboardAvoidingView>
     </Modal>
+  );
+}
+
+type LocationFieldProps = {
+  disabled?: boolean;
+  onPress?: () => void;
+  profile: UserResponse | null;
+};
+
+function LocationField({ disabled = false, onPress, profile }: LocationFieldProps) {
+  const locationParts = [
+    profile?.regionStreet,
+    profile?.regionWard,
+    profile?.regionCity,
+    profile?.regionProvince,
+  ].filter(Boolean);
+  const locationLabel = locationParts.length > 0
+    ? locationParts.join(", ")
+    : "Update location";
+
+  return (
+    <Pressable
+      accessibilityLabel="Update profile location"
+      accessibilityRole="button"
+      disabled={disabled || !onPress}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.locationField,
+        pressed && styles.pressed,
+        (disabled || !onPress) && styles.disabled,
+      ]}
+    >
+      <View style={styles.locationCopy}>
+        <Text style={styles.fieldLabel}>Location</Text>
+        <View style={styles.locationValueRow}>
+          <MapPin color={colors.muted} size={18} strokeWidth={2.4} />
+          <Text numberOfLines={1} style={styles.fieldValue}>
+            {locationLabel}
+          </Text>
+        </View>
+      </View>
+      <ChevronDown color={colors.muted} size={28} strokeWidth={2.4} />
+    </Pressable>
   );
 }
 
@@ -401,6 +443,26 @@ const styles = StyleSheet.create({
   linkRows: {
     borderTopColor: colors.border,
     borderTopWidth: 1,
+  },
+  locationCopy: {
+    flex: 1,
+    gap: 4,
+  },
+  locationField: {
+    alignItems: "center",
+    borderColor: colors.border,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    minHeight: 74,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  locationValueRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
   },
   modal: {
     backgroundColor: colors.white,
