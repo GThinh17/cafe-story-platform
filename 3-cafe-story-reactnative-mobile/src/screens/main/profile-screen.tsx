@@ -24,6 +24,7 @@ import {
   LocationEditorModal,
   ProfileContentTabs,
   ProfileSkeleton,
+  ProfileSuggestions,
   ProfileTopBar,
   Screen,
   UserPostGrid,
@@ -37,15 +38,18 @@ import {
   getSharedBlogsByUser,
   getTaggedBlogsByUser,
   blogResponseToPostPreview,
+  followUser,
   getMyProfile,
+  getUserRecommendations,
   updateMyProfile,
   updateMyRegion,
-  uploadMyAvatar,
+  uploadAvatarToCloudinary,
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type {
   BlogResponse,
   ProfileContentTab,
+  RecommendationCardResponse,
   UserPostPreview,
   UserRegionUpdateRequest,
   UserResponse,
@@ -149,6 +153,13 @@ export function ProfileScreen() {
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isSavingLocation, setIsSavingLocation] = useState(false);
+  const [isSuggestionsVisible, setIsSuggestionsVisible] = useState(false);
+  const [suggestions, setSuggestions] = useState<RecommendationCardResponse[]>([]);
+  const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState<string[]>([]);
+  const [followedSuggestionIds, setFollowedSuggestionIds] = useState<string[]>([]);
+  const [suggestionError, setSuggestionError] = useState<string | null>(null);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [pendingSuggestionId, setPendingSuggestionId] = useState<string | null>(null);
   const [activeContentTab, setActiveContentTab] =
     useState<ProfileContentTab>("posts");
 
@@ -242,6 +253,85 @@ export function ProfileScreen() {
       void loadContentTab(activeContentTab, currentUserId, true);
     }
   }, [activeContentTab, loadContentTab, loadProfile, profile?.userId, user?.userId]);
+
+  const loadSuggestions = useCallback(async () => {
+    setIsLoadingSuggestions(true);
+    setSuggestionError(null);
+
+    try {
+      const nextSuggestions = await getUserRecommendations(0, 12);
+
+      setSuggestions(nextSuggestions);
+    } catch (nextError) {
+      setSuggestionError(
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to load suggestions.",
+      );
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  }, []);
+
+  const toggleSuggestions = useCallback(() => {
+    setIsSuggestionsVisible((currentValue) => {
+      const nextValue = !currentValue;
+
+      if (nextValue && suggestions.length === 0 && !isLoadingSuggestions) {
+        void loadSuggestions();
+      }
+
+      return nextValue;
+    });
+  }, [isLoadingSuggestions, loadSuggestions, suggestions.length]);
+
+  const dismissSuggestion = useCallback((suggestion: RecommendationCardResponse) => {
+    setDismissedSuggestionIds((currentIds) =>
+      currentIds.includes(suggestion.targetId)
+        ? currentIds
+        : [...currentIds, suggestion.targetId],
+    );
+  }, []);
+
+  const followSuggestion = useCallback(async (suggestion: RecommendationCardResponse) => {
+    if (pendingSuggestionId || suggestion.targetType !== "USER") {
+      return;
+    }
+
+    setPendingSuggestionId(suggestion.targetId);
+
+    try {
+      await followUser(suggestion.targetId);
+      setFollowedSuggestionIds((currentIds) =>
+        currentIds.includes(suggestion.targetId)
+          ? currentIds
+          : [...currentIds, suggestion.targetId],
+      );
+      setDismissedSuggestionIds((currentIds) =>
+        currentIds.includes(suggestion.targetId)
+          ? currentIds
+          : [...currentIds, suggestion.targetId],
+      );
+    } catch (nextError) {
+      setSuggestionError(
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to follow this user.",
+      );
+    } finally {
+      setPendingSuggestionId(null);
+    }
+  }, [pendingSuggestionId]);
+
+  const openSuggestionProfile = useCallback((suggestion: RecommendationCardResponse) => {
+    if (suggestion.targetType !== "USER") {
+      return;
+    }
+
+    navigation.navigate(routes.otherUserProfile, {
+      userId: suggestion.targetId,
+    });
+  }, [navigation]);
 
   const openBioModal = useCallback(() => {
     setBioError(null);
@@ -368,10 +458,13 @@ export function ProfileScreen() {
     setEditProfileError(null);
 
     try {
-      const nextProfile = await uploadMyAvatar({
+      const uploadedAvatarUrl = await uploadAvatarToCloudinary({
         name: asset.fileName ?? `avatar-${Date.now()}.jpg`,
         type: asset.mimeType ?? "image/jpeg",
         uri: asset.uri,
+      });
+      const nextProfile = await updateMyProfile({
+        userAvatar: uploadedAvatarUrl,
       });
 
       setProfile(nextProfile);
@@ -415,11 +508,34 @@ export function ProfileScreen() {
   const userDescription = activeProfile?.userDescription?.trim();
   const stats = useMemo(
     () => [
-      { label: "posts", value: formatCount(tabPosts.posts.length) },
-      { label: "followers", value: formatCount(activeProfile?.userFollower) },
-      { label: "following", value: formatCount(activeProfile?.followingCount) },
+      { key: "posts", label: "posts", value: formatCount(tabPosts.posts.length) },
+      { key: "followers", label: "followers", value: formatCount(activeProfile?.userFollower) },
+      { key: "following", label: "following", value: formatCount(activeProfile?.followingCount) },
     ],
     [activeProfile?.followingCount, activeProfile?.userFollower, tabPosts.posts.length],
+  );
+  const regionLabel = useMemo(
+    () =>
+      [
+        activeProfile?.regionProvince,
+        activeProfile?.regionWard,
+      ]
+        .filter(Boolean)
+        .join(", "),
+    [
+      activeProfile?.regionProvince,
+      activeProfile?.regionWard,
+    ],
+  );
+  const visibleSuggestions = useMemo(
+    () =>
+      suggestions.filter(
+        (suggestion) =>
+          suggestion.targetType === "USER" &&
+          suggestion.targetId !== activeProfile?.userId &&
+          !dismissedSuggestionIds.includes(suggestion.targetId),
+      ),
+    [activeProfile?.userId, dismissedSuggestionIds, suggestions],
   );
   const visiblePosts = tabPosts[activeContentTab];
   const visibleEmptyCopy = getEmptyCopy(activeContentTab);
@@ -436,6 +552,18 @@ export function ProfileScreen() {
       userName,
     });
   }, [activeContentTab, activeProfile?.userId, navigation, userName]);
+
+  const openProfileFollows = useCallback((initialTab: "followers" | "following") => {
+    if (!activeProfile?.userId) {
+      return;
+    }
+
+    navigation.navigate(routes.profileFollows, {
+      initialTab,
+      userId: activeProfile.userId,
+      userName,
+    });
+  }, [activeProfile?.userId, navigation, userName]);
 
   useEffect(() => {
     const currentUserId = activeProfile?.userId;
@@ -482,7 +610,14 @@ export function ProfileScreen() {
         ) : null}
 
         <View style={styles.identity}>
-          <Avatar initials={initialsFor(displayName)} size={88} uri={avatarUri} />
+          <View style={styles.avatarColumn}>
+            <Avatar initials={initialsFor(displayName)} size={88} uri={avatarUri} />
+            {regionLabel ? (
+              <Text numberOfLines={2} style={styles.regionText}>
+                {regionLabel}
+              </Text>
+            ) : null}
+          </View>
 
           <View style={styles.identityContent}>
             <Text numberOfLines={1} style={styles.title}>
@@ -491,10 +626,24 @@ export function ProfileScreen() {
 
             <View style={styles.stats}>
               {stats.map((stat) => (
-                <View key={stat.label} style={styles.statItem}>
+                <Pressable
+                  accessibilityLabel={`Open ${stat.label}`}
+                  accessibilityRole="button"
+                  disabled={stat.key === "posts"}
+                  key={stat.label}
+                  onPress={() => {
+                    if (stat.key === "followers" || stat.key === "following") {
+                      openProfileFollows(stat.key);
+                    }
+                  }}
+                  style={({ pressed }) => [
+                    styles.statItem,
+                    pressed && stat.key !== "posts" && styles.actionPressed,
+                  ]}
+                >
                   <Text style={styles.statValue}>{stat.value}</Text>
                   <Text style={styles.statLabel}>{stat.label}</Text>
-                </View>
+                </Pressable>
               ))}
             </View>
           </View>
@@ -541,10 +690,18 @@ export function ProfileScreen() {
             </Text>
           </View>
 
-          <View style={styles.profileChip}>
+          <Pressable
+            accessibilityLabel="Open profile suggestions"
+            accessibilityRole="button"
+            onPress={toggleSuggestions}
+            style={({ pressed }) => [
+              styles.profileChip,
+              pressed && styles.actionPressed,
+            ]}
+          >
             <Plus color={colors.muted} size={18} strokeWidth={2.4} />
             <Text style={styles.profileChipMuted}>Add</Text>
-          </View>
+          </Pressable>
         </View>
 
         <View style={styles.actions}>
@@ -574,6 +731,7 @@ export function ProfileScreen() {
           <Pressable
             accessibilityLabel="Open profile suggestions"
             accessibilityRole="button"
+            onPress={toggleSuggestions}
             style={({ pressed }) => [
               styles.addFriendButton,
               pressed && styles.actionPressed,
@@ -582,6 +740,21 @@ export function ProfileScreen() {
             <UserPlus color={colors.foreground} size={19} strokeWidth={2.5} />
           </Pressable>
         </View>
+
+        {isSuggestionsVisible ? (
+          <ProfileSuggestions
+            disabledUserIds={[
+              ...followedSuggestionIds,
+              ...(pendingSuggestionId ? [pendingSuggestionId] : []),
+            ]}
+            error={suggestionError}
+            isLoading={isLoadingSuggestions}
+            onDismiss={dismissSuggestion}
+            onFollow={followSuggestion}
+            onProfilePress={openSuggestionProfile}
+            suggestions={visibleSuggestions}
+          />
+        ) : null}
 
         <ProfileContentTabs
           activeTab={activeContentTab}
@@ -676,6 +849,12 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
+  avatarColumn: {
+    alignItems: "center",
+    gap: spacing.xs,
+    width: 104,
+  },
+
   descriptionPrompt: {
     alignItems: "center",
     flexDirection: "row",
@@ -724,6 +903,14 @@ const styles = StyleSheet.create({
   identityContent: {
     flex: 1,
     gap: spacing.md,
+  },
+
+  regionText: {
+    color: colors.muted,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 16,
+    textAlign: "center",
   },
 
   title: {

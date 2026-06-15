@@ -15,10 +15,40 @@ import type { RootStackParamList } from "../../navigation";
 import {
   createDirectConversation,
   getFollowingByUserId,
+  getUserRecommendations,
   getUserProfile,
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
-import type { UserResponse } from "../../types";
+import type { RecommendationCardResponse } from "../../types";
+import type { NewChatSuggestionUser } from "../../components";
+
+function isMatchingSuggestion(item: NewChatSuggestionUser, query: string) {
+  return (
+    item.userName.toLowerCase().includes(query) ||
+    (item.userFullName ?? "").toLowerCase().includes(query)
+  );
+}
+
+function recommendationToChatUser(
+  recommendation: RecommendationCardResponse,
+): NewChatSuggestionUser | null {
+  if (recommendation.targetType !== "USER") {
+    return null;
+  }
+
+  const userName = recommendation.username || recommendation.fullName;
+
+  if (!userName) {
+    return null;
+  }
+
+  return {
+    userAvatar: recommendation.avatar,
+    userFullName: recommendation.fullName,
+    userId: recommendation.targetId,
+    userName,
+  };
+}
 
 export function NewChatScreen() {
   const navigation =
@@ -28,11 +58,13 @@ export function NewChatScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [suggestions, setSuggestions] = useState<UserResponse[]>([]);
+  const [suggestions, setSuggestions] = useState<NewChatSuggestionUser[]>([]);
+  const [discoverSuggestions, setDiscoverSuggestions] = useState<NewChatSuggestionUser[]>([]);
 
   const loadSuggestions = useCallback(async () => {
     if (!user?.userId) {
       setSuggestions([]);
+      setDiscoverSuggestions([]);
       setIsLoading(false);
       return;
     }
@@ -41,12 +73,25 @@ export function NewChatScreen() {
     setIsLoading(true);
 
     try {
-      const following = await getFollowingByUserId(user.userId);
+      const [following, recommendations] = await Promise.all([
+        getFollowingByUserId(user.userId),
+        getUserRecommendations(0, 12),
+      ]);
       const followedProfiles = await Promise.all(
         following.map((item) => getUserProfile(item.followingUserId)),
       );
+      const followedIds = new Set(followedProfiles.map((profile) => profile.userId));
+      const recommendationProfiles = recommendations
+        .map(recommendationToChatUser)
+        .filter((item): item is NewChatSuggestionUser => Boolean(item))
+        .filter(
+          (item) =>
+            item.userId !== user.userId &&
+            !followedIds.has(item.userId),
+        );
 
       setSuggestions(followedProfiles);
+      setDiscoverSuggestions(recommendationProfiles);
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -69,14 +114,24 @@ export function NewChatScreen() {
       return suggestions;
     }
 
-    return suggestions.filter(
-      (item) =>
-        item.userName.toLowerCase().includes(normalizedQuery) ||
-        (item.userFullName ?? "").toLowerCase().includes(normalizedQuery),
+    return suggestions.filter((item) =>
+      isMatchingSuggestion(item, normalizedQuery),
     );
   }, [query, suggestions]);
 
-  async function handleSelectUser(selectedUser: UserResponse) {
+  const filteredDiscoverSuggestions = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+      return discoverSuggestions;
+    }
+
+    return discoverSuggestions.filter((item) =>
+      isMatchingSuggestion(item, normalizedQuery),
+    );
+  }, [discoverSuggestions, query]);
+
+  async function handleSelectUser(selectedUser: NewChatSuggestionUser) {
     if (pendingUserId) {
       return;
     }
@@ -94,6 +149,7 @@ export function NewChatScreen() {
           selectedUser.userFullName ||
           selectedUser.userName,
         conversationId: conversation.id,
+        targetUserId: selectedUser.userId,
         userName: conversation.userName || selectedUser.userName,
       });
     } catch (requestError) {
@@ -132,6 +188,21 @@ export function NewChatScreen() {
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
           </View>
         }
+        ListFooterComponent={
+          filteredDiscoverSuggestions.length > 0 ? (
+            <View style={styles.discoverSection}>
+              <Text style={styles.sectionTitle}>Discover people</Text>
+              {filteredDiscoverSuggestions.map((item) => (
+                <NewChatSuggestionRow
+                  disabled={Boolean(pendingUserId)}
+                  key={item.userId}
+                  onPress={handleSelectUser}
+                  user={item}
+                />
+              ))}
+            </View>
+          ) : null
+        }
         contentContainerStyle={styles.content}
         data={filteredSuggestions}
         keyExtractor={(item) => item.userId}
@@ -145,7 +216,7 @@ export function NewChatScreen() {
         ListEmptyComponent={
           isLoading ? (
             <LoadingState label="Loading suggestions..." />
-          ) : error ? null : query.trim() ? (
+          ) : error || filteredDiscoverSuggestions.length > 0 ? null : query.trim() ? (
             <EmptyState
               description="Try another name or username."
               title="No people found"
@@ -167,6 +238,13 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: 96,
     paddingHorizontal: spacing.lg,
+  },
+  discoverSection: {
+    borderTopColor: colors.border,
+    borderTopWidth: 1,
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    paddingTop: spacing.lg,
   },
   errorText: {
     color: colors.danger,

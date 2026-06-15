@@ -5,6 +5,8 @@ import {
   MoreHorizontal,
   Send,
 } from "lucide-react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -14,13 +16,14 @@ import { MobilePostCarousel } from "./mobile-post-carousel";
 import { PostOptionsModal } from "./post-options-modal";
 import { ReportPostModal } from "./report-post-modal";
 import { useAuth } from "../../features/auth";
+import { routes } from "../../navigation";
+import type { RootStackParamList } from "../../navigation";
 import {
   followUser,
   likeBlog,
   saveBlog,
   shareBlog,
   unlikeBlog,
-  unfollowUser,
   unsaveBlog,
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
@@ -111,6 +114,8 @@ function formatTimeAgo(createdAt: string | null) {
 }
 
 export function BlogFeedCard({ blog }: BlogFeedCardProps) {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
   const [isCommentModalVisible, setIsCommentModalVisible] = useState(false);
   const [isOptionsModalVisible, setIsOptionsModalVisible] = useState(false);
@@ -131,7 +136,10 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
   ).filter((uri): uri is string => Boolean(uri));
   const isOwnPost = user?.userId === blog.authorUserId;
   const canFollowAuthor = Boolean(blog.authorUserId) && !isOwnPost;
-  const isFollowDisabled = !canFollowAuthor || isFollowPending;
+  const shouldShowFollowButton = canFollowAuthor && !isFollowed;
+  const isFollowDisabled = !shouldShowFollowButton || isFollowPending;
+  const canOpenAuthorProfile =
+    blog.displayAuthorType !== "CAFE_PAGE" && Boolean(blog.authorUserId) && !isOwnPost;
 
   useEffect(() => {
     setIsFollowed(Boolean(blog.isFollow));
@@ -230,15 +238,11 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
     }
 
     setIsFollowPending(true);
-    const nextIsFollowed = !isFollowed;
+    const nextIsFollowed = true;
     setIsFollowed(nextIsFollowed);
 
     try {
-      if (nextIsFollowed) {
-        await followUser(blog.authorUserId);
-      } else {
-        await unfollowUser(blog.authorUserId);
-      }
+      await followUser(blog.authorUserId);
     } catch {
       setIsFollowed(!nextIsFollowed);
     } finally {
@@ -253,10 +257,30 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
     }, 120);
   }
 
+  function handleOpenAuthorProfile() {
+    if (!canOpenAuthorProfile) {
+      return;
+    }
+
+    navigation.navigate(routes.otherUserProfile, {
+      userId: blog.authorUserId,
+      userName: blog.authorUserName,
+    });
+  }
+
   return (
     <View style={styles.card}>
       <View style={styles.header}>
-        <View style={styles.author}>
+        <Pressable
+          accessibilityLabel={`Open ${displayName} profile`}
+          accessibilityRole="button"
+          disabled={!canOpenAuthorProfile}
+          onPress={handleOpenAuthorProfile}
+          style={({ pressed }) => [
+            styles.author,
+            pressed && canOpenAuthorProfile && styles.pressed,
+          ]}
+        >
           <Avatar
             initials={getInitials(displayName)}
             size={36}
@@ -270,23 +294,23 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
               {getLocationLabel(blog)}
             </Text>
           </View>
-        </View>
+        </Pressable>
 
         <View style={styles.headerActions}>
-          <Pressable
-            accessibilityLabel={isFollowed ? "Unfollow author" : "Follow author"}
-            accessibilityRole="button"
-            disabled={isFollowDisabled}
-            onPress={handleFollowAuthor}
-            style={({ pressed }) => [
-              styles.followButton,
-              pressed && !isFollowDisabled && styles.pressed,
-            ]}
-          >
-            <Text style={styles.followButtonText}>
-              {isFollowed ? "Following" : "Follow"}
-            </Text>
-          </Pressable>
+          {shouldShowFollowButton ? (
+            <Pressable
+              accessibilityLabel="Follow author"
+              accessibilityRole="button"
+              disabled={isFollowDisabled}
+              onPress={handleFollowAuthor}
+              style={({ pressed }) => [
+                styles.followButton,
+                pressed && !isFollowDisabled && styles.pressed,
+              ]}
+            >
+              <Text style={styles.followButtonText}>Follow</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             accessibilityLabel="Open post options"
             accessibilityRole="button"

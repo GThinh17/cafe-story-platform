@@ -133,7 +133,7 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, key = "#p0 + ':anon'")
+    @Cacheable(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, key = "'posts:' + #p0 + ':anon'")
     public List<BlogResponseDTO> getAllBlogsByUserId(UUID userId) {
         return getAllBlogsByUserId(userId, null);
     }
@@ -142,8 +142,7 @@ public class BlogServiceImpl implements BlogService {
     @Transactional(readOnly = true)
     @Cacheable(
             cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE,
-            key = "#p0 + ':' + (#p1 == null ? 'anon' : #p1)",
-            condition = "#p1 == null || #p0.equals(#p1)")
+            key = "'posts:' + #p0 + ':' + (#p1 == null ? 'anon' : #p1)")
     public List<BlogResponseDTO> getAllBlogsByUserId(UUID userId, UUID viewerUserId) {
         userValidator.validateUserExists(userId);
         return blogRepository.findByAuthorUserId(userId)
@@ -164,6 +163,9 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE,
+            key = "'shared:' + #p0 + ':' + (#p1 == null ? 'anon' : #p1)")
     public List<BlogResponseDTO> getSharedBlogsByUserId(UUID userId, UUID viewerUserId) {
         userValidator.validateUserExists(userId);
         return distinctByBlogId(blogRepository.findSharedBlogsByUserId(userId))
@@ -174,6 +176,9 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE,
+            key = "'tagged:' + #p0 + ':' + (#p1 == null ? 'anon' : #p1)")
     public List<BlogResponseDTO> getTaggedBlogsByUserId(UUID userId, UUID viewerUserId) {
         userValidator.validateUserExists(userId);
         return blogRepository.findTaggedBlogsByUserId(userId)

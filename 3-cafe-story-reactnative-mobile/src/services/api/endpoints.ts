@@ -63,14 +63,22 @@ export const apiEndpoints = {
       return queryString ? `/api/regions/wards?${queryString}` : "/api/regions/wards";
     },
   },
+  recommendations: {
+    users: (page = 0, size = 20) =>
+      `/api/recommendations/users?page=${page}&size=${size}`,
+  },
   reports: {
     list: "/api/reports",
+  },
+  reviewers: {
+    byUser: (userId: string) => `/api/reviewers/${pathId(userId)}`,
   },
   users: {
     byId: (userId: string) => `/api/users/${pathId(userId)}`,
     byUsername: (username: string) => `/api/users/by-username/${pathId(username)}`,
     follow: (followingUserId: string) =>
       `/api/users/${pathId(followingUserId)}/followers`,
+    followers: (userId: string) => `/api/users/${pathId(userId)}/followers`,
     following: (userId: string) => `/api/users/${pathId(userId)}/following`,
     me: "/api/users/me",
     meAvatar: "/api/users/me/avatar",

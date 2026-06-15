@@ -56,3 +56,38 @@ export type UserPostPreview = {
 };
 
 export type ProfileContentTab = "posts" | "saved" | "shared" | "tagged";
+
+export type ReviewerBadge =
+  | "IRON"
+  | "BRONZE"
+  | "SILVER"
+  | "GOLD"
+  | "PLATINUM"
+  | "DIAMOND"
+  | string;
+
+export type ReviewerResponse = {
+  avatar: string | null;
+  badge: ReviewerBadge | null;
+  expireDate: string | null;
+  follow: number;
+  follower: number;
+  like: number;
+  name: string | null;
+  reviewerId: string;
+  role: string | null;
+  score: number;
+  userId: string;
+};
+
+export type RecommendationTargetType = "USER" | "REVIEWER" | "CAFE_PAGE" | string;
+
+export type RecommendationCardResponse = {
+  avatar: string | null;
+  city: string | null;
+  fullName: string | null;
+  reason: string | null;
+  targetId: string;
+  targetType: RecommendationTargetType;
+  username: string | null;
+};

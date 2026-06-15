@@ -72,3 +72,9 @@ export function getFollowingByUserId(userId: string) {
     method: "GET",
   });
 }
+
+export function getFollowersByUserId(userId: string) {
+  return apiFetch<UserFollowResponse[]>(apiEndpoints.users.followers(userId), {
+    method: "GET",
+  });
+}

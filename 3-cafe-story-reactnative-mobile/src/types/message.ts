@@ -77,6 +77,7 @@ export type ConversationListItem = {
   isOnline?: boolean;
   lastMessage: string;
   name: string;
+  targetUserId?: string | null;
   time: string;
   userName: string;
 };
@@ -86,6 +87,7 @@ export type ChatIdentity = {
   id: string;
   isOnline?: boolean;
   name: string;
+  targetUserId?: string | null;
   userName: string;
 };
 

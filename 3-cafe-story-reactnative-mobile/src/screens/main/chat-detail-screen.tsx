@@ -76,12 +76,14 @@ export function ChatDetailScreen() {
       avatarUri: route.params.chatAvatar ?? null,
       id: route.params.conversationId,
       name: route.params.chatName || "CafeStory user",
+      targetUserId: route.params.targetUserId ?? null,
       userName: route.params.userName || "",
     }),
     [
       route.params.chatAvatar,
       route.params.chatName,
       route.params.conversationId,
+      route.params.targetUserId,
       route.params.userName,
     ],
   );
@@ -146,6 +148,17 @@ export function ChatDetailScreen() {
     }
   }
 
+  function handleOpenProfile() {
+    if (!conversation.targetUserId) {
+      return;
+    }
+
+    navigation.navigate(routes.otherUserProfile, {
+      userId: conversation.targetUserId,
+      userName: conversation.userName,
+    });
+  }
+
   return (
     <Screen padded={false}>
       <KeyboardAvoidingView
@@ -155,6 +168,7 @@ export function ChatDetailScreen() {
         <ChatDetailHeader
           conversation={conversation}
           onBackPress={() => navigation.goBack()}
+          onProfilePress={conversation.targetUserId ? handleOpenProfile : undefined}
         />
 
         <FlatList
@@ -171,7 +185,16 @@ export function ChatDetailScreen() {
                 <Text style={styles.profileMeta}>
                   Start the conversation here.
                 </Text>
-                <Pressable style={styles.profileButton}>
+                <Pressable
+                  accessibilityLabel="View chat profile"
+                  accessibilityRole="button"
+                  disabled={!conversation.targetUserId}
+                  onPress={handleOpenProfile}
+                  style={({ pressed }) => [
+                    styles.profileButton,
+                    pressed && conversation.targetUserId && styles.pressed,
+                  ]}
+                >
                   <Text style={styles.profileButtonText}>View profile</Text>
                 </Pressable>
               </View>
@@ -249,5 +272,8 @@ const styles = StyleSheet.create({
     fontSize: typography.label,
     fontWeight: "600",
     textAlign: "center",
+  },
+  pressed: {
+    opacity: 0.72,
   },
 });
