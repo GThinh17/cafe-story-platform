@@ -11,6 +11,8 @@ import java.util.UUID;
 public interface BlogService {
     BlogResponseDTO createBlog(BlogCreateDTO blogCreateDTO, UUID actorUserId);
 
+    BlogResponseDTO createModeratedBlog(BlogCreateDTO blogCreateDTO, UUID actorUserId);
+
     List<BlogResponseDTO> getAllBlogs();
 
     List<BlogResponseDTO> getAllBlogs(UUID viewerUserId);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   BadgeDollarSignIcon,
@@ -24,7 +24,9 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
+import { getCafePagesByOwnerId } from "@/lib/api/cafes";
 import { mockReviewComposer, mockReviewDraftHints } from "@/mocks/reviews";
+import type { CafePageResponse } from "@/types/cafe";
 import { usePathname } from "next/navigation";
 
 type SidebarItem = {
@@ -59,13 +61,54 @@ function isActivePath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function isActiveCafePage(cafe: CafePageResponse) {
+  return cafe.pageActive === true || cafe.status === "ACTIVE";
+}
+
 export function SharedSidebar() {
   const pathname = usePathname();
   const { user, isLoading } = useCurrentUser();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
   const [isPricingPlanOpen, setIsPricingPlanOpen] = useState(false);
+  const [ownedCafePage, setOwnedCafePage] = useState<CafePageResponse | null>(null);
   const profileHref = user?.userName ? `/${user.userName}` : "/login";
+  const userId = user?.userId;
+
+  useEffect(() => {
+    let isCurrentRequest = true;
+
+    if (!userId) {
+      setOwnedCafePage(null);
+      return () => {
+        isCurrentRequest = false;
+      };
+    }
+
+    const ownerUserId = userId;
+
+    async function loadOwnedCafePage() {
+      try {
+        const cafes = await getCafePagesByOwnerId(ownerUserId);
+
+        if (!isCurrentRequest) {
+          return;
+        }
+
+        setOwnedCafePage(cafes.find(isActiveCafePage) ?? null);
+      } catch {
+        if (isCurrentRequest) {
+          setOwnedCafePage(null);
+        }
+      }
+    }
+
+    void loadOwnedCafePage();
+
+    return () => {
+      isCurrentRequest = false;
+    };
+  }, [userId]);
 
   return (
     <>
@@ -237,6 +280,7 @@ export function SharedSidebar() {
         composer={mockReviewComposer}
         hints={mockReviewDraftHints}
         isOpen={isCreatePostOpen}
+        ownedCafePage={ownedCafePage}
         onClose={() => setIsCreatePostOpen(false)}
       />
 

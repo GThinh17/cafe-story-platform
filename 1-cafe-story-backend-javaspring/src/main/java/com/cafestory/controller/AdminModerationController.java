@@ -28,6 +28,13 @@ public class AdminModerationController {
         this.adminModerationService = adminModerationService;
     }
 
+    @GetMapping("/results")
+    public Page<AdminModerationResultResponseDTO> getAllResults(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return adminModerationService.getAllResults(pageable(page, size));
+    }
+
     @GetMapping("/queue")
     public Page<AdminModerationResultResponseDTO> getQueue(
             @RequestParam(defaultValue = "0") int page,

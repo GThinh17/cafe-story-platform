@@ -1,0 +1,4711 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] ---------------------------< com:cafestory >----------------------------
+[INFO] Building  0.0.1-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] >>> spring-boot:3.5.15-SNAPSHOT:run (default-cli) > test-compile @ cafestory >>>
+[INFO] 
+[INFO] --- jacoco:0.8.12:prepare-agent (default) @ cafestory ---
+[INFO] argLine set to -javaagent:C:\\Users\\ASUS\\.m2\\repository\\org\\jacoco\\org.jacoco.agent\\0.8.12\\org.jacoco.agent-0.8.12-runtime.jar=destfile=D:\\cafe-story-platform\\1-cafe-story-backend-javaspring\\target\\jacoco.exec
+[INFO] 
+[INFO] --- resources:3.3.1:resources (default-resources) @ cafestory ---
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.14.1:compile (default-compile) @ cafestory ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ cafestory ---
+[INFO] Copying 2 resources from src\test\resources to target\test-classes
+[INFO] 
+[INFO] --- compiler:3.14.1:testCompile (default-testCompile) @ cafestory ---
+[INFO] Nothing to compile - all classes are up to date.
+[INFO] 
+[INFO] <<< spring-boot:3.5.15-SNAPSHOT:run (default-cli) < test-compile @ cafestory <<<
+[INFO] 
+[INFO] 
+[INFO] --- spring-boot:3.5.15-SNAPSHOT:run (default-cli) @ cafestory ---
+[INFO] Attaching agents: []
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::      (v3.5.15-SNAPSHOT)
+
+2026-06-15T14:05:24.833+07:00  INFO 12344 --- [cafestory] [  restartedMain] com.cafestory.CafestoryApplication       : Starting CafestoryApplication using Java 21.0.8 with PID 12344 (D:\cafe-story-platform\1-cafe-story-backend-javaspring\target\classes started by ASUS in D:\cafe-story-platform\1-cafe-story-backend-javaspring)
+2026-06-15T14:05:24.837+07:00  INFO 12344 --- [cafestory] [  restartedMain] com.cafestory.CafestoryApplication       : The following 1 profile is active: "dev"
+2026-06-15T14:05:24.893+07:00  INFO 12344 --- [cafestory] [  restartedMain] .e.DevToolsPropertyDefaultsPostProcessor : Devtools property defaults active! Set 'spring.devtools.add-properties' to 'false' to disable
+2026-06-15T14:05:24.894+07:00  INFO 12344 --- [cafestory] [  restartedMain] .e.DevToolsPropertyDefaultsPostProcessor : For additional web related logging consider setting the 'logging.level.web' property to 'DEBUG'
+2026-06-15T14:05:26.991+07:00  INFO 12344 --- [cafestory] [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Bootstrapping Spring Data JPA repositories in DEFAULT mode.
+2026-06-15T14:05:27.450+07:00  INFO 12344 --- [cafestory] [  restartedMain] .s.d.r.c.RepositoryConfigurationDelegate : Finished Spring Data repository scanning in 443 ms. Found 41 JPA repository interfaces.
+2026-06-15T14:05:28.494+07:00  INFO 12344 --- [cafestory] [  restartedMain] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat initialized with port 8080 (http)
+2026-06-15T14:05:28.516+07:00  INFO 12344 --- [cafestory] [  restartedMain] o.apache.catalina.core.StandardService   : Starting service [Tomcat]
+2026-06-15T14:05:28.518+07:00  INFO 12344 --- [cafestory] [  restartedMain] o.apache.catalina.core.StandardEngine    : Starting Servlet engine: [Apache Tomcat/10.1.55]
+2026-06-15T14:05:28.596+07:00  INFO 12344 --- [cafestory] [  restartedMain] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring embedded WebApplicationContext
+2026-06-15T14:05:28.598+07:00  INFO 12344 --- [cafestory] [  restartedMain] w.s.c.ServletWebServerApplicationContext : Root WebApplicationContext: initialization completed in 3700 ms
+2026-06-15T14:05:28.972+07:00  INFO 12344 --- [cafestory] [  restartedMain] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
+2026-06-15T14:05:29.059+07:00  INFO 12344 --- [cafestory] [  restartedMain] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.53.Final
+2026-06-15T14:05:29.109+07:00  INFO 12344 --- [cafestory] [  restartedMain] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-06-15T14:05:29.482+07:00  INFO 12344 --- [cafestory] [  restartedMain] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-06-15T14:05:29.522+07:00  INFO 12344 --- [cafestory] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Starting...
+2026-06-15T14:05:31.318+07:00  INFO 12344 --- [cafestory] [  restartedMain] com.zaxxer.hikari.pool.HikariPool        : HikariPool-1 - Added connection org.postgresql.jdbc.PgConnection@8e4540f
+2026-06-15T14:05:31.322+07:00  INFO 12344 --- [cafestory] [  restartedMain] com.zaxxer.hikari.HikariDataSource       : HikariPool-1 - Start completed.
+2026-06-15T14:05:31.479+07:00  WARN 12344 --- [cafestory] [  restartedMain] org.hibernate.orm.deprecation            : HHH90000025: PostgreSQLDialect does not need to be specified explicitly using 'hibernate.dialect' (remove the property setting and it will be selected by default)
+2026-06-15T14:05:31.860+07:00  INFO 12344 --- [cafestory] [  restartedMain] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'HikariDataSource (HikariPool-1)']
+	Database driver: undefined/unknown
+	Database version: 17.6
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-06-15T14:05:32.208+07:00  WARN 12344 --- [cafestory] [  restartedMain] o.h.boot.model.internal.ToOneBinder      : HHH000491: 'com.cafestory.entity.Blog.page' uses both @NotFound and FetchType.LAZY. @ManyToOne and @OneToOne associations mapped with @NotFound are forced to EAGER fetching.
+2026-06-15T14:05:34.129+07:00  INFO 12344 --- [cafestory] [  restartedMain] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-06-15T14:05:34.134+07:00  INFO 12344 --- [cafestory] [  restartedMain] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-06-15T14:05:34.673+07:00  INFO 12344 --- [cafestory] [  restartedMain] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-06-15T14:05:38.905+07:00  WARN 12344 --- [cafestory] [  restartedMain] JpaBaseConfiguration$JpaWebConfiguration : spring.jpa.open-in-view is enabled by default. Therefore, database queries may be performed during view rendering. Explicitly configure spring.jpa.open-in-view to disable this warning
+2026-06-15T14:05:40.262+07:00  INFO 12344 --- [cafestory] [  restartedMain] o.s.b.d.a.OptionalLiveReloadServer       : LiveReload server is running on port 35729
+2026-06-15T14:05:40.309+07:00  INFO 12344 --- [cafestory] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : Starting...
+2026-06-15T14:05:40.311+07:00  INFO 12344 --- [cafestory] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : BrokerAvailabilityEvent[available=true, SimpleBrokerMessageHandler [org.springframework.messaging.simp.broker.DefaultSubscriptionRegistry@36e9c7b9]]
+2026-06-15T14:05:40.313+07:00  INFO 12344 --- [cafestory] [  restartedMain] o.s.m.s.b.SimpleBrokerMessageHandler     : Started.
+2026-06-15T14:05:40.333+07:00  INFO 12344 --- [cafestory] [  restartedMain] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
+2026-06-15T14:05:40.351+07:00  INFO 12344 --- [cafestory] [  restartedMain] com.cafestory.CafestoryApplication       : Started CafestoryApplication in 16.117 seconds (process running for 16.803)
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+Hibernate: 
+    select
+        b1_0.id,
+        b1_0.allow_comment,
+        b1_0.author_user_id,
+        a1_0.user_id,
+        a1_0.account_status,
+        a1_0.region_id,
+        a1_0.user_avatar,
+        a1_0.user_email,
+        a1_0.user_follower,
+        a1_0.user_full_name,
+        a1_0.user_like,
+        a1_0.user_name,
+        a1_0.user_password,
+        a1_0.user_phone,
+        b1_0.comment_count,
+        b1_0.content,
+        b1_0.created_at,
+        b1_0.is_pinned,
+        b1_0.like_count,
+        b1_0.page_id,
+        p1_0.id,
+        p1_0.address,
+        p1_0.avatar_url,
+        p1_0.cover_url,
+        p1_0.created_at,
+        p1_0.description,
+        p1_0.follower_count,
+        p1_0.like_count,
+        p1_0.max_members,
+        p1_0.name,
+        p1_0.owner_user_id,
+        p1_0.page_active,
+        p1_0.page_expires_at,
+        p1_0.region_id,
+        p1_0.status,
+        p1_0.updated_at,
+        b1_0.region_id,
+        b1_0.share_count,
+        b1_0.status,
+        b1_0.updated_at 
+    from
+        blogs b1_0 
+    join
+        users a1_0 
+            on a1_0.user_id=b1_0.author_user_id 
+    left join
+        cafe_pages p1_0 
+            on p1_0.id=b1_0.page_id 
+    where
+        b1_0.status=?
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        r1_0.id,
+        r1_0.name 
+    from
+        roles r1_0 
+    where
+        r1_0.name=?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    insert 
+    into
+        blog_daily_metrics
+        (avg_read_seconds, blog_id, comments, created_at, likes, metric_date, reports, saves, shares, updated_at, views, id) 
+    values
+        (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        bdm1_0.id,
+        bdm1_0.avg_read_seconds,
+        bdm1_0.blog_id,
+        bdm1_0.comments,
+        bdm1_0.created_at,
+        bdm1_0.likes,
+        bdm1_0.metric_date,
+        bdm1_0.reports,
+        bdm1_0.saves,
+        bdm1_0.shares,
+        bdm1_0.updated_at,
+        bdm1_0.views 
+    from
+        blog_daily_metrics bdm1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bdm1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bdm1_0.metric_date=?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        b1_0.id,
+        b1_0.allow_comment,
+        b1_0.author_user_id,
+        a1_0.user_id,
+        a1_0.account_status,
+        a1_0.region_id,
+        a1_0.user_avatar,
+        a1_0.user_email,
+        a1_0.user_follower,
+        a1_0.user_full_name,
+        a1_0.user_like,
+        a1_0.user_name,
+        a1_0.user_password,
+        a1_0.user_phone,
+        b1_0.comment_count,
+        b1_0.content,
+        b1_0.created_at,
+        b1_0.is_pinned,
+        b1_0.like_count,
+        b1_0.page_id,
+        p1_0.id,
+        p1_0.address,
+        p1_0.avatar_url,
+        p1_0.cover_url,
+        p1_0.created_at,
+        p1_0.description,
+        p1_0.follower_count,
+        p1_0.like_count,
+        p1_0.max_members,
+        p1_0.name,
+        p1_0.owner_user_id,
+        p1_0.page_active,
+        p1_0.page_expires_at,
+        p1_0.region_id,
+        p1_0.status,
+        p1_0.updated_at,
+        b1_0.region_id,
+        b1_0.share_count,
+        b1_0.status,
+        b1_0.updated_at 
+    from
+        blogs b1_0 
+    join
+        users a1_0 
+            on a1_0.user_id=b1_0.author_user_id 
+    left join
+        cafe_pages p1_0 
+            on p1_0.id=b1_0.page_id 
+    where
+        b1_0.status=?
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        amr1_0.id 
+    from
+        ai_moderation_results amr1_0 
+    left join
+        blogs b1_0 
+            on b1_0.id=amr1_0.blog_id 
+    where
+        b1_0.id=? 
+        and amr1_0.decision=? 
+    fetch
+        first ? rows only
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(bl1_0.id) 
+    from
+        blog_likes bl1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bl1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bl1_0.created_at>=? 
+        and bl1_0.created_at<?
+Hibernate: 
+    select
+        count(c1_0.id) 
+    from
+        comments c1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=c1_0.blog_id 
+    where
+        b1_0.id=? 
+        and c1_0.created_at>=? 
+        and c1_0.created_at<?
+Hibernate: 
+    select
+        count(bs1_0.id) 
+    from
+        blog_shares bs1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=bs1_0.blog_id 
+    where
+        b1_0.id=? 
+        and bs1_0.created_at>=? 
+        and bs1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        count(be1_0.id) 
+    from
+        blog_events be1_0 
+    join
+        blogs b1_0 
+            on b1_0.id=be1_0.blog_id 
+    where
+        b1_0.id=? 
+        and be1_0.event_type=? 
+        and be1_0.created_at>=? 
+        and be1_0.created_at<?
+Hibernate: 
+    select
+        coalesce(sum(bro1_0.boost_score), 0) 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        count(bro1_0.id)>0 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.is_pinned=true 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        count(bro1_0.id)>0 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.is_pinned=true 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        count(bro1_0.id)>0 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.is_pinned=true 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        count(bro1_0.id)>0 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.is_pinned=true 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        count(bro1_0.id)>0 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.is_pinned=true 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        count(bro1_0.id)>0 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.is_pinned=true 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        count(bro1_0.id)>0 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.is_pinned=true 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        count(bro1_0.id)>0 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.is_pinned=true 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        count(bro1_0.id)>0 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.is_pinned=true 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        count(bro1_0.id)>0 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.is_pinned=true 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        count(bro1_0.id)>0 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.is_pinned=true 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )
+Hibernate: 
+    select
+        count(bro1_0.id)>0 
+    from
+        blog_ranking_overrides bro1_0 
+    where
+        bro1_0.blog_id=? 
+        and bro1_0.is_pinned=true 
+        and bro1_0.start_at<=? 
+        and (
+            bro1_0.end_at is null 
+            or bro1_0.end_at>=?
+        )

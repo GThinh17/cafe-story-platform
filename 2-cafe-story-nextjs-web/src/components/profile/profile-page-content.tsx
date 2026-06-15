@@ -466,6 +466,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
         composer={mockReviewComposer}
         hints={mockReviewDraftHints}
         isOpen={isCreatePostOpen}
+        ownedCafePage={isOwnProfile ? primaryCafePage : null}
         onCreated={() => {
           if (viewedUser?.userId) {
             void loadProfilePosts(viewedUser.userId);

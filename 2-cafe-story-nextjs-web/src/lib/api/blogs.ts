@@ -63,6 +63,17 @@ export function createBlog(
   });
 }
 
+export function createModeratedBlog(
+  request: BlogCreateRequest,
+  options: ApiRequestOptions = {},
+) {
+  return apiFetch<BlogResponse>(apiEndpoints.blogs.moderated, {
+    body: request,
+    headers: options.headers,
+    method: "POST",
+  });
+}
+
 export function getBlogById(blogId: string, options: ApiRequestOptions = {}) {
   return apiFetch<BlogResponse>(apiEndpoints.blogs.byId(blogId), {
     headers: options.headers,

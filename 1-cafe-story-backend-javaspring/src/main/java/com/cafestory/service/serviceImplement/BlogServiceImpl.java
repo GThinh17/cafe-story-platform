@@ -12,6 +12,7 @@ import com.cafestory.repository.BlogLikeRepository;
 import com.cafestory.repository.BlogRatingRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.BlogSaveRepository;
+import com.cafestory.service.serviceInterface.AiBlogModerationService;
 import com.cafestory.service.serviceInterface.BlogService;
 import com.cafestory.service.serviceInterface.BlogTagService;
 import com.cafestory.validation.BlogValidator;
@@ -37,6 +38,7 @@ public class BlogServiceImpl implements BlogService {
     private final CafePageValidator cafePageValidator;
     private final UserValidator userValidator;
     private final BlogTagService blogTagService;
+    private final AiBlogModerationService aiBlogModerationService;
 
     public BlogServiceImpl(
             BlogRepository blogRepository,
@@ -47,7 +49,8 @@ public class BlogServiceImpl implements BlogService {
             BlogValidator blogValidator,
             CafePageValidator cafePageValidator,
             UserValidator userValidator,
-            BlogTagService blogTagService) {
+            BlogTagService blogTagService,
+            AiBlogModerationService aiBlogModerationService) {
         this.blogRepository = blogRepository;
         this.blogLikeRepository = blogLikeRepository;
         this.blogSaveRepository = blogSaveRepository;
@@ -57,11 +60,25 @@ public class BlogServiceImpl implements BlogService {
         this.cafePageValidator = cafePageValidator;
         this.userValidator = userValidator;
         this.blogTagService = blogTagService;
+        this.aiBlogModerationService = aiBlogModerationService;
     }
 
     @Override
     @Transactional
     public BlogResponseDTO createBlog(BlogCreateDTO blogCreateDTO, UUID actorUserId) {
+        Blog savedBlog = createBlogEntity(blogCreateDTO, actorUserId);
+        return toBlogResponseDTO(savedBlog, actorUserId);
+    }
+
+    @Override
+    @Transactional
+    public BlogResponseDTO createModeratedBlog(BlogCreateDTO blogCreateDTO, UUID actorUserId) {
+        Blog savedBlog = createBlogEntity(blogCreateDTO, actorUserId);
+        Blog moderatedBlog = aiBlogModerationService.moderateBlog(savedBlog);
+        return toBlogResponseDTO(moderatedBlog, actorUserId);
+    }
+
+    private Blog createBlogEntity(BlogCreateDTO blogCreateDTO, UUID actorUserId) {
         User author = userValidator.validateUserExists(actorUserId);
         userValidator.validateUserActive(author);
         CafePage page = null;
@@ -81,7 +98,7 @@ public class BlogServiceImpl implements BlogService {
 
         Blog savedBlog = blogRepository.save(blog);
         blogTagService.syncBlogTags(savedBlog, actorUserId, blogCreateDTO.getTaggedUserIds());
-        return toBlogResponseDTO(savedBlog, actorUserId);
+        return savedBlog;
     }
 
     @Override

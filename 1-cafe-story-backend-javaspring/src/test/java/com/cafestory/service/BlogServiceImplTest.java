@@ -13,6 +13,7 @@ import com.cafestory.repository.BlogLikeRepository;
 import com.cafestory.repository.BlogRatingRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.BlogSaveRepository;
+import com.cafestory.service.serviceInterface.AiBlogModerationService;
 import com.cafestory.service.serviceImplement.BlogServiceImpl;
 import com.cafestory.service.serviceInterface.BlogTagService;
 import com.cafestory.validation.BlogValidator;
@@ -66,6 +67,9 @@ class BlogServiceImplTest {
 
     @Mock
     private BlogTagService blogTagService;
+
+    @Mock
+    private AiBlogModerationService aiBlogModerationService;
 
     @InjectMocks
     private BlogServiceImpl blogService;
@@ -163,6 +167,36 @@ class BlogServiceImplTest {
                         .isEqualTo(HttpStatus.NOT_FOUND));
 
         verify(blogRepository, never()).save(any(Blog.class));
+    }
+
+    @Test
+    void createModeratedBlog_success_callsAiModeration_TC004A() {
+        BlogCreateDTO request = createBlogRequest();
+        UUID actorUserId = UUID.randomUUID();
+        User author = user(actorUserId);
+        Blog blog = blog();
+        Blog savedBlog = blog();
+        savedBlog.setStatus(PostStatus.PUBLISHED);
+        Blog moderatedBlog = blog();
+        moderatedBlog.setStatus(PostStatus.HIDDEN);
+        BlogResponseDTO response = blogResponse(moderatedBlog.getId(), actorUserId);
+        response.setStatus(PostStatus.HIDDEN);
+
+        when(userValidator.validateUserExists(actorUserId)).thenReturn(author);
+        when(cafePageValidator.validateUserCanCreateBlogOnPage(request.getPageId(), actorUserId))
+                .thenReturn(cafePage(request.getPageId()));
+        when(blogMapper.toBlog(request)).thenReturn(blog);
+        when(blogRepository.save(blog)).thenReturn(savedBlog);
+        when(aiBlogModerationService.moderateBlog(savedBlog)).thenReturn(moderatedBlog);
+        when(blogMapper.toBlogResponseDTO(moderatedBlog)).thenReturn(response);
+
+        BlogResponseDTO result = blogService.createModeratedBlog(request, actorUserId);
+
+        assertThat(result).isEqualTo(response);
+        assertThat(result.getStatus()).isEqualTo(PostStatus.HIDDEN);
+        verify(blogRepository).save(blog);
+        verify(blogTagService).syncBlogTags(savedBlog, actorUserId, request.getTaggedUserIds());
+        verify(aiBlogModerationService).moderateBlog(savedBlog);
     }
 
     @Test
