@@ -1,8 +1,8 @@
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Send } from "lucide-react-native";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshControl, ScrollView, StyleSheet } from "react-native";
 import {
   BlogFeedList,
@@ -66,6 +66,7 @@ export function HomeScreen() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const hasLoadedFeedRef = useRef(false);
 
   const loadFeed = useCallback(async (refreshing = false) => {
     if (refreshing) {
@@ -98,14 +99,17 @@ export function HomeScreen() {
           : "Unable to load feed.",
       );
     } finally {
+      hasLoadedFeedRef.current = true;
       setIsLoading(false);
       setIsRefreshing(false);
     }
   }, [user?.userId]);
 
-  useEffect(() => {
-    void loadFeed();
-  }, [loadFeed]);
+  useFocusEffect(
+    useCallback(() => {
+      void loadFeed(hasLoadedFeedRef.current);
+    }, [loadFeed]),
+  );
 
   useEffect(() => {
     return navigation.addListener("tabPress", () => {

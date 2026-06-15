@@ -4,5 +4,6 @@ export * from "./location-editor-modal";
 export * from "./profile-content-tabs";
 export * from "./profile-follow-user-row";
 export * from "./profile-skeleton";
+export * from "./profile-suggestions";
 export * from "./profile-top-bar";
 export * from "./user-post-grid";

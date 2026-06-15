@@ -1,5 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
@@ -15,7 +15,12 @@ import {
 import { useAuth } from "../../features/auth";
 import { routes } from "../../navigation";
 import type { MainTabParamList } from "../../navigation";
-import { createBlog, getMyProfile } from "../../services/api";
+import {
+  createBlog,
+  getMyProfile,
+  isRemoteImageUrl,
+  uploadPostImageToCloudinary,
+} from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type { CreatePostDraft, UserResponse } from "../../types";
 
@@ -48,6 +53,13 @@ function locationNameFromUser(user: {
     name: name || "Profile location",
     regionId: user.regionId,
   };
+}
+
+function uploadFileNameFromUri(uri: string, index: number) {
+  const pathName = uri.split(/[?#]/)[0] ?? "";
+  const fileName = pathName.split("/").pop();
+
+  return fileName?.includes(".") ? fileName : `post-${Date.now()}-${index}.jpg`;
 }
 
 export function CreateScreen() {
@@ -201,19 +213,6 @@ export function CreateScreen() {
     [updateDraft],
   );
 
-  const payload = useMemo(
-    () => ({
-      allowComment: draft.allowComments,
-      content: draft.caption.trim(),
-      imageUrls: draft.mediaUrls,
-      isPinned: draft.pinToProfile,
-      pageId: draft.cafePageId,
-      regionId: draft.location?.regionId,
-      taggedUserIds: draft.taggedUserIds,
-    }),
-    [draft],
-  );
-
   const handlePost = useCallback(async () => {
     if (!draft.caption.trim()) {
       setError("Write a caption before posting.");
@@ -230,7 +229,26 @@ export function CreateScreen() {
     setError("");
 
     try {
-      await createBlog(payload);
+      const imageUrls = await Promise.all(
+        draft.mediaUrls.map((uri, index) =>
+          isRemoteImageUrl(uri)
+            ? Promise.resolve(uri)
+            : uploadPostImageToCloudinary({
+              name: uploadFileNameFromUri(uri, index),
+              uri,
+            }),
+        ),
+      );
+
+      await createBlog({
+        allowComment: draft.allowComments,
+        content: draft.caption.trim(),
+        imageUrls,
+        isPinned: draft.pinToProfile,
+        pageId: draft.cafePageId,
+        regionId: draft.location?.regionId,
+        taggedUserIds: draft.taggedUserIds,
+      });
       resetDraft();
       navigation.navigate(routes.home);
     } catch (requestError) {
@@ -242,7 +260,7 @@ export function CreateScreen() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [draft.caption, draft.location?.regionId, navigation, payload, resetDraft]);
+  }, [draft, navigation, resetDraft]);
 
   return (
     <Screen padded={false}>

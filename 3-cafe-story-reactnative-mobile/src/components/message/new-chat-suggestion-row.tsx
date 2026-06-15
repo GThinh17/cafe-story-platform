@@ -2,12 +2,18 @@ import { X } from "lucide-react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Avatar } from "../ui/avatar";
 import { colors, spacing, typography } from "../../theme";
-import type { UserResponse } from "../../types";
+
+export type NewChatSuggestionUser = {
+  userAvatar: string | null;
+  userFullName: string | null;
+  userId: string;
+  userName: string;
+};
 
 type NewChatSuggestionRowProps = {
   disabled?: boolean;
-  onPress: (user: UserResponse) => void;
-  user: UserResponse;
+  onPress: (user: NewChatSuggestionUser) => void;
+  user: NewChatSuggestionUser;
 };
 
 export function NewChatSuggestionRow({

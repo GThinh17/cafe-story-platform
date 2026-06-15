@@ -79,3 +79,15 @@ export type ReviewerResponse = {
   score: number;
   userId: string;
 };
+
+export type RecommendationTargetType = "USER" | "REVIEWER" | "CAFE_PAGE" | string;
+
+export type RecommendationCardResponse = {
+  avatar: string | null;
+  city: string | null;
+  fullName: string | null;
+  reason: string | null;
+  targetId: string;
+  targetType: RecommendationTargetType;
+  username: string | null;
+};

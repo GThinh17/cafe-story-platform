@@ -63,6 +63,10 @@ export const apiEndpoints = {
       return queryString ? `/api/regions/wards?${queryString}` : "/api/regions/wards";
     },
   },
+  recommendations: {
+    users: (page = 0, size = 20) =>
+      `/api/recommendations/users?page=${page}&size=${size}`,
+  },
   reports: {
     list: "/api/reports",
   },
