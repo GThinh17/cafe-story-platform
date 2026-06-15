@@ -251,9 +251,9 @@ export function OtherUserProfileScreen() {
 
   const stats = useMemo(
     () => [
-      { label: "posts", value: formatCount(tabPosts.posts.length) },
-      { label: "followers", value: formatCount(profile?.userFollower) },
-      { label: "following", value: formatCount(profile?.followingCount) },
+      { key: "posts", label: "posts", value: formatCount(tabPosts.posts.length) },
+      { key: "followers", label: "followers", value: formatCount(profile?.userFollower) },
+      { key: "following", label: "following", value: formatCount(profile?.followingCount) },
     ],
     [profile?.followingCount, profile?.userFollower, tabPosts.posts.length],
   );
@@ -356,6 +356,14 @@ export function OtherUserProfileScreen() {
     });
   }, [activeTab, navigation, targetUserId, userName]);
 
+  const openProfileFollows = useCallback((initialTab: "followers" | "following") => {
+    navigation.navigate(routes.profileFollows, {
+      initialTab,
+      userId: targetUserId,
+      userName,
+    });
+  }, [navigation, targetUserId, userName]);
+
   if (isLoading && !profile) {
     return (
       <Screen padded={false}>
@@ -448,10 +456,24 @@ export function OtherUserProfileScreen() {
             </Text>
             <View style={styles.stats}>
               {stats.map((stat) => (
-                <View key={stat.label} style={styles.statItem}>
+                <Pressable
+                  accessibilityLabel={`Open ${stat.label}`}
+                  accessibilityRole="button"
+                  disabled={stat.key === "posts"}
+                  key={stat.label}
+                  onPress={() => {
+                    if (stat.key === "followers" || stat.key === "following") {
+                      openProfileFollows(stat.key);
+                    }
+                  }}
+                  style={({ pressed }) => [
+                    styles.statItem,
+                    pressed && stat.key !== "posts" && styles.pressed,
+                  ]}
+                >
                   <Text style={styles.statValue}>{stat.value}</Text>
                   <Text style={styles.statLabel}>{stat.label}</Text>
-                </View>
+                </Pressable>
               ))}
             </View>
           </View>
@@ -725,7 +747,7 @@ const styles = StyleSheet.create({
   topTitle: {
     color: colors.foreground,
     flex: 1,
-    fontSize: typography.heading,
-    fontWeight: "900",
+    fontSize: typography.title,
+    fontWeight: "800",
   },
 });

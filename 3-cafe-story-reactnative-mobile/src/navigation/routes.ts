@@ -14,6 +14,7 @@ export const routes = {
   notifications: "Notifications",
   otherUserProfile: "OtherUserProfile",
   profile: "Profile",
+  profileFollows: "ProfileFollows",
   region: "Region",
   register: "Register",
   settings: "Settings",

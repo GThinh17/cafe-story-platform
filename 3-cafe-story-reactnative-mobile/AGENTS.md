@@ -29,6 +29,7 @@ Do not put reusable UI, mock data, API logic, route names, or auth orchestration
 - Do not repeat hardcoded colors, spacing, or typography scale in screens.
 - Use `src/theme` for shared colors, spacing, and typography.
 - Keep screen styling consistent with CafeStory's calm cafe/social review feel.
+- Top bar title text should match the Message screen scale: use `typography.title` with a strong weight instead of oversized heading text.
 - The global CafeStory palette is:
   - Primary: `#3E2723`
   - Secondary: `#8D6E63`

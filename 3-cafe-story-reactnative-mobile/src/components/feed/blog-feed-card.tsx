@@ -24,7 +24,6 @@ import {
   saveBlog,
   shareBlog,
   unlikeBlog,
-  unfollowUser,
   unsaveBlog,
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
@@ -137,7 +136,8 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
   ).filter((uri): uri is string => Boolean(uri));
   const isOwnPost = user?.userId === blog.authorUserId;
   const canFollowAuthor = Boolean(blog.authorUserId) && !isOwnPost;
-  const isFollowDisabled = !canFollowAuthor || isFollowPending;
+  const shouldShowFollowButton = canFollowAuthor && !isFollowed;
+  const isFollowDisabled = !shouldShowFollowButton || isFollowPending;
   const canOpenAuthorProfile =
     blog.displayAuthorType !== "CAFE_PAGE" && Boolean(blog.authorUserId) && !isOwnPost;
 
@@ -238,15 +238,11 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
     }
 
     setIsFollowPending(true);
-    const nextIsFollowed = !isFollowed;
+    const nextIsFollowed = true;
     setIsFollowed(nextIsFollowed);
 
     try {
-      if (nextIsFollowed) {
-        await followUser(blog.authorUserId);
-      } else {
-        await unfollowUser(blog.authorUserId);
-      }
+      await followUser(blog.authorUserId);
     } catch {
       setIsFollowed(!nextIsFollowed);
     } finally {
@@ -301,20 +297,20 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
         </Pressable>
 
         <View style={styles.headerActions}>
-          <Pressable
-            accessibilityLabel={isFollowed ? "Unfollow author" : "Follow author"}
-            accessibilityRole="button"
-            disabled={isFollowDisabled}
-            onPress={handleFollowAuthor}
-            style={({ pressed }) => [
-              styles.followButton,
-              pressed && !isFollowDisabled && styles.pressed,
-            ]}
-          >
-            <Text style={styles.followButtonText}>
-              {isFollowed ? "Following" : "Follow"}
-            </Text>
-          </Pressable>
+          {shouldShowFollowButton ? (
+            <Pressable
+              accessibilityLabel="Follow author"
+              accessibilityRole="button"
+              disabled={isFollowDisabled}
+              onPress={handleFollowAuthor}
+              style={({ pressed }) => [
+                styles.followButton,
+                pressed && !isFollowDisabled && styles.pressed,
+              ]}
+            >
+              <Text style={styles.followButtonText}>Follow</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             accessibilityLabel="Open post options"
             accessibilityRole="button"

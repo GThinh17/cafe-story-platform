@@ -36,6 +36,11 @@ export type RootStackParamList = {
     userId: string;
     userName?: string | null;
   };
+  [routes.profileFollows]: {
+    initialTab?: "followers" | "following";
+    userId: string;
+    userName?: string | null;
+  };
   [routes.userPosts]: {
     contentTab?: ProfileContentTab;
     initialBlogId?: string;

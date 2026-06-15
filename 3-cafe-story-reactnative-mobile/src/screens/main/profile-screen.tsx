@@ -415,9 +415,9 @@ export function ProfileScreen() {
   const userDescription = activeProfile?.userDescription?.trim();
   const stats = useMemo(
     () => [
-      { label: "posts", value: formatCount(tabPosts.posts.length) },
-      { label: "followers", value: formatCount(activeProfile?.userFollower) },
-      { label: "following", value: formatCount(activeProfile?.followingCount) },
+      { key: "posts", label: "posts", value: formatCount(tabPosts.posts.length) },
+      { key: "followers", label: "followers", value: formatCount(activeProfile?.userFollower) },
+      { key: "following", label: "following", value: formatCount(activeProfile?.followingCount) },
     ],
     [activeProfile?.followingCount, activeProfile?.userFollower, tabPosts.posts.length],
   );
@@ -436,6 +436,18 @@ export function ProfileScreen() {
       userName,
     });
   }, [activeContentTab, activeProfile?.userId, navigation, userName]);
+
+  const openProfileFollows = useCallback((initialTab: "followers" | "following") => {
+    if (!activeProfile?.userId) {
+      return;
+    }
+
+    navigation.navigate(routes.profileFollows, {
+      initialTab,
+      userId: activeProfile.userId,
+      userName,
+    });
+  }, [activeProfile?.userId, navigation, userName]);
 
   useEffect(() => {
     const currentUserId = activeProfile?.userId;
@@ -491,10 +503,24 @@ export function ProfileScreen() {
 
             <View style={styles.stats}>
               {stats.map((stat) => (
-                <View key={stat.label} style={styles.statItem}>
+                <Pressable
+                  accessibilityLabel={`Open ${stat.label}`}
+                  accessibilityRole="button"
+                  disabled={stat.key === "posts"}
+                  key={stat.label}
+                  onPress={() => {
+                    if (stat.key === "followers" || stat.key === "following") {
+                      openProfileFollows(stat.key);
+                    }
+                  }}
+                  style={({ pressed }) => [
+                    styles.statItem,
+                    pressed && stat.key !== "posts" && styles.actionPressed,
+                  ]}
+                >
                   <Text style={styles.statValue}>{stat.value}</Text>
                   <Text style={styles.statLabel}>{stat.label}</Text>
-                </View>
+                </Pressable>
               ))}
             </View>
           </View>
