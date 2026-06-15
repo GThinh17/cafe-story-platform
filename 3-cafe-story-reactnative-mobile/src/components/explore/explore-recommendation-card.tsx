@@ -7,6 +7,7 @@ import { Avatar } from "../ui/avatar";
 
 type ExploreRecommendationCardProps = {
   item: RecommendationCardResponse;
+  onPress?: (item: RecommendationCardResponse) => void;
 };
 
 function getTitle(item: RecommendationCardResponse) {
@@ -41,13 +42,17 @@ function getIcon(item: RecommendationCardResponse) {
   return UserRound;
 }
 
-export function ExploreRecommendationCard({ item }: ExploreRecommendationCardProps) {
+export function ExploreRecommendationCard({
+  item,
+  onPress,
+}: ExploreRecommendationCardProps) {
   const Icon = getIcon(item);
 
   return (
     <Pressable
       accessibilityLabel={`Open ${getTitle(item)}`}
       accessibilityRole="button"
+      onPress={() => onPress?.(item)}
       style={({ pressed }) => [
         styles.card,
         pressed && styles.pressed,

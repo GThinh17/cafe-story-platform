@@ -12,6 +12,7 @@ type ExploreRecommendationListProps = {
   error?: string | null;
   isLoading?: boolean;
   items: RecommendationCardResponse[];
+  onItemPress?: (item: RecommendationCardResponse) => void;
   title: string;
 };
 
@@ -21,6 +22,7 @@ export function ExploreRecommendationList({
   error,
   isLoading = false,
   items,
+  onItemPress,
   title,
 }: ExploreRecommendationListProps) {
   if (isLoading) {
@@ -43,6 +45,7 @@ export function ExploreRecommendationList({
           <ExploreRecommendationCard
             item={item}
             key={`${item.targetType}-${item.targetId}`}
+            onPress={onItemPress}
           />
         ))}
       </View>

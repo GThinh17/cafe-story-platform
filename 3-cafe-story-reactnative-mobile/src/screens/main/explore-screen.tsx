@@ -223,6 +223,17 @@ export function ExploreScreen() {
     void loadRecommendations(activeTab, refreshing);
   }, [activeTab, loadRecommendations, loadTrending]);
 
+  const handleRecommendationPress = useCallback((item: RecommendationCardResponse) => {
+    if (item.targetType !== "USER" && item.targetType !== "REVIEWER") {
+      return;
+    }
+
+    navigation.navigate(routes.otherUserProfile, {
+      userId: item.userId ?? item.targetId,
+      userName: item.username,
+    });
+  }, [navigation]);
+
   useFocusEffect(
     useCallback(() => {
       if (loadedTabs[activeTab]) {
@@ -266,6 +277,7 @@ export function ExploreScreen() {
       error={errors[activeTab]}
       isLoading={isLoading && !recommendations[activeTab].length}
       items={recommendations[activeTab]}
+      onItemPress={handleRecommendationPress}
       title={title}
     />
   );

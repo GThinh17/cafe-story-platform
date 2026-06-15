@@ -89,5 +89,6 @@ export type RecommendationCardResponse = {
   reason: string | null;
   targetId: string;
   targetType: RecommendationTargetType;
+  userId?: string | null;
   username: string | null;
 };
