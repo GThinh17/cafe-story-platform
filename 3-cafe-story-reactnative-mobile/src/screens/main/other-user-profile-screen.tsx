@@ -440,6 +440,17 @@ export function OtherUserProfileScreen() {
               size={96}
               uri={profile?.userAvatar}
             />
+            {reviewer && regionLabel ? (
+              <Text numberOfLines={2} style={styles.regionUnderBadge}>
+                {regionLabel}
+              </Text>
+            ) : null}
+          </View>
+
+          <View style={styles.identityContent}>
+            <Text numberOfLines={1} style={styles.name}>
+              {displayName}
+            </Text>
             {reviewer?.badge ? (
               <View style={styles.reviewerBadge}>
                 <Award color={colors.rating} size={14} strokeWidth={2.6} />
@@ -448,12 +459,6 @@ export function OtherUserProfileScreen() {
                 </Text>
               </View>
             ) : null}
-          </View>
-
-          <View style={styles.identityContent}>
-            <Text numberOfLines={1} style={styles.name}>
-              {displayName}
-            </Text>
             <View style={styles.stats}>
               {stats.map((stat) => (
                 <Pressable
@@ -479,17 +484,11 @@ export function OtherUserProfileScreen() {
           </View>
         </View>
 
-        {reviewer ? (
-          <Text style={styles.reviewerRole}>
-            Reviewer{reviewer.score ? ` - ${formatCount(reviewer.score)} score` : ""}
-          </Text>
-        ) : null}
-
         {userDescription ? (
           <Text style={styles.description}>{userDescription}</Text>
         ) : null}
 
-        {regionLabel ? (
+        {!reviewer && regionLabel ? (
           <Text style={styles.location}>{regionLabel}</Text>
         ) : null}
 
@@ -686,6 +685,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
+    alignSelf: "flex-start",
   },
   reviewerBadgeText: {
     color: colors.rating,
@@ -693,11 +693,13 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     textTransform: "uppercase",
   },
-  reviewerRole: {
+  regionUnderBadge: {
     color: colors.muted,
-    fontSize: typography.body,
-    fontWeight: "800",
-    paddingHorizontal: spacing.lg,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 16,
+    maxWidth: 112,
+    textAlign: "center",
   },
   secondaryAction: {
     alignItems: "center",
