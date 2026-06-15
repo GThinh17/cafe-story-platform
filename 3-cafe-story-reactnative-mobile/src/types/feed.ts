@@ -78,6 +78,22 @@ export type BlogResponse = {
   updatedAt: string | null;
 };
 
+export type BlogTrendingResponse = {
+  authorUserId: string;
+  authorUserName: string | null;
+  blogId: string;
+  computedAt: string | null;
+  contentPreview: string | null;
+  createdAt: string | null;
+  pageId: string | null;
+  pageName: string | null;
+  pinned: boolean | null;
+  rankPosition: number | null;
+  reason: string | null;
+  trendScore: number | null;
+  windowType: TrendWindowType;
+};
+
 export type BlogCreateRequest = {
   allowComment?: boolean;
   content: string;
