@@ -9,6 +9,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
@@ -24,6 +25,12 @@ import java.util.UUID;
 @Entity
 @Table(
         name = "blog_recommendation_scores",
+        indexes = {
+                @Index(
+                        name = "idx_blog_recommendation_scores_latest",
+                        columnList = "user_id, window_type, context_region_id, computed_at, rank_position"),
+                @Index(name = "idx_blog_recommendation_scores_blog", columnList = "blog_id")
+        },
         uniqueConstraints = @UniqueConstraint(
                 columnNames = {"user_id", "blog_id", "window_type", "context_region_id"}))
 public class BlogRecommendationScore {

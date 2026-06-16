@@ -9,6 +9,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.interceptor.CacheErrorHandler;
@@ -21,7 +22,9 @@ import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSeriali
 import org.springframework.data.redis.serializer.RedisSerializationContext;
 
 import java.time.Duration;
+import java.util.Collection;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 @Configuration
 @EnableCaching
@@ -41,12 +44,12 @@ public class CacheConfig implements CachingConfigurer {
     public static final String USER_FOLLOWING_COUNT_CACHE = "userFollowingCounts";
 
     @Bean
-    public RedisCacheManager cacheManager(RedisConnectionFactory redisConnectionFactory, ObjectMapper objectMapper) {
+    public CacheManager cacheManager(RedisConnectionFactory redisConnectionFactory, ObjectMapper objectMapper) {
         GenericJackson2JsonRedisSerializer jsonSerializer =
                 new GenericJackson2JsonRedisSerializer(redisObjectMapper(objectMapper));
         RedisCacheConfiguration defaultConfig = cacheConfiguration(jsonSerializer, Duration.ofMinutes(10));
 
-        return RedisCacheManager.builder(redisConnectionFactory)
+        RedisCacheManager redisCacheManager = RedisCacheManager.builder(redisConnectionFactory)
                 .cacheDefaults(defaultConfig)
                 .withInitialCacheConfigurations(Map.of(
                         REGION_PROVINCES_CACHE, cacheConfiguration(jsonSerializer, Duration.ofHours(24)),
@@ -61,6 +64,8 @@ public class CacheConfig implements CachingConfigurer {
                         USER_FOLLOWING_COUNT_CACHE, cacheConfiguration(jsonSerializer, Duration.ofMinutes(5))))
                 .transactionAware()
                 .build();
+
+        return new ResilientCacheManager(redisCacheManager);
     }
 
     @Bean
@@ -112,5 +117,139 @@ public class CacheConfig implements CachingConfigurer {
                 .entryTtl(ttl)
                 .disableCachingNullValues()
                 .serializeValuesWith(RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer));
+    }
+
+    private final class ResilientCacheManager implements CacheManager {
+
+        private final CacheManager delegate;
+
+        private ResilientCacheManager(CacheManager delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public Cache getCache(String name) {
+            Cache cache = delegate.getCache(name);
+            return cache == null ? null : new ResilientCache(cache);
+        }
+
+        @Override
+        public Collection<String> getCacheNames() {
+            return delegate.getCacheNames();
+        }
+    }
+
+    private final class ResilientCache implements Cache {
+
+        private final Cache delegate;
+
+        private ResilientCache(Cache delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public String getName() {
+            return delegate.getName();
+        }
+
+        @Override
+        public Object getNativeCache() {
+            return delegate.getNativeCache();
+        }
+
+        @Override
+        public ValueWrapper get(Object key) {
+            try {
+                return delegate.get(key);
+            } catch (RuntimeException exception) {
+                log.warn("Cache get failed for cache={} key={}: {}", getName(), key, exception.getMessage());
+                return null;
+            }
+        }
+
+        @Override
+        public <T> T get(Object key, Class<T> type) {
+            try {
+                return delegate.get(key, type);
+            } catch (RuntimeException exception) {
+                log.warn("Cache get failed for cache={} key={}: {}", getName(), key, exception.getMessage());
+                return null;
+            }
+        }
+
+        @Override
+        public <T> T get(Object key, Callable<T> valueLoader) {
+            try {
+                return delegate.get(key, valueLoader);
+            } catch (RuntimeException exception) {
+                log.warn("Cache get failed for cache={} key={}: {}", getName(), key, exception.getMessage());
+                return loadDirectly(key, valueLoader);
+            }
+        }
+
+        @Override
+        public void put(Object key, Object value) {
+            try {
+                delegate.put(key, value);
+            } catch (RuntimeException exception) {
+                log.warn("Cache put failed for cache={} key={}: {}", getName(), key, exception.getMessage());
+            }
+        }
+
+        @Override
+        public ValueWrapper putIfAbsent(Object key, Object value) {
+            try {
+                return delegate.putIfAbsent(key, value);
+            } catch (RuntimeException exception) {
+                log.warn("Cache putIfAbsent failed for cache={} key={}: {}", getName(), key, exception.getMessage());
+                return null;
+            }
+        }
+
+        @Override
+        public void evict(Object key) {
+            try {
+                delegate.evict(key);
+            } catch (RuntimeException exception) {
+                log.warn("Cache evict failed for cache={} key={}: {}", getName(), key, exception.getMessage());
+            }
+        }
+
+        @Override
+        public boolean evictIfPresent(Object key) {
+            try {
+                return delegate.evictIfPresent(key);
+            } catch (RuntimeException exception) {
+                log.warn("Cache evict failed for cache={} key={}: {}", getName(), key, exception.getMessage());
+                return false;
+            }
+        }
+
+        @Override
+        public void clear() {
+            try {
+                delegate.clear();
+            } catch (RuntimeException exception) {
+                log.warn("Cache clear failed for cache={}: {}", getName(), exception.getMessage());
+            }
+        }
+
+        @Override
+        public boolean invalidate() {
+            try {
+                return delegate.invalidate();
+            } catch (RuntimeException exception) {
+                log.warn("Cache invalidate failed for cache={}: {}", getName(), exception.getMessage());
+                return false;
+            }
+        }
+
+        private <T> T loadDirectly(Object key, Callable<T> valueLoader) {
+            try {
+                return valueLoader.call();
+            } catch (Exception exception) {
+                throw new ValueRetrievalException(key, valueLoader, exception);
+            }
+        }
     }
 }

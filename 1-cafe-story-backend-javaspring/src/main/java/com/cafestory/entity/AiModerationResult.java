@@ -10,6 +10,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
@@ -22,7 +23,12 @@ import java.util.UUID;
 
 @Data
 @Entity
-@Table(name = "ai_moderation_results")
+@Table(
+        name = "ai_moderation_results",
+        indexes = {
+                @Index(name = "idx_ai_moderation_blog_decision", columnList = "blog_id, decision"),
+                @Index(name = "idx_ai_moderation_comment_decision", columnList = "comment_id, decision")
+        })
 public class AiModerationResult {
 
     @Id

@@ -6,6 +6,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
@@ -21,6 +22,10 @@ import java.util.UUID;
 @Entity
 @Table(
         name = "user_follows",
+        indexes = {
+                @Index(name = "idx_user_follows_follower_created", columnList = "follower_user_id, created_at"),
+                @Index(name = "idx_user_follows_following_created", columnList = "following_user_id, created_at")
+        },
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_user_follows_follower_following",
                 columnNames = {"follower_user_id", "following_user_id"}))

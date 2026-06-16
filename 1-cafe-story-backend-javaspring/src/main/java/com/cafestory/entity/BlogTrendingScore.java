@@ -9,6 +9,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
@@ -20,7 +21,12 @@ import java.util.UUID;
 
 @Data
 @Entity
-@Table(name = "blog_trending_scores")
+@Table(
+        name = "blog_trending_scores",
+        indexes = {
+                @Index(name = "idx_blog_trending_scores_latest", columnList = "window_type, computed_at, rank_position"),
+                @Index(name = "idx_blog_trending_scores_blog", columnList = "blog_id")
+        })
 public class BlogTrendingScore {
 
     @Id
