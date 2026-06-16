@@ -36,3 +36,32 @@ export function getRegionWards(params: { cityCode?: string; provinceCode?: strin
     method: "GET",
   });
 }
+
+export type RegionRequest = {
+  city?: string;
+  cityCode?: string;
+  province?: string;
+  provinceCode?: string;
+  ward?: string;
+  wardCode?: string;
+};
+
+export type RegionResponse = {
+  city: string | null;
+  cityCode: string | null;
+  province: string | null;
+  provinceCode: string | null;
+  regionId: string;
+  ward: string | null;
+  wardCode: string | null;
+};
+
+export function createRegion(
+  request: RegionRequest,
+  requirement: "FULL_ADDRESS" | "BLOG_LOCATION" = "BLOG_LOCATION",
+) {
+  return apiFetch<RegionResponse>(apiEndpoints.regions.create(requirement), {
+    body: request,
+    method: "POST",
+  });
+}

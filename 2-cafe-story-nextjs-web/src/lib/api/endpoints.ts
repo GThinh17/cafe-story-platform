@@ -93,6 +93,10 @@ export const apiEndpoints = {
       const queryString = query.toString();
       return queryString ? `/api/regions/wards?${queryString}` : "/api/regions/wards";
     },
+    create: (requirement?: string) =>
+      requirement
+        ? `/api/regions?requirement=${pathId(requirement)}`
+        : "/api/regions",
   },
   chat: {
     conversations: "/api/chat/conversations",

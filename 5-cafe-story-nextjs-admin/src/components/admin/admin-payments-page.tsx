@@ -150,9 +150,10 @@ export function AdminPaymentsPage() {
       />
       <Toolbar onRefresh={resource.refetch}>
         <FilterSelect
+          label="Payment status"
           value={paymentStatus}
           options={paymentStatuses}
-          placeholder="Status"
+          placeholder="All statuses"
           onChange={setPaymentStatus}
         />
         <FilterInput value={buyerId} placeholder="Buyer ID" onChange={setBuyerId} />

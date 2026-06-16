@@ -16,6 +16,8 @@ import {
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import {
+  BooleanFilterSelect,
+  FilterSelect,
   formatDate,
   PAGE_SIZE,
   textPreview,
@@ -31,9 +33,16 @@ import {
   getModerationResults,
   resolveModerationResult,
 } from "@/lib/api/admin";
-import type { AdminModerationResult, Blog, ModerationResolveAction } from "@/types/admin";
+import type {
+  AdminModerationResult,
+  Blog,
+  ModerationDecision,
+  ModerationResolveAction,
+} from "@/types/admin";
 
 const resolveActions: ModerationResolveAction[] = ["APPROVE", "HIDE", "REMOVE"];
+const decisionOptions: ModerationDecision[] = ["SAFE", "NEEDS_REVIEW", "VIOLATION"];
+const resolvedActionOptions: ModerationResolveAction[] = ["APPROVE", "HIDE", "REMOVE"];
 
 type PendingModerationAction = {
   result: AdminModerationResult;
@@ -41,7 +50,10 @@ type PendingModerationAction = {
 };
 
 export function AdminModerationPage() {
-  const [mode, setMode] = useState<"queue" | "results">("queue");
+  const [filterDecision, setFilterDecision] = useState<ModerationDecision | "">("");
+  const [filterResolved, setFilterResolved] = useState<boolean | null>(null);
+  const [filterResolvedAction, setFilterResolvedAction] = useState<ModerationResolveAction | "">("");
+
   const [pendingAction, setPendingAction] = useState<PendingModerationAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,8 +64,19 @@ export function AdminModerationPage() {
   const [detailError, setDetailError] = useState<string | null>(null);
 
   const resource = usePagedAdminResource(
-    (page, signal) => getModerationResults(mode, { page, size: PAGE_SIZE }, signal),
-    [mode],
+    (page, signal) =>
+      getModerationResults(
+        "results",
+        {
+          page,
+          size: PAGE_SIZE,
+          decision: filterDecision || undefined,
+          resolved: filterResolved,
+          resolvedAction: filterResolvedAction || undefined,
+        },
+        signal,
+      ),
+    [filterDecision, filterResolved, filterResolvedAction],
   );
 
   async function openDetail(result: AdminModerationResult) {
@@ -81,7 +104,6 @@ export function AdminModerationPage() {
     if (blogRes.status === "fulfilled") {
       setDetailBlog(blogRes.value);
     }
-    // blog fetch failure is non-critical, no error set
 
     setDetailLoading(false);
   }
@@ -144,23 +166,44 @@ export function AdminModerationPage() {
       return;
     }
 
+    const { result: targetResult, action } = pendingAction;
+    const optimisticPatch: Partial<AdminModerationResult> = {
+      resolved: true,
+      resolvedAction: action,
+      resolvedAt: new Date().toISOString(),
+      blogStatus: action === "APPROVE" ? "PUBLISHED" : action === "HIDE" ? "HIDDEN" : "REMOVED",
+    };
+
     setIsSubmitting(true);
     setActionError(null);
 
+    resource.updateRow(
+      (item) => item.id === targetResult.id,
+      (item) => ({ ...item, ...optimisticPatch }),
+    );
+
+    if (detailResult?.id === targetResult.id) {
+      setDetailResult((prev) => (prev ? { ...prev, ...optimisticPatch } : prev));
+    }
+
+    setPendingAction(null);
+
     try {
-      const updatedResult = await resolveModerationResult(
-        pendingAction.result.id,
-        pendingAction.action,
+      const updatedResult = await resolveModerationResult(targetResult.id, action);
+
+      resource.updateRow(
+        (item) => item.id === updatedResult.id,
+        () => updatedResult,
       );
+
       if (detailResult?.id === updatedResult.id) {
         setDetailResult(updatedResult);
       }
-      setPendingAction(null);
-      resource.refetch();
     } catch (requestError) {
       setActionError(
         requestError instanceof Error ? requestError.message : "Action failed.",
       );
+      resource.refetch();
     } finally {
       setIsSubmitting(false);
     }
@@ -170,22 +213,30 @@ export function AdminModerationPage() {
     <div className="flex flex-col gap-6">
       <AdminPageHeader
         title="AI Moderation"
-        description="Review AI moderation queue and resolved results."
+        description="Review AI moderation results and resolve flagged content."
       />
       <Toolbar onRefresh={resource.refetch}>
-        <div className="flex rounded-md border border-border bg-background p-1">
-          {(["queue", "results"] as const).map((nextMode) => (
-            <Button
-              type="button"
-              variant={mode === nextMode ? "secondary" : "ghost"}
-              size="sm"
-              key={nextMode}
-              onClick={() => setMode(nextMode)}
-            >
-              {nextMode === "queue" ? "Queue" : "Results"}
-            </Button>
-          ))}
-        </div>
+        <FilterSelect<ModerationDecision>
+          label="Decision"
+          value={filterDecision}
+          options={decisionOptions}
+          placeholder="All decisions"
+          onChange={setFilterDecision}
+        />
+        <BooleanFilterSelect
+          label="Status"
+          value={filterResolved}
+          onChange={setFilterResolved}
+          trueLabel="Resolved"
+          falseLabel="Unresolved"
+        />
+        <FilterSelect<ModerationResolveAction>
+          label="Resolved action"
+          value={filterResolvedAction}
+          options={resolvedActionOptions}
+          placeholder="All actions"
+          onChange={setFilterResolvedAction}
+        />
       </Toolbar>
       <AdminDataTable
         columns={columns}

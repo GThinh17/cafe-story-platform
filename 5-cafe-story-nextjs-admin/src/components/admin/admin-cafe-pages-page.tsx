@@ -162,9 +162,10 @@ export function AdminCafePagesPage() {
       />
       <Toolbar onRefresh={resource.refetch}>
         <FilterSelect
+          label="Status"
           value={status}
           options={pageStatuses}
-          placeholder="Status"
+          placeholder="All statuses"
           onChange={setStatus}
         />
         <FilterInput value={ownerUserId} placeholder="Owner user ID" onChange={setOwnerUserId} />

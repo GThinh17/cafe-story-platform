@@ -160,9 +160,10 @@ export function AdminCommentsPage() {
       />
       <Toolbar onRefresh={resource.refetch}>
         <FilterSelect
+          label="Status"
           value={status}
           options={postStatuses}
-          placeholder="Status"
+          placeholder="All statuses"
           onChange={setStatus}
         />
         <FilterInput value={blogId} placeholder="Blog ID" onChange={setBlogId} />

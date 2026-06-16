@@ -237,6 +237,7 @@ export function AdminExtraFeesPage() {
       />
       <Toolbar onRefresh={resource.refetch}>
         <BooleanFilterSelect
+          label="Status"
           value={status}
           onChange={setStatus}
           trueLabel="Enabled"
@@ -275,6 +276,7 @@ export function AdminExtraFeesPage() {
                 onChange={(event) => setForm({ ...form, price: event.target.value })}
               />
               <FilterSelect
+                label="Fee type"
                 value={form.feeType}
                 options={feeTypes}
                 placeholder="Fee type"
@@ -283,6 +285,7 @@ export function AdminExtraFeesPage() {
                 }
               />
               <BooleanFilterSelect
+                label="Status"
                 value={form.status}
                 onChange={(nextStatus) =>
                   setForm({ ...form, status: nextStatus ?? true })
