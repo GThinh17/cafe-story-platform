@@ -87,13 +87,6 @@ export function AdminSidebar({ user }: { user: AuthUser }) {
           })}
         </nav>
 
-        <div className="mt-auto rounded-md bg-espresso px-4 py-4 text-white">
-          <ShieldCheckIcon className="size-5" />
-          <p className="mt-3 text-sm font-black">Admin controls</p>
-          <p className="mt-1 text-xs leading-5 text-white/72">
-            Review operational queues and act on live platform data.
-          </p>
-        </div>
       </div>
     </aside>
   );

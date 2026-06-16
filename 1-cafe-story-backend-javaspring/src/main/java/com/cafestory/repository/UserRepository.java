@@ -55,12 +55,12 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             select distinct u
             from User u
             left join UserRoleAssignment assignment on assignment.user = u
-            where (:search is null
-                or lower(u.userName) like lower(concat('%', :search, '%'))
-                or lower(u.userEmail) like lower(concat('%', :search, '%'))
-                or lower(coalesce(u.userFullName, '')) like lower(concat('%', :search, '%')))
-            and (:accountStatus is null or u.accountStatus = :accountStatus)
-            and (:roleName is null or assignment.role.name = :roleName)
+            where (cast(:search as string) is null
+                or lower(u.userName) like lower(concat('%', cast(:search as string), '%'))
+                or lower(u.userEmail) like lower(concat('%', cast(:search as string), '%'))
+                or lower(coalesce(u.userFullName, '')) like lower(concat('%', cast(:search as string), '%')))
+            and (cast(:accountStatus as boolean) is null or u.accountStatus = :accountStatus)
+            and (cast(:roleName as string) is null or assignment.role.name = :roleName)
             """)
     Page<User> findAdminUsers(
             @Param("search") String search,
