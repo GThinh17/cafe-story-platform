@@ -15,6 +15,8 @@ import com.cafestory.repository.BlogLikeRepository;
 import com.cafestory.repository.BlogRatingRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.BlogSaveRepository;
+import com.cafestory.repository.RegionRepository;
+import com.cafestory.service.serviceInterface.AiBlogModerationService;
 import com.cafestory.service.serviceInterface.BlogService;
 import com.cafestory.service.serviceInterface.BlogTagService;
 import com.cafestory.service.serviceInterface.RegionService;
@@ -41,6 +43,8 @@ public class BlogServiceImpl implements BlogService {
     private final BlogSaveRepository blogSaveRepository;
     private final BlogRatingRepository blogRatingRepository;
     private final RegionRepository regionRepository;
+    private final RegionService regionService;
+    private final AiBlogModerationService aiBlogModerationService;
     private final BlogMapper blogMapper;
     private final BlogValidator blogValidator;
     private final CafePageValidator cafePageValidator;
@@ -53,6 +57,8 @@ public class BlogServiceImpl implements BlogService {
             BlogSaveRepository blogSaveRepository,
             BlogRatingRepository blogRatingRepository,
             RegionRepository regionRepository,
+            RegionService regionService,
+            AiBlogModerationService aiBlogModerationService,
             BlogMapper blogMapper,
             BlogValidator blogValidator,
             CafePageValidator cafePageValidator,
@@ -63,6 +69,8 @@ public class BlogServiceImpl implements BlogService {
         this.blogSaveRepository = blogSaveRepository;
         this.blogRatingRepository = blogRatingRepository;
         this.regionRepository = regionRepository;
+        this.regionService = regionService;
+        this.aiBlogModerationService = aiBlogModerationService;
         this.blogMapper = blogMapper;
         this.blogValidator = blogValidator;
         this.cafePageValidator = cafePageValidator;
@@ -317,19 +325,4 @@ public class BlogServiceImpl implements BlogService {
     }
 
     private List<Blog> distinctByBlogId(List<Blog> blogs) {
-        LinkedHashMap<UUID, Blog> distinctBlogs = new LinkedHashMap<>();
-
-        for (Blog blog : blogs) {
-            if (blog.getId() != null) {
-                distinctBlogs.putIfAbsent(blog.getId(), blog);
-            }
-        }
-
-        return distinctBlogs.values().stream().toList();
-    }
-
-    private double resolveRatingScore(UUID blogId) {
-        Double ratingScore = blogRatingRepository.findAverageRatingByBlogId(blogId);
-        return ratingScore == null ? 0.0 : ratingScore;
-    }
-}
+        LinkedHashMap<UUID, Blog> distinctBlogs = new LinkedHashM

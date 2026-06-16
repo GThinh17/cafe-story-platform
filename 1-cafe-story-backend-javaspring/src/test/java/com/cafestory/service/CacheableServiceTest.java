@@ -32,6 +32,7 @@ import com.cafestory.service.serviceImplement.ReportReasonServiceImpl;
 import com.cafestory.service.serviceImplement.UserProfileCacheService;
 import com.cafestory.service.serviceImplement.UserServiceImpl;
 import com.cafestory.service.serviceInterface.BlogService;
+import com.cafestory.service.serviceInterface.AiBlogModerationService;
 import com.cafestory.service.serviceInterface.BlogTagService;
 import com.cafestory.service.serviceInterface.RegionService;
 import com.cafestory.service.serviceInterface.ReportReasonService;
@@ -449,24 +450,31 @@ class CacheableServiceTest {
                 BlogSaveRepository blogSaveRepository,
                 BlogRatingRepository blogRatingRepository,
                 RegionRepository regionRepository,
+                RegionService regionService,
+                AiBlogModerationService aiBlogModerationService,
                 BlogMapper blogMapper,
                 BlogValidator blogValidator,
                 CafePageValidator cafePageValidator,
                 UserValidator userValidator,
-                BlogTagService blogTagService,
-                RegionService regionService) {
+                BlogTagService blogTagService) {
             return new BlogServiceImpl(
                     blogRepository,
                     blogLikeRepository,
                     blogSaveRepository,
                     blogRatingRepository,
                     regionRepository,
+                    regionService,
+                    aiBlogModerationService,
                     blogMapper,
                     blogValidator,
                     cafePageValidator,
                     userValidator,
-                    blogTagService,
-                    regionService);
+                    blogTagService);
+        }
+
+        @Bean
+        AiBlogModerationService aiBlogModerationService() {
+            return Mockito.mock(AiBlogModerationService.class);
         }
 
         @Bean
@@ -569,18 +577,4 @@ class CacheableServiceTest {
         }
 
         @Bean
-        UserMapper userMapper() {
-            return Mockito.mock(UserMapper.class);
-        }
-
-        @Bean
-        UserValidator userValidator() {
-            return Mockito.mock(UserValidator.class);
-        }
-
-        @Bean
-        PasswordEncoder passwordEncoder() {
-            return Mockito.mock(PasswordEncoder.class);
-        }
-    }
-}
+        UserMapper userM
