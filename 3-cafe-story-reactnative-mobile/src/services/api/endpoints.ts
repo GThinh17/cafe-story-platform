@@ -32,6 +32,13 @@ export const apiEndpoints = {
     taggedByUser: (userId: string) => `/api/blogs/users/${pathId(userId)}/tagged`,
     trending: "/api/blogs/trending",
   },
+  cafePages: {
+    blogs: (cafePageId: string) => `/api/cafe-pages/${pathId(cafePageId)}/blogs`,
+    byId: (cafePageId: string) => `/api/cafe-pages/${pathId(cafePageId)}`,
+    follows: (cafePageId: string) => `/api/cafe-pages/${pathId(cafePageId)}/follows`,
+    likes: (cafePageId: string) => `/api/cafe-pages/${pathId(cafePageId)}/likes`,
+    list: "/api/cafe-pages",
+  },
   comments: {
     list: "/api/comments",
     byBlog: (blogId: string) => `/api/comments/blogs/${pathId(blogId)}`,

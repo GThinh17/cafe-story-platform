@@ -14,6 +14,7 @@ import { BlogFeedCard, EmptyState, LoadingState, Screen } from "../../components
 import {
   blogResponseToFeedBlog,
   getBlogsByUser,
+  getCafePageBlogs,
   getSavedBlogsByUser,
   getSharedBlogsByUser,
   getTaggedBlogsByUser,
@@ -104,7 +105,14 @@ export function UserPostsScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<UserPostsRouteProp>();
-  const { contentTab = "posts", initialBlogId, userId, userName } = route.params;
+  const {
+    contentTab = "posts",
+    initialBlogId,
+    pageId,
+    pageName,
+    userId,
+    userName,
+  } = route.params;
   const [posts, setPosts] = useState<BlogFeedResponse[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -118,7 +126,13 @@ export function UserPostsScreen() {
     }
 
     try {
-      const nextBlogs = await loadBlogsForTab(contentTab, userId);
+      if (!pageId && !userId) {
+        throw new Error("Missing post source.");
+      }
+
+      const nextBlogs = pageId
+        ? (await getCafePageBlogs(pageId, { size: 50 })).items ?? []
+        : await loadBlogsForTab(contentTab, userId as string);
       setPosts(nextBlogs.map(blogResponseToFeedBlog));
       setError(null);
     } catch (nextError) {
@@ -131,7 +145,7 @@ export function UserPostsScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [contentTab, userId]);
+  }, [contentTab, pageId, userId]);
 
   useEffect(() => {
     void loadPosts();
@@ -162,10 +176,12 @@ export function UserPostsScreen() {
           <ArrowLeft color={colors.foreground} size={32} strokeWidth={2.5} />
         </Pressable>
         <View style={styles.headerCopy}>
-          <Text style={styles.headerTitle}>{getTabTitle(contentTab)}</Text>
-          {userName ? (
+          <Text style={styles.headerTitle}>
+            {pageId ? "Cafe Posts" : getTabTitle(contentTab)}
+          </Text>
+          {pageName || userName ? (
             <Text numberOfLines={1} style={styles.headerSubtitle}>
-              {userName}
+              {pageName ?? userName}
             </Text>
           ) : null}
         </View>
@@ -183,8 +199,12 @@ export function UserPostsScreen() {
           keyExtractor={(item) => item.blogId}
           ListEmptyComponent={
             <EmptyState
-              description={getEmptyDescription(contentTab)}
-              title={error ?? getEmptyTitle(contentTab)}
+              description={
+                pageId
+                  ? "Posts from this cafe page will appear here."
+                  : getEmptyDescription(contentTab)
+              }
+              title={error ?? (pageId ? "No cafe posts yet" : getEmptyTitle(contentTab))}
             />
           }
           refreshControl={

@@ -1,6 +1,7 @@
 export * from "./auth";
 export * from "./blog-mappers";
 export * from "./blogs";
+export * from "./cafe-pages";
 export * from "./chat";
 export * from "./client";
 export * from "./cloudinary";

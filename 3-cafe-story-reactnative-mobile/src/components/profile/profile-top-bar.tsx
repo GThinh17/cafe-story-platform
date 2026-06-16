@@ -1,17 +1,21 @@
-import { Send, Settings } from "lucide-react-native";
+import { Send, Settings, Store } from "lucide-react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors, spacing, typography } from "../../theme";
 
 type ProfileTopBarProps = {
+  onCafePagePress?: () => void;
   onMessagePress?: () => void;
   onSettingsPress?: () => void;
+  showCafePageAction?: boolean;
   userName: string;
 };
 
 export function ProfileTopBar({
+  onCafePagePress,
   onMessagePress,
   onSettingsPress,
+  showCafePageAction = false,
   userName,
 }: ProfileTopBarProps) {
   return (
@@ -29,14 +33,30 @@ export function ProfileTopBar({
         {userName}
       </Text>
 
-      <Pressable
-        accessibilityLabel="Open messages"
-        accessibilityRole="button"
-        onPress={onMessagePress}
-        style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
-      >
-        <Send color={colors.foreground} size={23} strokeWidth={2.2} />
-      </Pressable>
+      <View style={styles.rightActions}>
+        {showCafePageAction ? (
+          <Pressable
+            accessibilityLabel="Open cafe page"
+            accessibilityRole="button"
+            onPress={onCafePagePress}
+            style={({ pressed }) => [
+              styles.iconButton,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Store color={colors.foreground} size={23} strokeWidth={2.2} />
+          </Pressable>
+        ) : null}
+
+        <Pressable
+          accessibilityLabel="Open messages"
+          accessibilityRole="button"
+          onPress={onMessagePress}
+          style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+        >
+          <Send color={colors.foreground} size={23} strokeWidth={2.2} />
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -59,6 +79,11 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.62,
+  },
+  rightActions: {
+    alignItems: "center",
+    flexDirection: "row",
+    minWidth: 48,
   },
   title: {
     color: colors.foreground,

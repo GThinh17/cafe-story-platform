@@ -34,6 +34,7 @@ import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
 import {
   getBlogsByUser,
+  getCafePagesByOwner,
   getSavedBlogsByUser,
   getSharedBlogsByUser,
   getTaggedBlogsByUser,
@@ -48,6 +49,7 @@ import {
 import { colors, spacing, typography } from "../../theme";
 import type {
   BlogResponse,
+  CafePageResponse,
   ProfileContentTab,
   RecommendationCardResponse,
   UserPostPreview,
@@ -129,11 +131,16 @@ function loadBlogsForProfileTab(tab: ProfileContentTab, userId: string): Promise
   }
 }
 
+function isOwnedActiveCafePage(page: CafePageResponse) {
+  return page.status === "ACTIVE" && page.pageActive === true;
+}
+
 export function ProfileScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserResponse | null>(null);
+  const [ownedCafePage, setOwnedCafePage] = useState<CafePageResponse | null>(null);
   const [tabPosts, setTabPosts] =
     useState<Record<ProfileContentTab, UserPostPreview[]>>(emptyTabPosts);
   const [loadedTabs, setLoadedTabs] =
@@ -175,12 +182,17 @@ export function ProfileScreen() {
       const blogsPromise = user?.userId
         ? getBlogsByUser(user.userId)
         : profilePromise.then((nextProfile) => getBlogsByUser(nextProfile.userId));
-      const [nextProfile, userBlogs] = await Promise.all([
+      const cafePagesPromise = profilePromise.then((nextProfile) =>
+        getCafePagesByOwner(nextProfile.userId).catch(() => []),
+      );
+      const [nextProfile, userBlogs, cafePages] = await Promise.all([
         profilePromise,
         blogsPromise,
+        cafePagesPromise,
       ]);
 
       setProfile(nextProfile);
+      setOwnedCafePage(cafePages.find(isOwnedActiveCafePage) ?? null);
       setTabPosts((currentPosts) => ({
         ...currentPosts,
         posts: userBlogs.map(blogResponseToPostPreview),
@@ -192,6 +204,7 @@ export function ProfileScreen() {
       setError(null);
       setContentError(null);
     } catch (nextError) {
+      setOwnedCafePage(null);
       setError(
         nextError instanceof Error
           ? nextError.message
@@ -540,6 +553,16 @@ export function ProfileScreen() {
   const visiblePosts = tabPosts[activeContentTab];
   const visibleEmptyCopy = getEmptyCopy(activeContentTab);
 
+  const openOwnedCafePage = useCallback(() => {
+    if (!ownedCafePage?.id) {
+      return;
+    }
+
+    navigation.navigate(routes.cafeDetail, {
+      cafeId: ownedCafePage.id,
+    });
+  }, [navigation, ownedCafePage?.id]);
+
   const openUserPosts = useCallback((post?: UserPostPreview) => {
     if (!activeProfile?.userId) {
       return;
@@ -579,8 +602,10 @@ export function ProfileScreen() {
     return (
       <Screen padded={false}>
         <ProfileTopBar
+          onCafePagePress={openOwnedCafePage}
           onMessagePress={() => navigation.navigate(routes.conversations)}
           onSettingsPress={() => navigation.navigate(routes.settings)}
+          showCafePageAction={Boolean(ownedCafePage)}
           userName={userName}
         />
         <ProfileSkeleton />
@@ -591,8 +616,10 @@ export function ProfileScreen() {
   return (
     <Screen padded={false}>
       <ProfileTopBar
+        onCafePagePress={openOwnedCafePage}
         onMessagePress={() => navigation.navigate(routes.conversations)}
         onSettingsPress={() => navigation.navigate(routes.settings)}
+        showCafePageAction={Boolean(ownedCafePage)}
         userName={userName}
       />
 

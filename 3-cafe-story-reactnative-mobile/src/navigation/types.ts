@@ -44,7 +44,9 @@ export type RootStackParamList = {
   [routes.userPosts]: {
     contentTab?: ProfileContentTab;
     initialBlogId?: string;
-    userId: string;
+    pageId?: string;
+    pageName?: string | null;
+    userId?: string;
     userName?: string | null;
   };
 };
