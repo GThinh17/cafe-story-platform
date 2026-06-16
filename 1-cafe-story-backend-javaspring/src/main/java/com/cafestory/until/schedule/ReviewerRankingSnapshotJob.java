@@ -14,21 +14,16 @@ public class ReviewerRankingSnapshotJob {
         this.snapshotService = snapshotService;
     }
 
-    // Daily at 2:00 AM
+    // Daily at 2:00 AM — recalculate daily snapshot AND update current month's ranking
     @Scheduled(cron = "0 0 2 * * *")
     public void generateDailySnapshot() {
         snapshotService.generateSnapshot(RankingPeriodType.DAILY);
+        snapshotService.generateSnapshot(RankingPeriodType.MONTHLY);
     }
 
-    // Weekly on Monday at 3:00 AM
+    // Weekly on Monday at 3:00 AM — recalculate weekly snapshot
     @Scheduled(cron = "0 0 3 * * MON")
     public void generateWeeklySnapshot() {
         snapshotService.generateSnapshot(RankingPeriodType.WEEKLY);
-    }
-
-    // Monthly on the 1st at 4:00 AM
-    @Scheduled(cron = "0 0 4 1 * *")
-    public void generateMonthlySnapshot() {
-        snapshotService.generateSnapshot(RankingPeriodType.MONTHLY);
     }
 }

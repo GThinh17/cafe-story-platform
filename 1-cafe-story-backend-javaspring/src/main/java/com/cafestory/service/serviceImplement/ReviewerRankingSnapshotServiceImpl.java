@@ -67,12 +67,17 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
         String period = resolvePeriod(today, periodType);
         DateRange range = resolveDateRange(today, periodType);
         ReviewerScoringFormula formula = formulaService.getActiveFormula();
+
+        // 1 query: load all reviewers
+        List<Reviewer> allReviewers = reviewerRepository.findAll();
         Map<UUID, Reviewer> reviewersByUserId = new HashMap<>();
         Map<UUID, long[]> counts = new HashMap<>();
-        for (Reviewer reviewer : reviewerRepository.findAll()) {
+        for (Reviewer reviewer : allReviewers) {
             reviewersByUserId.put(reviewer.getUser().getUserId(), reviewer);
             counts.put(reviewer.getReviewerId(), new long[]{0, 0, 0});
         }
+
+        // 3 queries: aggregate engagement counts
         for (BlogLike like : blogLikeRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(range.startDate(), range.endDate())) {
             Reviewer reviewer = reviewersByUserId.get(like.getUser().getUserId());
             if (reviewer != null) {
@@ -91,19 +96,29 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
                 counts.get(reviewer.getReviewerId())[2]++;
             }
         }
+
+        // 1 query: batch load ALL existing snapshots for this period into a Map
+        Map<UUID, ReviewerRankingSnapshot> existingByReviewerId = new HashMap<>();
+        for (ReviewerRankingSnapshot existing : snapshotRepository.findByPeriodAndPeriodTypeOrderByRankPositionAsc(period, periodType)) {
+            existingByReviewerId.put(existing.getReviewer().getReviewerId(), existing);
+        }
+
+        // Calculate score and sort for ranking (in-memory, 0 queries)
         List<SnapshotEntry> entries = new ArrayList<>();
-        for (Reviewer reviewer : reviewerRepository.findAll()) {
+        for (Reviewer reviewer : allReviewers) {
             long[] c = counts.get(reviewer.getReviewerId());
             long score = formulaService.calculateScore(c[0], c[1], c[2]);
             ReviewerBadge badge = badgeThresholdService.badgeForScore(score);
             entries.add(new SnapshotEntry(reviewer, c[0], c[1], c[2], score, badge));
         }
         entries.sort(Comparator.comparingLong(SnapshotEntry::score).reversed());
-        snapshotRepository.deleteByPeriodAndPeriodType(period, periodType);
-        snapshotRepository.flush();
+
+        // Upsert from Map lookup (0 SELECT queries) + batch saveAll (1 query)
+        List<ReviewerRankingSnapshot> toSave = new ArrayList<>();
         for (int i = 0; i < entries.size(); i++) {
             SnapshotEntry entry = entries.get(i);
-            ReviewerRankingSnapshot snapshot = new ReviewerRankingSnapshot();
+            ReviewerRankingSnapshot snapshot = existingByReviewerId
+                    .getOrDefault(entry.reviewer().getReviewerId(), new ReviewerRankingSnapshot());
             snapshot.setReviewer(entry.reviewer());
             snapshot.setPeriod(period);
             snapshot.setPeriodType(periodType);
@@ -114,7 +129,38 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
             snapshot.setCommentCount(entry.commentCount());
             snapshot.setBadge(entry.badge());
             snapshot.setFormula(formula);
-            snapshotRepository.save(snapshot);
+            toSave.add(snapshot);
+        }
+        snapshotRepository.saveAll(toSave);
+    }
+
+    @Override
+    @Transactional
+    public void initSnapshotForNewReviewer(Reviewer reviewer) {
+        LocalDate today = LocalDate.now();
+        ReviewerScoringFormula formula = formulaService.getActiveFormula();
+        ReviewerBadge defaultBadge = badgeThresholdService.badgeForScore(0);
+
+        for (RankingPeriodType periodType : RankingPeriodType.values()) {
+            String period = resolvePeriod(today, periodType);
+            boolean exists = snapshotRepository
+                    .findByReviewerReviewerIdAndPeriodAndPeriodType(
+                            reviewer.getReviewerId(), period, periodType)
+                    .isPresent();
+            if (!exists) {
+                ReviewerRankingSnapshot snapshot = new ReviewerRankingSnapshot();
+                snapshot.setReviewer(reviewer);
+                snapshot.setPeriod(period);
+                snapshot.setPeriodType(periodType);
+                snapshot.setRankPosition(0);
+                snapshot.setScore(0);
+                snapshot.setLikeCount(0);
+                snapshot.setShareCount(0);
+                snapshot.setCommentCount(0);
+                snapshot.setBadge(defaultBadge);
+                snapshot.setFormula(formula);
+                snapshotRepository.save(snapshot);
+            }
         }
     }
 

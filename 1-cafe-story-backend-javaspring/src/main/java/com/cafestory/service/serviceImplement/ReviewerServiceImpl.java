@@ -38,6 +38,7 @@ import com.cafestory.repository.UserRepository;
 import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRoleAssignmentRepository;
 import com.cafestory.service.serviceInterface.ReviewerBadgeThresholdService;
+import com.cafestory.service.serviceInterface.ReviewerRankingSnapshotService;
 import com.cafestory.service.serviceInterface.ReviewerScoringFormulaService;
 import com.cafestory.service.serviceInterface.ReviewerService;
 import com.cafestory.validation.UserValidator;
@@ -82,6 +83,7 @@ public class ReviewerServiceImpl implements ReviewerService {
     private final UserValidator userValidator;
     private final ReviewerScoringFormulaService formulaService;
     private final ReviewerBadgeThresholdService badgeThresholdService;
+    private final ReviewerRankingSnapshotService snapshotService;
 
     public ReviewerServiceImpl(
             BlogLikeRepository blogLikeRepository,
@@ -98,7 +100,8 @@ public class ReviewerServiceImpl implements ReviewerService {
             UserFollowRepository userFollowRepository,
             UserValidator userValidator,
             ReviewerScoringFormulaService formulaService,
-            ReviewerBadgeThresholdService badgeThresholdService) {
+            ReviewerBadgeThresholdService badgeThresholdService,
+            ReviewerRankingSnapshotService snapshotService) {
         this.blogLikeRepository = blogLikeRepository;
         this.blogRepository = blogRepository;
         this.blogSaveRepository = blogSaveRepository;
@@ -114,6 +117,7 @@ public class ReviewerServiceImpl implements ReviewerService {
         this.userValidator = userValidator;
         this.formulaService = formulaService;
         this.badgeThresholdService = badgeThresholdService;
+        this.snapshotService = snapshotService;
     }
 
     @Override
@@ -123,7 +127,9 @@ public class ReviewerServiceImpl implements ReviewerService {
         assignRole(user, REVIEWER_ROLE);
         Reviewer reviewer = reviewerRepository.findByUserUserId(userId).orElseGet(Reviewer::new);
         reviewer.setUser(user);
-        return toReviewerResponse(reviewerRepository.save(reviewer));
+        Reviewer saved = reviewerRepository.save(reviewer);
+        snapshotService.initSnapshotForNewReviewer(saved);
+        return toReviewerResponse(saved);
     }
 
     @Override
