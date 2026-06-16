@@ -76,18 +76,22 @@ class AuthServiceImplTest {
         when(roleRepository.findByName("USER")).thenReturn(Optional.of(userRole));
         when(userRoleAssignmentRepository.findByUserUserId(any(UUID.class)))
                 .thenReturn(List.of(assignment(user("luan123@example.com", "luan123"), userRole)));
+        when(jwtService.createAccessToken(any(User.class), any())).thenReturn("access-token");
+        when(refreshTokenService.createRefreshToken(any(User.class))).thenReturn("refresh-token");
 
         AuthResponse response = service().register(request);
 
         assertThat(response.getUser().getUserEmail()).isEqualTo(request.getUserEmail());
         assertThat(response.getUser().getRoles()).containsExactly("USER");
-        assertThat(response.getAccessToken()).isNull();
-        assertThat(response.getRefreshToken()).isNull();
+        assertThat(response.getAccessToken()).isEqualTo("access-token");
+        assertThat(response.getRefreshToken()).isEqualTo("refresh-token");
 
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(userCaptor.capture());
         assertThat(userCaptor.getValue().getUserPassword()).isEqualTo("encoded-password");
         verify(userRoleAssignmentRepository).save(any(UserRoleAssignment.class));
+        verify(jwtService).createAccessToken(any(User.class), any());
+        verify(refreshTokenService).createRefreshToken(any(User.class));
     }
 
     @Test

@@ -88,11 +88,15 @@ public class AuthServiceImpl implements AuthService {
         user.setUserEmail(request.getUserEmail());
         user.setUserPhone(request.getUserPhone());
         user.setUserAvatar(request.getUserAvatar());
+        user.setUserDescription(request.getUserDescription());
         user.setAccountStatus(true);
 
         User savedUser = userRepository.save(user);
         assignDefaultUserRole(savedUser);
-        return response(savedUser, roles(savedUser.getUserId()), null, null);
+        List<String> roles = roles(savedUser.getUserId());
+        String accessToken = jwtService.createAccessToken(savedUser, roles);
+        String refreshToken = refreshTokenService.createRefreshToken(savedUser);
+        return response(savedUser, roles, accessToken, refreshToken);
     }
 
     @Override
@@ -332,6 +336,7 @@ public class AuthServiceImpl implements AuthService {
         userResponse.setUserEmail(user.getUserEmail());
         userResponse.setUserPhone(user.getUserPhone());
         userResponse.setUserAvatar(user.getUserAvatar());
+        userResponse.setUserDescription(user.getUserDescription());
         userResponse.setAccountStatus(user.getAccountStatus());
         userResponse.setRoles(roles);
 

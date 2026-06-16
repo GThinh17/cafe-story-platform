@@ -25,6 +25,8 @@ public class UserUpdateDTO {
 
     private String userAvatar;
 
+    private String userDescription;
+
     private Boolean accountStatus;
 
     private UUID regionId;

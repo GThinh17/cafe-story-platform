@@ -56,8 +56,11 @@ public class AuthController {
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
-        return authService.register(request);
+    public AuthResponse register(@Valid @RequestBody RegisterRequest request, HttpServletResponse servletResponse) {
+        AuthResponse response = authService.register(request);
+        addCookie(servletResponse, accessTokenCookie(response.getAccessToken()));
+        addCookie(servletResponse, refreshTokenCookie(response.getRefreshToken()));
+        return response;
     }
 
     @PostMapping("/login")

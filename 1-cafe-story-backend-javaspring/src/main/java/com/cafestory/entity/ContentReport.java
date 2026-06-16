@@ -60,10 +60,15 @@ public class ContentReport {
     @JoinColumn(name = "cafe_page_id")
     private CafePage cafePage;
 
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "reason_id", nullable = false)
+    private ReportReason reason;
+
     @NotBlank
     @Size(max = 160)
     @Column(name = "reason", nullable = false, length = 160)
-    private String reason;
+    private String reasonSnapshot;
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;

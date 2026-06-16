@@ -31,6 +31,7 @@ For exact table/column/enum definitions, read `cafestory-schema.dbml`.
 - Rebuild recommendation cache through the scheduled job or manual rebuild endpoint after trending scores, follows, reports, or region context changes.
 - `HIDDEN` and `REMOVED` blogs and blogs with AI moderation `VIOLATION` must not appear in trending.
 - Reports use `content_reports.target_type` and target exactly one of `blog_id`, `comment_id`, `reported_user_id`, or `cafe_page_id` by application validation.
+- Report reasons come from `report_reasons`; clients submit `reasonId`, and `content_reports.reason` stores the selected label snapshot.
 - User follow must reject self-follow: `follower_user_id <> following_user_id`.
 - Page ownership starts with `cafe_pages.owner_user_id`; this primary owner/creator is unique, so one user can create only one cafe page.
 - `page_members` stores page owners/co-owners/members with `status`: `PENDING`, `ACTIVE`, `REJECTED`.
@@ -85,7 +86,7 @@ Payments:
 - `trend_window_type`: `HOUR_24`, `DAY_7`, `MONTH_1`
 - `message_type`: `TEXT`, `IMAGE`, `STICKER`, `MIXED`
 - `message_status`: `SENT`, `FAILED`, `DELETED`
-- `notification_type`: `LIKE`, `SHARE`, `COMMENT`, `MESSAGE`, `FOLLOW`
+- `notification_type`: `LIKE`, `SHARE`, `COMMENT`, `MESSAGE`, `FOLLOW`, `TAG`
 - `reviewer_badge`: `IRON`, `BRONZE`, `SILVER`, `GOLD`, `DIAMOND`
 - `reviewer_payout_status`: `CALCULATED`, `PAID`, `CANCELLED`
 

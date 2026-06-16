@@ -54,6 +54,9 @@ public class User {
     @Column(name = "user_avatar")
     private String userAvatar;
 
+    @Column(name = "user_description", columnDefinition = "TEXT")
+    private String userDescription;
+
     @Column(name = "user_like", nullable = false)
     @ColumnDefault("0")
     private Integer userLike = 0;

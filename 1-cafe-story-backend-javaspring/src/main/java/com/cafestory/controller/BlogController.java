@@ -68,6 +68,27 @@ public class BlogController {
         return blogService.getAllBlogsByUserId(userId, optionalUserId(principal));
     }
 
+    @GetMapping("/users/{userId}/saved")
+    public List<BlogResponseDTO> getSavedBlogsByUserId(
+            @PathVariable UUID userId,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return blogService.getSavedBlogsByUserId(userId, optionalUserId(principal));
+    }
+
+    @GetMapping("/users/{userId}/shared")
+    public List<BlogResponseDTO> getSharedBlogsByUserId(
+            @PathVariable UUID userId,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return blogService.getSharedBlogsByUserId(userId, optionalUserId(principal));
+    }
+
+    @GetMapping("/users/{userId}/tagged")
+    public List<BlogResponseDTO> getTaggedBlogsByUserId(
+            @PathVariable UUID userId,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return blogService.getTaggedBlogsByUserId(userId, optionalUserId(principal));
+    }
+
     @GetMapping("/tag-suggestions")
     public List<BlogTaggedUserResponseDTO> getTagSuggestions(
             @RequestParam(required = false) String keyword,

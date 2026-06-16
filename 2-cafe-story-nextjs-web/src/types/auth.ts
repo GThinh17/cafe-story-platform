@@ -25,10 +25,14 @@ export type AuthUser = {
   userEmail: string;
   userPhone: number | null;
   userAvatar: string | null;
+  userDescription?: string | null;
   followingCount?: number | null;
   accountStatus: boolean;
+  regionCityCode?: string | null;
   regionCity?: string | null;
+  regionProvinceCode?: string | null;
   regionProvince?: string | null;
+  regionWardCode?: string | null;
   regionWard?: string | null;
   regionArea?: string | null;
   regionStreet?: string | null;
@@ -67,4 +71,5 @@ export type RegisterRequest = {
   userEmail: string;
   userPhone?: number;
   userAvatar?: string;
+  userDescription?: string;
 };

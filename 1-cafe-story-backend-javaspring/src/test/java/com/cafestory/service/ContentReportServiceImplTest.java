@@ -6,6 +6,7 @@ import com.cafestory.dto.responseDTO.ContentReportResponseDTO;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogEvent;
 import com.cafestory.entity.ContentReport;
+import com.cafestory.entity.ReportReason;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.BlogEventType;
 import com.cafestory.entity.enums.ReportStatus;
@@ -13,6 +14,7 @@ import com.cafestory.entity.enums.ReportTargetType;
 import com.cafestory.repository.BlogEventRepository;
 import com.cafestory.repository.ContentReportRepository;
 import com.cafestory.service.serviceImplement.ContentReportServiceImpl;
+import com.cafestory.service.serviceInterface.ReportReasonService;
 import com.cafestory.validation.BlogValidator;
 import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.CommentValidator;
@@ -59,6 +61,9 @@ class ContentReportServiceImplTest {
     @Mock
     private UserValidator userValidator;
 
+    @Mock
+    private ReportReasonService reportReasonService;
+
     @InjectMocks
     private ContentReportServiceImpl contentReportService;
 
@@ -69,8 +74,10 @@ class ContentReportServiceImplTest {
         User reporter = user(reporterId, "reader");
         Blog blog = blog(blogId, user(UUID.randomUUID(), "author"));
         ContentReportRequestDTO request = request(ReportTargetType.BLOG, blogId);
+        ReportReason reason = reason(request.getReasonId(), "SCAM_FRAUD_OR_SPAM", "Lừa đảo, gian lận hoặc spam");
 
         when(userValidator.validateUserExists(reporterId)).thenReturn(reporter);
+        when(reportReasonService.validateActiveReportReason(request.getReasonId(), ReportTargetType.BLOG)).thenReturn(reason);
         when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
         when(contentReportRepository.existsByReporterUserIdAndBlogIdAndStatusIn(
                 reporterId,
@@ -84,6 +91,9 @@ class ContentReportServiceImplTest {
         assertThat(result.getTargetType()).isEqualTo(ReportTargetType.BLOG);
         assertThat(result.getTargetId()).isEqualTo(blogId);
         assertThat(result.getBlogId()).isEqualTo(blogId);
+        assertThat(result.getReasonId()).isEqualTo(reason.getId());
+        assertThat(result.getReasonCode()).isEqualTo("SCAM_FRAUD_OR_SPAM");
+        assertThat(result.getReason()).isEqualTo("Lừa đảo, gian lận hoặc spam");
         assertThat(result.getStatus()).isEqualTo(ReportStatus.OPEN);
 
         ArgumentCaptor<BlogEvent> eventCaptor = ArgumentCaptor.forClass(BlogEvent.class);
@@ -102,8 +112,10 @@ class ContentReportServiceImplTest {
         User reporter = user(reporterId, "reader");
         Blog blog = blog(blogId, user(UUID.randomUUID(), "author"));
         ContentReportRequestDTO request = request(ReportTargetType.BLOG, blogId);
+        ReportReason reason = reason(request.getReasonId(), "SCAM_FRAUD_OR_SPAM", "Lừa đảo, gian lận hoặc spam");
 
         when(userValidator.validateUserExists(reporterId)).thenReturn(reporter);
+        when(reportReasonService.validateActiveReportReason(request.getReasonId(), ReportTargetType.BLOG)).thenReturn(reason);
         when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
         when(contentReportRepository.existsByReporterUserIdAndBlogIdAndStatusIn(
                 reporterId,
@@ -126,8 +138,10 @@ class ContentReportServiceImplTest {
         UUID userId = UUID.randomUUID();
         User reporter = user(userId, "reader");
         ContentReportRequestDTO request = request(ReportTargetType.USER, userId);
+        ReportReason reason = reason(request.getReasonId(), "BULLYING_OR_UNWANTED_CONTACT", "Bắt nạt hoặc liên hệ theo cách không mong muốn");
 
         when(userValidator.validateUserExists(userId)).thenReturn(reporter);
+        when(reportReasonService.validateActiveReportReason(request.getReasonId(), ReportTargetType.USER)).thenReturn(reason);
 
         assertThatThrownBy(() -> contentReportService.createReport(userId, request))
                 .isInstanceOf(ResponseStatusException.class)
@@ -143,7 +157,31 @@ class ContentReportServiceImplTest {
     }
 
     @Test
-    void updateStatus_success_resolvedReportGetsResolvedAt_TC004() {
+    void createReport_fail_requiredDescriptionMissing_TC004() {
+        UUID reporterId = UUID.randomUUID();
+        UUID blogId = UUID.randomUUID();
+        User reporter = user(reporterId, "reader");
+        ContentReportRequestDTO request = request(ReportTargetType.BLOG, blogId);
+        request.setDescription(null);
+        ReportReason reason = reason(request.getReasonId(), "INTELLECTUAL_PROPERTY", "Quyền sở hữu trí tuệ");
+        reason.setRequiresDescription(true);
+
+        when(userValidator.validateUserExists(reporterId)).thenReturn(reporter);
+        when(reportReasonService.validateActiveReportReason(request.getReasonId(), ReportTargetType.BLOG)).thenReturn(reason);
+
+        assertThatThrownBy(() -> contentReportService.createReport(reporterId, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST))
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getReason())
+                        .isEqualTo("Report description is required for this reason"));
+
+        verify(contentReportRepository, never()).save(any(ContentReport.class));
+        verify(blogEventRepository, never()).save(any(BlogEvent.class));
+    }
+
+    @Test
+    void updateStatus_success_resolvedReportGetsResolvedAt_TC005() {
         UUID reportId = UUID.randomUUID();
         ContentReport report = report(reportId, user(UUID.randomUUID(), "reader"));
         AdminContentReportStatusUpdateRequestDTO request = new AdminContentReportStatusUpdateRequestDTO();
@@ -163,7 +201,7 @@ class ContentReportServiceImplTest {
         ContentReportRequestDTO request = new ContentReportRequestDTO();
         request.setTargetType(targetType);
         request.setTargetId(targetId);
-        request.setReason("SPAM");
+        request.setReasonId(UUID.randomUUID());
         request.setDescription("Spam or misleading content");
         return request;
     }
@@ -180,10 +218,23 @@ class ContentReportServiceImplTest {
         report.setReporter(reporter);
         report.setTargetType(ReportTargetType.USER);
         report.setReportedUser(user(UUID.randomUUID(), "reported"));
-        report.setReason("SPAM");
+        report.setReason(reason(UUID.randomUUID(), "SCAM_FRAUD_OR_SPAM", "Lừa đảo, gian lận hoặc spam"));
+        report.setReasonSnapshot("Lừa đảo, gian lận hoặc spam");
         report.setStatus(ReportStatus.OPEN);
         report.setCreatedAt(LocalDateTime.now());
         return report;
+    }
+
+    private ReportReason reason(UUID reasonId, String code, String labelVi) {
+        ReportReason reason = new ReportReason();
+        reason.setId(reasonId);
+        reason.setCode(code);
+        reason.setLabelVi(labelVi);
+        reason.setSeverity(4);
+        reason.setRequiresDescription(false);
+        reason.setActive(true);
+        reason.setSortOrder(10);
+        return reason;
     }
 
     private Blog blog(UUID blogId, User author) {

@@ -15,7 +15,10 @@ export type LocalConversationStatus = "creating" | "ready" | "error";
 
 export type ChatMemberResponse = {
   id: string;
+  userAvatar: string | null;
+  userFullName: string | null;
   userId: string;
+  userName: string | null;
   role: "OWNER" | "ADMIN" | "MEMBER" | string;
   joinedAt: string | null;
 };
@@ -25,8 +28,15 @@ export type ConversationResponse = {
   type: "DIRECT" | "GROUP" | string;
   groupName: string | null;
   groupAvatar: string | null;
+  chatName: string | null;
+  userName: string | null;
+  chatAvatar: string | null;
   latestMessageId: string | null;
   latestMessagePreview: string | null;
+  lastMessage: string | null;
+  lastMessageAt: string | null;
+  isRead: boolean;
+  unreadCount: number;
   createdAt: string | null;
   updatedAt: string | null;
   members: ChatMemberResponse[];
@@ -44,6 +54,8 @@ export type ChatMessageResponse = {
   createdAt: string | null;
   updatedAt: string | null;
   status: string | null;
+  isRead: boolean;
+  readAt: string | null;
 };
 
 export type SendChatMessageRequest = {

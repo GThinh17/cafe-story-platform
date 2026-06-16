@@ -75,6 +75,24 @@ export const apiEndpoints = {
     markRead: (notificationId: string) => `/notifications/${pathId(notificationId)}/read`,
     markAllRead: "/notifications/read-all",
   },
+  regions: {
+    provinces: "/api/regions/provinces",
+    cities: (provinceCode?: string) =>
+      provinceCode
+        ? `/api/regions/cities?provinceCode=${pathId(provinceCode)}`
+        : "/api/regions/cities",
+    wards: (params: { cityCode?: string; provinceCode?: string } = {}) => {
+      const query = new URLSearchParams();
+      if (params.provinceCode) {
+        query.set("provinceCode", params.provinceCode);
+      }
+      if (params.cityCode) {
+        query.set("cityCode", params.cityCode);
+      }
+      const queryString = query.toString();
+      return queryString ? `/api/regions/wards?${queryString}` : "/api/regions/wards";
+    },
+  },
   chat: {
     conversations: "/api/chat/conversations",
     directConversation: "/api/chat/conversations/direct",

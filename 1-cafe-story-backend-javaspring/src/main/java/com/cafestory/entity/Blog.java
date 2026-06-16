@@ -13,6 +13,7 @@ import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
@@ -31,7 +32,14 @@ import java.util.UUID;
 
 @Data
 @Entity
-@Table(name = "blogs")
+@Table(
+        name = "blogs",
+        indexes = {
+                @Index(name = "idx_blogs_author_created", columnList = "author_user_id, created_at"),
+                @Index(name = "idx_blogs_status_created", columnList = "status, created_at"),
+                @Index(name = "idx_blogs_page_status_created", columnList = "page_id, status, created_at"),
+                @Index(name = "idx_blogs_region", columnList = "region_id")
+        })
 public class Blog {
 
     @Id

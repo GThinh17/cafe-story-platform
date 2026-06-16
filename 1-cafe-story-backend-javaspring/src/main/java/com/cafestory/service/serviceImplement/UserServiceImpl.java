@@ -1,17 +1,22 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.requestDTO.RegionRequestDTO;
 import com.cafestory.dto.requestDTO.UserCreateDTO;
 import com.cafestory.dto.requestDTO.UserUpdateDTO;
 import com.cafestory.dto.responseDTO.UserResponseDTO;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
+import com.cafestory.entity.enums.RegionRequirement;
 import com.cafestory.mapper.UserMapper;
-import com.cafestory.repository.RegionRepository;
 import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRepository;
+import com.cafestory.service.serviceInterface.RegionService;
 import com.cafestory.service.serviceInterface.UserService;
 import com.cafestory.validation.UserValidator;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -26,24 +31,27 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final UserFollowRepository userFollowRepository;
-    private final RegionRepository regionRepository;
+    private final RegionService regionService;
     private final UserMapper userMapper;
     private final UserValidator userValidator;
     private final PasswordEncoder passwordEncoder;
+    private final UserProfileCacheService userProfileCacheService;
 
     public UserServiceImpl(
             UserRepository userRepository,
             UserFollowRepository userFollowRepository,
-            RegionRepository regionRepository,
+            RegionService regionService,
             UserMapper userMapper,
             UserValidator userValidator,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder,
+            UserProfileCacheService userProfileCacheService) {
         this.userRepository = userRepository;
         this.userFollowRepository = userFollowRepository;
-        this.regionRepository = regionRepository;
+        this.regionService = regionService;
         this.userMapper = userMapper;
         this.userValidator = userValidator;
         this.passwordEncoder = passwordEncoder;
+        this.userProfileCacheService = userProfileCacheService;
     }
 
     @Override
@@ -55,8 +63,9 @@ public class UserServiceImpl implements UserService {
         User user = userMapper.toUser(userCreateDTO);
         user.setUserPassword(passwordEncoder.encode(userCreateDTO.getUserPassword()));
         if (userCreateDTO.getRegionId() != null) {
-            user.setRegion(regionRepository.findById(userCreateDTO.getRegionId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Region not found")));
+            user.setRegion(regionService.resolveExistingRegion(
+                    userCreateDTO.getRegionId(),
+                    RegionRequirement.FULL_ADDRESS));
         }
         User savedUser = userRepository.save(user);
 
@@ -80,18 +89,24 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.USER_PROFILE_BY_ID_CACHE, key = "#p0")
     public UserResponseDTO getUserById(UUID userId) {
         return getUserById(userId, null);
     }
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = CacheConfig.USER_PROFILE_BY_ID_CACHE,
+            key = "#p0",
+            condition = "#p1 == null || #p0.equals(#p1)")
     public UserResponseDTO getUserById(UUID userId, UUID viewerUserId) {
         return toUserResponseDTO(userValidator.validateUserExists(userId), viewerUserId);
     }
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.USER_PROFILE_BY_USERNAME_CACHE, key = "#p0", condition = "#p1 == null")
     public UserResponseDTO getUserByUsername(String username, UUID viewerUserId) {
         User user = userRepository.findByUserName(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
@@ -100,6 +115,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_ID_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_USERNAME_CACHE, allEntries = true)
+    })
     public UserResponseDTO updateUser(UUID userId, UserUpdateDTO userUpdateDTO) {
         User user = userValidator.validateUserExists(userId);
 
@@ -123,9 +142,13 @@ public class UserServiceImpl implements UserService {
         if (userUpdateDTO.getUserAvatar() != null) {
             user.setUserAvatar(userUpdateDTO.getUserAvatar());
         }
+        if (userUpdateDTO.getUserDescription() != null) {
+            user.setUserDescription(userUpdateDTO.getUserDescription());
+        }
         if (userUpdateDTO.getRegionId() != null) {
-            user.setRegion(regionRepository.findById(userUpdateDTO.getRegionId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Region not found")));
+            user.setRegion(regionService.resolveExistingRegion(
+                    userUpdateDTO.getRegionId(),
+                    RegionRequirement.FULL_ADDRESS));
         }
 
         User updatedUser = userRepository.save(user);
@@ -134,32 +157,16 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_ID_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_USERNAME_CACHE, allEntries = true)
+    })
     public UserResponseDTO updateUserRegion(UUID userId, RegionRequestDTO regionRequestDTO) {
         User user = userValidator.validateUserExists(userId);
-        Region region = user.getRegion();
-        if (region == null) {
-            region = new Region();
-            user.setRegion(region);
-        }
-
-        if (regionRequestDTO.getCity() != null) {
-            region.setCity(regionRequestDTO.getCity());
-        }
-        if (regionRequestDTO.getProvince() != null) {
-            region.setProvince(regionRequestDTO.getProvince());
-        }
-        if (regionRequestDTO.getWard() != null) {
-            region.setWard(regionRequestDTO.getWard());
-        }
-        String area = firstNonBlank(regionRequestDTO.getArea(), regionRequestDTO.getDistrict());
-        if (area != null) {
-            region.setArea(area);
-        }
-        if (regionRequestDTO.getStreet() != null) {
-            region.setStreet(regionRequestDTO.getStreet());
-        }
-
-        Region savedRegion = regionRepository.save(region);
+        Region savedRegion = regionService.upsertRegion(
+                user.getRegion(),
+                regionRequestDTO,
+                RegionRequirement.FULL_ADDRESS);
         user.setRegion(savedRegion);
         User updatedUser = userRepository.save(user);
         return userMapper.toUserResponseDTO(updatedUser);
@@ -167,6 +174,11 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_ID_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_USERNAME_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_FOLLOWING_COUNT_CACHE, key = "#p0")
+    })
     public void deleteUser(UUID userId) {
         User user = userValidator.validateUserExists(userId);
         userRepository.delete(user);
@@ -188,25 +200,13 @@ public class UserServiceImpl implements UserService {
                 });
     }
 
-    private String firstNonBlank(String first, String second) {
-        return first != null && !first.isBlank() ? first : second;
-    }
-
     private UserResponseDTO toUserResponseDTO(User user, UUID viewerUserId) {
         UserResponseDTO response = userMapper.toUserResponseDTO(user);
-        response.setFollowingCount(getFollowingCount(user));
+        response.setFollowingCount(userProfileCacheService.getFollowingCount(user.getUserId()));
         response.setIsFollowing(viewerUserId != null
                 && user.getUserId() != null
                 && !viewerUserId.equals(user.getUserId())
                 && userFollowRepository.existsByFollowerUserIdAndFollowingUserId(viewerUserId, user.getUserId()));
         return response;
-    }
-
-    private Integer getFollowingCount(User user) {
-        if (user == null || user.getUserId() == null) {
-            return 0;
-        }
-        long followingCount = userFollowRepository.countByFollowerUserId(user.getUserId());
-        return followingCount > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) followingCount;
     }
 }

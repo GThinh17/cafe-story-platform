@@ -1,5 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.responseDTO.BlogDisplayAuthorType;
 import com.cafestory.dto.responseDTO.BlogFeedCursorPageResponseDTO;
 import com.cafestory.dto.responseDTO.BlogFeedResponse;
@@ -32,6 +33,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -47,6 +49,8 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -55,9 +59,11 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
     private static final int DEFAULT_ORGANIC_FEED_SIZE = 20;
     private static final int MAX_ORGANIC_FEED_SIZE = 50;
     private static final int ORGANIC_CURSOR_VERSION = 1;
+    private static final double OWN_AUTHOR_SCORE = 40.0;
     private static final ObjectMapper CURSOR_OBJECT_MAPPER = JsonMapper.builder()
             .addModule(new JavaTimeModule())
             .build();
+    private final ConcurrentMap<RecommendationCacheKey, Object> recommendationRebuildLocks = new ConcurrentHashMap<>();
 
     private final BlogRepository blogRepository;
     private final BlogTrendingScoreRepository blogTrendingScoreRepository;
@@ -98,6 +104,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, key = "(#p0 == null ? 'first' : #p0) + ':' + #p1")
     public FeedResponseDTO getOrganicFeed(String cursor, int size) {
         int safeSize = normalizeOrganicFeedSize(size);
         OrganicFeedCursor organicCursor = decodeOrganicCursor(cursor);
@@ -142,7 +149,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                 userId,
                 windowType,
                 contextRegionId);
-        if (latestComputedAt == null) {
+        if (latestComputedAt == null || isPersonalizedCacheStale(userId, latestComputedAt)) {
             rebuildRecommendationCache(userId, windowType, contextRegionId);
             latestComputedAt = blogRecommendationScoreRepository.findLatestComputedAt(userId, windowType, contextRegionId);
         }
@@ -167,6 +174,19 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             UUID regionId) {
         User user = validateActiveUser(userId);
         UUID contextRegionId = resolveContextRegionId(user, regionId);
+        RecommendationCacheKey cacheKey = new RecommendationCacheKey(userId, windowType, contextRegionId);
+        Object lock = recommendationRebuildLocks.computeIfAbsent(cacheKey, ignored -> new Object());
+
+        synchronized (lock) {
+            return rebuildRecommendationCacheLocked(user, windowType, contextRegionId);
+        }
+    }
+
+    private List<BlogFeedResponse> rebuildRecommendationCacheLocked(
+            User user,
+            TrendWindowType windowType,
+            UUID contextRegionId) {
+        UUID userId = user.getUserId();
         LocalDateTime now = LocalDateTime.now();
         Map<UUID, BlogTrendingScore> trendingScores = latestTrendingScores(windowType);
 
@@ -191,6 +211,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         }
 
         blogRecommendationScoreRepository.deleteByUserWindowAndContextRegion(userId, windowType, contextRegionId);
+        blogRecommendationScoreRepository.flush();
         blogRecommendationScoreRepository.saveAll(scores);
         return toFeedResponses(scores);
     }
@@ -229,6 +250,12 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                 .collect(Collectors.toMap(score -> score.getBlog().getId(), Function.identity()));
     }
 
+    private boolean isPersonalizedCacheStale(UUID userId, LocalDateTime latestComputedAt) {
+        return blogRepository.findFirstByAuthorUserIdAndStatusOrderByCreatedAtDescIdDesc(userId, PostStatus.PUBLISHED)
+                .map(blog -> blog.getCreatedAt() != null && blog.getCreatedAt().isAfter(latestComputedAt))
+                .orElse(false);
+    }
+
     private BlogRecommendationScore createRecommendationScore(
             User user,
             Blog blog,
@@ -239,12 +266,14 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             LocalDateTime now) {
         double baseTrendingScore = trendingScore == null ? 0.0 : trendingScore.getTrendScore();
         double trendingComponent = baseTrendingScore * 0.4;
+        double ownAuthorScore = calculateOwnAuthorScore(blog, user.getUserId());
         double followedPageScore = calculateFollowedPageScore(blog, user.getUserId());
         double followedUserScore = calculateFollowedUserScore(blog, user.getUserId());
         double sameRegionScore = calculateSameRegionScore(blog, contextCity);
         double freshnessScore = calculateFreshnessScore(blog, now);
         double reportPenalty = calculateReportPenalty(blog, windowType, now);
         double feedScore = trendingComponent
+                + ownAuthorScore
                 + followedPageScore
                 + followedUserScore
                 + sameRegionScore
@@ -264,7 +293,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         score.setFreshnessScore(freshnessScore);
         score.setReportPenalty(reportPenalty);
         score.setRankPosition(0);
-        score.setReason(buildReason(trendingComponent, followedPageScore, followedUserScore, sameRegionScore,
+        score.setReason(buildReason(trendingComponent, ownAuthorScore, followedPageScore, followedUserScore, sameRegionScore,
                 freshnessScore, reportPenalty));
         score.setComputedAt(now);
         return score;
@@ -341,7 +370,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         }
 
         response.setDisplayAuthorType(BlogDisplayAuthorType.USER);
-        response.setDisplayName(firstNonBlank(author.getUserFullName(), author.getUserName()));
+        response.setDisplayName(firstNonBlank(author.getUserName(), author.getUserFullName()));
         response.setDisplayAvatarUrl(author.getUserAvatar());
     }
 
@@ -360,8 +389,18 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         return pageFollowRepository.existsByUserUserIdAndCafePageId(userId, blog.getPageId()) ? 30.0 : 0.0;
     }
 
+    private double calculateOwnAuthorScore(Blog blog, UUID userId) {
+        if (blog.getAuthor() == null || blog.getAuthor().getUserId() == null) {
+            return 0.0;
+        }
+        return blog.getAuthor().getUserId().equals(userId) ? OWN_AUTHOR_SCORE : 0.0;
+    }
+
     private double calculateFollowedUserScore(Blog blog, UUID userId) {
         if (blog.getAuthor() == null || blog.getAuthor().getUserId() == null) {
+            return 0.0;
+        }
+        if (blog.getAuthor().getUserId().equals(userId)) {
             return 0.0;
         }
         return userFollowRepository.existsByFollowerUserIdAndFollowingUserId(userId, blog.getAuthor().getUserId())
@@ -423,12 +462,14 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
 
     private String buildReason(
             double trendingComponent,
+            double ownAuthorScore,
             double followedPageScore,
             double followedUserScore,
             double sameRegionScore,
             double freshnessScore,
             double reportPenalty) {
         return "trendingComponent=" + trendingComponent
+                + ", ownAuthorScore=" + ownAuthorScore
                 + ", followedPageScore=" + followedPageScore
                 + ", followedUserScore=" + followedUserScore
                 + ", sameRegionScore=" + sameRegionScore
@@ -632,5 +673,11 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             UUID afterId,
             String scoredAt,
             int version) {
+    }
+
+    private record RecommendationCacheKey(
+            UUID userId,
+            TrendWindowType windowType,
+            UUID contextRegionId) {
     }
 }

@@ -29,5 +29,7 @@ public class UserCreateDTO {
 
     private String userAvatar;
 
+    private String userDescription;
+
     private UUID regionId;
 }

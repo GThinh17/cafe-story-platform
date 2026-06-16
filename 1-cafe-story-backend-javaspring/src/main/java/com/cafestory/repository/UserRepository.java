@@ -32,6 +32,23 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     List<User> findByAccountStatusTrue();
 
+    @Query("""
+            select distinct u
+            from User u
+            left join fetch u.region r
+            where u.accountStatus = true
+            and u.userId <> :currentUserId
+            and not exists (
+                select uf
+                from UserFollow uf
+                where uf.follower.userId = :currentUserId
+                and uf.following.userId = u.userId
+            )
+            """)
+    List<User> findRecommendationCandidates(
+            @Param("currentUserId") UUID currentUserId,
+            Pageable pageable);
+
     long countByAccountStatus(Boolean accountStatus);
 
     @Query("""

@@ -9,6 +9,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
@@ -21,7 +22,13 @@ import java.util.UUID;
 
 @Data
 @Entity
-@Table(name = "blog_events")
+@Table(
+        name = "blog_events",
+        indexes = {
+                @Index(name = "idx_blog_events_blog_type_created", columnList = "blog_id, event_type, created_at"),
+                @Index(name = "idx_blog_events_created", columnList = "created_at"),
+                @Index(name = "idx_blog_events_user_created", columnList = "user_id, created_at")
+        })
 public class BlogEvent {
 
     @Id
