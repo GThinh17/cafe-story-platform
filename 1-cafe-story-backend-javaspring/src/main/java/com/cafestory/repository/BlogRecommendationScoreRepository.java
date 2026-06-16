@@ -30,8 +30,6 @@ public interface BlogRecommendationScoreRepository extends JpaRepository<BlogRec
     @Query("""
             select s
             from BlogRecommendationScore s
-            join fetch s.blog b
-            join fetch b.author
             where s.user.userId = :userId
               and s.windowType = :windowType
               and s.computedAt = :computedAt

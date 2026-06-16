@@ -3,13 +3,11 @@ package com.cafestory.entity;
 import com.cafestory.entity.enums.PostStatus;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
-import jakarta.persistence.ConstraintMode;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -22,8 +20,6 @@ import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
-import org.hibernate.annotations.NotFound;
-import org.hibernate.annotations.NotFoundAction;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -53,9 +49,11 @@ public class Blog {
     private User author;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "page_id", foreignKey = @ForeignKey(ConstraintMode.NO_CONSTRAINT))
-    @NotFound(action = NotFoundAction.IGNORE)
+    @JoinColumn(name = "page_id")
     private CafePage page;
+
+    @Column(name = "page_id", insertable = false, updatable = false)
+    private UUID pageId;
 
     @Column(name = "region_id")
     private UUID regionId;
@@ -122,10 +120,11 @@ public class Blog {
     }
 
     public UUID getPageId() {
-        return page == null ? null : page.getId();
+        return pageId;
     }
 
     public void setPageId(UUID pageId) {
+        this.pageId = pageId;
         if (pageId == null) {
             page = null;
             return;

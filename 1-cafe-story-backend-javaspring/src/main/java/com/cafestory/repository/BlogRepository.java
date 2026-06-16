@@ -15,10 +15,10 @@ import java.util.UUID;
 
 public interface BlogRepository extends JpaRepository<Blog, UUID> {
     @Override
-    @EntityGraph(attributePaths = {"author", "page"})
+    @EntityGraph(attributePaths = {"author"})
     List<Blog> findAll();
 
-    @EntityGraph(attributePaths = {"author", "page"})
+    @EntityGraph(attributePaths = {"author"})
     List<Blog> findByAuthorUserId(UUID authorUserId);
 
     @Query("""
@@ -27,7 +27,7 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
             where save.user.userId = :userId
             order by save.createdAt desc
             """)
-    @EntityGraph(attributePaths = {"author", "page"})
+    @EntityGraph(attributePaths = {"author"})
     List<Blog> findSavedBlogsByUserId(@Param("userId") UUID userId);
 
     @Query("""
@@ -36,7 +36,7 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
             where share.user.userId = :userId
             order by share.createdAt desc
             """)
-    @EntityGraph(attributePaths = {"author", "page"})
+    @EntityGraph(attributePaths = {"author"})
     List<Blog> findSharedBlogsByUserId(@Param("userId") UUID userId);
 
     @Query("""
@@ -45,10 +45,10 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
             where tag.taggedUser.userId = :userId
             order by tag.createdAt desc
             """)
-    @EntityGraph(attributePaths = {"author", "page"})
+    @EntityGraph(attributePaths = {"author"})
     List<Blog> findTaggedBlogsByUserId(@Param("userId") UUID userId);
 
-    @EntityGraph(attributePaths = {"author", "page"})
+    @EntityGraph(attributePaths = {"author"})
     java.util.Optional<Blog> findFirstByAuthorUserIdAndStatusOrderByCreatedAtDescIdDesc(
             UUID authorUserId,
             PostStatus status);
@@ -56,18 +56,29 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
     @Query("""
             select b
             from Blog b
-            where b.page.id = :pageId
+            where b.pageId = :pageId
             """)
-    @EntityGraph(attributePaths = {"author", "page"})
+    @EntityGraph(attributePaths = {"author"})
     List<Blog> findByPageId(@Param("pageId") UUID pageId);
 
-    @EntityGraph(attributePaths = {"author", "page"})
+    @EntityGraph(attributePaths = {"author"})
     List<Blog> findByStatus(PostStatus status);
+
+    @Query(
+            value = """
+                    select
+                        bi.blog_id as blogId,
+                        bi.image_url as imageUrl
+                    from blog_images bi
+                    where bi.blog_id in (:blogIds)
+                    """,
+            nativeQuery = true)
+    List<BlogImageUrlRow> findImageUrlsByBlogIds(@Param("blogIds") List<UUID> blogIds);
 
     @Query("""
             select b
             from Blog b
-            where b.page.id = :pageId
+            where b.pageId = :pageId
             and b.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
             and not exists (
                 select 1
@@ -77,7 +88,7 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
             )
             order by b.createdAt desc, b.id desc
             """)
-    @EntityGraph(attributePaths = {"author", "page"})
+    @EntityGraph(attributePaths = {"author"})
     List<Blog> findPublishedCafePageBlogsFirstPage(
             @Param("pageId") UUID pageId,
             Pageable pageable);
@@ -85,7 +96,7 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
     @Query("""
             select b
             from Blog b
-            where b.page.id = :pageId
+            where b.pageId = :pageId
             and b.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
             and (
                 b.createdAt < :afterCreatedAt
@@ -99,7 +110,7 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
             )
             order by b.createdAt desc, b.id desc
             """)
-    @EntityGraph(attributePaths = {"author", "page"})
+    @EntityGraph(attributePaths = {"author"})
     List<Blog> findPublishedCafePageBlogsAfterCursor(
             @Param("pageId") UUID pageId,
             @Param("afterCreatedAt") LocalDateTime afterCreatedAt,
@@ -113,12 +124,18 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
             from Blog b
             where (:status is null or b.status = :status)
             and (:authorUserId is null or b.author.userId = :authorUserId)
-            and (:pageId is null or b.page.id = :pageId)
+            and (:pageId is null or b.pageId = :pageId)
             """)
-    @EntityGraph(attributePaths = {"author", "page"})
+    @EntityGraph(attributePaths = {"author"})
     Page<Blog> findAdminBlogs(
             @Param("status") PostStatus status,
             @Param("authorUserId") UUID authorUserId,
             @Param("pageId") UUID pageId,
             Pageable pageable);
+
+    interface BlogImageUrlRow {
+        UUID getBlogId();
+
+        String getImageUrl();
+    }
 }

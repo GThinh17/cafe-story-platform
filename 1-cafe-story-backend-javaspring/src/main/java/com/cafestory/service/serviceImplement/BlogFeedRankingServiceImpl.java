@@ -46,6 +46,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Base64;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -300,6 +301,12 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
     }
 
     private List<BlogFeedResponse> toFeedResponses(List<BlogRecommendationScore> scores) {
+        List<UUID> blogIds = scores.stream()
+                .map(score -> score.getBlog().getId())
+                .filter(blogId -> blogId != null)
+                .distinct()
+                .toList();
+        Map<UUID, List<String>> imageUrlsByBlogId = imageUrlsByBlogId(blogIds);
         List<UUID> pageIds = scores.stream()
                 .map(score -> score.getBlog().getPageId())
                 .filter(pageId -> pageId != null)
@@ -318,14 +325,27 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                 .collect(Collectors.toMap(Region::getRegionId, Function.identity()));
 
         return scores.stream()
-                .map(score -> toFeedResponse(score, cafePagesById, regionsById))
+                .map(score -> toFeedResponse(score, cafePagesById, regionsById, imageUrlsByBlogId))
                 .toList();
+    }
+
+    private Map<UUID, List<String>> imageUrlsByBlogId(List<UUID> blogIds) {
+        if (blogIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<UUID, List<String>> imageUrlsByBlogId = new HashMap<>();
+        blogRepository.findImageUrlsByBlogIds(blogIds).forEach(row ->
+                imageUrlsByBlogId.computeIfAbsent(row.getBlogId(), ignored -> new java.util.ArrayList<>())
+                        .add(row.getImageUrl()));
+        return imageUrlsByBlogId;
     }
 
     private BlogFeedResponse toFeedResponse(
             BlogRecommendationScore score,
             Map<UUID, CafePage> cafePagesById,
-            Map<UUID, Region> regionsById) {
+            Map<UUID, Region> regionsById,
+            Map<UUID, List<String>> imageUrlsByBlogId) {
         Blog blog = score.getBlog();
         User author = blog.getAuthor();
         CafePage cafePage = blog.getPageId() == null ? null : cafePagesById.get(blog.getPageId());
@@ -333,7 +353,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         BlogFeedResponse response = new BlogFeedResponse();
         response.setBlogId(blog.getId());
         response.setContentPreview(toPreview(blog.getContent()));
-        response.setImageUrls(blog.getImageUrls());
+        response.setImageUrls(imageUrlsByBlogId.getOrDefault(blog.getId(), List.of()));
         response.setLikeCount(blog.getLikeCount());
         response.setCommentCount(blog.getCommentCount());
         response.setShareCount(blog.getShareCount());
