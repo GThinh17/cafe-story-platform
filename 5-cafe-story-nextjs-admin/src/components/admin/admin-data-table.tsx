@@ -21,6 +21,7 @@ type AdminDataTableProps<T> = {
   error?: string | null;
   emptyTitle?: string;
   emptyDescription?: string;
+  onRowClick?: (row: T) => void;
 };
 
 export function AdminDataTable<T>({
@@ -31,6 +32,7 @@ export function AdminDataTable<T>({
   error,
   emptyTitle = "No records",
   emptyDescription = "Try changing the filters or refresh the page.",
+  onRowClick,
 }: AdminDataTableProps<T>) {
   if (isLoading) {
     return (
@@ -77,7 +79,14 @@ export function AdminDataTable<T>({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr className="border-t border-border" key={getRowKey(row)}>
+              <tr
+                className={cn(
+                  "border-t border-border",
+                  onRowClick && "cursor-pointer hover:bg-surface-muted/50",
+                )}
+                key={getRowKey(row)}
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+              >
                 {columns.map((column) => (
                   <td
                     className={cn("px-4 py-3 align-top", column.className)}

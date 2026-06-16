@@ -46,9 +46,6 @@ public class ChatSocketController {
             @Valid SendMessageRequest request) {
         try {
             ChatMessageResponseDTO message = chatService.sendMessage(conversationId, request);
-            messagingTemplate.convertAndSend(
-                    topic(conversationId),
-                    new SocketEventResponseDTO("receive_message", conversationId, request.getSenderId(), message));
             messagingTemplate.convertAndSendToUser(
                     request.getSenderId().toString(),
                     "/queue/chat",

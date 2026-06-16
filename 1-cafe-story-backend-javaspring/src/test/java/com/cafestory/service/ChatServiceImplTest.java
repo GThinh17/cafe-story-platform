@@ -5,6 +5,7 @@ import com.cafestory.dto.requestDTO.chat.CreateGroupConversationRequest;
 import com.cafestory.dto.requestDTO.chat.SendMessageRequest;
 import com.cafestory.dto.requestDTO.chat.UpdateGroupInfoRequest;
 import com.cafestory.dto.responseDTO.chat.ChatMessageResponseDTO;
+import com.cafestory.dto.responseDTO.chat.SocketEventResponseDTO;
 import com.cafestory.entity.ChatMember;
 import com.cafestory.entity.ChatMessage;
 import com.cafestory.entity.Conversation;
@@ -23,9 +24,11 @@ import com.cafestory.validation.UserValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -37,6 +40,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -63,6 +67,9 @@ class ChatServiceImplTest {
     @Mock
     private NotificationService notificationService;
 
+    @Mock
+    private SimpMessagingTemplate messagingTemplate;
+
     private ChatServiceImpl chatService;
 
     @BeforeEach
@@ -74,7 +81,8 @@ class ChatServiceImplTest {
                 userValidator,
                 new ChatMapper(),
                 firebaseChatService,
-                notificationService);
+                notificationService,
+                messagingTemplate);
     }
 
     @Test
@@ -170,6 +178,12 @@ class ChatServiceImplTest {
         assertThat(result.getText()).isEqualTo("hello");
         verify(firebaseChatService).saveMessage(result);
         verify(firebaseChatService).updateLatestMessage(any(), any());
+        ArgumentCaptor<SocketEventResponseDTO> eventCaptor = ArgumentCaptor.forClass(SocketEventResponseDTO.class);
+        verify(messagingTemplate).convertAndSend(eq("/topic/conversations/" + conversation.getId()), eventCaptor.capture());
+        assertThat(eventCaptor.getValue().getEvent()).isEqualTo("receive_message");
+        assertThat(eventCaptor.getValue().getConversationId()).isEqualTo(conversation.getId());
+        assertThat(eventCaptor.getValue().getUserId()).isEqualTo(sender.getUserId());
+        assertThat(eventCaptor.getValue().getPayload()).isEqualTo(result);
         verify(notificationService).createMessageNotification(any(UUID.class), any(UUID.class), any(UUID.class), any(UUID.class));
         verify(conversationRepository).save(conversation);
         assertThat(conversation.getLatestMessagePreview()).isEqualTo("hello");

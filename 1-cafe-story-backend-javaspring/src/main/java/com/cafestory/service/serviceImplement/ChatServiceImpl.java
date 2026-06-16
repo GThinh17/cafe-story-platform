@@ -6,6 +6,7 @@ import com.cafestory.dto.requestDTO.chat.SendMessageRequest;
 import com.cafestory.dto.requestDTO.chat.UpdateGroupInfoRequest;
 import com.cafestory.dto.responseDTO.chat.ChatMessageResponseDTO;
 import com.cafestory.dto.responseDTO.chat.ConversationResponseDTO;
+import com.cafestory.dto.responseDTO.chat.SocketEventResponseDTO;
 import com.cafestory.entity.ChatMember;
 import com.cafestory.entity.ChatMessage;
 import com.cafestory.entity.Conversation;
@@ -25,6 +26,7 @@ import com.cafestory.validation.UserValidator;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -38,6 +40,7 @@ import java.util.UUID;
 public class ChatServiceImpl implements ChatService {
 
     private static final int MAX_PAGE_SIZE = 100;
+    private static final String CONVERSATION_TOPIC_PREFIX = "/topic/conversations/";
 
     private final ConversationRepository conversationRepository;
     private final ChatMemberRepository chatMemberRepository;
@@ -46,6 +49,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatMapper chatMapper;
     private final FirebaseChatService firebaseChatService;
     private final NotificationService notificationService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public ChatServiceImpl(
             ConversationRepository conversationRepository,
@@ -54,7 +58,8 @@ public class ChatServiceImpl implements ChatService {
             UserValidator userValidator,
             ChatMapper chatMapper,
             FirebaseChatService firebaseChatService,
-            NotificationService notificationService) {
+            NotificationService notificationService,
+            SimpMessagingTemplate messagingTemplate) {
         this.conversationRepository = conversationRepository;
         this.chatMemberRepository = chatMemberRepository;
         this.chatMessageRepository = chatMessageRepository;
@@ -62,6 +67,7 @@ public class ChatServiceImpl implements ChatService {
         this.chatMapper = chatMapper;
         this.firebaseChatService = firebaseChatService;
         this.notificationService = notificationService;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @Override
@@ -155,8 +161,15 @@ public class ChatServiceImpl implements ChatService {
                 savedMessage);
         firebaseChatService.saveMessage(messageResponse);
         firebaseChatService.updateLatestMessage(conversationResponse, messageResponse);
+        publishMessage(conversationId, sender.getUserId(), messageResponse);
         createMessageNotifications(conversationId, sender.getUserId(), savedMessage.getId());
         return messageResponse;
+    }
+
+    private void publishMessage(UUID conversationId, UUID senderId, ChatMessageResponseDTO messageResponse) {
+        messagingTemplate.convertAndSend(
+                CONVERSATION_TOPIC_PREFIX + conversationId,
+                new SocketEventResponseDTO("receive_message", conversationId, senderId, messageResponse));
     }
 
     @Override

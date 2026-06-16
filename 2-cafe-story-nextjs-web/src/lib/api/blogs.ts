@@ -125,3 +125,37 @@ export function getBlogLikesByUser(userId: string, options: ApiRequestOptions = 
     method: "GET",
   });
 }
+export function getSharedBlogsByUser(userId: string, options: ApiRequestOptions = {}) {
+  return apiFetch<BlogResponse[]>(apiEndpoints.blogs.sharedByUser(userId), {
+    headers: options.headers,
+    method: "GET",
+  });
+}
+
+export type BlogShareRequest = {
+  shareType: "PUBLIC" | "PRIVATE" | "PAGE_ONLY";
+};
+
+export type BlogShareResponse = {
+  id: string;
+  blogId: string;
+  userId: string;
+  shareType: string;
+  createdAt: string | null;
+};
+
+export function shareBlog(
+  blogId: string,
+  request: BlogShareRequest = { shareType: "PUBLIC" },
+) {
+  return apiFetch<BlogShareResponse>(apiEndpoints.blogs.shares(blogId), {
+    body: request,
+    method: "POST",
+  });
+}
+
+export function unshareBlog(blogId: string) {
+  return apiFetch<void>(apiEndpoints.blogs.shares(blogId), {
+    method: "DELETE",
+  });
+}

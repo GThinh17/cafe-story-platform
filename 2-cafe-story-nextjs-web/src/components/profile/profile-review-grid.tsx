@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  BookmarkIcon,
   CameraIcon,
   Grid3X3Icon,
   HeartIcon,
   MessageCircleIcon,
+  Repeat2Icon,
   UserSquare2Icon,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -28,6 +28,7 @@ type ProfileReviewGridProps = {
   onRetry?: () => void;
   posts?: FeedPost[];
   reviews?: ProfileReview[];
+  sharedPosts?: FeedPost[];
 };
 
 const tabTriggerClassName =
@@ -63,12 +64,16 @@ export function ProfileReviewGrid({
   onRetry,
   posts = [],
   reviews = [],
+  sharedPosts = [],
 }: ProfileReviewGridProps) {
+  const [activeTab, setActiveTab] = useState<"posts" | "shared">("posts");
   const [gridPosts, setGridPosts] = useState(posts);
+  const [gridSharedPosts, setGridSharedPosts] = useState(sharedPosts);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const { user } = useCurrentUser();
+  const activePosts = activeTab === "posts" ? posts : sharedPosts;
   const shouldShowEmptyState =
-    hasLoadedPosts && !isLoading && !errorMessage && posts.length === 0;
+    hasLoadedPosts && !isLoading && !errorMessage && activePosts.length === 0;
   const selectedPost = useMemo(
     () => gridPosts.find((post) => post.id === selectedPostId) ?? null,
     [gridPosts, selectedPostId],
@@ -130,8 +135,14 @@ export function ProfileReviewGrid({
   );
 
   useEffect(() => {
-    setGridPosts(posts);
+    const seen = new Set<string>();
+    setGridPosts(posts.filter((p) => (p.id ? !seen.has(p.id) && seen.add(p.id) : true)));
   }, [posts]);
+
+  useEffect(() => {
+    const seen = new Set<string>();
+    setGridSharedPosts(sharedPosts.filter((p) => (p.id ? !seen.has(p.id) && seen.add(p.id) : true)));
+  }, [sharedPosts]);
 
   useEffect(() => {
     if (!user?.userId || posts.length === 0) {
@@ -180,7 +191,7 @@ export function ProfileReviewGrid({
   return (
     <>
       <section className="flex flex-col">
-        <Tabs defaultValue="posts">
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "posts" | "shared")}>
           <TabsList
             className="relative z-10 grid h-16 w-full grid-cols-3 overflow-visible rounded-none bg-background p-0 text-muted"
             variant="line"
@@ -193,11 +204,11 @@ export function ProfileReviewGrid({
               <Grid3X3Icon className="size-6" strokeWidth={1.75} />
             </TabsTrigger>
             <TabsTrigger
-              aria-label="Saved"
+              aria-label="Shared"
               className={tabTriggerClassName}
-              value="saved"
+              value="shared"
             >
-              <BookmarkIcon className="size-6" strokeWidth={1.75} />
+              <Repeat2Icon className="size-6" strokeWidth={1.75} />
             </TabsTrigger>
             <TabsTrigger
               aria-label="Tagged"
@@ -255,9 +266,9 @@ export function ProfileReviewGrid({
                 ) : null}
               </div>
             </div>
-          ) : posts.length > 0 ? (
+          ) : (activeTab === "posts" ? posts.length > 0 : sharedPosts.length > 0) ? (
             <div className="grid grid-cols-3 gap-1">
-              {gridPosts.map((post) => (
+              {(activeTab === "posts" ? gridPosts : gridSharedPosts).map((post) => (
                 <button
                   aria-label={`Open ${post.cafe} post`}
                   className="group relative aspect-square overflow-hidden bg-surface-muted text-left"

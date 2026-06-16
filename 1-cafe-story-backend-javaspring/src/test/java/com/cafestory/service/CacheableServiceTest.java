@@ -577,4 +577,18 @@ class CacheableServiceTest {
         }
 
         @Bean
-        UserMapper userM
+        UserMapper userMapper() {
+            return Mockito.mock(UserMapper.class);
+        }
+
+        @Bean
+        UserValidator userValidator() {
+            return Mockito.mock(UserValidator.class);
+        }
+
+        @Bean
+        PasswordEncoder passwordEncoder() {
+            return Mockito.mock(PasswordEncoder.class);
+        }
+    }
+}

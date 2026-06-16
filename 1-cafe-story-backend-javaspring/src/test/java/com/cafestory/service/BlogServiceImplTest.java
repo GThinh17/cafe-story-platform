@@ -15,17 +15,17 @@ import com.cafestory.repository.BlogLikeRepository;
 import com.cafestory.repository.BlogRatingRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.BlogSaveRepository;
-import com.cafestory.service.serviceInterface.AiBlogModerationService;
 import com.cafestory.repository.RegionRepository;
 import com.cafestory.service.serviceImplement.BlogServiceImpl;
+import com.cafestory.service.serviceInterface.AiBlogModerationService;
 import com.cafestory.service.serviceInterface.BlogTagService;
 import com.cafestory.service.serviceInterface.RegionService;
 import com.cafestory.validation.BlogValidator;
 import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.UserValidator;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
@@ -77,11 +77,28 @@ class BlogServiceImplTest {
 
     @Mock
     private AiBlogModerationService aiBlogModerationService;
+
     @Mock
     private RegionService regionService;
 
-    @InjectMocks
     private BlogServiceImpl blogService;
+
+    @BeforeEach
+    void setUp() {
+        blogService = new BlogServiceImpl(
+                blogRepository,
+                blogLikeRepository,
+                blogSaveRepository,
+                blogRatingRepository,
+                regionRepository,
+                regionService,
+                aiBlogModerationService,
+                blogMapper,
+                blogValidator,
+                cafePageValidator,
+                userValidator,
+                blogTagService);
+    }
 
     @Test
     void createBlog_success_TC001() {

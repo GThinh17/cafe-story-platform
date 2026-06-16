@@ -24,8 +24,10 @@ import { cn } from "@/lib/utils";
 export type { FeedPost };
 
 type PostCardProps = {
+  currentUserId?: string;
   onCommentClick?: (post: FeedPost) => void;
   onLikeClick?: (post: FeedPost) => void;
+  onShareClick?: (post: FeedPost) => void;
   post: FeedPost;
 };
 
@@ -66,7 +68,7 @@ function formatPostLikeCount(post: FeedPost) {
   return typeof post.likeCount === "number" ? formatCount(post.likeCount) : post.likes;
 }
 
-export function PostCard({ onCommentClick, onLikeClick, post }: PostCardProps) {
+export function PostCard({ currentUserId, onCommentClick, onLikeClick, onShareClick, post }: PostCardProps) {
   const identity = getPostIdentity(post);
   const locationLabel = post.locationLabel?.trim() || post.location?.trim();
   const commentCount = formatPostCommentCount(post);
@@ -76,6 +78,11 @@ export function PostCard({ onCommentClick, onLikeClick, post }: PostCardProps) {
     Share: post.shares ?? "0",
   };
   const media = getFeedPostMediaList(post);
+
+  const isOwnPost = Boolean(currentUserId && post.authorUserId && currentUserId === post.authorUserId);
+  const visibleActions = isOwnPost
+    ? postActions.filter((a) => a.label !== "Share")
+    : postActions;
 
   return (
     <Card className="mx-auto w-[85%] max-w-full overflow-hidden [contain-intrinsic-size:765px] [content-visibility:auto]">
@@ -124,7 +131,7 @@ export function PostCard({ onCommentClick, onLikeClick, post }: PostCardProps) {
       <CardContent className="flex flex-col gap-4 px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            {postActions.map(({ icon: Icon, label }) => (
+            {visibleActions.map(({ icon: Icon, label }) => (
               <Button
                 aria-label={label}
                 className="h-auto cursor-pointer gap-1.5 px-0 py-0 text-sm font-bold text-foreground hover:bg-transparent hover:text-primary data-[state=active]:bg-transparent"
@@ -134,7 +141,9 @@ export function PostCard({ onCommentClick, onLikeClick, post }: PostCardProps) {
                     ? () => onCommentClick?.(post)
                     : label === "Like"
                       ? () => onLikeClick?.(post)
-                      : undefined
+                      : label === "Share"
+                        ? () => onShareClick?.(post)
+                        : undefined
                 }
                 type="button"
                 variant="ghost"
@@ -142,9 +151,8 @@ export function PostCard({ onCommentClick, onLikeClick, post }: PostCardProps) {
                 <Icon
                   className={cn(
                     "size-6",
-                    label === "Like" &&
-                      post.isLiked &&
-                      "fill-accent text-accent",
+                    label === "Like" && post.isLiked && "fill-accent text-accent",
+                    label === "Share" && post.isShared && "fill-primary text-primary",
                   )}
                   strokeWidth={2.2}
                 />

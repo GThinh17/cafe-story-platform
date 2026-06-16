@@ -325,4 +325,19 @@ public class BlogServiceImpl implements BlogService {
     }
 
     private List<Blog> distinctByBlogId(List<Blog> blogs) {
-        LinkedHashMap<UUID, Blog> distinctBlogs = new LinkedHashM
+        LinkedHashMap<UUID, Blog> distinctBlogs = new LinkedHashMap<>();
+
+        for (Blog blog : blogs) {
+            if (blog.getId() != null) {
+                distinctBlogs.putIfAbsent(blog.getId(), blog);
+            }
+        }
+
+        return distinctBlogs.values().stream().toList();
+    }
+
+    private double resolveRatingScore(UUID blogId) {
+        Double ratingScore = blogRatingRepository.findAverageRatingByBlogId(blogId);
+        return ratingScore == null ? 0.0 : ratingScore;
+    }
+}

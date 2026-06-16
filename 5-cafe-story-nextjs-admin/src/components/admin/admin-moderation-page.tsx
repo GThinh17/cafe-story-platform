@@ -24,12 +24,14 @@ import {
 } from "@/components/admin/admin-page-utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import {
+  getAdminBlog,
   getAdminModerationResult,
   getModerationResults,
   resolveModerationResult,
 } from "@/lib/api/admin";
-import type { AdminModerationResult, ModerationResolveAction } from "@/types/admin";
+import type { AdminModerationResult, Blog, ModerationResolveAction } from "@/types/admin";
 
 const resolveActions: ModerationResolveAction[] = ["APPROVE", "HIDE", "REMOVE"];
 
@@ -45,6 +47,7 @@ export function AdminModerationPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailResult, setDetailResult] = useState<AdminModerationResult | null>(null);
+  const [detailBlog, setDetailBlog] = useState<Blog | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
 
@@ -56,20 +59,31 @@ export function AdminModerationPage() {
   async function openDetail(result: AdminModerationResult) {
     setDetailOpen(true);
     setDetailResult(null);
+    setDetailBlog(null);
     setDetailError(null);
     setDetailLoading(true);
 
-    try {
-      setDetailResult(await getAdminModerationResult(result.id));
-    } catch (requestError) {
+    const [moderationRes, blogRes] = await Promise.allSettled([
+      getAdminModerationResult(result.id),
+      result.blogId ? getAdminBlog(result.blogId) : Promise.resolve(null),
+    ]);
+
+    if (moderationRes.status === "fulfilled") {
+      setDetailResult(moderationRes.value);
+    } else {
       setDetailError(
-        requestError instanceof Error
-          ? requestError.message
+        moderationRes.reason instanceof Error
+          ? moderationRes.reason.message
           : "Unable to load moderation detail.",
       );
-    } finally {
-      setDetailLoading(false);
     }
+
+    if (blogRes.status === "fulfilled") {
+      setDetailBlog(blogRes.value);
+    }
+    // blog fetch failure is non-critical, no error set
+
+    setDetailLoading(false);
   }
 
   const columns = useMemo<AdminTableColumn<AdminModerationResult>[]>(
@@ -110,7 +124,10 @@ export function AdminModerationPage() {
                 size="sm"
                 disabled={Boolean(result.resolved)}
                 key={action}
-                onClick={() => setPendingAction({ result, action })}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPendingAction({ result, action });
+                }}
               >
                 {action}
               </Button>
@@ -176,6 +193,7 @@ export function AdminModerationPage() {
         getRowKey={(result) => result.id}
         isLoading={resource.isLoading}
         error={resource.error}
+        onRowClick={(result) => openDetail(result)}
       />
       <AdminPagination page={resource.data} onPageChange={resource.setPageNumber} />
 
@@ -207,6 +225,36 @@ export function AdminModerationPage() {
       >
         {detailResult ? (
           <div className="flex flex-col gap-5">
+            {detailBlog && (
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">
+                  Blog Images
+                </p>
+                {detailBlog.imageUrls.length > 0 ? (
+                  <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {detailBlog.imageUrls.slice(0, 4).map((url) => (
+                      <img
+                        key={url}
+                        src={url}
+                        alt=""
+                        className="aspect-[4/3] w-full rounded-md object-cover"
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-muted">No images</p>
+                )}
+                {detailBlog.content && (
+                  <p className="mt-3 max-h-40 overflow-y-auto whitespace-pre-wrap text-sm leading-6 text-foreground">
+                    {detailBlog.content}
+                  </p>
+                )}
+              </div>
+            )}
+            <Separator />
+            <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">
+              AI Evaluation
+            </p>
             <div>
               <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">
                 Caption
@@ -287,4 +335,3 @@ export function AdminModerationPage() {
     </div>
   );
 }
-

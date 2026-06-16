@@ -149,6 +149,13 @@ export function mapBlogFeedToFeedPosts(feed: BlogFeedResponse[]): FeedPost[] {
   });
 }
 
+export function mapSharedBlogResponsesToFeedPosts(blogs: BlogResponse[]): FeedPost[] {
+  return mapBlogResponsesToFeedPosts(blogs).map((post) => ({
+    ...post,
+    isShared: true,
+  }));
+}
+
 export function mapBlogResponsesToFeedPosts(blogs: BlogResponse[]): FeedPost[] {
   return blogs.map((item, index) => {
     const authorUsername = firstNonEmpty([

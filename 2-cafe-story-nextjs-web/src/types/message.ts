@@ -92,6 +92,7 @@ export type Conversation = {
   active?: boolean;
   unread?: boolean;
   isTemporary?: boolean;
+  hasMessages?: boolean;
   localStatus?: LocalConversationStatus;
   initials?: string;
   status?: string;
@@ -108,4 +109,21 @@ export type MessageThread = {
 export type SendMessageDraft = {
   text: string;
   file: File | null;
+};
+
+// WebSocket STOMP event types
+export type SocketEventType =
+  | "receive_message"
+  | "message_sent"
+  | "message_failed"
+  | "join_conversation"
+  | "leave_conversation"
+  | "typing_start"
+  | "typing_stop";
+
+export type SocketEvent = {
+  type: SocketEventType;
+  conversationId: string | null;
+  userId: string | null;
+  data: ChatMessageResponse | string | null;
 };
