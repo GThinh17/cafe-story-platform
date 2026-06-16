@@ -9,6 +9,7 @@ import java.util.UUID;
 public class RecommendationCardResponseDTO {
     private UUID targetId;
     private RecommendationTargetType targetType;
+    private UUID userId;
     private String avatar;
     private String username;
     private String fullName;

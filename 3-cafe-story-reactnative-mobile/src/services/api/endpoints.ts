@@ -17,6 +17,7 @@ export const apiEndpoints = {
       `/api/chat/conversations/${pathId(conversationId)}/messages`,
   },
   blogs: {
+    byId: (blogId: string) => `/api/blogs/${pathId(blogId)}`,
     byUser: (userId: string) => `/api/blogs/users/${pathId(userId)}`,
     feed: "/api/blogs/feed",
     list: "/api/blogs",
@@ -29,6 +30,7 @@ export const apiEndpoints = {
     shares: (blogId: string) => `/api/blogs/${pathId(blogId)}/shares`,
     sharedByUser: (userId: string) => `/api/blogs/users/${pathId(userId)}/shared`,
     taggedByUser: (userId: string) => `/api/blogs/users/${pathId(userId)}/tagged`,
+    trending: "/api/blogs/trending",
   },
   comments: {
     list: "/api/comments",
@@ -64,6 +66,12 @@ export const apiEndpoints = {
     },
   },
   recommendations: {
+    cafePages: (page = 0, size = 20) =>
+      `/api/recommendations/cafe-pages?page=${page}&size=${size}`,
+    mixed: (page = 0, size = 30) =>
+      `/api/recommendations/mixed?page=${page}&size=${size}`,
+    reviewers: (page = 0, size = 20) =>
+      `/api/recommendations/reviewers?page=${page}&size=${size}`,
     users: (page = 0, size = 20) =>
       `/api/recommendations/users?page=${page}&size=${size}`,
   },

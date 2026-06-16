@@ -7,6 +7,7 @@ import type {
   BlogSaveResponse,
   BlogShareRequest,
   BlogShareResponse,
+  BlogTrendingResponse,
 } from "../../types";
 import { apiFetch } from "./client";
 import { apiEndpoints } from "./endpoints";
@@ -44,6 +45,25 @@ export function createBlog(request: BlogCreateRequest) {
     body: request,
     method: "POST",
   });
+}
+
+export function getBlogById(blogId: string) {
+  return apiFetch<BlogResponse>(apiEndpoints.blogs.byId(blogId), {
+    method: "GET",
+  });
+}
+
+export function getTrendingBlogs(params: Omit<BlogFeedParams, "regionId"> = {}) {
+  return apiFetch<BlogTrendingResponse[]>(
+    withQuery(apiEndpoints.blogs.trending, {
+      page: params.page,
+      size: params.size,
+      windowType: params.windowType,
+    }),
+    {
+      method: "GET",
+    },
+  );
 }
 
 export function getBlogsByUser(userId: string) {

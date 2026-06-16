@@ -132,6 +132,7 @@ public class RecommendationServiceImpl implements RecommendationService {
         RecommendationCardResponseDTO response = baseResponse(
                 RecommendationTargetType.USER,
                 candidate.getUserId(),
+                candidate.getUserId(),
                 candidate.getUserAvatar(),
                 candidate.getUserName(),
                 displayName(candidate),
@@ -151,6 +152,7 @@ public class RecommendationServiceImpl implements RecommendationService {
         RecommendationCardResponseDTO response = baseResponse(
                 RecommendationTargetType.REVIEWER,
                 reviewer.getReviewerId(),
+                reviewerUser.getUserId(),
                 reviewerUser.getUserAvatar(),
                 reviewerUser.getUserName(),
                 displayName(reviewerUser),
@@ -171,6 +173,7 @@ public class RecommendationServiceImpl implements RecommendationService {
         RecommendationCardResponseDTO response = baseResponse(
                 RecommendationTargetType.CAFE_PAGE,
                 cafePage.getId(),
+                null,
                 cafePage.getAvatarUrl(),
                 cafePage.getName(),
                 cafePage.getName(),
@@ -182,6 +185,7 @@ public class RecommendationServiceImpl implements RecommendationService {
     private RecommendationCardResponseDTO baseResponse(
             RecommendationTargetType targetType,
             UUID targetId,
+            UUID userId,
             String avatar,
             String username,
             String fullName,
@@ -189,6 +193,7 @@ public class RecommendationServiceImpl implements RecommendationService {
         RecommendationCardResponseDTO response = new RecommendationCardResponseDTO();
         response.setTargetType(targetType);
         response.setTargetId(targetId);
+        response.setUserId(userId);
         response.setAvatar(avatar);
         response.setUsername(username);
         response.setFullName(fullName);
@@ -214,6 +219,14 @@ public class RecommendationServiceImpl implements RecommendationService {
     }
 
     private String buildUserReason(double locationScore, double popularityScore) {
+        String englishReason = locationScore > 0
+                ? "In your area"
+                : popularityScore >= 10
+                ? "Popular in the CafeStory community"
+                : "Suggested for your CafeStory circle";
+        if (!englishReason.isBlank()) {
+            return englishReason;
+        }
         if (locationScore > 0) {
             return "Cùng khu vực với bạn";
         }
@@ -224,6 +237,14 @@ public class RecommendationServiceImpl implements RecommendationService {
     }
 
     private String buildReviewerReason(double locationScore, double popularityScore) {
+        String englishReason = locationScore > 0
+                ? "Reviewer near you"
+                : popularityScore >= 10
+                ? "High community engagement"
+                : "Active reviewer on CafeStory";
+        if (!englishReason.isBlank()) {
+            return englishReason;
+        }
         if (locationScore > 0) {
             return "Reviewer nổi bật gần bạn";
         }
@@ -234,6 +255,14 @@ public class RecommendationServiceImpl implements RecommendationService {
     }
 
     private String buildCafePageReason(double locationScore, double popularityScore) {
+        String englishReason = locationScore > 0
+                ? "Near your area"
+                : popularityScore >= 10
+                ? "Followed by many cafe lovers"
+                : "Active cafe page on CafeStory";
+        if (!englishReason.isBlank()) {
+            return englishReason;
+        }
         if (locationScore > 0) {
             return "Gần khu vực của bạn";
         }
