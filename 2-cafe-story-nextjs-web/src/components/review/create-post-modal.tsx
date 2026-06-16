@@ -18,9 +18,10 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { createBlog } from "@/lib/api/blogs";
+import { createModeratedBlog } from "@/lib/api/blogs";
 import { uploadPostImageToCloudinary } from "@/lib/api/cloudinary";
-import type { BlogResponse } from "@/types/blog";
+import type { BlogCreateRequest, BlogResponse } from "@/types/blog";
+import type { CafePageResponse } from "@/types/cafe";
 import type { ReviewComposerModel, ReviewDraftHint } from "@/types/review";
 import { Input } from "../ui/input";
 
@@ -35,6 +36,7 @@ type CreatePostModalProps = {
   composer: ReviewComposerModel;
   hints: ReviewDraftHint[];
   isOpen: boolean;
+  ownedCafePage?: CafePageResponse | null;
   onClose: () => void;
   onCreated?: (post: BlogResponse) => void;
 };
@@ -54,6 +56,7 @@ export function CreatePostModal({
   composer,
   hints: _hints,
   isOpen,
+  ownedCafePage = null,
   onClose,
   onCreated,
 }: CreatePostModalProps) {
@@ -61,6 +64,7 @@ export function CreatePostModal({
   const selectedImagesRef = useRef<SelectedImage[]>([]);
   const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
   const [caption, setCaption] = useState("");
+  const [postAsCafePage, setPostAsCafePage] = useState(false);
   const [turnOffCommenting, setTurnOffCommenting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -77,6 +81,7 @@ export function CreatePostModal({
       return [];
     });
     setCaption("");
+    setPostAsCafePage(false);
     setTurnOffCommenting(false);
     setErrorMessage(null);
 
@@ -157,12 +162,16 @@ export function CreatePostModal({
       const imageUrls = await Promise.all(
         selectedImages.map((image) => uploadPostImageToCloudinary(image.file)),
       );
-      const createdPost = await createBlog({
+      const payload: BlogCreateRequest = {
         allowComment: !turnOffCommenting,
         content: trimmedCaption,
         imageUrls,
         isPinned: false,
-      });
+        ...(postAsCafePage && ownedCafePage?.id
+          ? { pageId: ownedCafePage.id }
+          : {}),
+      };
+      const createdPost = await createModeratedBlog(payload);
 
       onCreated?.(createdPost);
       resetForm();
@@ -294,6 +303,28 @@ export function CreatePostModal({
                 value={caption}
               />
             </label>
+
+            {ownedCafePage ? (
+              <section className="flex flex-col gap-2 rounded-md bg-surface-muted px-4 py-4">
+                <div className="flex items-center justify-between gap-4">
+                  <label
+                    className="text-sm font-medium text-espresso"
+                    htmlFor="post-as-cafe-page"
+                  >
+                    Post as cafe page
+                  </label>
+                  <Switch
+                    checked={postAsCafePage}
+                    disabled={isSubmitting}
+                    id="post-as-cafe-page"
+                    onCheckedChange={setPostAsCafePage}
+                  />
+                </div>
+                <p className="max-w-[520px] text-xs leading-5 text-muted">
+                  This post will appear under {ownedCafePage.name}.
+                </p>
+              </section>
+            ) : null}
 
             <section className="flex flex-col gap-2 rounded-md bg-surface-muted px-4 py-4">
               <div className="flex items-center justify-between gap-4">

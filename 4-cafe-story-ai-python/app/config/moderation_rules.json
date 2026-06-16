@@ -1,0 +1,51 @@
+{
+  "clip": {
+    "model_name": "openai/clip-vit-base-patch32",
+    "not_cafe_label": "not a coffee shop (bar, office workspace with computers, restaurant, classroom, gym), unrelated image",
+    "labels": [
+      "coffee shop space, seating area with drinks, tables in a coffee shop with drinks (not just empty tables, not like a restaurant or bar without coffee-related items visible or office space without any cafe-related items visible)",
+      "coffee shop menu, menu board with drinks (not just a generic menu board, not like a restaurant or bar without coffee-related items visible), beverage list (not just a generic menu board, not like a restaurant or bar without coffee-related items visible)",
+      "coffee shop logo (coffee shop brand logo), brand sign (coffee shop brand sign), coffee shop branding (logo or sign with coffee shop brand name or logo visible)",
+      "coffee shop staff (employees, not just a person image), barista (person making coffee), person working (person behind the counter, not just a generic person image, not like a restaurant or bar without coffee-related items visible)",
+      "not a coffee shop (bar, office workspace with computers, restaurant, classroom, gym), unrelated image"
+    ],
+    "high_not_cafe_confidence": 80
+  },
+  "gemini_image": {
+    "model_name": "gemini-2.5-flash",
+    "max_images": 3,
+    "tags": {
+      "photo cafe": "ONLY if the space is clearly designed for photography: neon signs, decorative corners, staged backgrounds. DO NOT choose if it looks like a normal cafe, even if it's photogenic, photo cafe ONLY means: a cafe intentionally designed as a photography destination with staged or decorative photo spots.",
+      "pet cafe": "ONLY if animals are clearly visible (cats, dogs, birds).",
+      "study cafe": "ONLY if people are working OR there are clear signs like laptops, books, large tables, or power outlets.",
+      "vintage cafe": "ONLY if antique/retro furniture or old-style decor is clearly visible.",
+      "garden cafe": "ONLY if many plants/trees outdoor or outdoor garden seating is visible, not just potted plants or plants placed indoor.",
+      "anime cafe": "ONLY if anime or games posters, figures, or cosplay elements are visible.",
+      "model cafe": "ONLY if model-kits: tanks, ships, robot, miniatures, or display collections are visible.",
+      "acoustic cafe": "ONLY if stage, instruments, or microphones are visible.",
+      "brunch cafe": "ONLY if food, bakery items, or display cases with cakes/pastries are visible, or menu with brunch items.",
+      "takeaway": "ONLY if seating is minimal AND the focus is on ordering counter and takeaway cups.",
+      "vietnam traditional cafe": "ONLY if low stools, street setting, or traditional phin coffee setup is visible."
+    },
+    "prompt_rules": [
+      "You are a strict image classifier.",
+      "Classify cafe image into EXACTLY 3 tags.",
+      "ONLY choose a tag if there is CLEAR VISUAL EVIDENCE in the image.",
+      "DO NOT guess based on general vibe.",
+      "Avoid generic tags like \"photo cafe\" unless very obvious.",
+      "Prefer concrete objects over abstract vibes."
+    ],
+    "fallback_tags": ["study cafe", "brunch cafe", "photo cafe"]
+  },
+  "gemini_text": {
+    "model_name": "gemini-3.1-flash-lite",
+    "prompt_template": "Bạn là một hệ thống kiểm duyệt nội dung chuyên nghiệp cho một diễn đàn review quán cà phê.\nNhiệm vụ của bạn là phân tích caption đầu vào và đánh giá theo 3 tiêu chí:\n1. Có liên quan đến quán cà phê không? (không gian, đồ uống, nhân viên, giá cả...).\n2. Có vi phạm tiêu chuẩn cộng đồng không? (chửi thề, văng tục, đồi trụy, spam).\n3. Có gây xích mích, chia rẽ không? (phân biệt vùng miền, công kích cá nhân, bóc phốt vô căn cứ tạo thù ghét).\n\nCaption cần phân tích: \"{text}\"\n\nHãy trả về một JSON object với cấu trúc:\n{{\n  \"is_coffee_related\": boolean,\n  \"is_violation\": boolean,\n  \"score\": integer,\n  \"reason\": \"Giải thích ngắn gọn bằng tiếng Việt\"\n}}\n\nQuy tắc chấm điểm score 0-100: 0 là không có độc hại, trên 50 là có từ chửi thề/khiếm nhã, trên 80 là xúc phạm nghiêm trọng, 100 là rất độc hại."
+  },
+  "decision": {
+    "caption_deny_score": 70,
+    "image_deny_score": 30,
+    "image_review_min_score": 30,
+    "image_review_max_score": 50,
+    "image_approve_score": 50
+  }
+}

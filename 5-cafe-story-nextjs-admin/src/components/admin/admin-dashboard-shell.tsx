@@ -1,0 +1,109 @@
+"use client";
+
+import type { ReactNode } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { AdminSidebar } from "@/components/admin/admin-sidebar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { hasAdminRole } from "@/lib/auth";
+
+function AdminLoadingState() {
+  return (
+    <div className="min-h-screen bg-background p-6 text-foreground">
+      <div className="mx-auto flex max-w-5xl flex-col gap-4">
+        <Skeleton className="h-12 w-64" />
+        <Skeleton className="h-72 w-full" />
+      </div>
+    </div>
+  );
+}
+
+function AdminAuthRequired() {
+  const pathname = usePathname();
+  const loginHref = `/login?next=${encodeURIComponent(pathname || "/")}`;
+
+  return (
+    <div className="grid min-h-screen place-items-center bg-background p-6 text-foreground">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Sign in required</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 text-sm leading-6 text-muted">
+          <p>Please sign in with an ADMIN account to open CafeStory Admin.</p>
+          <Button asChild className="w-fit">
+            <Link href={loginHref}>Sign in</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function AdminAccessDenied({ error }: { error: string | null }) {
+  return (
+    <div className="grid min-h-screen place-items-center bg-background p-6 text-foreground">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Access denied</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 text-sm leading-6 text-muted">
+          <p>
+            Sign in with an ADMIN account to open the CafeStory admin workspace.
+          </p>
+          {error ? <p>{error}</p> : null}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function AdminAuthGuard({ children }: { children: ReactNode }) {
+  const { user, isInitialLoading, isLoading, hasResolvedInitialAuth, error } =
+    useCurrentUser();
+
+  if (isInitialLoading || (isLoading && !hasResolvedInitialAuth)) {
+    return <AdminLoadingState />;
+  }
+
+  if (!hasResolvedInitialAuth) {
+    return <AdminLoadingState />;
+  }
+
+  if (!user) {
+    return <AdminAuthRequired />;
+  }
+
+  if (!hasAdminRole(user)) {
+    return <AdminAccessDenied error={error} />;
+  }
+
+  return children;
+}
+
+function AdminDashboardContent({ children }: { children: ReactNode }) {
+  const { user } = useCurrentUser();
+
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <AdminSidebar user={user} />
+      <div className="min-h-screen lg:pl-72">
+        <main className="px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+      </div>
+    </div>
+  );
+}
+
+export function AdminDashboardShell({ children }: { children: ReactNode }) {
+  return (
+    <AdminAuthGuard>
+      <AdminDashboardContent>{children}</AdminDashboardContent>
+    </AdminAuthGuard>
+  );
+}

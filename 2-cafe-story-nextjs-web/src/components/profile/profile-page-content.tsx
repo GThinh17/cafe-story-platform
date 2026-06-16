@@ -10,10 +10,13 @@ import { ProfileHeader } from "@/components/profile/profile-header";
 import { ProfileReviewGrid } from "@/components/profile/profile-review-grid";
 import { ProfileUserListModal } from "@/components/profile/profile-user-list-modal";
 import { CreatePostModal } from "@/components/review/create-post-modal";
-import { mapBlogResponsesToFeedPosts } from "@/features/blogs/blog-feed-adapter";
+import {
+  mapBlogResponsesToFeedPosts,
+  mapSharedBlogResponsesToFeedPosts,
+} from "@/features/blogs/blog-feed-adapter";
 import { useBfcacheRestoreEffect } from "@/hooks/use-bfcache-restore";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { getBlogsByUser } from "@/lib/api/blogs";
+import { getBlogsByUser, getSharedBlogsByUser } from "@/lib/api/blogs";
 import { getCafePagesByOwnerId } from "@/lib/api/cafes";
 import { createDirectConversation } from "@/lib/api/chat";
 import { ApiError } from "@/lib/api/client";
@@ -184,7 +187,8 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
   const [isFollowing, setIsFollowing] = useState(false);
   const [isMessageLoading, setIsMessageLoading] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
-  const [profilePosts, setProfilePosts] = useState<FeedPost[]>([]);
+  const [ownPosts, setOwnPosts] = useState<FeedPost[]>([]);
+  const [sharedPosts, setSharedPosts] = useState<FeedPost[]>([]);
   const [isPostsLoading, setIsPostsLoading] = useState(false);
   const [postsError, setPostsError] = useState<string | null>(null);
   const [hasLoadedPosts, setHasLoadedPosts] = useState(false);
@@ -201,7 +205,8 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
     setViewedUser(null);
     setIsFollowing(false);
     setFollowerCount(0);
-    setProfilePosts([]);
+    setOwnPosts([]);
+    setSharedPosts([]);
     setIsPostsLoading(false);
     setPostsError(null);
     setHasLoadedPosts(false);
@@ -252,20 +257,37 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
     setHasLoadedPosts(false);
 
     try {
-      const response = await getBlogsByUser(userId);
+      const [ownBlogsRes, sharedBlogsRes] = await Promise.allSettled([
+        getBlogsByUser(userId),
+        getSharedBlogsByUser(userId),
+      ]);
 
       if (postsRequestIdRef.current !== requestId) {
         return;
       }
 
-      setProfilePosts(mapBlogResponsesToFeedPosts(response));
+      if (ownBlogsRes.status === "rejected") {
+        throw ownBlogsRes.reason;
+      }
+
+      const nextOwnPosts = mapBlogResponsesToFeedPosts(
+        ownBlogsRes.value.filter((b) => !b.pageId),
+      );
+      const nextSharedPosts =
+        sharedBlogsRes.status === "fulfilled"
+          ? mapSharedBlogResponsesToFeedPosts(sharedBlogsRes.value)
+          : [];
+
+      setOwnPosts(nextOwnPosts);
+      setSharedPosts(nextSharedPosts);
       setHasLoadedPosts(true);
     } catch (requestError) {
       if (postsRequestIdRef.current !== requestId) {
         return;
       }
 
-      setProfilePosts([]);
+      setOwnPosts([]);
+      setSharedPosts([]);
       setPostsError(
         requestError instanceof ApiError
           ? requestError.message
@@ -304,7 +326,8 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
 
   useEffect(() => {
     if (!viewedUser?.userId) {
-      setProfilePosts([]);
+      setOwnPosts([]);
+      setSharedPosts([]);
       setActiveCafePages([]);
       setIsPostsLoading(false);
       setPostsError(null);
@@ -327,7 +350,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
       return {
         ...mapUserResponseToProfile(viewedUser),
         stats: {
-          posts: String(profilePosts.length),
+          posts: String(ownPosts.length),
           following: String(viewedUser.followingCount ?? 0),
           followers: String(followerCount),
         },
@@ -347,7 +370,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
     followerCount,
     activeCafePages.length,
     isOwnProfile,
-    profilePosts.length,
+    ownPosts.length,
     routeUsername,
     user,
     viewedUser,
@@ -449,6 +472,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
         />
       ) : null}
       <CafePageHighlights cafes={cafeHighlights} />
+
       <ProfileReviewGrid
         canCreatePost={isOwnProfile}
         errorMessage={postsError}
@@ -460,12 +484,14 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
             void loadProfilePosts(viewedUser.userId);
           }
         }}
-        posts={profilePosts}
+        posts={ownPosts}
+        sharedPosts={sharedPosts}
       />
       <CreatePostModal
         composer={mockReviewComposer}
         hints={mockReviewDraftHints}
         isOpen={isCreatePostOpen}
+        ownedCafePage={isOwnProfile ? primaryCafePage : null}
         onCreated={() => {
           if (viewedUser?.userId) {
             void loadProfilePosts(viewedUser.userId);

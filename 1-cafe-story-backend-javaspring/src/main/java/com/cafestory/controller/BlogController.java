@@ -43,6 +43,14 @@ public class BlogController {
         return blogService.createBlog(blogCreateDTO, requireUserId(principal));
     }
 
+    @PostMapping("/moderated")
+    @ResponseStatus(HttpStatus.CREATED)
+    public BlogResponseDTO createModeratedBlog(
+            @Valid @RequestBody BlogCreateDTO blogCreateDTO,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return blogService.createModeratedBlog(blogCreateDTO, requireUserId(principal));
+    }
+
     @GetMapping
     public List<BlogResponseDTO> getBlogs(
             @RequestParam(required = false) UUID authorUserId,

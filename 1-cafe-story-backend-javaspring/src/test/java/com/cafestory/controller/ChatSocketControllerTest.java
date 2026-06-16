@@ -8,6 +8,7 @@ import com.cafestory.dto.responseDTO.chat.SocketEventResponseDTO;
 import com.cafestory.entity.enums.MessageStatus;
 import com.cafestory.entity.enums.MessageType;
 import com.cafestory.service.serviceInterface.ChatService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -33,7 +34,7 @@ class ChatSocketControllerTest {
     private SimpMessagingTemplate messagingTemplate;
 
     @Test
-    void sendMessage_success_emitsReceiveMessageAndMessageSent_TC001() {
+    void sendMessage_success_emitsMessageSentAckOnly_TC001() {
         ChatSocketController controller = new ChatSocketController(chatService, messagingTemplate);
         UUID conversationId = UUID.randomUUID();
         UUID senderId = UUID.randomUUID();
@@ -48,10 +49,6 @@ class ChatSocketControllerTest {
         controller.sendMessage(conversationId, request);
 
         ArgumentCaptor<SocketEventResponseDTO> eventCaptor = ArgumentCaptor.forClass(SocketEventResponseDTO.class);
-        verify(messagingTemplate).convertAndSend(eq("/topic/conversations/" + conversationId), eventCaptor.capture());
-        assertThat(eventCaptor.getValue().getEvent()).isEqualTo("receive_message");
-        assertThat(eventCaptor.getValue().getPayload()).isEqualTo(message);
-
         verify(messagingTemplate).convertAndSendToUser(
                 eq(senderId.toString()),
                 eq("/queue/chat"),
@@ -74,6 +71,21 @@ class ChatSocketControllerTest {
         verify(messagingTemplate).convertAndSend(eq("/topic/conversations/" + conversationId), eventCaptor.capture());
         assertThat(eventCaptor.getValue().getEvent()).isEqualTo("typing_start");
         assertThat(eventCaptor.getValue().getUserId()).isEqualTo(userId);
+    }
+
+    @Test
+    void socketEventResponse_serializesFrontendCompatibleFields_TC003() throws Exception {
+        UUID conversationId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        SocketEventResponseDTO event = new SocketEventResponseDTO("receive_message", conversationId, userId, "payload");
+
+        String json = new ObjectMapper().writeValueAsString(event);
+
+        assertThat(json).contains("\"type\":\"receive_message\"");
+        assertThat(json).contains("\"data\":\"payload\"");
+        assertThat(json).contains("\"conversationId\":\"" + conversationId + "\"");
+        assertThat(json).doesNotContain("\"event\":");
+        assertThat(json).doesNotContain("\"payload\":");
     }
 
     private ChatMessageResponseDTO message(UUID conversationId, UUID senderId) {

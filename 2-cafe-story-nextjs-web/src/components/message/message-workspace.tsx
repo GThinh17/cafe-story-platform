@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ChatPanel } from "@/components/message/chat-panel";
 import { ConversationList } from "@/components/message/conversation-list";
@@ -28,6 +28,9 @@ import type {
   SendMessageDraft,
 } from "@/types/message";
 import type { UserResponse } from "@/types/user";
+import type { Client, StompSubscription } from "@stomp/stompjs";
+import { createStompClient } from "@/lib/api/websocket";
+import type { SocketEvent } from "@/types/message";
 
 function formatTime(value: string | null | undefined) {
   const date = value ? new Date(value) : new Date();
@@ -117,6 +120,12 @@ function mapConversationResponseToConversation(
   participant: UserResponse,
 ): Conversation {
   return mapUserToConversation(participant, {
+    hasMessages: Boolean(
+      conversation.latestMessageId ||
+        conversation.latestMessagePreview ||
+        conversation.lastMessage ||
+        conversation.lastMessageAt,
+    ),
     id: conversation.id,
     localStatus: "ready",
     preview: conversation.latestMessagePreview || "Open conversation",
@@ -217,6 +226,16 @@ function mergeLoadedMessages(
   );
 
   return [...loadedMessages, ...localMessagesToKeep];
+}
+
+function hasVisibleMessages(
+  conversation: Conversation,
+  messagesByConversationId: Record<string, ChatMessage[]>,
+) {
+  return (
+    conversation.hasMessages ||
+    (messagesByConversationId[conversation.id]?.length ?? 0) > 0
+  );
 }
 
 export function MessageWorkspace() {
@@ -332,6 +351,9 @@ export function MessageWorkspace() {
     void loadWorkspace();
   }, [isCurrentUserLoading, loadWorkspace]);
 
+  const stompClientRef = useRef<Client | null>(null);
+  const stompSubscriptionRef = useRef<StompSubscription | null>(null);
+
   const activeConversation = useMemo(
     () =>
       conversations.find(
@@ -402,6 +424,113 @@ export function MessageWorkspace() {
       void loadMessagesForConversation(activeConversation);
     }
   }, [activeConversation, loadMessagesForConversation]);
+
+  // STOMP WebSocket — nhận tin nhắn real-time
+  useEffect(() => {
+    const conversationId = activeConversation?.serverId;
+    const conversationKey = activeConversation?.id;
+    const userId = currentUser?.userId;
+
+    // Hủy subscription cũ khi đổi conversation
+    if (stompSubscriptionRef.current) {
+      stompSubscriptionRef.current.unsubscribe();
+      stompSubscriptionRef.current = null;
+    }
+
+    if (!conversationId || !conversationKey || !userId) {
+      return;
+    }
+
+    // Capture as definite strings — TypeScript doesn't narrow inside closures
+    const safeConversationId: string = conversationId;
+    const safeConversationKey: string = conversationKey;
+    const safeUserId: string = userId;
+
+    // Tạo client nếu chưa có hoặc đã disconnect
+    if (!stompClientRef.current || !stompClientRef.current.connected) {
+      const client = createStompClient();
+      stompClientRef.current = client;
+      client.activate();
+    }
+
+    const client = stompClientRef.current;
+
+    function subscribe() {
+      stompSubscriptionRef.current = client.subscribe(
+        `/topic/conversations/${safeConversationId}`,
+        (frame) => {
+          try {
+            const event: SocketEvent = JSON.parse(frame.body);
+
+            if (
+              event.type !== "receive_message" ||
+              !event.data ||
+              typeof event.data === "string"
+            ) {
+              return;
+            }
+
+            const incoming = event.data;
+
+            // Skip tin nhắn của chính mình — đã có optimistic update
+            if (incoming.senderId === safeUserId) {
+              return;
+            }
+
+            const mapped = mapMessageResponseToChatMessage(incoming, safeUserId);
+
+            setMessagesByConversationId((current) => {
+              const existing = current[safeConversationKey] ?? [];
+
+              // Dedup theo serverId
+              if (existing.some((m: ChatMessage) => m.serverId === mapped.serverId)) {
+                return current;
+              }
+
+              return {
+                ...current,
+                [safeConversationKey]: [...existing, mapped],
+              };
+            });
+
+            updateConversationPreview(
+              safeConversationKey,
+              mapped.body || ((mapped.imageUrls ?? []).length > 0 ? "Photo" : "Message"),
+              mapped.time,
+            );
+          } catch {
+            // Frame parse lỗi — bỏ qua
+          }
+        },
+      );
+    }
+
+    if (client.connected) {
+      subscribe();
+    } else {
+      const originalOnConnect = client.onConnect;
+      client.onConnect = (receipt) => {
+        originalOnConnect?.(receipt);
+        subscribe();
+      };
+    }
+
+    return () => {
+      if (stompSubscriptionRef.current) {
+        stompSubscriptionRef.current.unsubscribe();
+        stompSubscriptionRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeConversation?.serverId, activeConversation?.id, currentUser?.userId]);
+
+  // Cleanup STOMP khi unmount
+  useEffect(() => {
+    return () => {
+      stompSubscriptionRef.current?.unsubscribe();
+      stompClientRef.current?.deactivate();
+    };
+  }, []);
 
   function handleSelectConversation(conversation: Conversation) {
     setConversationErrorMessage(null);
@@ -506,6 +635,7 @@ export function MessageWorkspace() {
         conversation.id === conversationId
           ? {
               ...conversation,
+              hasMessages: true,
               preview,
               time,
             }
@@ -630,6 +760,13 @@ export function MessageWorkspace() {
   }
 
   const currentUsername = currentUser?.userName || "cafestory_user";
+  const visibleConversations = useMemo(
+    () =>
+      conversations.filter((conversation) =>
+        hasVisibleMessages(conversation, messagesByConversationId),
+      ),
+    [conversations, messagesByConversationId],
+  );
   const activeMessages = activeConversation
     ? messagesByConversationId[activeConversation.id] ?? []
     : [];
@@ -650,7 +787,7 @@ export function MessageWorkspace() {
       <section className="grid h-screen min-h-0 w-full grid-cols-1 overflow-hidden border-l border-r border-border bg-surface lg:grid-cols-[360px_minmax(0,1fr)]">
         <ConversationList
           activeConversationId={activeConversation?.id ?? activeConversationId}
-          conversations={conversations}
+          conversations={visibleConversations}
           currentUsername={currentUsername}
           errorMessage={conversationErrorMessage}
           isLoading={isCurrentUserLoading || isInitialLoading}

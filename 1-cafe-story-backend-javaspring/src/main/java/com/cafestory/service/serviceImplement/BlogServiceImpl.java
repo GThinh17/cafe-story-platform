@@ -16,6 +16,7 @@ import com.cafestory.repository.BlogRatingRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.BlogSaveRepository;
 import com.cafestory.repository.RegionRepository;
+import com.cafestory.service.serviceInterface.AiBlogModerationService;
 import com.cafestory.service.serviceInterface.BlogService;
 import com.cafestory.service.serviceInterface.BlogTagService;
 import com.cafestory.service.serviceInterface.RegionService;
@@ -42,12 +43,13 @@ public class BlogServiceImpl implements BlogService {
     private final BlogSaveRepository blogSaveRepository;
     private final BlogRatingRepository blogRatingRepository;
     private final RegionRepository regionRepository;
+    private final RegionService regionService;
+    private final AiBlogModerationService aiBlogModerationService;
     private final BlogMapper blogMapper;
     private final BlogValidator blogValidator;
     private final CafePageValidator cafePageValidator;
     private final UserValidator userValidator;
     private final BlogTagService blogTagService;
-    private final RegionService regionService;
 
     public BlogServiceImpl(
             BlogRepository blogRepository,
@@ -55,23 +57,25 @@ public class BlogServiceImpl implements BlogService {
             BlogSaveRepository blogSaveRepository,
             BlogRatingRepository blogRatingRepository,
             RegionRepository regionRepository,
+            RegionService regionService,
+            AiBlogModerationService aiBlogModerationService,
             BlogMapper blogMapper,
             BlogValidator blogValidator,
             CafePageValidator cafePageValidator,
             UserValidator userValidator,
-            BlogTagService blogTagService,
-            RegionService regionService) {
+            BlogTagService blogTagService) {
         this.blogRepository = blogRepository;
         this.blogLikeRepository = blogLikeRepository;
         this.blogSaveRepository = blogSaveRepository;
         this.blogRatingRepository = blogRatingRepository;
         this.regionRepository = regionRepository;
+        this.regionService = regionService;
+        this.aiBlogModerationService = aiBlogModerationService;
         this.blogMapper = blogMapper;
         this.blogValidator = blogValidator;
         this.cafePageValidator = cafePageValidator;
         this.userValidator = userValidator;
         this.blogTagService = blogTagService;
-        this.regionService = regionService;
     }
 
     @Override
@@ -81,6 +85,19 @@ public class BlogServiceImpl implements BlogService {
             @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })
     public BlogResponseDTO createBlog(BlogCreateDTO blogCreateDTO, UUID actorUserId) {
+        Blog savedBlog = createBlogEntity(blogCreateDTO, actorUserId);
+        return toBlogResponseDTO(savedBlog, actorUserId);
+    }
+
+    @Override
+    @Transactional
+    public BlogResponseDTO createModeratedBlog(BlogCreateDTO blogCreateDTO, UUID actorUserId) {
+        Blog savedBlog = createBlogEntity(blogCreateDTO, actorUserId);
+        Blog moderatedBlog = aiBlogModerationService.moderateBlog(savedBlog);
+        return toBlogResponseDTO(moderatedBlog, actorUserId);
+    }
+
+    private Blog createBlogEntity(BlogCreateDTO blogCreateDTO, UUID actorUserId) {
         User author = userValidator.validateUserExists(actorUserId);
         userValidator.validateUserActive(author);
         CafePage page = null;
@@ -107,7 +124,7 @@ public class BlogServiceImpl implements BlogService {
 
         Blog savedBlog = blogRepository.save(blog);
         blogTagService.syncBlogTags(savedBlog, actorUserId, blogCreateDTO.getTaggedUserIds());
-        return toBlogResponseDTO(savedBlog, actorUserId);
+        return savedBlog;
     }
 
     @Override

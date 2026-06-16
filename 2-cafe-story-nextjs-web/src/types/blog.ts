@@ -1,6 +1,6 @@
 export type TrendWindowType = "HOUR_24" | "DAY_7" | "MONTH_1";
 
-export type BlogPostStatus = "PUBLISHED" | "DRAFT" | "ARCHIVED" | string;
+export type BlogPostStatus = "PUBLISHED" | "DRAFT" | "HIDDEN" | "REMOVED" | string;
 
 export type BlogDisplayAuthorType = "USER" | "CAFE_PAGE";
 
@@ -66,11 +66,13 @@ export type BlogResponse = {
 };
 
 export type BlogCreateRequest = {
+  authorUserId?: string;
   content: string;
   imageUrls?: string[];
   allowComment?: boolean;
   pageId?: string;
   regionId?: string;
+  taggedUserIds?: string[];
   isPinned?: boolean;
 };
 

@@ -9,6 +9,8 @@ import java.util.UUID;
 
 public interface AdminModerationService {
 
+    Page<AdminModerationResultResponseDTO> getAllResults(Pageable pageable);
+
     Page<AdminModerationResultResponseDTO> getQueue(Pageable pageable);
 
     AdminModerationResultResponseDTO getResult(UUID resultId);

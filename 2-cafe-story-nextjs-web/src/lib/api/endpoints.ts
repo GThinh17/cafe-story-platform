@@ -14,6 +14,7 @@ export const apiEndpoints = {
   },
   blogs: {
     list: "/api/blogs",
+    moderated: "/api/blogs/moderated",
     feed: "/api/blogs/feed",
     trending: "/api/blogs/trending",
     byId: (blogId: string) => `/api/blogs/${pathId(blogId)}`,
@@ -23,6 +24,7 @@ export const apiEndpoints = {
     likesByUser: (userId: string) => `/api/blogs/likes/users/${pathId(userId)}`,
     shares: (blogId: string) => `/api/blogs/${pathId(blogId)}/shares`,
     sharesByUser: (userId: string) => `/api/blogs/shares/users/${pathId(userId)}`,
+    sharedByUser: (userId: string) => `/api/blogs/users/${pathId(userId)}/shared`,
   },
   cafes: {
     list: "/api/cafe-pages",

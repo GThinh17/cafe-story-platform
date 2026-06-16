@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { TopCafe } from "@/types/feed";
 
 type TopCafesNearbyProps = {
@@ -9,13 +10,17 @@ export function TopCafesNearby({ cafes }: TopCafesNearbyProps) {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-base font-bold">Top Cafes Nearby</h2>
-        <a className="text-xs font-bold text-foreground" href="#">
+        <Link className="text-xs font-bold text-foreground" href="/cafes">
           See all
-        </a>
+        </Link>
       </div>
       <div className="space-y-4">
         {cafes.map((cafe) => (
-          <a className="flex items-center gap-3" href="#" key={cafe.name}>
+          <Link
+            className="flex items-center gap-3"
+            href={cafe.id ? `/cafes/${cafe.id}` : "#"}
+            key={cafe.id ?? cafe.name}
+          >
             <span className="h-11 w-11 rounded-full bg-surface-muted" />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-bold">
@@ -26,7 +31,7 @@ export function TopCafesNearby({ cafes }: TopCafesNearbyProps) {
               </span>
             </span>
             <span className="text-xs font-bold text-primary">View</span>
-          </a>
+          </Link>
         ))}
       </div>
     </div>

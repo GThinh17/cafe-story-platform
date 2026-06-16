@@ -44,6 +44,21 @@ class BlogControllerTest {
     }
 
     @Test
+    void createModeratedBlog_success_TC001A() {
+        UUID userId = UUID.randomUUID();
+        BlogCreateDTO request = createBlogRequest();
+        BlogResponseDTO response = blogResponse();
+        response.setStatus(PostStatus.HIDDEN);
+
+        when(blogService.createModeratedBlog(request, userId)).thenReturn(response);
+
+        BlogResponseDTO result = blogController.createModeratedBlog(request, principal(userId));
+
+        assertThat(result).isEqualTo(response);
+        verify(blogService).createModeratedBlog(request, userId);
+    }
+
+    @Test
     void getBlogs_success_getAllBlogs_TC002() {
         List<BlogResponseDTO> response = List.of(blogResponse());
 

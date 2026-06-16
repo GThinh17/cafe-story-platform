@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pydantic
+Pillow
+requests
+torch
+transformers
+google-genai
+python-dotenv

@@ -56,10 +56,13 @@ export type FeedPost = {
   commentCount?: number;
   commentItems?: FeedPostComment[];
   shares?: string;
+  shareCount?: number;
+  isShared?: boolean;
   tags: string[];
 };
 
 export type TopCafe = {
+  id?: string;
   name: string;
   rating: string;
   type: string;

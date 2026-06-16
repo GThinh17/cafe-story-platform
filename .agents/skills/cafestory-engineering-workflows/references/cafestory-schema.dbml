@@ -42,6 +42,12 @@ Enum moderation_decision {
   VIOLATION
 }
 
+Enum moderation_resolve_action {
+  APPROVE
+  HIDE
+  REMOVE
+}
+
 Enum payment_status {
   PENDING
   PAID
@@ -77,7 +83,6 @@ Enum conversation_type {
 
 Enum member_role {
   OWNER
-  CO_OWNER
   ADMIN
   MEMBER
 }
@@ -304,6 +309,23 @@ Table blog_images {
   image_url text
 }
 
+Table blog_tagged_users {
+  id uuid [pk]
+  blog_id uuid [not null]
+  tagged_user_id uuid [not null]
+  tagged_by_user_id uuid [not null]
+  created_at datetime [not null]
+
+  Indexes {
+    (blog_id, tagged_user_id) [unique]
+    (blog_id)
+    (tagged_user_id)
+    (tagged_by_user_id)
+  }
+
+  Note: "Stores users tagged in a blog. A user can be tagged at most once per blog."
+}
+
 Table comments {
   id uuid [pk]
   blog_id uuid [not null]
@@ -382,6 +404,24 @@ Table page_follows {
   }
 }
 
+Table cafe_page_ratings {
+  id uuid [pk]
+  user_id uuid [not null]
+  cafe_page_id uuid [not null]
+  rating int [not null]
+  created_at datetime [not null]
+  updated_at datetime
+
+  Indexes {
+    (user_id, cafe_page_id) [unique]
+    (user_id)
+    (cafe_page_id)
+    (rating)
+  }
+
+  Note: "rating must be between 1 and 5."
+}
+
 Table blog_shares {
   id uuid [pk]
   blog_id uuid [not null]
@@ -393,6 +433,38 @@ Table blog_shares {
     (blog_id)
     (user_id)
   }
+}
+
+Table blog_saves {
+  id uuid [pk]
+  user_id uuid [not null]
+  blog_id uuid [not null]
+  created_at datetime [not null]
+
+  Indexes {
+    (user_id, blog_id) [unique]
+    (user_id)
+    (blog_id)
+    (created_at)
+  }
+}
+
+Table blog_ratings {
+  id uuid [pk]
+  user_id uuid [not null]
+  blog_id uuid [not null]
+  rating int [not null]
+  created_at datetime [not null]
+  updated_at datetime
+
+  Indexes {
+    (user_id, blog_id) [unique]
+    (user_id)
+    (blog_id)
+    (rating)
+  }
+
+  Note: "rating must be between 1 and 5."
 }
 
 Table blog_events {
@@ -551,13 +623,24 @@ Table notifications {
 Table ai_moderation_results {
   id uuid [pk]
   blog_id uuid
-  comment_id uuid
+  caption text
   score decimal(5, 4) [not null]
   decision moderation_decision [not null]
   labels text
   explanation text
+  caption_score int
+  caption_reason text
+  image_score int
+  image_reason text
+  tags jsonb
+  ai_status varchar(50)
+  raw_response jsonb
   model_name varchar(120)
+  resolved boolean [not null, default: false]
+  resolved_action moderation_resolve_action
+  resolved_at datetime
   created_at datetime [not null]
+  updated_at datetime
 }
 
 Table reviewers {
@@ -829,7 +912,11 @@ Ref: page_members.user_id > users.user_id
 
 Ref: blogs.author_user_id > users.user_id
 Ref: blogs.page_id > cafe_pages.id
+Ref: blogs.region_id > regions.region_id
 Ref: blog_images.blog_id > blogs.id
+Ref: blog_tagged_users.blog_id > blogs.id
+Ref: blog_tagged_users.tagged_user_id > users.user_id
+Ref: blog_tagged_users.tagged_by_user_id > users.user_id
 Ref: comments.blog_id > blogs.id
 Ref: comments.user_id > users.user_id
 Ref: comments.parent_comment_id > comments.id
@@ -841,6 +928,8 @@ Ref: comment_likes.user_id > users.user_id
 Ref: comment_likes.comment_id > comments.id
 Ref: page_likes.user_id > users.user_id
 Ref: page_likes.page_id > cafe_pages.id
+Ref: cafe_page_ratings.user_id > users.user_id
+Ref: cafe_page_ratings.cafe_page_id > cafe_pages.id
 
 Ref: user_follows.follower_user_id > users.user_id
 Ref: user_follows.following_user_id > users.user_id
@@ -849,6 +938,10 @@ Ref: page_follows.page_id > cafe_pages.id
 
 Ref: blog_shares.blog_id > blogs.id
 Ref: blog_shares.user_id > users.user_id
+Ref: blog_saves.user_id > users.user_id
+Ref: blog_saves.blog_id > blogs.id
+Ref: blog_ratings.user_id > users.user_id
+Ref: blog_ratings.blog_id > blogs.id
 Ref: blog_events.blog_id > blogs.id
 Ref: blog_events.user_id > users.user_id
 Ref: blog_daily_metrics.blog_id > blogs.id
@@ -894,4 +987,3 @@ Ref: content_reports.reported_user_id > users.user_id
 Ref: content_reports.cafe_page_id > cafe_pages.id
 Ref: content_reports.reason_id > report_reasons.id
 Ref: ai_moderation_results.blog_id > blogs.id
-Ref: ai_moderation_results.comment_id > comments.id
