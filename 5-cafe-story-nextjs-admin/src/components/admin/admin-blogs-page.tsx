@@ -298,9 +298,10 @@ export function AdminBlogsPage() {
       />
       <Toolbar onRefresh={resource.refetch}>
         <FilterSelect
+          label="Status"
           value={status}
           options={postStatuses}
-          placeholder="Status"
+          placeholder="All statuses"
           onChange={setStatus}
         />
         <FilterInput value={authorUserId} placeholder="Author user ID" onChange={setAuthorUserId} />

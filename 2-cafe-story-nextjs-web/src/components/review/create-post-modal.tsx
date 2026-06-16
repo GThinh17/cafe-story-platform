@@ -11,6 +11,7 @@ import {
 import {
   ImageIcon,
   LoaderCircleIcon,
+  MapPinIcon,
   PlusIcon,
   XIcon,
 } from "lucide-react";
@@ -18,6 +19,10 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  CreatePostLocationPicker,
+  type PostLocation,
+} from "@/components/review/create-post-form";
 import { createModeratedBlog } from "@/lib/api/blogs";
 import { uploadPostImageToCloudinary } from "@/lib/api/cloudinary";
 import type { BlogCreateRequest, BlogResponse } from "@/types/blog";
@@ -64,6 +69,8 @@ export function CreatePostModal({
   const selectedImagesRef = useRef<SelectedImage[]>([]);
   const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
   const [caption, setCaption] = useState("");
+  const [location, setLocation] = useState<PostLocation | null>(null);
+  const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
   const [postAsCafePage, setPostAsCafePage] = useState(false);
   const [turnOffCommenting, setTurnOffCommenting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -81,6 +88,8 @@ export function CreatePostModal({
       return [];
     });
     setCaption("");
+    setLocation(null);
+    setIsLocationPickerOpen(false);
     setPostAsCafePage(false);
     setTurnOffCommenting(false);
     setErrorMessage(null);
@@ -170,6 +179,7 @@ export function CreatePostModal({
         ...(postAsCafePage && ownedCafePage?.id
           ? { pageId: ownedCafePage.id }
           : {}),
+        ...(location?.regionId ? { regionId: location.regionId } : {}),
       };
       const createdPost = await createModeratedBlog(payload);
 
@@ -304,6 +314,44 @@ export function CreatePostModal({
               />
             </label>
 
+            <section className="flex flex-col gap-2 rounded-md bg-surface-muted px-4 py-4">
+              <div className="flex items-center justify-between gap-4">
+                <label className="text-sm font-medium text-espresso">
+                  Location
+                </label>
+                <Button
+                  className="h-auto p-0 text-sm font-medium text-espresso"
+                  disabled={isSubmitting}
+                  onClick={() => setIsLocationPickerOpen(true)}
+                  type="button"
+                  variant="link"
+                >
+                  {location ? "Change" : "Add location"}
+                </Button>
+              </div>
+              {location ? (
+                <div className="flex items-center gap-2">
+                  <MapPinIcon className="size-4 shrink-0 text-espresso" />
+                  <p className="truncate text-sm font-bold text-espresso">
+                    {location.name}
+                  </p>
+                  <Button
+                    className="ml-auto h-auto p-0 text-xs text-muted hover:text-destructive"
+                    disabled={isSubmitting}
+                    onClick={() => setLocation(null)}
+                    type="button"
+                    variant="link"
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-xs leading-5 text-muted">
+                  Add a location to help others discover your post.
+                </p>
+              )}
+            </section>
+
             {ownedCafePage ? (
               <section className="flex flex-col gap-2 rounded-md bg-surface-muted px-4 py-4">
                 <div className="flex items-center justify-between gap-4">
@@ -371,6 +419,15 @@ export function CreatePostModal({
           </div>
         </form>
       </DialogContent>
+
+      <CreatePostLocationPicker
+        isOpen={isLocationPickerOpen}
+        onApply={(loc) => {
+          setLocation(loc);
+          setIsLocationPickerOpen(false);
+        }}
+        onClose={() => setIsLocationPickerOpen(false)}
+      />
     </Dialog>
   );
 }

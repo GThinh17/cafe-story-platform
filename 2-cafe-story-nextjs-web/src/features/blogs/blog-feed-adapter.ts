@@ -204,6 +204,7 @@ export function mapBlogResponsesToFeedPosts(blogs: BlogResponse[]): FeedPost[] {
       pageName: firstNonEmpty([item.pageName]),
       rating,
       shares: formatCount(item.shareCount),
+      status: item.status,
       tags: [
         "Profile",
         ...[item.pageName, item.status].filter(

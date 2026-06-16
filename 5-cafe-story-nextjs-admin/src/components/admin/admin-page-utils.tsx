@@ -103,6 +103,33 @@ export function usePagedAdminResource<T>(
     void loadPage(pageNumber, controller.signal);
   }, [loadPage, pageNumber]);
 
+  const updateRow = useCallback(
+    (predicate: (item: T) => boolean, updater: (item: T) => T) => {
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          content: prev.content.map((item) => (predicate(item) ? updater(item) : item)),
+        };
+      });
+    },
+    [],
+  );
+
+  const removeRow = useCallback(
+    (predicate: (item: T) => boolean) => {
+      setData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          content: prev.content.filter((item) => !predicate(item)),
+          totalElements: Math.max(0, (prev.totalElements ?? 0) - 1),
+        };
+      });
+    },
+    [],
+  );
+
   return useMemo(
     () => ({
       data,
@@ -112,8 +139,10 @@ export function usePagedAdminResource<T>(
       pageNumber,
       setPageNumber,
       refetch,
+      updateRow,
+      removeRow,
     }),
-    [data, error, isLoading, pageNumber, refetch],
+    [data, error, isLoading, pageNumber, refetch, updateRow, removeRow],
   );
 }
 
@@ -172,14 +201,16 @@ export function FilterSelect<T extends string>({
   value,
   options,
   placeholder,
+  label,
   onChange,
 }: {
   value: T | "";
   options: readonly T[];
   placeholder: string;
+  label?: string;
   onChange: (value: T | "") => void;
 }) {
-  return (
+  const select = (
     <Select
       value={value || "all"}
       onValueChange={(nextValue) => onChange(nextValue === "all" ? "" : (nextValue as T))}
@@ -199,20 +230,31 @@ export function FilterSelect<T extends string>({
       </SelectContent>
     </Select>
   );
+
+  if (!label) return select;
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-xs font-medium text-muted">{label}</span>
+      {select}
+    </div>
+  );
 }
 
 export function BooleanFilterSelect({
   value,
   onChange,
+  label,
   trueLabel = "Active",
   falseLabel = "Inactive",
 }: {
   value: boolean | null;
   onChange: (value: boolean | null) => void;
+  label?: string;
   trueLabel?: string;
   falseLabel?: string;
 }) {
-  return (
+  const select = (
     <Select
       value={value === null ? "all" : String(value)}
       onValueChange={(nextValue) =>
@@ -230,6 +272,15 @@ export function BooleanFilterSelect({
         </SelectGroup>
       </SelectContent>
     </Select>
+  );
+
+  if (!label) return select;
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-xs font-medium text-muted">{label}</span>
+      {select}
+    </div>
   );
 }
 

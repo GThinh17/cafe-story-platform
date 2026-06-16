@@ -134,15 +134,17 @@ export function AdminReportsPage() {
       />
       <Toolbar onRefresh={resource.refetch}>
         <FilterSelect
+          label="Status"
           value={status}
           options={reportStatuses}
-          placeholder="Status"
+          placeholder="All statuses"
           onChange={setStatus}
         />
         <FilterSelect
+          label="Target type"
           value={targetType}
           options={targetTypes}
-          placeholder="Target"
+          placeholder="All targets"
           onChange={setTargetType}
         />
       </Toolbar>

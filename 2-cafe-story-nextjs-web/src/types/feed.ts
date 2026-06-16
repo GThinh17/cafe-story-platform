@@ -58,6 +58,7 @@ export type FeedPost = {
   shares?: string;
   shareCount?: number;
   isShared?: boolean;
+  status?: string;
   tags: string[];
 };
 

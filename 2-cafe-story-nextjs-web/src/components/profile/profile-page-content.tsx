@@ -271,7 +271,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
       }
 
       const nextOwnPosts = mapBlogResponsesToFeedPosts(
-        ownBlogsRes.value.filter((b) => !b.pageId),
+        ownBlogsRes.value.filter((b) => !b.pageId && b.status !== "REMOVED"),
       );
       const nextSharedPosts =
         sharedBlogsRes.status === "fulfilled"
@@ -345,12 +345,19 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
 
   useBfcacheRestoreEffect(handleBfcacheRestore);
 
+  const visiblePostCount = useMemo(() => {
+    if (isOwnProfile) {
+      return ownPosts.filter((p) => p.status !== "REMOVED").length;
+    }
+    return ownPosts.filter((p) => p.status === "PUBLISHED" || !p.status).length;
+  }, [ownPosts, isOwnProfile]);
+
   const profile = useMemo(() => {
     if (viewedUser) {
       return {
         ...mapUserResponseToProfile(viewedUser),
         stats: {
-          posts: String(ownPosts.length),
+          posts: String(visiblePostCount),
           following: String(viewedUser.followingCount ?? 0),
           followers: String(followerCount),
         },
@@ -370,7 +377,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
     followerCount,
     activeCafePages.length,
     isOwnProfile,
-    ownPosts.length,
+    visiblePostCount,
     routeUsername,
     user,
     viewedUser,
@@ -478,6 +485,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
         errorMessage={postsError}
         hasLoadedPosts={hasLoadedPosts}
         isLoading={(isProfileLoading && !viewedUser) || isPostsLoading}
+        isOwnProfile={isOwnProfile}
         onCreatePostClick={() => setIsCreatePostOpen(true)}
         onRetry={() => {
           if (viewedUser?.userId) {

@@ -181,11 +181,12 @@ export function AdminUsersPage() {
       />
       <Toolbar onRefresh={resource.refetch}>
         <FilterInput value={search} placeholder="Search users" onChange={setSearch} />
-        <BooleanFilterSelect value={accountStatus} onChange={setAccountStatus} />
+        <BooleanFilterSelect label="Account status" value={accountStatus} onChange={setAccountStatus} />
         <FilterSelect
+          label="Role"
           value={role}
           options={roles}
-          placeholder="Role"
+          placeholder="All roles"
           onChange={setRole}
         />
       </Toolbar>

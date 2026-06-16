@@ -1,10 +1,8 @@
 "use client";
 
-import type { ReactNode } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { type ReactNode, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -21,25 +19,16 @@ function AdminLoadingState() {
   );
 }
 
-function AdminAuthRequired() {
+function AdminAuthRedirect() {
   const pathname = usePathname();
-  const loginHref = `/login?next=${encodeURIComponent(pathname || "/")}`;
+  const router = useRouter();
 
-  return (
-    <div className="grid min-h-screen place-items-center bg-background p-6 text-foreground">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Sign in required</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4 text-sm leading-6 text-muted">
-          <p>Please sign in with an ADMIN account to open CafeStory Admin.</p>
-          <Button asChild className="w-fit">
-            <Link href={loginHref}>Sign in</Link>
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  useEffect(() => {
+    const loginHref = `/login?next=${encodeURIComponent(pathname || "/")}`;
+    router.replace(loginHref);
+  }, [pathname, router]);
+
+  return <AdminLoadingState />;
 }
 
 function AdminAccessDenied({ error }: { error: string | null }) {
@@ -73,7 +62,7 @@ function AdminAuthGuard({ children }: { children: ReactNode }) {
   }
 
   if (!user) {
-    return <AdminAuthRequired />;
+    return <AdminAuthRedirect />;
   }
 
   if (!hasAdminRole(user)) {

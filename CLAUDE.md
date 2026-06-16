@@ -65,13 +65,15 @@ CafeStory là nền tảng social blogging cho cộng đồng yêu cafe, tương
 
 ##Workflow khi nhận task:
 1. Đọc scope và xác định app liên quan: backend, web, mobile, admin, AI, hoặc cross-app.
-2. Inspect code hiện có trước khi sửa. Không tự phát minh pattern mới.
-3. Nếu task mơ hồ, nêu assumption ngắn gọn hoặc hỏi lại khi thật sự cần.
-4. Lập plan ngắn nếu thay đổi chạm nhiều layer.
-5. Implement thay đổi nhỏ, đúng boundary, tránh refactor ngoài scope.
-6. Thêm test hoặc validation tương xứng rủi ro.
-7. Không revert thay đổi không phải của mình.
-8. Sau khi xong, báo:
+2. **Inspect skill liên quan**: Trước khi code, kiểm tra danh sách available skills. Nếu task chạm vào domain mà có skill tương ứng (ví dụ: backend naming → `cafestory-naming-layout`, API contract → `cafestory-api-contract-sync`, mobile API → `cafestory-mobile-api-integration`, v.v.), **bắt buộc đọc và follow skill đó**. Có thể dùng nhiều skill cùng lúc nếu task chạm nhiều domain.
+3. Inspect code hiện có trước khi sửa. Không tự phát minh pattern mới.
+4. Nếu task mơ hồ, nêu assumption ngắn gọn hoặc hỏi lại khi thật sự cần.
+5. Lập plan ngắn nếu thay đổi chạm nhiều layer.
+6. Implement thay đổi nhỏ, đúng boundary, tránh refactor ngoài scope.
+7. Thêm test hoặc validation tương xứng rủi ro.
+8. Không revert thay đổi không phải của mình.
+9. Sau khi xong, báo:
+   - **Skills used**: liệt kê tên các skill đã inspect và follow trong task này.
    - Files changed.
    - Behavior changed.
    - Validation commands đã chạy.
@@ -91,7 +93,7 @@ CafeStory là nền tảng social blogging cho cộng đồng yêu cafe, tương
 - Với tài liệu/plan: lưu dưới `documents/` nếu cần tạo file markdown.
 
 ##Dùng thêm template này mỗi lần tạo prompt:
-Task: <mô tả việc cần làm>
+Task: <mô tả việc cần làm >
 
 ##<Không đưa code mà hãy mô tả chi tiết yêu cầu>
 Target area:
@@ -109,6 +111,7 @@ Constraints:
 - Chạy validation phù hợp và báo kết quả.
 
 Output expected:
+- **Skills used**: tên các skill đã dùng (ví dụ: `cafestory-naming-layout`, `spring-unit-api-testing`).
 - Tóm tắt thay đổi.
 - Files changed.
 - Tests/validation.

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CameraIcon,
+  EyeOffIcon,
   Grid3X3Icon,
   HeartIcon,
   MessageCircleIcon,
@@ -24,6 +25,7 @@ type ProfileReviewGridProps = {
   errorMessage?: string | null;
   hasLoadedPosts?: boolean;
   isLoading?: boolean;
+  isOwnProfile?: boolean;
   onCreatePostClick?: () => void;
   onRetry?: () => void;
   posts?: FeedPost[];
@@ -55,11 +57,19 @@ function getPostCommentCount(post: FeedPost) {
     : post.comments;
 }
 
+function filterPostsByVisibility(allPosts: FeedPost[], isOwn: boolean): FeedPost[] {
+  if (isOwn) {
+    return allPosts.filter((p) => p.status !== "REMOVED");
+  }
+  return allPosts.filter((p) => p.status === "PUBLISHED" || !p.status);
+}
+
 export function ProfileReviewGrid({
   canCreatePost = false,
   errorMessage,
   hasLoadedPosts = false,
   isLoading = false,
+  isOwnProfile = false,
   onCreatePostClick,
   onRetry,
   posts = [],
@@ -71,7 +81,9 @@ export function ProfileReviewGrid({
   const [gridSharedPosts, setGridSharedPosts] = useState(sharedPosts);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const { user } = useCurrentUser();
-  const activePosts = activeTab === "posts" ? posts : sharedPosts;
+  const visiblePosts = useMemo(() => filterPostsByVisibility(posts, isOwnProfile), [posts, isOwnProfile]);
+  const visibleSharedPosts = useMemo(() => filterPostsByVisibility(sharedPosts, isOwnProfile), [sharedPosts, isOwnProfile]);
+  const activePosts = activeTab === "posts" ? visiblePosts : visibleSharedPosts;
   const shouldShowEmptyState =
     hasLoadedPosts && !isLoading && !errorMessage && activePosts.length === 0;
   const selectedPost = useMemo(
@@ -266,44 +278,57 @@ export function ProfileReviewGrid({
                 ) : null}
               </div>
             </div>
-          ) : (activeTab === "posts" ? posts.length > 0 : sharedPosts.length > 0) ? (
+          ) : (activeTab === "posts" ? visiblePosts.length > 0 : visibleSharedPosts.length > 0) ? (
             <div className="grid grid-cols-3 gap-1">
-              {(activeTab === "posts" ? gridPosts : gridSharedPosts).map((post) => (
-                <button
-                  aria-label={`Open ${post.cafe} post`}
-                  className="group relative aspect-square overflow-hidden bg-surface-muted text-left"
-                  key={post.id ?? post.image}
-                  onClick={() => {
-                    if (post.id) {
-                      setSelectedPostId(post.id);
-                    }
-                  }}
-                  type="button"
-                >
-                  <img
-                    alt={`${post.cafe} post`}
-                    className="h-full w-full object-cover transition duration-200 group-hover:scale-105"
-                    decoding="async"
-                    loading="lazy"
-                    src={post.image}
-                  />
-                  <div className="absolute inset-0 grid place-items-center bg-black/45 text-white opacity-0 transition group-hover:opacity-100">
-                    <div className="flex items-center gap-5 text-sm font-black">
-                      <span className="inline-flex items-center gap-1.5">
-                        <HeartIcon
-                          className={post.isLiked ? "size-5 fill-white" : "size-5"}
-                          strokeWidth={2.4}
-                        />
-                        {getPostLikeCount(post)}
-                      </span>
-                      <span className="inline-flex items-center gap-1.5">
-                        <MessageCircleIcon className="size-5" strokeWidth={2.4} />
-                        {getPostCommentCount(post)}
-                      </span>
+              {(activeTab === "posts"
+                ? gridPosts.filter((p) => filterPostsByVisibility([p], isOwnProfile).length > 0)
+                : gridSharedPosts.filter((p) => filterPostsByVisibility([p], isOwnProfile).length > 0)
+              ).map((post) => {
+                const isHidden = post.status === "HIDDEN";
+
+                return (
+                  <button
+                    aria-label={`Open ${post.cafe} post`}
+                    className="group relative aspect-square overflow-hidden bg-surface-muted text-left"
+                    key={post.id ?? post.image}
+                    onClick={() => {
+                      if (post.id) {
+                        setSelectedPostId(post.id);
+                      }
+                    }}
+                    type="button"
+                  >
+                    <img
+                      alt={`${post.cafe} post`}
+                      className={`h-full w-full object-cover transition duration-200 group-hover:scale-105 ${isHidden ? "opacity-40" : ""}`}
+                      decoding="async"
+                      loading="lazy"
+                      src={post.image}
+                    />
+                    {isHidden && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 text-white pointer-events-none">
+                        <EyeOffIcon className="size-6 mb-1" strokeWidth={1.8} />
+                        <span className="text-xs font-semibold">Đã ẩn</span>
+                      </div>
+                    )}
+                    <div className={`absolute inset-0 grid place-items-center bg-black/45 text-white opacity-0 transition group-hover:opacity-100 ${isHidden ? "bg-black/55" : ""}`}>
+                      <div className="flex items-center gap-5 text-sm font-black">
+                        <span className="inline-flex items-center gap-1.5">
+                          <HeartIcon
+                            className={post.isLiked ? "size-5 fill-white" : "size-5"}
+                            strokeWidth={2.4}
+                          />
+                          {getPostLikeCount(post)}
+                        </span>
+                        <span className="inline-flex items-center gap-1.5">
+                          <MessageCircleIcon className="size-5" strokeWidth={2.4} />
+                          {getPostCommentCount(post)}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           ) : reviews.length > 0 ? (
             <div className="grid grid-cols-3 gap-1">

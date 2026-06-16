@@ -191,9 +191,17 @@ export function deleteComment(commentId: string) {
   return apiFetch<void>(apiEndpoints.admin.comment(commentId), { method: "DELETE" });
 }
 
+export type ModerationFilterParams = {
+  page: number;
+  size: number;
+  decision?: string;
+  resolved?: boolean | null;
+  resolvedAction?: string;
+};
+
 export function getAdminModerationResults(
   mode: "queue" | "results",
-  params: { page: number; size: number },
+  params: ModerationFilterParams,
   signal?: AbortSignal,
 ) {
   const endpoint =
@@ -201,7 +209,16 @@ export function getAdminModerationResults(
       ? apiEndpoints.admin.moderationQueue
       : apiEndpoints.admin.moderationResults;
 
-  return apiFetch<PageResponse<AdminModerationResult>>(withQuery(endpoint, params), {
+  const queryParams: Record<string, QueryValue> = {
+    page: params.page,
+    size: params.size,
+  };
+
+  if (params.decision) queryParams.decision = params.decision;
+  if (params.resolved !== undefined && params.resolved !== null) queryParams.resolved = params.resolved;
+  if (params.resolvedAction) queryParams.resolvedAction = params.resolvedAction;
+
+  return apiFetch<PageResponse<AdminModerationResult>>(withQuery(endpoint, queryParams), {
     method: "GET",
     signal,
   });
