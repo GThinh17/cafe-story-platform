@@ -1,12 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { EyeIcon } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
 import {
   AdminDataTable,
   AdminPagination,
   type AdminTableColumn,
 } from "@/components/admin/admin-data-table";
+import {
+  AdminDetailDialog,
+  AdminDetailField,
+  AdminDetailGrid,
+} from "@/components/admin/admin-detail-dialog";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import {
@@ -18,7 +24,11 @@ import {
 } from "@/components/admin/admin-page-utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getModerationResults, resolveModerationResult } from "@/lib/api/admin";
+import {
+  getAdminModerationResult,
+  getModerationResults,
+  resolveModerationResult,
+} from "@/lib/api/admin";
 import type { AdminModerationResult, ModerationResolveAction } from "@/types/admin";
 
 const resolveActions: ModerationResolveAction[] = ["APPROVE", "HIDE", "REMOVE"];
@@ -33,58 +43,66 @@ export function AdminModerationPage() {
   const [pendingAction, setPendingAction] = useState<PendingModerationAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailResult, setDetailResult] = useState<AdminModerationResult | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   const resource = usePagedAdminResource(
     (page, signal) => getModerationResults(mode, { page, size: PAGE_SIZE }, signal),
     [mode],
   );
 
+  async function openDetail(result: AdminModerationResult) {
+    setDetailOpen(true);
+    setDetailResult(null);
+    setDetailError(null);
+    setDetailLoading(true);
+
+    try {
+      setDetailResult(await getAdminModerationResult(result.id));
+    } catch (requestError) {
+      setDetailError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to load moderation detail.",
+      );
+    } finally {
+      setDetailLoading(false);
+    }
+  }
+
   const columns = useMemo<AdminTableColumn<AdminModerationResult>[]>(
     () => [
+      { header: "Blog", cell: (result) => result.blogId?.slice(0, 8) || "-" },
       {
-        header: "Result",
-        cell: (result) => (
-          <div className="max-w-md">
-            <p className="font-bold text-espresso">
-              {result.authorUserName || result.authorUserFullName || "Unknown author"}
-            </p>
-            <p className="mt-1 text-sm leading-6 text-muted">
-              {textPreview(
-                result.caption || result.explanation || result.captionReason || result.imageReason,
-              )}
-            </p>
-          </div>
-        ),
+        header: "Author",
+        cell: (result) =>
+          result.authorUserName || result.authorUserFullName || result.authorUserId?.slice(0, 8) || "-",
       },
       {
-        header: "AI",
+        header: "Caption",
         cell: (result) => (
-          <div className="flex flex-col gap-2">
-            <AdminStatusBadge value={result.decision} />
-            <span className="text-xs text-muted">Score {result.score ?? "—"}</span>
-          </div>
+          <p className="max-w-md text-sm leading-6 text-muted">
+            {textPreview(result.caption || result.explanation)}
+          </p>
         ),
       },
-      {
-        header: "Tags",
-        cell: (result) => (
-          <div className="flex max-w-56 flex-wrap gap-1">
-            {(result.tags || []).slice(0, 4).map((tag) => (
-              <Badge variant="secondary" key={tag}>
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        ),
-      },
-      { header: "Blog", cell: (result) => <AdminStatusBadge value={result.blogStatus} /> },
+      { header: "Caption score", cell: (result) => result.captionScore ?? "-" },
+      { header: "Image score", cell: (result) => result.imageScore ?? "-" },
+      { header: "AI status", cell: (result) => <AdminStatusBadge value={result.aiStatus} /> },
+      { header: "Decision", cell: (result) => <AdminStatusBadge value={result.decision} /> },
       { header: "Resolved", cell: (result) => <AdminStatusBadge value={result.resolved} /> },
       { header: "Created", cell: (result) => formatDate(result.createdAt) },
       {
         header: "Actions",
-        className: "w-72",
+        className: "w-80",
         cell: (result) => (
           <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => openDetail(result)}>
+              <EyeIcon data-icon="inline-start" />
+              View
+            </Button>
             {resolveActions.map((action) => (
               <Button
                 type="button"
@@ -113,7 +131,13 @@ export function AdminModerationPage() {
     setActionError(null);
 
     try {
-      await resolveModerationResult(pendingAction.result.id, pendingAction.action);
+      const updatedResult = await resolveModerationResult(
+        pendingAction.result.id,
+        pendingAction.action,
+      );
+      if (detailResult?.id === updatedResult.id) {
+        setDetailResult(updatedResult);
+      }
       setPendingAction(null);
       resource.refetch();
     } catch (requestError) {
@@ -154,6 +178,96 @@ export function AdminModerationPage() {
         error={resource.error}
       />
       <AdminPagination page={resource.data} onPageChange={resource.setPageNumber} />
+
+      <AdminDetailDialog
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        title="Moderation detail"
+        description={detailResult ? `Result ${detailResult.id}` : "Latest detail from admin API"}
+        isLoading={detailLoading}
+        error={detailError}
+        footer={
+          detailResult ? (
+            <div className="flex flex-wrap justify-end gap-2">
+              {resolveActions.map((action) => (
+                <Button
+                  type="button"
+                  variant={action === "REMOVE" ? "destructive" : "outline"}
+                  size="sm"
+                  disabled={Boolean(detailResult.resolved)}
+                  key={action}
+                  onClick={() => setPendingAction({ result: detailResult, action })}
+                >
+                  {action}
+                </Button>
+              ))}
+            </div>
+          ) : null
+        }
+      >
+        {detailResult ? (
+          <div className="flex flex-col gap-5">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">
+                Caption
+              </p>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">
+                {detailResult.caption || "No caption"}
+              </p>
+            </div>
+            <AdminDetailGrid>
+              <AdminDetailField label="Caption reason" className="sm:col-span-2">
+                {detailResult.captionReason || "-"}
+              </AdminDetailField>
+              <AdminDetailField label="Image reason" className="sm:col-span-2">
+                {detailResult.imageReason || "-"}
+              </AdminDetailField>
+              <AdminDetailField label="Tags" className="sm:col-span-2">
+                <div className="flex flex-wrap gap-1">
+                  {(detailResult.tags || []).length ? (
+                    detailResult.tags.map((tag) => (
+                      <Badge variant="secondary" key={tag}>
+                        {tag}
+                      </Badge>
+                    ))
+                  ) : (
+                    "-"
+                  )}
+                </div>
+              </AdminDetailField>
+              <AdminDetailField label="Model">{detailResult.modelName || "-"}</AdminDetailField>
+              <AdminDetailField label="Score">{detailResult.score ?? "-"}</AdminDetailField>
+              <AdminDetailField label="Caption score">
+                {detailResult.captionScore ?? "-"}
+              </AdminDetailField>
+              <AdminDetailField label="Image score">
+                {detailResult.imageScore ?? "-"}
+              </AdminDetailField>
+              <AdminDetailField label="Decision">
+                <AdminStatusBadge value={detailResult.decision} />
+              </AdminDetailField>
+              <AdminDetailField label="AI status">
+                <AdminStatusBadge value={detailResult.aiStatus} />
+              </AdminDetailField>
+              <AdminDetailField label="Blog status">
+                <AdminStatusBadge value={detailResult.blogStatus} />
+              </AdminDetailField>
+              <AdminDetailField label="Resolved">
+                <AdminStatusBadge value={detailResult.resolved} />
+              </AdminDetailField>
+              <AdminDetailField label="Resolved action">
+                {detailResult.resolvedAction || "-"}
+              </AdminDetailField>
+              <AdminDetailField label="Resolved at">
+                {formatDate(detailResult.resolvedAt)}
+              </AdminDetailField>
+              <AdminDetailField label="Created">{formatDate(detailResult.createdAt)}</AdminDetailField>
+              <AdminDetailField label="Updated">{formatDate(detailResult.updatedAt)}</AdminDetailField>
+            </AdminDetailGrid>
+          </div>
+        ) : null}
+      </AdminDetailDialog>
+
       <AdminConfirmDialog
         open={Boolean(pendingAction)}
         onOpenChange={(open) => {
@@ -173,3 +287,4 @@ export function AdminModerationPage() {
     </div>
   );
 }
+

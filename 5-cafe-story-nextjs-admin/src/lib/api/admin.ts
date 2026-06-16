@@ -38,14 +38,16 @@ function withQuery(path: string, params: Record<string, QueryValue>) {
   return queryString ? `${path}?${queryString}` : path;
 }
 
-export function getDashboardSummary(signal?: AbortSignal) {
+export function getAdminDashboardSummary(signal?: AbortSignal) {
   return apiFetch<AdminDashboardSummary>(apiEndpoints.admin.dashboardSummary, {
     method: "GET",
     signal,
   });
 }
 
-export function getUsers(params: {
+export const getDashboardSummary = getAdminDashboardSummary;
+
+export function getAdminUsers(params: {
   search?: string;
   accountStatus?: boolean | null;
   role?: UserRole | "";
@@ -56,6 +58,15 @@ export function getUsers(params: {
     withQuery(apiEndpoints.admin.users, params),
     { method: "GET", signal },
   );
+}
+
+export const getUsers = getAdminUsers;
+
+export function getAdminUser(userId: string, signal?: AbortSignal) {
+  return apiFetch<AdminUser>(apiEndpoints.admin.user(userId), {
+    method: "GET",
+    signal,
+  });
 }
 
 export function updateUserStatus(userId: string, accountStatus: boolean) {
@@ -72,7 +83,7 @@ export function updateUserRoles(userId: string, roles: UserRole[]) {
   });
 }
 
-export function getBlogs(params: {
+export function getAdminBlogs(params: {
   status?: PostStatus | "";
   authorUserId?: string;
   pageId?: string;
@@ -80,6 +91,15 @@ export function getBlogs(params: {
   size: number;
 }, signal?: AbortSignal) {
   return apiFetch<PageResponse<Blog>>(withQuery(apiEndpoints.admin.blogs, params), {
+    method: "GET",
+    signal,
+  });
+}
+
+export const getBlogs = getAdminBlogs;
+
+export function getAdminBlog(blogId: string, signal?: AbortSignal) {
+  return apiFetch<Blog>(apiEndpoints.admin.blog(blogId), {
     method: "GET",
     signal,
   });
@@ -106,7 +126,7 @@ export function createBlogRankingOverride(
   });
 }
 
-export function getCafePages(params: {
+export function getAdminCafePages(params: {
   status?: PageStatus | "";
   ownerUserId?: string;
   page: number;
@@ -116,6 +136,15 @@ export function getCafePages(params: {
     withQuery(apiEndpoints.admin.cafePages, params),
     { method: "GET", signal },
   );
+}
+
+export const getCafePages = getAdminCafePages;
+
+export function getAdminCafePage(pageId: string, signal?: AbortSignal) {
+  return apiFetch<CafePage>(apiEndpoints.admin.cafePage(pageId), {
+    method: "GET",
+    signal,
+  });
 }
 
 export function updateCafePageStatus(pageId: string, status: PageStatus) {
@@ -129,7 +158,7 @@ export function deleteCafePage(pageId: string) {
   return apiFetch<void>(apiEndpoints.admin.cafePage(pageId), { method: "DELETE" });
 }
 
-export function getComments(params: {
+export function getAdminComments(params: {
   status?: PostStatus | "";
   blogId?: string;
   userId?: string;
@@ -140,6 +169,15 @@ export function getComments(params: {
     withQuery(apiEndpoints.admin.comments, params),
     { method: "GET", signal },
   );
+}
+
+export const getComments = getAdminComments;
+
+export function getAdminComment(commentId: string, signal?: AbortSignal) {
+  return apiFetch<Comment>(apiEndpoints.admin.comment(commentId), {
+    method: "GET",
+    signal,
+  });
 }
 
 export function updateCommentStatus(commentId: string, status: PostStatus) {
@@ -153,7 +191,7 @@ export function deleteComment(commentId: string) {
   return apiFetch<void>(apiEndpoints.admin.comment(commentId), { method: "DELETE" });
 }
 
-export function getModerationResults(
+export function getAdminModerationResults(
   mode: "queue" | "results",
   params: { page: number; size: number },
   signal?: AbortSignal,
@@ -169,6 +207,25 @@ export function getModerationResults(
   });
 }
 
+export const getModerationResults = getAdminModerationResults;
+
+export function getAdminModerationQueue(
+  params: { page: number; size: number },
+  signal?: AbortSignal,
+) {
+  return getAdminModerationResults("queue", params, signal);
+}
+
+export function getAdminModerationResult(resultId: string, signal?: AbortSignal) {
+  return apiFetch<AdminModerationResult>(
+    apiEndpoints.admin.moderationResult(resultId),
+    {
+      method: "GET",
+      signal,
+    },
+  );
+}
+
 export function resolveModerationResult(
   resultId: string,
   action: ModerationResolveAction,
@@ -182,7 +239,7 @@ export function resolveModerationResult(
   );
 }
 
-export function getReports(params: {
+export function getAdminReports(params: {
   status?: ReportStatus | "";
   targetType?: ReportTargetType | "";
   page: number;
@@ -194,6 +251,15 @@ export function getReports(params: {
   );
 }
 
+export const getReports = getAdminReports;
+
+export function getAdminReport(reportId: string, signal?: AbortSignal) {
+  return apiFetch<ContentReport>(apiEndpoints.admin.report(reportId), {
+    method: "GET",
+    signal,
+  });
+}
+
 export function updateReportStatus(reportId: string, status: ReportStatus) {
   return apiFetch<ContentReport>(apiEndpoints.admin.reportStatus(reportId), {
     method: "PATCH",
@@ -201,7 +267,7 @@ export function updateReportStatus(reportId: string, status: ReportStatus) {
   });
 }
 
-export function getPayments(params: {
+export function getAdminPayments(params: {
   paymentStatus?: PaymentStatus | "";
   buyerId?: string;
   page: number;
@@ -211,6 +277,15 @@ export function getPayments(params: {
     withQuery(apiEndpoints.admin.payments, params),
     { method: "GET", signal },
   );
+}
+
+export const getPayments = getAdminPayments;
+
+export function getAdminPayment(paymentId: string, signal?: AbortSignal) {
+  return apiFetch<Payment>(apiEndpoints.admin.payment(paymentId), {
+    method: "GET",
+    signal,
+  });
 }
 
 export function markBankTransferPaid(paymentId: string) {
@@ -225,7 +300,7 @@ export function refundPayment(paymentId: string) {
   });
 }
 
-export function getExtraFees(params: {
+export function getAdminExtraFees(params: {
   status?: boolean | null;
   page: number;
   size: number;
@@ -235,6 +310,8 @@ export function getExtraFees(params: {
     { method: "GET", signal },
   );
 }
+
+export const getExtraFees = getAdminExtraFees;
 
 export function createExtraFee(request: ExtraFeeRequest) {
   return apiFetch<ExtraFee>(apiEndpoints.admin.extraFees, {

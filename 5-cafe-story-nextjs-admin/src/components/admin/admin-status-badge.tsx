@@ -4,6 +4,48 @@ type AdminStatusBadgeProps = {
   value: string | boolean | null | undefined;
 };
 
+function getStatusClassName(normalized: string) {
+  if (
+    ["ACTIVE", "PAID", "PUBLISHED", "SAFE", "RESOLVED", "APPROVE", "APPROVED"].includes(
+      normalized,
+    )
+  ) {
+    return "bg-emerald-100 text-emerald-800";
+  }
+
+  if (
+    [
+      "PENDING",
+      "OPEN",
+      "REVIEWING",
+      "NEEDS_REVIEW",
+      "DRAFT",
+      "HIDE",
+    ].includes(normalized)
+  ) {
+    return "bg-amber-100 text-amber-800";
+  }
+
+  if (
+    [
+      "FAILED",
+      "HIDDEN",
+      "REMOVED",
+      "REMOVE",
+      "VIOLATION",
+      "REJECTED",
+      "CANCELLED",
+      "EXPIRED",
+      "INACTIVE",
+      "SUSPENDED",
+    ].includes(normalized)
+  ) {
+    return "bg-red-100 text-red-800";
+  }
+
+  return "bg-blue-100 text-blue-800";
+}
+
 export function AdminStatusBadge({ value }: AdminStatusBadgeProps) {
   const label =
     typeof value === "boolean"
@@ -13,20 +55,6 @@ export function AdminStatusBadge({ value }: AdminStatusBadgeProps) {
       : value || "UNKNOWN";
 
   const normalized = String(label).toUpperCase();
-  const positive = ["ACTIVE", "PAID", "PUBLISHED", "SAFE", "RESOLVED"].includes(
-    normalized,
-  );
-  const warning = [
-    "PENDING",
-    "OPEN",
-    "REVIEWING",
-    "NEEDS_REVIEW",
-    "DRAFT",
-  ].includes(normalized);
 
-  return (
-    <Badge variant={positive ? "default" : warning ? "rating" : "outline"}>
-      {label}
-    </Badge>
-  );
+  return <Badge className={getStatusClassName(normalized)}>{label}</Badge>;
 }

@@ -1,12 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { EyeIcon } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
 import {
   AdminDataTable,
   AdminPagination,
   type AdminTableColumn,
 } from "@/components/admin/admin-data-table";
+import {
+  AdminDetailDialog,
+  AdminDetailField,
+  AdminDetailGrid,
+} from "@/components/admin/admin-detail-dialog";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import {
@@ -16,10 +22,16 @@ import {
   PAGE_SIZE,
   textPreview,
   Toolbar,
+  useAdminDetailResource,
   usePagedAdminResource,
 } from "@/components/admin/admin-page-utils";
 import { Button } from "@/components/ui/button";
-import { deleteComment, getComments, updateCommentStatus } from "@/lib/api/admin";
+import {
+  deleteComment,
+  getAdminComment,
+  getComments,
+  updateCommentStatus,
+} from "@/lib/api/admin";
 import type { Comment, PostStatus } from "@/types/admin";
 
 const postStatuses: PostStatus[] = ["DRAFT", "PUBLISHED", "HIDDEN", "REMOVED"];
@@ -35,6 +47,7 @@ export function AdminCommentsPage() {
   const [pendingAction, setPendingAction] = useState<PendingCommentAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const detail = useAdminDetailResource<Comment>();
 
   const resource = usePagedAdminResource(
     (page, signal) =>
@@ -60,9 +73,18 @@ export function AdminCommentsPage() {
       { header: "Created", cell: (comment) => formatDate(comment.createdAt) },
       {
         header: "Actions",
-        className: "w-72",
+        className: "w-80",
         cell: (comment) => (
           <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => detail.load((signal) => getAdminComment(comment.id, signal))}
+            >
+              <EyeIcon data-icon="inline-start" />
+              View
+            </Button>
             {postStatuses
               .filter((nextStatus) => nextStatus !== comment.status)
               .slice(0, 2)
@@ -91,7 +113,7 @@ export function AdminCommentsPage() {
         ),
       },
     ],
-    [],
+    [detail],
   );
 
   async function handleConfirm() {
@@ -104,9 +126,19 @@ export function AdminCommentsPage() {
 
     try {
       if (pendingAction.type === "status") {
-        await updateCommentStatus(pendingAction.comment.id, pendingAction.status);
+        const updatedComment = await updateCommentStatus(
+          pendingAction.comment.id,
+          pendingAction.status,
+        );
+        if (detail.data?.id === updatedComment.id) {
+          detail.setData(updatedComment);
+        }
       } else {
         await deleteComment(pendingAction.comment.id);
+        if (detail.data?.id === pendingAction.comment.id) {
+          detail.setOpen(false);
+          detail.setData(null);
+        }
       }
 
       setPendingAction(null);
@@ -144,6 +176,45 @@ export function AdminCommentsPage() {
         error={resource.error}
       />
       <AdminPagination page={resource.data} onPageChange={resource.setPageNumber} />
+      <AdminDetailDialog
+        open={detail.open}
+        onOpenChange={detail.setOpen}
+        title="Comment detail"
+        description={detail.data ? detail.data.id : "Latest detail from admin API"}
+        isLoading={detail.isLoading}
+        error={detail.error}
+      >
+        {detail.data ? (
+          <div className="flex flex-col gap-4">
+            <AdminDetailGrid>
+              <AdminDetailField label="Author">{detail.data.authorUserName}</AdminDetailField>
+              <AdminDetailField label="User">{detail.data.userId}</AdminDetailField>
+              <AdminDetailField label="Blog">{detail.data.blogId}</AdminDetailField>
+              <AdminDetailField label="Parent">{detail.data.parentCommentId || "-"}</AdminDetailField>
+              <AdminDetailField label="Status">
+                <AdminStatusBadge value={detail.data.status} />
+              </AdminDetailField>
+              <AdminDetailField label="Created">{formatDate(detail.data.createdAt)}</AdminDetailField>
+              <AdminDetailField label="Updated">{formatDate(detail.data.updatedAt)}</AdminDetailField>
+              <AdminDetailField label="Content" className="sm:col-span-2">
+                <p className="whitespace-pre-wrap leading-6">{detail.data.content || "-"}</p>
+              </AdminDetailField>
+            </AdminDetailGrid>
+            {detail.data.imageUrls?.length ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {detail.data.imageUrls.map((url) => (
+                  <img
+                    alt="Comment attachment"
+                    className="max-h-72 w-full rounded-md border border-border object-contain"
+                    key={url}
+                    src={url}
+                  />
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </AdminDetailDialog>
       <AdminConfirmDialog
         open={Boolean(pendingAction)}
         onOpenChange={(open) => {

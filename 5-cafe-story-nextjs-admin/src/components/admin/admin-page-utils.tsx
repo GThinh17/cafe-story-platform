@@ -117,6 +117,57 @@ export function usePagedAdminResource<T>(
   );
 }
 
+export function useAdminDetailResource<T>() {
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState<T | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
+
+  const load = useCallback(
+    async (loader: (signal: AbortSignal) => Promise<T>) => {
+      const controller = new AbortController();
+      const requestId = requestIdRef.current + 1;
+      requestIdRef.current = requestId;
+      setOpen(true);
+      setData(null);
+      setError(null);
+      setIsLoading(true);
+
+      try {
+        const response = await loader(controller.signal);
+
+        if (requestIdRef.current === requestId) {
+          setData(response);
+        }
+      } catch (requestError) {
+        if (controller.signal.aborted || requestIdRef.current !== requestId) {
+          return;
+        }
+
+        setError(
+          requestError instanceof Error ? requestError.message : "Unable to load detail.",
+        );
+      } finally {
+        if (!controller.signal.aborted && requestIdRef.current === requestId) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [],
+  );
+
+  return {
+    open,
+    setOpen,
+    data,
+    setData,
+    isLoading,
+    error,
+    load,
+  };
+}
+
 export function FilterSelect<T extends string>({
   value,
   options,

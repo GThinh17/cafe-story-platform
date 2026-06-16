@@ -1,25 +1,33 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { EyeIcon } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
 import {
   AdminDataTable,
   AdminPagination,
   type AdminTableColumn,
 } from "@/components/admin/admin-data-table";
+import {
+  AdminDetailDialog,
+  AdminDetailField,
+  AdminDetailGrid,
+} from "@/components/admin/admin-detail-dialog";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import {
   BooleanFilterSelect,
   FilterInput,
   FilterSelect,
+  formatDate,
   PAGE_SIZE,
   Toolbar,
+  useAdminDetailResource,
   usePagedAdminResource,
 } from "@/components/admin/admin-page-utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getUsers, updateUserRoles, updateUserStatus } from "@/lib/api/admin";
+import { getAdminUser, getUsers, updateUserRoles, updateUserStatus } from "@/lib/api/admin";
 import type { AdminUser, UserRole } from "@/types/admin";
 
 const roles: UserRole[] = ["USER", "REVIEWER", "ADMIN", "CAFE_PAGE"];
@@ -35,6 +43,7 @@ export function AdminUsersPage() {
   const [pendingAction, setPendingAction] = useState<PendingUserAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const detail = useAdminDetailResource<AdminUser>();
 
   const resource = usePagedAdminResource(
     (page, signal) =>
@@ -80,9 +89,18 @@ export function AdminUsersPage() {
       },
       {
         header: "Actions",
-        className: "w-64",
+        className: "w-80",
         cell: (user) => (
           <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => detail.load((signal) => getAdminUser(user.userId, signal))}
+            >
+              <EyeIcon data-icon="inline-start" />
+              View
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -117,7 +135,7 @@ export function AdminUsersPage() {
         ),
       },
     ],
-    [],
+    [detail],
   );
 
   async function handleConfirm() {
@@ -130,9 +148,18 @@ export function AdminUsersPage() {
 
     try {
       if (pendingAction.type === "status") {
-        await updateUserStatus(pendingAction.user.userId, pendingAction.accountStatus);
+        const updatedUser = await updateUserStatus(
+          pendingAction.user.userId,
+          pendingAction.accountStatus,
+        );
+        if (detail.data?.userId === updatedUser.userId) {
+          detail.setData(updatedUser);
+        }
       } else {
-        await updateUserRoles(pendingAction.user.userId, pendingAction.roles);
+        const updatedUser = await updateUserRoles(pendingAction.user.userId, pendingAction.roles);
+        if (detail.data?.userId === updatedUser.userId) {
+          detail.setData(updatedUser);
+        }
       }
 
       setPendingAction(null);
@@ -170,6 +197,40 @@ export function AdminUsersPage() {
         error={resource.error}
       />
       <AdminPagination page={resource.data} onPageChange={resource.setPageNumber} />
+      <AdminDetailDialog
+        open={detail.open}
+        onOpenChange={detail.setOpen}
+        title="User detail"
+        description={detail.data ? detail.data.userId : "Latest detail from admin API"}
+        isLoading={detail.isLoading}
+        error={detail.error}
+      >
+        {detail.data ? (
+          <AdminDetailGrid>
+            <AdminDetailField label="Username">{detail.data.userName}</AdminDetailField>
+            <AdminDetailField label="Full name">{detail.data.userFullName || "-"}</AdminDetailField>
+            <AdminDetailField label="Email">{detail.data.userEmail}</AdminDetailField>
+            <AdminDetailField label="Phone">{detail.data.userPhone ?? "-"}</AdminDetailField>
+            <AdminDetailField label="Status">
+              <AdminStatusBadge value={detail.data.accountStatus} />
+            </AdminDetailField>
+            <AdminDetailField label="Roles">
+              <div className="flex flex-wrap gap-1">
+                {detail.data.roles.map((userRole) => (
+                  <Badge variant="secondary" key={userRole}>
+                    {userRole}
+                  </Badge>
+                ))}
+              </div>
+            </AdminDetailField>
+            <AdminDetailField label="Engagement">
+              {detail.data.userLike ?? 0} likes / {detail.data.userFollower ?? 0} followers
+            </AdminDetailField>
+            <AdminDetailField label="Region">{detail.data.regionId || "-"}</AdminDetailField>
+            <AdminDetailField label="Loaded at">{formatDate(new Date().toISOString())}</AdminDetailField>
+          </AdminDetailGrid>
+        ) : null}
+      </AdminDetailDialog>
       <AdminConfirmDialog
         open={Boolean(pendingAction)}
         onOpenChange={(open) => {

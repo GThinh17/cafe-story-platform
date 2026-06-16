@@ -8,6 +8,10 @@ import {
   ShieldCheckIcon,
   UsersIcon,
 } from "lucide-react";
+import {
+  AdminDashboardCharts,
+  dashboardChartLegend,
+} from "@/components/admin/admin-dashboard-charts";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
 import { Button } from "@/components/ui/button";
@@ -137,6 +141,18 @@ export function AdminOverview() {
               label="Pending moderation"
               value={summary.pendingModerationItems}
             />
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <AdminDashboardCharts summary={summary} />
+            <div className="flex flex-wrap gap-3 rounded-md border border-border bg-surface px-4 py-3">
+              {dashboardChartLegend.map(({ label, icon: Icon, className }) => (
+                <span className="flex items-center gap-2 text-xs font-semibold text-muted" key={label}>
+                  <Icon className={className} />
+                  {label}
+                </span>
+              ))}
+            </div>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-4">

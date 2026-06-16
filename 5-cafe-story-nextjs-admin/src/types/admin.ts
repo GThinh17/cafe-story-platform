@@ -69,6 +69,7 @@ export type Blog = {
   ratingScore: number | null;
   ratingCount: number | null;
   saveCount: number | null;
+  displayAuthorType: string | null;
   displayName: string | null;
   displayAvatarUrl: string | null;
   createdAt: string;

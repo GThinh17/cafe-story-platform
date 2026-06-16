@@ -1,12 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { EyeIcon } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
 import {
   AdminDataTable,
   AdminPagination,
   type AdminTableColumn,
 } from "@/components/admin/admin-data-table";
+import {
+  AdminDetailDialog,
+  AdminDetailField,
+  AdminDetailGrid,
+} from "@/components/admin/admin-detail-dialog";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import {
@@ -15,10 +21,16 @@ import {
   formatDate,
   PAGE_SIZE,
   Toolbar,
+  useAdminDetailResource,
   usePagedAdminResource,
 } from "@/components/admin/admin-page-utils";
 import { Button } from "@/components/ui/button";
-import { deleteCafePage, getCafePages, updateCafePageStatus } from "@/lib/api/admin";
+import {
+  deleteCafePage,
+  getAdminCafePage,
+  getCafePages,
+  updateCafePageStatus,
+} from "@/lib/api/admin";
 import type { CafePage, PageStatus } from "@/types/admin";
 
 const pageStatuses: PageStatus[] = ["DRAFT", "ACTIVE", "SUSPENDED"];
@@ -33,6 +45,7 @@ export function AdminCafePagesPage() {
   const [pendingAction, setPendingAction] = useState<PendingCafeAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const detail = useAdminDetailResource<CafePage>();
 
   const resource = usePagedAdminResource(
     (page, signal) =>
@@ -65,9 +78,18 @@ export function AdminCafePagesPage() {
       { header: "Created", cell: (cafe) => formatDate(cafe.createdAt) },
       {
         header: "Actions",
-        className: "w-72",
+        className: "w-80",
         cell: (cafe) => (
           <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => detail.load((signal) => getAdminCafePage(cafe.id, signal))}
+            >
+              <EyeIcon data-icon="inline-start" />
+              View
+            </Button>
             {pageStatuses
               .filter((nextStatus) => nextStatus !== cafe.status)
               .map((nextStatus) => (
@@ -93,7 +115,7 @@ export function AdminCafePagesPage() {
         ),
       },
     ],
-    [],
+    [detail],
   );
 
   async function handleConfirm() {
@@ -106,9 +128,19 @@ export function AdminCafePagesPage() {
 
     try {
       if (pendingAction.type === "status") {
-        await updateCafePageStatus(pendingAction.cafe.id, pendingAction.status);
+        const updatedCafe = await updateCafePageStatus(
+          pendingAction.cafe.id,
+          pendingAction.status,
+        );
+        if (detail.data?.id === updatedCafe.id) {
+          detail.setData(updatedCafe);
+        }
       } else {
         await deleteCafePage(pendingAction.cafe.id);
+        if (detail.data?.id === pendingAction.cafe.id) {
+          detail.setOpen(false);
+          detail.setData(null);
+        }
       }
 
       setPendingAction(null);
@@ -145,6 +177,47 @@ export function AdminCafePagesPage() {
         error={resource.error}
       />
       <AdminPagination page={resource.data} onPageChange={resource.setPageNumber} />
+      <AdminDetailDialog
+        open={detail.open}
+        onOpenChange={detail.setOpen}
+        title="Cafe page detail"
+        description={detail.data ? detail.data.id : "Latest detail from admin API"}
+        isLoading={detail.isLoading}
+        error={detail.error}
+      >
+        {detail.data ? (
+          <AdminDetailGrid>
+            <AdminDetailField label="Name">{detail.data.name}</AdminDetailField>
+            <AdminDetailField label="Owner">{detail.data.ownerUserId}</AdminDetailField>
+            <AdminDetailField label="Status">
+              <AdminStatusBadge value={detail.data.status} />
+            </AdminDetailField>
+            <AdminDetailField label="Active">
+              <AdminStatusBadge value={detail.data.pageActive} />
+            </AdminDetailField>
+            <AdminDetailField label="Address" className="sm:col-span-2">
+              {detail.data.address ||
+                [detail.data.regionStreet, detail.data.regionWard, detail.data.regionCity]
+                  .filter(Boolean)
+                  .join(", ") ||
+                "-"}
+            </AdminDetailField>
+            <AdminDetailField label="Description" className="sm:col-span-2">
+              {detail.data.description || "-"}
+            </AdminDetailField>
+            <AdminDetailField label="Audience">
+              {detail.data.likeCount ?? 0} likes / {detail.data.followerCount ?? 0} followers
+            </AdminDetailField>
+            <AdminDetailField label="Rating">
+              {detail.data.ratingScore ?? "-"} ({detail.data.ratingCount ?? 0} ratings)
+            </AdminDetailField>
+            <AdminDetailField label="Max members">{detail.data.maxMembers ?? "-"}</AdminDetailField>
+            <AdminDetailField label="Expires">{formatDate(detail.data.pageExpiresAt)}</AdminDetailField>
+            <AdminDetailField label="Created">{formatDate(detail.data.createdAt)}</AdminDetailField>
+            <AdminDetailField label="Updated">{formatDate(detail.data.updatedAt)}</AdminDetailField>
+          </AdminDetailGrid>
+        ) : null}
+      </AdminDetailDialog>
       <AdminConfirmDialog
         open={Boolean(pendingAction)}
         onOpenChange={(open) => {

@@ -1,12 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { EyeIcon } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
 import {
   AdminDataTable,
   AdminPagination,
   type AdminTableColumn,
 } from "@/components/admin/admin-data-table";
+import {
+  AdminDetailDialog,
+  AdminDetailField,
+  AdminDetailGrid,
+} from "@/components/admin/admin-detail-dialog";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import {
@@ -15,10 +21,11 @@ import {
   PAGE_SIZE,
   textPreview,
   Toolbar,
+  useAdminDetailResource,
   usePagedAdminResource,
 } from "@/components/admin/admin-page-utils";
 import { Button } from "@/components/ui/button";
-import { getReports, updateReportStatus } from "@/lib/api/admin";
+import { getAdminReport, getReports, updateReportStatus } from "@/lib/api/admin";
 import type { ContentReport, ReportStatus, ReportTargetType } from "@/types/admin";
 
 const reportStatuses: ReportStatus[] = ["OPEN", "REVIEWING", "RESOLVED", "REJECTED"];
@@ -32,6 +39,7 @@ export function AdminReportsPage() {
   const [pendingAction, setPendingAction] = useState<PendingReportAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const detail = useAdminDetailResource<ContentReport>();
 
   const resource = usePagedAdminResource(
     (page, signal) =>
@@ -58,9 +66,18 @@ export function AdminReportsPage() {
       { header: "Created", cell: (report) => formatDate(report.createdAt) },
       {
         header: "Actions",
-        className: "w-72",
+        className: "w-80",
         cell: (report) => (
           <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => detail.load((signal) => getAdminReport(report.id, signal))}
+            >
+              <EyeIcon data-icon="inline-start" />
+              View
+            </Button>
             {reportStatuses
               .filter((nextStatus) => nextStatus !== report.status)
               .slice(0, 3)
@@ -79,7 +96,7 @@ export function AdminReportsPage() {
         ),
       },
     ],
-    [],
+    [detail],
   );
 
   async function handleConfirm() {
@@ -91,7 +108,13 @@ export function AdminReportsPage() {
     setActionError(null);
 
     try {
-      await updateReportStatus(pendingAction.report.id, pendingAction.status);
+      const updatedReport = await updateReportStatus(
+        pendingAction.report.id,
+        pendingAction.status,
+      );
+      if (detail.data?.id === updatedReport.id) {
+        detail.setData(updatedReport);
+      }
       setPendingAction(null);
       resource.refetch();
     } catch (requestError) {
@@ -131,6 +154,38 @@ export function AdminReportsPage() {
         error={resource.error}
       />
       <AdminPagination page={resource.data} onPageChange={resource.setPageNumber} />
+      <AdminDetailDialog
+        open={detail.open}
+        onOpenChange={detail.setOpen}
+        title="Report detail"
+        description={detail.data ? detail.data.id : "Latest detail from admin API"}
+        isLoading={detail.isLoading}
+        error={detail.error}
+      >
+        {detail.data ? (
+          <AdminDetailGrid>
+            <AdminDetailField label="Reason">{detail.data.reason}</AdminDetailField>
+            <AdminDetailField label="Status">
+              <AdminStatusBadge value={detail.data.status} />
+            </AdminDetailField>
+            <AdminDetailField label="Reporter">
+              {detail.data.reporterUserName || detail.data.reporterUserId}
+            </AdminDetailField>
+            <AdminDetailField label="Reporter ID">{detail.data.reporterUserId}</AdminDetailField>
+            <AdminDetailField label="Target type">{detail.data.targetType}</AdminDetailField>
+            <AdminDetailField label="Target ID">{detail.data.targetId}</AdminDetailField>
+            <AdminDetailField label="Blog">{detail.data.blogId || "-"}</AdminDetailField>
+            <AdminDetailField label="Comment">{detail.data.commentId || "-"}</AdminDetailField>
+            <AdminDetailField label="Reported user">{detail.data.reportedUserId || "-"}</AdminDetailField>
+            <AdminDetailField label="Cafe page">{detail.data.cafePageId || "-"}</AdminDetailField>
+            <AdminDetailField label="Created">{formatDate(detail.data.createdAt)}</AdminDetailField>
+            <AdminDetailField label="Resolved">{formatDate(detail.data.resolvedAt)}</AdminDetailField>
+            <AdminDetailField label="Description" className="sm:col-span-2">
+              <p className="whitespace-pre-wrap leading-6">{detail.data.description || "-"}</p>
+            </AdminDetailField>
+          </AdminDetailGrid>
+        ) : null}
+      </AdminDetailDialog>
       <AdminConfirmDialog
         open={Boolean(pendingAction)}
         onOpenChange={(open) => {
