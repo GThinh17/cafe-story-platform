@@ -211,10 +211,28 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             scores.get(index).setRankPosition(index + 1);
         }
 
-        blogRecommendationScoreRepository.deleteByUserWindowAndContextRegion(userId, windowType, contextRegionId);
-        blogRecommendationScoreRepository.flush();
-        blogRecommendationScoreRepository.saveAll(scores);
+        upsertRecommendationScores(scores, now);
         return toFeedResponses(scores);
+    }
+
+    private void upsertRecommendationScores(List<BlogRecommendationScore> scores, LocalDateTime createdAt) {
+        scores.forEach(score -> blogRecommendationScoreRepository.upsertRecommendationScore(
+                score.getId() == null ? UUID.randomUUID() : score.getId(),
+                score.getUser().getUserId(),
+                score.getBlog().getId(),
+                score.getWindowType().name(),
+                score.getContextRegionId(),
+                score.getFeedScore(),
+                score.getTrendingScore(),
+                score.getFreshnessScore(),
+                score.getSameRegionScore(),
+                score.getFollowedUserScore(),
+                score.getFollowedPageScore(),
+                score.getReportPenalty(),
+                score.getRankPosition(),
+                score.getReason(),
+                score.getComputedAt(),
+                createdAt));
     }
 
     @Override
