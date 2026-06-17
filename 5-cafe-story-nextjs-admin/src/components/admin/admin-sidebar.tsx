@@ -11,6 +11,7 @@ import {
   LayoutDashboardIcon,
   MessageSquareIcon,
   ShieldCheckIcon,
+  TrophyIcon,
   UsersIcon,
 } from "lucide-react";
 import { BrandIcon } from "@/components/ui/brand-icon";
@@ -25,6 +26,7 @@ const sidebarLinks = [
   { href: "/comments", icon: MessageSquareIcon, label: "Comments" },
   { href: "/moderation", icon: ShieldCheckIcon, label: "Moderation" },
   { href: "/reports", icon: FlagIcon, label: "Reports" },
+  { href: "/ranking", icon: TrophyIcon, label: "Ranking" },
   { href: "/payments", icon: CreditCardIcon, label: "Payments" },
   { href: "/extra-fees", icon: BadgeDollarSignIcon, label: "Extra Fees" },
 ];

@@ -17,8 +17,12 @@ import type {
   Payment,
   PaymentStatus,
   PostStatus,
+  RankingPeriodType,
   ReportStatus,
   ReportTargetType,
+  ReviewerBadgeThreshold,
+  ReviewerRankingSnapshot,
+  ReviewerScoringFormula,
   UserRole,
 } from "@/types/admin";
 
@@ -355,4 +359,37 @@ export function deleteExtraFee(extraFeeId: string) {
   return apiFetch<void>(apiEndpoints.admin.extraFee(extraFeeId), {
     method: "DELETE",
   });
+}
+
+export function getReviewerRanking(params: {
+  period: string;
+  periodType: RankingPeriodType;
+  page: number;
+  limit: number;
+}, signal?: AbortSignal) {
+  return apiFetch<ReviewerRankingSnapshot[]>(
+    withQuery(apiEndpoints.admin.reviewerRanking, params),
+    { method: "GET", signal },
+  );
+}
+
+export function generateReviewerRanking(periodType: RankingPeriodType) {
+  return apiFetch<void>(
+    withQuery(apiEndpoints.admin.generateReviewerRanking, { periodType }),
+    { method: "POST" },
+  );
+}
+
+export function getReviewerFormulas(signal?: AbortSignal) {
+  return apiFetch<ReviewerScoringFormula[]>(apiEndpoints.admin.reviewerFormulas, {
+    method: "GET",
+    signal,
+  });
+}
+
+export function getReviewerFormulaThresholds(formulaId: string, signal?: AbortSignal) {
+  return apiFetch<ReviewerBadgeThreshold[]>(
+    apiEndpoints.admin.reviewerFormulaThresholds(formulaId),
+    { method: "GET", signal },
+  );
 }

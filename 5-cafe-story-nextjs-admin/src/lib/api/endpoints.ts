@@ -47,5 +47,10 @@ export const apiEndpoints = {
       `/api/admin/extra-fees/${pathId(extraFeeId)}`,
     extraFeeStatus: (extraFeeId: string) =>
       `/api/admin/extra-fees/${pathId(extraFeeId)}/status`,
+    reviewerRanking: "/api/admin/reviewer-config/ranking",
+    generateReviewerRanking: "/api/admin/reviewer-config/ranking/generate",
+    reviewerFormulas: "/api/admin/reviewer-config/formulas",
+    reviewerFormulaThresholds: (formulaId: string) =>
+      `/api/admin/reviewer-config/formulas/${pathId(formulaId)}/thresholds`,
   },
 } as const;

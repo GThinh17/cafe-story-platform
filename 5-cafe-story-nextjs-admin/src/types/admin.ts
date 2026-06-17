@@ -16,6 +16,8 @@ export type PaymentMethod = "STRIPE_CARD" | "BANK_TRANSFER" | "VNPAY";
 export type ExtraFeeType = "REVIEWER_REGISTRATION" | "CAFE_PAGE_OPENING";
 export type ModerationDecision = "SAFE" | "NEEDS_REVIEW" | "VIOLATION";
 export type ModerationResolveAction = "APPROVE" | "HIDE" | "REMOVE";
+export type RankingPeriodType = "DAILY" | "WEEKLY" | "MONTHLY";
+export type ReviewerBadge = "IRON" | "BRONZE" | "SILVER" | "GOLD" | "DIAMOND";
 
 export type AdminDashboardSummary = {
   totalUsers: number;
@@ -204,4 +206,38 @@ export type BlogRankingOverrideRequest = {
   reason?: string | null;
   start_at: string;
   end_at?: string | null;
+};
+
+export type ReviewerScoringFormula = {
+  id: UUID;
+  likeWeight: number;
+  commentWeight: number;
+  shareWeight: number;
+  likePayoutAmount: number;
+  commentPayoutAmount: number;
+  sharePayoutAmount: number;
+  active: boolean;
+  description: string | null;
+  createdAt: string;
+};
+
+export type ReviewerBadgeThreshold = {
+  id: UUID;
+  badge: ReviewerBadge;
+  minScore: number;
+  formulaId: UUID;
+};
+
+export type ReviewerRankingSnapshot = {
+  id: UUID;
+  reviewerId: UUID;
+  period: string;
+  periodType: RankingPeriodType;
+  rankPosition: number;
+  score: number;
+  likeCount: number;
+  shareCount: number;
+  commentCount: number;
+  badge: ReviewerBadge;
+  formulaId: UUID | null;
 };
