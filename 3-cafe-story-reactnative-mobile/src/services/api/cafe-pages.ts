@@ -1,6 +1,7 @@
 import type {
   CafePageBlogPageResponse,
   CafePageResponse,
+  CafePageUpdateRequest,
   PageFollowResponse,
   PageLikeResponse,
 } from "../../types";
@@ -33,6 +34,13 @@ export function getCafePagesByOwner(ownerUserId: string) {
 export function getCafePageById(cafePageId: string) {
   return apiFetch<CafePageResponse>(apiEndpoints.cafePages.byId(cafePageId), {
     method: "GET",
+  });
+}
+
+export function updateCafePage(cafePageId: string, request: CafePageUpdateRequest) {
+  return apiFetch<CafePageResponse>(apiEndpoints.cafePages.byId(cafePageId), {
+    body: request,
+    method: "PATCH",
   });
 }
 

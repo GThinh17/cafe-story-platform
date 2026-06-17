@@ -41,6 +41,16 @@ export type CafePageBlogPageResponse = {
   nextCursor: string | null;
 };
 
+export type CafePageUpdateRequest = {
+  address?: string | null;
+  avatarUrl?: string | null;
+  coverUrl?: string | null;
+  description?: string | null;
+  name?: string | null;
+  regionId?: string | null;
+  status?: CafePageStatus | null;
+};
+
 export type PageFollowResponse = {
   cafePageId: string;
   createdAt: string | null;

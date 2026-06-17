@@ -1,3 +1,4 @@
+import * as ImagePicker from "expo-image-picker";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
@@ -19,6 +20,7 @@ import {
 
 import {
   CafePageHeader,
+  EditCafePageModal,
   EmptyState,
   LoadingState,
   Screen,
@@ -35,9 +37,11 @@ import {
   likeCafePage,
   unfollowCafePage,
   unlikeCafePage,
+  updateCafePage,
+  uploadCafeImageToCloudinary,
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
-import type { CafePageResponse, UserPostPreview } from "../../types";
+import type { CafePageResponse, CafePageUpdateRequest, UserPostPreview } from "../../types";
 
 type CafePageRouteProp = RouteProp<RootStackParamList, typeof routes.cafeDetail>;
 type CafePageContentTab = "posts" | "reviews" | "members" | "requests";
@@ -71,6 +75,11 @@ export function CafePageScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isFollowPending, setIsFollowPending] = useState(false);
   const [isLikePending, setIsLikePending] = useState(false);
+  const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  const [isEditSaving, setIsEditSaving] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<CafePageContentTab>("posts");
 
   const isOwner = useMemo(
@@ -220,6 +229,118 @@ export function CafePageScreen() {
     setError(`${feature} is coming soon.`);
   }, []);
 
+  const openEditModal = useCallback(() => {
+    if (!isOwner) {
+      return;
+    }
+
+    setEditError(null);
+    setIsEditModalVisible(true);
+  }, [isOwner]);
+
+  const closeEditModal = useCallback(() => {
+    if (isEditSaving || isUploadingAvatar || isUploadingCover) {
+      return;
+    }
+
+    setIsEditModalVisible(false);
+    setEditError(null);
+  }, [isEditSaving, isUploadingAvatar, isUploadingCover]);
+
+  const pickCafeImage = useCallback(async (imageType: "avatar" | "cover") => {
+    if (!cafePage) {
+      return;
+    }
+
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permission.granted) {
+      setEditError(
+        imageType === "avatar"
+          ? "Photo access is required to update the cafe avatar."
+          : "Photo access is required to update the cafe cover.",
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      allowsEditing: true,
+      aspect: imageType === "avatar" ? [1, 1] : [16, 9],
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.85,
+    });
+
+    if (result.canceled || !result.assets[0]?.uri) {
+      return;
+    }
+
+    const asset = result.assets[0];
+
+    try {
+      setEditError(null);
+      if (imageType === "avatar") {
+        setIsUploadingAvatar(true);
+      } else {
+        setIsUploadingCover(true);
+      }
+
+      const uploadedUrl = await uploadCafeImageToCloudinary(
+        {
+          name: asset.fileName ?? `cafe-${imageType}-${Date.now()}.jpg`,
+          type: asset.mimeType ?? "image/jpeg",
+          uri: asset.uri,
+        },
+        imageType,
+      );
+
+      setCafePage((currentPage) =>
+        currentPage
+          ? {
+              ...currentPage,
+              avatarUrl: imageType === "avatar" ? uploadedUrl : currentPage.avatarUrl,
+              coverUrl: imageType === "cover" ? uploadedUrl : currentPage.coverUrl,
+            }
+          : currentPage,
+      );
+    } catch (nextError) {
+      setEditError(
+        nextError instanceof Error
+          ? nextError.message
+          : `Unable to upload cafe ${imageType}.`,
+      );
+    } finally {
+      if (imageType === "avatar") {
+        setIsUploadingAvatar(false);
+      } else {
+        setIsUploadingCover(false);
+      }
+    }
+  }, [cafePage]);
+
+  const saveCafePage = useCallback(async (request: CafePageUpdateRequest) => {
+    if (!cafePage || isEditSaving) {
+      return;
+    }
+
+    setIsEditSaving(true);
+    setEditError(null);
+
+    try {
+      const updatedPage = await updateCafePage(cafePage.id, request);
+      setCafePage(updatedPage);
+      setIsEditModalVisible(false);
+      setError(null);
+    } catch (nextError) {
+      setEditError(
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to update this cafe page.",
+      );
+    } finally {
+      setIsEditSaving(false);
+    }
+  }, [cafePage, isEditSaving]);
+
   const renderTabContent = () => {
     if (activeTab === "posts") {
       return posts.length > 0 ? (
@@ -310,7 +431,7 @@ export function CafePageScreen() {
               isFollowPending={isFollowPending}
               isLikePending={isLikePending}
               isOwner={isOwner}
-              onEditPress={() => setError("Cafe page editing is coming soon.")}
+              onEditPress={openEditModal}
               onFollowPress={toggleFollow}
               onLikePress={toggleLike}
               onSharePress={() => showComingSoon("Cafe page sharing")}
@@ -364,6 +485,25 @@ export function CafePageScreen() {
           {renderTabContent()}
         </ScrollView>
       )}
+
+      <EditCafePageModal
+        cafePage={cafePage}
+        error={editError}
+        isSaving={isEditSaving}
+        isUploadingAvatar={isUploadingAvatar}
+        isUploadingCover={isUploadingCover}
+        onAvatarPress={() => {
+          void pickCafeImage("avatar");
+        }}
+        onClose={closeEditModal}
+        onCoverPress={() => {
+          void pickCafeImage("cover");
+        }}
+        onSave={(request) => {
+          void saveCafePage(request);
+        }}
+        visible={isEditModalVisible}
+      />
     </Screen>
   );
 }
