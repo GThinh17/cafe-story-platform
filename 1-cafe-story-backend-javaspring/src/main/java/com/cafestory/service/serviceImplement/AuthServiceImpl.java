@@ -5,11 +5,13 @@ import com.cafestory.dto.requestDTO.RegisterRequest;
 import com.cafestory.dto.responseDTO.AuthResponse;
 import com.cafestory.dto.responseDTO.AuthUserResponse;
 import com.cafestory.dto.responseDTO.UsernameSuggestionResponse;
+import com.cafestory.entity.CafePage;
 import com.cafestory.entity.RefreshToken;
 import com.cafestory.entity.Role;
 import com.cafestory.entity.User;
 import com.cafestory.entity.UserRoleAssignment;
 import com.cafestory.entity.enums.UserRole;
+import com.cafestory.repository.CafePageRepository;
 import com.cafestory.repository.RoleRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.repository.UserRoleAssignmentRepository;
@@ -51,6 +53,7 @@ public class AuthServiceImpl implements AuthService {
             "cafestory");
 
     private final UserRepository userRepository;
+    private final CafePageRepository cafePageRepository;
     private final RoleRepository roleRepository;
     private final UserRoleAssignmentRepository userRoleAssignmentRepository;
     private final PasswordEncoder passwordEncoder;
@@ -60,6 +63,7 @@ public class AuthServiceImpl implements AuthService {
 
     public AuthServiceImpl(
             UserRepository userRepository,
+            CafePageRepository cafePageRepository,
             RoleRepository roleRepository,
             UserRoleAssignmentRepository userRoleAssignmentRepository,
             PasswordEncoder passwordEncoder,
@@ -67,6 +71,7 @@ public class AuthServiceImpl implements AuthService {
             RefreshTokenService refreshTokenService,
             UserValidator userValidator) {
         this.userRepository = userRepository;
+        this.cafePageRepository = cafePageRepository;
         this.roleRepository = roleRepository;
         this.userRoleAssignmentRepository = userRoleAssignmentRepository;
         this.passwordEncoder = passwordEncoder;
@@ -328,8 +333,25 @@ public class AuthServiceImpl implements AuthService {
                 .toList();
     }
 
+    private UUID cafePageId(UUID userId) {
+        List<CafePage> pages = cafePageRepository.findByOwnerUserId(userId);
+        if (pages == null) {
+            return null;
+        }
+
+        return pages.stream()
+                .filter(page -> page.getId() != null)
+                .sorted((left, right) -> Boolean.compare(
+                        Boolean.TRUE.equals(right.getPageActive()),
+                        Boolean.TRUE.equals(left.getPageActive())))
+                .map(CafePage::getId)
+                .findFirst()
+                .orElse(null);
+    }
+
     private AuthResponse response(User user, List<String> roles, String accessToken, String refreshToken) {
         AuthUserResponse userResponse = new AuthUserResponse();
+        UUID cafePageId = cafePageId(user.getUserId());
         userResponse.setUserId(user.getUserId());
         userResponse.setUserName(user.getUserName());
         userResponse.setUserFullName(user.getUserFullName());
@@ -338,6 +360,8 @@ public class AuthServiceImpl implements AuthService {
         userResponse.setUserAvatar(user.getUserAvatar());
         userResponse.setUserDescription(user.getUserDescription());
         userResponse.setAccountStatus(user.getAccountStatus());
+        userResponse.setCafePageId(cafePageId);
+        userResponse.setPageId(cafePageId);
         userResponse.setRoles(roles);
 
         AuthResponse response = new AuthResponse();

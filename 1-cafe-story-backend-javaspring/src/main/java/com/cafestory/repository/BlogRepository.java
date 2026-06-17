@@ -64,6 +64,9 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
     @EntityGraph(attributePaths = {"author"})
     List<Blog> findByStatus(PostStatus status);
 
+    @EntityGraph(attributePaths = {"author"})
+    List<Blog> findByIdIn(List<UUID> ids);
+
     @Query(
             value = """
                     select

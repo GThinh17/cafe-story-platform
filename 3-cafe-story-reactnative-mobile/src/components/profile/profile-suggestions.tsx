@@ -70,6 +70,7 @@ export function ProfileSuggestions({
         >
           {suggestions.map((suggestion) => {
             const isDisabled = disabledIds.has(suggestion.targetId);
+            const isCafePage = suggestion.targetType === "CAFE_PAGE";
 
             return (
               <View key={`${suggestion.targetType}-${suggestion.targetId}`} style={styles.card}>
@@ -104,23 +105,30 @@ export function ProfileSuggestions({
                 </Pressable>
 
                 <Pressable
-                  accessibilityLabel={`Follow ${getDisplayName(suggestion)}`}
+                  accessibilityLabel={`${isCafePage ? "View" : "Follow"} ${getDisplayName(suggestion)}`}
                   accessibilityRole="button"
-                  disabled={isDisabled}
-                  onPress={() => onFollow(suggestion)}
+                  disabled={!isCafePage && isDisabled}
+                  onPress={() => {
+                    if (isCafePage) {
+                      onProfilePress(suggestion);
+                      return;
+                    }
+
+                    onFollow(suggestion);
+                  }}
                   style={({ pressed }) => [
                     styles.followButton,
-                    isDisabled && styles.followButtonDisabled,
-                    pressed && !isDisabled && styles.pressed,
+                    !isCafePage && isDisabled && styles.followButtonDisabled,
+                    pressed && (isCafePage || !isDisabled) && styles.pressed,
                   ]}
                 >
                   <Text
                     style={[
                       styles.followText,
-                      isDisabled && styles.followTextDisabled,
+                      !isCafePage && isDisabled && styles.followTextDisabled,
                     ]}
                   >
-                    {isDisabled ? "Following" : "Follow"}
+                    {isCafePage ? "View" : isDisabled ? "Following" : "Follow"}
                   </Text>
                 </Pressable>
               </View>

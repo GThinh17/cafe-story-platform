@@ -8,6 +8,7 @@ import com.cafestory.entity.RefreshToken;
 import com.cafestory.entity.Role;
 import com.cafestory.entity.User;
 import com.cafestory.entity.UserRoleAssignment;
+import com.cafestory.repository.CafePageRepository;
 import com.cafestory.repository.RoleRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.repository.UserRoleAssignmentRepository;
@@ -41,6 +42,9 @@ class AuthServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private CafePageRepository cafePageRepository;
 
     @Mock
     private RoleRepository roleRepository;
@@ -269,6 +273,7 @@ class AuthServiceImplTest {
     private AuthServiceImpl service() {
         return new AuthServiceImpl(
                 userRepository,
+                cafePageRepository,
                 roleRepository,
                 userRoleAssignmentRepository,
                 passwordEncoder,

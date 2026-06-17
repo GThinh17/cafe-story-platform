@@ -5,7 +5,7 @@ import {
   UserPlus,
 } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Pressable,
   RefreshControl,
@@ -34,6 +34,7 @@ import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
 import {
   getBlogsByUser,
+  getCafePageById,
   getCafePagesByOwner,
   getSavedBlogsByUser,
   getSharedBlogsByUser,
@@ -41,7 +42,7 @@ import {
   blogResponseToPostPreview,
   followUser,
   getMyProfile,
-  getUserRecommendations,
+  getMixedRecommendations,
   updateMyProfile,
   updateMyRegion,
   uploadAvatarToCloudinary,
@@ -49,6 +50,7 @@ import {
 import { colors, spacing, typography } from "../../theme";
 import type {
   BlogResponse,
+  AuthUser,
   CafePageResponse,
   ProfileContentTab,
   RecommendationCardResponse,
@@ -135,10 +137,32 @@ function isOwnedActiveCafePage(page: CafePageResponse) {
   return page.status === "ACTIVE" && page.pageActive === true;
 }
 
+function selectOwnedCafePage(pages: CafePageResponse[]) {
+  return pages.find(isOwnedActiveCafePage) ?? pages.find((page) => page.id) ?? null;
+}
+
+function linkedCafePageId(
+  profile: UserResponse | null | undefined,
+  user: AuthUser | null | undefined,
+) {
+  return profile?.pageId ?? profile?.cafePageId ?? user?.pageId ?? user?.cafePageId ?? null;
+}
+
+function hasCafePageRole(user: AuthUser | null | undefined) {
+  return Boolean(
+    user?.roles?.some((role) => {
+      const normalizedRole = role.replace(/^ROLE_/, "").toUpperCase();
+
+      return normalizedRole === "CAFE_PAGE" || normalizedRole === "CAFE";
+    }),
+  );
+}
+
 export function ProfileScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
+  const isProfileLoadInFlightRef = useRef(false);
   const [profile, setProfile] = useState<UserResponse | null>(null);
   const [ownedCafePage, setOwnedCafePage] = useState<CafePageResponse | null>(null);
   const [tabPosts, setTabPosts] =
@@ -170,7 +194,31 @@ export function ProfileScreen() {
   const [activeContentTab, setActiveContentTab] =
     useState<ProfileContentTab>("posts");
 
+  const loadOwnedCafePage = useCallback(async (nextProfile: UserResponse) => {
+    const selectedPage = selectOwnedCafePage(
+      await getCafePagesByOwner(nextProfile.userId),
+    );
+
+    if (selectedPage) {
+      return selectedPage;
+    }
+
+    const cafePageId = linkedCafePageId(nextProfile, user);
+
+    if (!cafePageId) {
+      return null;
+    }
+
+    return getCafePageById(cafePageId);
+  }, [user?.cafePageId, user?.pageId]);
+
   const loadProfile = useCallback(async (refreshing = false) => {
+    if (isProfileLoadInFlightRef.current) {
+      return;
+    }
+
+    isProfileLoadInFlightRef.current = true;
+
     if (refreshing) {
       setIsRefreshing(true);
     } else {
@@ -178,31 +226,34 @@ export function ProfileScreen() {
     }
 
     try {
-      const profilePromise = getMyProfile();
-      const blogsPromise = user?.userId
-        ? getBlogsByUser(user.userId)
-        : profilePromise.then((nextProfile) => getBlogsByUser(nextProfile.userId));
-      const cafePagesPromise = profilePromise.then((nextProfile) =>
-        getCafePagesByOwner(nextProfile.userId).catch(() => []),
-      );
-      const [nextProfile, userBlogs, cafePages] = await Promise.all([
-        profilePromise,
-        blogsPromise,
-        cafePagesPromise,
+      const nextProfile = await getMyProfile();
+      const [blogsResult, cafePageResult] = await Promise.allSettled([
+        getBlogsByUser(nextProfile.userId),
+        loadOwnedCafePage(nextProfile),
       ]);
 
       setProfile(nextProfile);
-      setOwnedCafePage(cafePages.find(isOwnedActiveCafePage) ?? null);
-      setTabPosts((currentPosts) => ({
-        ...currentPosts,
-        posts: userBlogs.map(blogResponseToPostPreview),
-      }));
-      setLoadedTabs((currentTabs) => ({
-        ...currentTabs,
-        posts: true,
-      }));
+      setOwnedCafePage(
+        cafePageResult.status === "fulfilled" ? cafePageResult.value : null,
+      );
+      if (blogsResult.status === "fulfilled") {
+        setTabPosts((currentPosts) => ({
+          ...currentPosts,
+          posts: blogsResult.value.map(blogResponseToPostPreview),
+        }));
+        setLoadedTabs((currentTabs) => ({
+          ...currentTabs,
+          posts: true,
+        }));
+        setContentError(null);
+      } else {
+        setContentError(
+          blogsResult.reason instanceof Error
+            ? blogsResult.reason.message
+            : "Unable to load your posts.",
+        );
+      }
       setError(null);
-      setContentError(null);
     } catch (nextError) {
       setOwnedCafePage(null);
       setError(
@@ -211,10 +262,11 @@ export function ProfileScreen() {
           : "Unable to load your profile.",
       );
     } finally {
+      isProfileLoadInFlightRef.current = false;
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [user?.userId]);
+  }, [loadOwnedCafePage]);
 
   const loadContentTab = useCallback(async (
     tab: ProfileContentTab,
@@ -272,7 +324,7 @@ export function ProfileScreen() {
     setSuggestionError(null);
 
     try {
-      const nextSuggestions = await getUserRecommendations(0, 12);
+      const nextSuggestions = await getMixedRecommendations(0, 12);
 
       setSuggestions(nextSuggestions);
     } catch (nextError) {
@@ -337,12 +389,20 @@ export function ProfileScreen() {
   }, [pendingSuggestionId]);
 
   const openSuggestionProfile = useCallback((suggestion: RecommendationCardResponse) => {
-    if (suggestion.targetType !== "USER") {
+    if (suggestion.targetType === "CAFE_PAGE") {
+      navigation.navigate(routes.cafeDetail, {
+        cafeId: suggestion.targetId,
+      });
+      return;
+    }
+
+    if (suggestion.targetType !== "USER" && suggestion.targetType !== "REVIEWER") {
       return;
     }
 
     navigation.navigate(routes.otherUserProfile, {
-      userId: suggestion.targetId,
+      userId: suggestion.userId ?? suggestion.targetId,
+      userName: suggestion.username,
     });
   }, [navigation]);
 
@@ -495,8 +555,10 @@ export function ProfileScreen() {
   const activeProfile = profile ?? (user
     ? {
       accountStatus: user.accountStatus,
+      cafePageId: user.cafePageId ?? null,
       followingCount: null,
       isFollowing: false,
+      pageId: user.pageId ?? null,
       regionArea: null,
       regionCity: null,
       regionId: null,
@@ -544,7 +606,7 @@ export function ProfileScreen() {
     () =>
       suggestions.filter(
         (suggestion) =>
-          suggestion.targetType === "USER" &&
+          (suggestion.targetType === "USER" || suggestion.targetType === "CAFE_PAGE") &&
           suggestion.targetId !== activeProfile?.userId &&
           !dismissedSuggestionIds.includes(suggestion.targetId),
       ),
@@ -552,16 +614,18 @@ export function ProfileScreen() {
   );
   const visiblePosts = tabPosts[activeContentTab];
   const visibleEmptyCopy = getEmptyCopy(activeContentTab);
+  const ownedCafePageId = ownedCafePage?.id ?? linkedCafePageId(activeProfile, user);
+  const shouldShowCafePageAction = hasCafePageRole(user) || Boolean(ownedCafePageId);
 
   const openOwnedCafePage = useCallback(() => {
-    if (!ownedCafePage?.id) {
+    if (!ownedCafePageId) {
       return;
     }
 
     navigation.navigate(routes.cafeDetail, {
-      cafeId: ownedCafePage.id,
+      cafeId: ownedCafePageId,
     });
-  }, [navigation, ownedCafePage?.id]);
+  }, [navigation, ownedCafePageId]);
 
   const openUserPosts = useCallback((post?: UserPostPreview) => {
     if (!activeProfile?.userId) {
@@ -605,7 +669,7 @@ export function ProfileScreen() {
           onCafePagePress={openOwnedCafePage}
           onMessagePress={() => navigation.navigate(routes.conversations)}
           onSettingsPress={() => navigation.navigate(routes.settings)}
-          showCafePageAction={Boolean(ownedCafePage)}
+          showCafePageAction={shouldShowCafePageAction}
           userName={userName}
         />
         <ProfileSkeleton />
@@ -619,7 +683,7 @@ export function ProfileScreen() {
         onCafePagePress={openOwnedCafePage}
         onMessagePress={() => navigation.navigate(routes.conversations)}
         onSettingsPress={() => navigation.navigate(routes.settings)}
-        showCafePageAction={Boolean(ownedCafePage)}
+        showCafePageAction={shouldShowCafePageAction}
         userName={userName}
       />
 
