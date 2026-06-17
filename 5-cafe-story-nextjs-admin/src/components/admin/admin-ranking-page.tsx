@@ -11,12 +11,19 @@ import {
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import {
   FilterInput,
-  FilterSelect,
   shortId,
   Toolbar,
 } from "@/components/admin/admin-page-utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { generateReviewerRanking, getReviewerRanking } from "@/lib/api/admin";
 import type {
   RankingPeriodType,
@@ -79,6 +86,7 @@ export function AdminRankingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
+  const [generatePeriodType, setGeneratePeriodType] = useState<RankingPeriodType>("DAILY");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
 
@@ -141,7 +149,7 @@ export function AdminRankingPage() {
     setGenerateError(null);
 
     try {
-      await generateReviewerRanking(periodType);
+      await generateReviewerRanking(generatePeriodType);
       setIsGenerateOpen(false);
       void load();
     } catch (requestError) {
@@ -174,17 +182,28 @@ export function AdminRankingPage() {
         }
       />
       <Toolbar onRefresh={() => load()}>
-        <FilterSelect
-          label="Period type"
-          value={periodType}
-          options={periodTypes}
-          placeholder="Period type"
-          onChange={(value) => {
-            const nextType = (value || "DAILY") as RankingPeriodType;
-            setPeriodType(nextType);
-            setPeriod(defaultPeriod(nextType));
-          }}
-        />
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-muted">Period type</span>
+          <Select
+            value={periodType}
+            onValueChange={(value) => {
+              const nextType = value as RankingPeriodType;
+              setPeriodType(nextType);
+              setPeriod(defaultPeriod(nextType));
+            }}
+          >
+            <SelectTrigger className="h-10 w-full bg-surface sm:w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {periodTypes.map((type) => (
+                  <SelectItem value={type} key={type}>{type}</SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
         <FilterInput value={period} placeholder="Period, ví dụ 2026-06" onChange={setPeriod} />
       </Toolbar>
       <AdminDataTable
@@ -225,14 +244,33 @@ export function AdminRankingPage() {
           setIsGenerateOpen(open);
           if (!open) {
             setGenerateError(null);
+            setGeneratePeriodType("DAILY");
           }
         }}
         title="Generate ranking snapshot"
-        description={`Tạo snapshot ranking mới cho period type ${periodType}.`}
+        description="Chọn period type để tạo snapshot ranking cho thời điểm hiện tại."
         confirmLabel="Generate"
         isSubmitting={isSubmitting}
         onConfirm={handleGenerate}
       >
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium">Period type</span>
+          <Select
+            value={generatePeriodType}
+            onValueChange={(value) => setGeneratePeriodType(value as RankingPeriodType)}
+          >
+            <SelectTrigger className="bg-surface">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {periodTypes.map((type) => (
+                  <SelectItem value={type} key={type}>{type}</SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
         {generateError ? <p className="text-sm text-accent">{generateError}</p> : null}
       </AdminConfirmDialog>
     </div>
