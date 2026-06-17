@@ -30,6 +30,11 @@ type CreatePostComposeStepProps = {
   onRemoveMedia: () => void;
   onToggleTag: (tag: string) => void;
   onUpdateDraft: (patch: Partial<CreatePostDraft>) => void;
+  postingIdentity?: {
+    avatarUrl: string | null;
+    id: string;
+    name: string | null;
+  } | null;
   selectedTaggedUsers: UserResponse[];
   user: AuthUser | null;
 };
@@ -44,10 +49,13 @@ export function CreatePostComposeStep({
   onRemoveMedia,
   onToggleTag,
   onUpdateDraft,
+  postingIdentity,
   selectedTaggedUsers,
   user,
 }: CreatePostComposeStepProps) {
-  const displayName = user?.userFullName || user?.userName || "CafeStory user";
+  const displayName =
+    postingIdentity?.name || user?.userFullName || user?.userName || "CafeStory user";
+  const avatarUri = postingIdentity?.avatarUrl ?? user?.userAvatar;
   const hasMedia = draft.mediaUrls.length > 0;
   const quickActions = [
     { Icon: Music, label: "Music" },
@@ -74,13 +82,17 @@ export function CreatePostComposeStep({
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.identityRow}>
-          <Avatar size={74} uri={user?.userAvatar} />
+          <Avatar size={74} uri={avatarUri} />
           <View style={styles.identityCopy}>
             <Text numberOfLines={1} style={styles.name}>
               {displayName}
             </Text>
             <Text numberOfLines={1} style={styles.username}>
-              {user?.userName ? `@${user.userName}` : "New cafe story"}
+              {postingIdentity
+                ? "Posting as cafe page"
+                : user?.userName
+                  ? `@${user.userName}`
+                  : "New cafe story"}
             </Text>
           </View>
         </View>
@@ -180,7 +192,7 @@ export function CreatePostComposeStep({
           <OptionRow
             Icon={Store}
             label="Tag cafe page"
-            value={draft.cafePageId ? "Cafe page selected" : "Optional"}
+            value={postingIdentity?.name || (draft.cafePageId ? "Cafe page selected" : "Optional")}
           />
           <OptionRow
             Icon={Users}

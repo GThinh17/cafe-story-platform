@@ -33,7 +33,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import org.springframework.cache.annotation.Cacheable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -57,6 +60,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
+    private static final Logger log = LoggerFactory.getLogger(BlogFeedRankingServiceImpl.class);
     private static final int DEFAULT_ORGANIC_FEED_SIZE = 20;
     private static final int MAX_ORGANIC_FEED_SIZE = 50;
     private static final int ORGANIC_CURSOR_VERSION = 1;
@@ -77,6 +81,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
     private final RegionRepository regionRepository;
     private final UserRepository userRepository;
     private final UserValidator userValidator;
+    private final CacheManager cacheManager;
 
     public BlogFeedRankingServiceImpl(
             BlogRepository blogRepository,
@@ -89,7 +94,8 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             AiModerationResultRepository aiModerationResultRepository,
             RegionRepository regionRepository,
             UserRepository userRepository,
-            UserValidator userValidator) {
+            UserValidator userValidator,
+            CacheManager cacheManager) {
         this.blogRepository = blogRepository;
         this.blogTrendingScoreRepository = blogTrendingScoreRepository;
         this.blogRecommendationScoreRepository = blogRecommendationScoreRepository;
@@ -101,16 +107,37 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         this.regionRepository = regionRepository;
         this.userRepository = userRepository;
         this.userValidator = userValidator;
+        this.cacheManager = cacheManager;
     }
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, key = "(#p0 == null ? 'first' : #p0) + ':' + #p1")
     public FeedResponseDTO getOrganicFeed(String cursor, int size) {
         int safeSize = normalizeOrganicFeedSize(size);
         OrganicFeedCursor organicCursor = decodeOrganicCursor(cursor);
         LocalDateTime scoredAt = organicCursor == null ? LocalDateTime.now() : organicCursor.scoredAt();
+        String cacheKey = organicRankingCacheKey(cursor, safeSize);
+        OrganicFeedRankingPage rankingPage = getCachedOrganicRankingPage(cacheKey);
 
+        if (rankingPage == null) {
+            rankingPage = buildOrganicRankingPage(organicCursor, safeSize, scoredAt);
+            putCachedOrganicRankingPage(cacheKey, rankingPage);
+            log.debug("Organic feed ranking cache miss key={}", cacheKey);
+        } else {
+            log.debug("Organic feed ranking cache hit key={}", cacheKey);
+        }
+
+        BlogFeedCursorPageResponseDTO response = new BlogFeedCursorPageResponseDTO();
+        response.setItems(toOrganicFeedResponses(rankingPage.items()));
+        response.setHasMore(rankingPage.hasMore());
+        response.setNextCursor(rankingPage.nextCursor());
+        return toFeedResponse(response);
+    }
+
+    private OrganicFeedRankingPage buildOrganicRankingPage(
+            OrganicFeedCursor organicCursor,
+            int safeSize,
+            LocalDateTime scoredAt) {
         List<ScoredOrganicBlog> scoredBlogs = blogRepository.findByStatus(PostStatus.PUBLISHED)
                 .stream()
                 .filter(blog -> !aiModerationResultRepository.existsByBlogIdAndDecision(
@@ -124,17 +151,46 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
 
         boolean hasMore = scoredBlogs.size() > safeSize;
         List<ScoredOrganicBlog> pageItems = hasMore ? scoredBlogs.subList(0, safeSize) : scoredBlogs;
-        BlogFeedCursorPageResponseDTO response = new BlogFeedCursorPageResponseDTO();
-        response.setItems(toOrganicFeedResponses(pageItems));
-        response.setHasMore(hasMore);
-        response.setNextCursor(hasMore && !pageItems.isEmpty()
+        String nextCursor = hasMore && !pageItems.isEmpty()
                 ? encodeOrganicCursor(pageItems.getLast(), scoredAt)
-                : null);
-        return toFeedResponse(response);
+                : null;
+        List<OrganicFeedRankingItem> items = java.util.stream.IntStream.range(0, pageItems.size())
+                .mapToObj(index -> new OrganicFeedRankingItem(
+                        pageItems.get(index).blog().getId(),
+                        index + 1,
+                        scoredAt))
+                .toList();
+
+        return new OrganicFeedRankingPage(scoredAt, items, hasMore, nextCursor);
+    }
+
+    private String organicRankingCacheKey(String cursor, int safeSize) {
+        return "ranking:" + (cursor == null || cursor.isBlank() ? "first" : cursor) + ":" + safeSize;
+    }
+
+    private OrganicFeedRankingPage getCachedOrganicRankingPage(String cacheKey) {
+        Cache cache = cacheManager.getCache(CacheConfig.ORGANIC_FEED_CACHE);
+        if (cache == null) {
+            return null;
+        }
+
+        Cache.ValueWrapper wrapper = cache.get(cacheKey);
+        if (wrapper == null || !(wrapper.get() instanceof OrganicFeedRankingPage rankingPage)) {
+            return null;
+        }
+
+        return rankingPage;
+    }
+
+    private void putCachedOrganicRankingPage(String cacheKey, OrganicFeedRankingPage rankingPage) {
+        Cache cache = cacheManager.getCache(CacheConfig.ORGANIC_FEED_CACHE);
+        if (cache != null) {
+            cache.put(cacheKey, rankingPage);
+        }
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public List<BlogFeedResponse> getPersonalizedFeed(
             UUID userId,
             TrendWindowType windowType,
@@ -151,11 +207,8 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                 windowType,
                 contextRegionId);
         if (latestComputedAt == null || isPersonalizedCacheStale(userId, latestComputedAt)) {
-            rebuildRecommendationCache(userId, windowType, contextRegionId);
-            latestComputedAt = blogRecommendationScoreRepository.findLatestComputedAt(userId, windowType, contextRegionId);
-        }
-        if (latestComputedAt == null) {
-            return List.of();
+            List<BlogRecommendationScore> scores = buildRecommendationScores(user, windowType, contextRegionId);
+            return toFeedResponses(pageScores(scores, safePage, safeSize));
         }
 
         List<BlogRecommendationScore> scores = blogRecommendationScoreRepository.findLatestPage(
@@ -187,7 +240,16 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             User user,
             TrendWindowType windowType,
             UUID contextRegionId) {
-        UUID userId = user.getUserId();
+        List<BlogRecommendationScore> scores = buildRecommendationScores(user, windowType, contextRegionId);
+
+        upsertRecommendationScores(scores, LocalDateTime.now());
+        return toFeedResponses(scores);
+    }
+
+    private List<BlogRecommendationScore> buildRecommendationScores(
+            User user,
+            TrendWindowType windowType,
+            UUID contextRegionId) {
         LocalDateTime now = LocalDateTime.now();
         Map<UUID, BlogTrendingScore> trendingScores = latestTrendingScores(windowType);
 
@@ -211,10 +273,37 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             scores.get(index).setRankPosition(index + 1);
         }
 
-        blogRecommendationScoreRepository.deleteByUserWindowAndContextRegion(userId, windowType, contextRegionId);
-        blogRecommendationScoreRepository.flush();
-        blogRecommendationScoreRepository.saveAll(scores);
-        return toFeedResponses(scores);
+        return scores;
+    }
+
+    private List<BlogRecommendationScore> pageScores(List<BlogRecommendationScore> scores, int page, int size) {
+        if (scores.isEmpty()) {
+            return List.of();
+        }
+
+        int fromIndex = Math.min(page * size, scores.size());
+        int toIndex = Math.min(fromIndex + size, scores.size());
+        return scores.subList(fromIndex, toIndex);
+    }
+
+    private void upsertRecommendationScores(List<BlogRecommendationScore> scores, LocalDateTime createdAt) {
+        scores.forEach(score -> blogRecommendationScoreRepository.upsertRecommendationScore(
+                score.getId() == null ? UUID.randomUUID() : score.getId(),
+                score.getUser().getUserId(),
+                score.getBlog().getId(),
+                score.getWindowType().name(),
+                score.getContextRegionId(),
+                score.getFeedScore(),
+                score.getTrendingScore(),
+                score.getFreshnessScore(),
+                score.getSameRegionScore(),
+                score.getFollowedUserScore(),
+                score.getFollowedPageScore(),
+                score.getReportPenalty(),
+                score.getRankPosition(),
+                score.getReason(),
+                score.getComputedAt(),
+                createdAt));
     }
 
     @Override
@@ -596,15 +685,30 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         return 0;
     }
 
-    private List<BlogFeedResponse> toOrganicFeedResponses(List<ScoredOrganicBlog> scoredBlogs) {
-        List<BlogRecommendationScore> recommendationScores = java.util.stream.IntStream.range(0, scoredBlogs.size())
-                .mapToObj(index -> {
-                    ScoredOrganicBlog item = scoredBlogs.get(index);
+    private List<BlogFeedResponse> toOrganicFeedResponses(List<OrganicFeedRankingItem> rankingItems) {
+        if (rankingItems.isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> blogIds = rankingItems.stream()
+                .map(OrganicFeedRankingItem::blogId)
+                .toList();
+        Map<UUID, Blog> blogsById = blogRepository.findByIdIn(blogIds)
+                .stream()
+                .collect(Collectors.toMap(Blog::getId, Function.identity()));
+        List<BlogRecommendationScore> recommendationScores = rankingItems.stream()
+                .map(item -> {
+                    Blog blog = blogsById.get(item.blogId());
+                    if (blog == null) {
+                        return null;
+                    }
+
                     BlogRecommendationScore score = new BlogRecommendationScore();
-                    score.setBlog(item.blog());
-                    score.setRankPosition(index + 1);
+                    score.setBlog(blog);
+                    score.setRankPosition(item.rankPosition());
                     return score;
                 })
+                .filter(score -> score != null)
                 .toList();
         return toFeedResponses(recommendationScores);
     }
@@ -678,6 +782,19 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
     }
 
     private record ScoredOrganicBlog(Blog blog, double score) {
+    }
+
+    private record OrganicFeedRankingPage(
+            LocalDateTime computedAt,
+            List<OrganicFeedRankingItem> items,
+            boolean hasMore,
+            String nextCursor) {
+    }
+
+    private record OrganicFeedRankingItem(
+            UUID blogId,
+            int rankPosition,
+            LocalDateTime computedAt) {
     }
 
     private record OrganicFeedCursor(

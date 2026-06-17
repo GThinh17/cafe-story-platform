@@ -7,6 +7,8 @@ export type AuthUser = {
   userAvatar: string | null;
   userDescription?: string | null;
   accountStatus: boolean;
+  cafePageId?: string | null;
+  pageId?: string | null;
   regionArea?: string | null;
   regionCity?: string | null;
   regionCityCode?: string | null;

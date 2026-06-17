@@ -13,6 +13,7 @@ export const apiEndpoints = {
   chat: {
     conversations: "/api/chat/conversations",
     directConversation: "/api/chat/conversations/direct",
+    cafePageConversation: "/api/chat/conversations/cafe-page",
     messages: (conversationId: string) =>
       `/api/chat/conversations/${pathId(conversationId)}/messages`,
   },
@@ -31,6 +32,13 @@ export const apiEndpoints = {
     sharedByUser: (userId: string) => `/api/blogs/users/${pathId(userId)}/shared`,
     taggedByUser: (userId: string) => `/api/blogs/users/${pathId(userId)}/tagged`,
     trending: "/api/blogs/trending",
+  },
+  cafePages: {
+    blogs: (cafePageId: string) => `/api/cafe-pages/${pathId(cafePageId)}/blogs`,
+    byId: (cafePageId: string) => `/api/cafe-pages/${pathId(cafePageId)}`,
+    follows: (cafePageId: string) => `/api/cafe-pages/${pathId(cafePageId)}/follows`,
+    likes: (cafePageId: string) => `/api/cafe-pages/${pathId(cafePageId)}/likes`,
+    list: "/api/cafe-pages",
   },
   comments: {
     list: "/api/comments",

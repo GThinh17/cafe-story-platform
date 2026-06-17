@@ -224,6 +224,13 @@ export function ExploreScreen() {
   }, [activeTab, loadRecommendations, loadTrending]);
 
   const handleRecommendationPress = useCallback((item: RecommendationCardResponse) => {
+    if (item.targetType === "CAFE_PAGE") {
+      navigation.navigate(routes.cafeDetail, {
+        cafeId: item.targetId,
+      });
+      return;
+    }
+
     if (item.targetType !== "USER" && item.targetType !== "REVIEWER") {
       return;
     }

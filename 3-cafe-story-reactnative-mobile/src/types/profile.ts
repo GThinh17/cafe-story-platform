@@ -2,8 +2,10 @@ import type { ImageSourcePropType } from "react-native";
 
 export type UserResponse = {
   accountStatus: boolean | null;
+  cafePageId?: string | null;
   followingCount: number | null;
   isFollowing: boolean | null;
+  pageId?: string | null;
   regionArea: string | null;
   regionCityCode?: string | null;
   regionCity: string | null;

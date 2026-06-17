@@ -1,7 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 
 import {
@@ -25,6 +25,7 @@ import { colors, spacing, typography } from "../../theme";
 import type { CreatePostDraft, UserResponse } from "../../types";
 
 type CreatePostStep = "compose" | "settings";
+type CreateRouteProp = RouteProp<MainTabParamList, typeof routes.create>;
 
 const initialDraft: CreatePostDraft = {
   allowComments: true,
@@ -63,11 +64,20 @@ function uploadFileNameFromUri(uri: string, index: number) {
 }
 
 export function CreateScreen() {
-  const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
+  const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList, typeof routes.create>>();
+  const route = useRoute<CreateRouteProp>();
   const { user } = useAuth();
+  const pageContext = route.params?.cafePageId
+    ? {
+        avatarUrl: route.params.cafeAvatarUrl ?? null,
+        id: route.params.cafePageId,
+        name: route.params.cafePageName ?? "Cafe Page",
+      }
+    : null;
   const [currentStep, setCurrentStep] = useState<CreatePostStep>("compose");
   const [draft, setDraft] = useState<CreatePostDraft>({
     ...initialDraft,
+    cafePageId: route.params?.cafePageId,
     location: locationNameFromUser(user),
   });
   const [selectedTaggedUsers, setSelectedTaggedUsers] = useState<UserResponse[]>([]);
@@ -80,6 +90,20 @@ export function CreateScreen() {
   const isSettingsStep = currentStep === "settings";
 
   useEffect(() => {
+    if (route.params?.cafePageId) {
+      setDraft((currentDraft) => ({
+        ...currentDraft,
+        cafePageId: route.params?.cafePageId,
+        location: route.params?.regionId
+          ? {
+              name: route.params.locationName || "Cafe location",
+              regionId: route.params.regionId,
+            }
+          : currentDraft.location,
+      }));
+      return;
+    }
+
     if (draft.location?.regionId) {
       return;
     }
@@ -111,7 +135,13 @@ export function CreateScreen() {
     return () => {
       isActive = false;
     };
-  }, [draft.location?.regionId, user]);
+  }, [
+    draft.location?.regionId,
+    route.params?.cafePageId,
+    route.params?.locationName,
+    route.params?.regionId,
+    user,
+  ]);
 
   const updateDraft = useCallback((patch: Partial<CreatePostDraft>) => {
     setDraft((currentDraft) => ({
@@ -129,7 +159,14 @@ export function CreateScreen() {
     setSelectedTaggedUsers([]);
     setCurrentStep("compose");
     setError("");
-  }, [user]);
+    navigation.setParams({
+      cafeAvatarUrl: undefined,
+      cafePageId: undefined,
+      cafePageName: undefined,
+      locationName: undefined,
+      regionId: undefined,
+    });
+  }, [navigation, user]);
 
   const handleCancel = useCallback(() => {
     resetDraft();
@@ -283,6 +320,7 @@ export function CreateScreen() {
       {isSettingsStep ? (
         <CreatePostSettingsStep
           draft={draft}
+          postingIdentity={pageContext}
           onUpdateDraft={updateDraft}
           user={user}
         />
@@ -295,6 +333,7 @@ export function CreateScreen() {
           onRemoveMedia={() => updateDraft({ mediaUrls: [] })}
           onToggleTag={handleToggleTag}
           onUpdateDraft={updateDraft}
+          postingIdentity={pageContext}
           selectedTaggedUsers={selectedTaggedUsers}
           user={user}
         />

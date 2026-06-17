@@ -1,3 +1,4 @@
+export * from "./main/cafe-page-screen";
 export * from "./auth/login-screen";
 export * from "./auth/region-screen";
 export * from "./auth/register-screen";

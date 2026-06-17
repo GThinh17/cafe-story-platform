@@ -139,7 +139,9 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
   const shouldShowFollowButton = canFollowAuthor && !isFollowed;
   const isFollowDisabled = !shouldShowFollowButton || isFollowPending;
   const canOpenAuthorProfile =
-    blog.displayAuthorType !== "CAFE_PAGE" && Boolean(blog.authorUserId) && !isOwnPost;
+    blog.displayAuthorType === "CAFE_PAGE"
+      ? Boolean(blog.pageId)
+      : Boolean(blog.authorUserId) && !isOwnPost;
 
   useEffect(() => {
     setIsFollowed(Boolean(blog.isFollow));
@@ -259,6 +261,13 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
 
   function handleOpenAuthorProfile() {
     if (!canOpenAuthorProfile) {
+      return;
+    }
+
+    if (blog.displayAuthorType === "CAFE_PAGE" && blog.pageId) {
+      navigation.navigate(routes.cafeDetail, {
+        cafeId: blog.pageId,
+      });
       return;
     }
 
