@@ -18,6 +18,7 @@ import com.cafestory.entity.Reviewer;
 import com.cafestory.entity.ReviewerBadgeHistory;
 import com.cafestory.entity.ReviewerPayout;
 import com.cafestory.entity.Region;
+import com.cafestory.entity.ReviewerScoringFormula;
 import com.cafestory.entity.Role;
 import com.cafestory.entity.User;
 import com.cafestory.entity.UserRoleAssignment;
@@ -36,6 +37,9 @@ import com.cafestory.repository.RoleRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRoleAssignmentRepository;
+import com.cafestory.service.serviceInterface.ReviewerBadgeThresholdService;
+import com.cafestory.service.serviceInterface.ReviewerRankingSnapshotService;
+import com.cafestory.service.serviceInterface.ReviewerScoringFormulaService;
 import com.cafestory.service.serviceInterface.ReviewerService;
 import com.cafestory.validation.UserValidator;
 import org.springframework.http.HttpStatus;
@@ -61,9 +65,6 @@ import java.util.UUID;
 @Service
 public class ReviewerServiceImpl implements ReviewerService {
 
-    private static final long LIKE_AMOUNT = 100;
-    private static final long SHARE_AMOUNT = 300;
-    private static final long COMMENT_AMOUNT = 500;
     private static final String ADMIN_ROLE = "ADMIN";
     private static final String REVIEWER_ROLE = "REVIEWER";
 
@@ -80,6 +81,9 @@ public class ReviewerServiceImpl implements ReviewerService {
     private final UserRepository userRepository;
     private final UserFollowRepository userFollowRepository;
     private final UserValidator userValidator;
+    private final ReviewerScoringFormulaService formulaService;
+    private final ReviewerBadgeThresholdService badgeThresholdService;
+    private final ReviewerRankingSnapshotService snapshotService;
 
     public ReviewerServiceImpl(
             BlogLikeRepository blogLikeRepository,
@@ -94,7 +98,10 @@ public class ReviewerServiceImpl implements ReviewerService {
             UserRoleAssignmentRepository userRoleAssignmentRepository,
             UserRepository userRepository,
             UserFollowRepository userFollowRepository,
-            UserValidator userValidator) {
+            UserValidator userValidator,
+            ReviewerScoringFormulaService formulaService,
+            ReviewerBadgeThresholdService badgeThresholdService,
+            ReviewerRankingSnapshotService snapshotService) {
         this.blogLikeRepository = blogLikeRepository;
         this.blogRepository = blogRepository;
         this.blogSaveRepository = blogSaveRepository;
@@ -108,6 +115,9 @@ public class ReviewerServiceImpl implements ReviewerService {
         this.userRepository = userRepository;
         this.userFollowRepository = userFollowRepository;
         this.userValidator = userValidator;
+        this.formulaService = formulaService;
+        this.badgeThresholdService = badgeThresholdService;
+        this.snapshotService = snapshotService;
     }
 
     @Override
@@ -117,7 +127,9 @@ public class ReviewerServiceImpl implements ReviewerService {
         assignRole(user, REVIEWER_ROLE);
         Reviewer reviewer = reviewerRepository.findByUserUserId(userId).orElseGet(Reviewer::new);
         reviewer.setUser(user);
-        return toReviewerResponse(reviewerRepository.save(reviewer));
+        Reviewer saved = reviewerRepository.save(reviewer);
+        snapshotService.initSnapshotForNewReviewer(saved);
+        return toReviewerResponse(saved);
     }
 
     @Override
@@ -254,14 +266,12 @@ public class ReviewerServiceImpl implements ReviewerService {
 
     @Override
     public long calculateReviewerPayout(ReviewerStatsResponseDTO stats) {
-        return stats.getLikeCount() * LIKE_AMOUNT
-                + stats.getShareCount() * SHARE_AMOUNT
-                + stats.getCommentCount() * COMMENT_AMOUNT;
+        return formulaService.calculatePayout(stats.getLikeCount(), stats.getShareCount(), stats.getCommentCount());
     }
 
     @Override
     public String calculateReviewerBadge(long score) {
-        return badgeForScore(score).name();
+        return badgeThresholdService.badgeForScore(score).name();
     }
 
     @Override
@@ -291,6 +301,7 @@ public class ReviewerServiceImpl implements ReviewerService {
         YearMonth yearMonth = parseMonth(month);
         DateRange range = dateRangeForMonth(yearMonth);
         Map<UUID, EngagementAccumulator> engagement = aggregateEngagementForAllUsers(range.startDate(), range.endDate());
+        ReviewerScoringFormula formula = formulaService.getActiveFormula();
         List<ReviewerPayoutResponseDTO> responses = new ArrayList<>();
         for (EngagementAccumulator accumulator : engagement.values()) {
             if (reviewerPayoutRepository.existsByReviewerReviewerIdAndPayoutMonth(accumulator.reviewer().getReviewerId(), month) && !overwrite) {
@@ -304,9 +315,9 @@ public class ReviewerServiceImpl implements ReviewerService {
             payout.setLikeCount(accumulator.likeCount());
             payout.setShareCount(accumulator.shareCount());
             payout.setCommentCount(accumulator.commentCount());
-            payout.setLikeAmount(accumulator.likeCount() * LIKE_AMOUNT);
-            payout.setShareAmount(accumulator.shareCount() * SHARE_AMOUNT);
-            payout.setCommentAmount(accumulator.commentCount() * COMMENT_AMOUNT);
+            payout.setLikeAmount(accumulator.likeCount() * formula.getLikePayoutAmount());
+            payout.setShareAmount(accumulator.shareCount() * formula.getSharePayoutAmount());
+            payout.setCommentAmount(accumulator.commentCount() * formula.getCommentPayoutAmount());
             payout.setTotalAmount(payout.getLikeAmount() + payout.getShareAmount() + payout.getCommentAmount());
             payout.setPayoutStatus(PayoutStatus.CALCULATED);
             responses.add(toPayoutResponse(reviewerPayoutRepository.save(payout)));
@@ -335,7 +346,7 @@ public class ReviewerServiceImpl implements ReviewerService {
             badgeHistory.setShareCount(accumulator.shareCount());
             badgeHistory.setCommentCount(accumulator.commentCount());
             badgeHistory.setScore(accumulator.score());
-            badgeHistory.setBadge(badgeForScore(accumulator.score()));
+            badgeHistory.setBadge(badgeThresholdService.badgeForScore(accumulator.score()));
             responses.add(toBadgeResponse(reviewerBadgeHistoryRepository.save(badgeHistory)));
         }
         return responses;
@@ -420,13 +431,17 @@ public class ReviewerServiceImpl implements ReviewerService {
     }
 
     private Map<UUID, EngagementAccumulator> aggregateEngagementForAllUsers(LocalDateTime startDate, LocalDateTime endDate) {
+        ReviewerScoringFormula formula = formulaService.getActiveFormula();
+        int likeWeight = formula.getLikeWeight();
+        int shareWeight = formula.getShareWeight();
+        int commentWeight = formula.getCommentWeight();
         Map<UUID, Reviewer> reviewersByUserId = new HashMap<>();
         Map<UUID, EngagementAccumulator> engagement = new HashMap<>();
         for (Reviewer reviewer : reviewerRepository.findAll()) {
             reviewersByUserId.put(reviewer.getUser().getUserId(), reviewer);
-            engagement.putIfAbsent(reviewer.getReviewerId(), new EngagementAccumulator(reviewer));
+            engagement.putIfAbsent(reviewer.getReviewerId(), new EngagementAccumulator(reviewer, likeWeight, shareWeight, commentWeight));
         }
-        aggregateEngagement(startDate, endDate, reviewersByUserId, engagement);
+        aggregateEngagement(startDate, endDate, reviewersByUserId, engagement, likeWeight, shareWeight, commentWeight);
         return engagement;
     }
 
@@ -434,23 +449,26 @@ public class ReviewerServiceImpl implements ReviewerService {
             LocalDateTime startDate,
             LocalDateTime endDate,
             Map<UUID, Reviewer> reviewersByUserId,
-            Map<UUID, EngagementAccumulator> engagement) {
+            Map<UUID, EngagementAccumulator> engagement,
+            int likeWeight,
+            int shareWeight,
+            int commentWeight) {
         for (BlogLike like : blogLikeRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(startDate, endDate)) {
-            accumulator(engagement, reviewersByUserId.get(like.getUser().getUserId())).incrementLikes();
+            accumulator(engagement, reviewersByUserId.get(like.getUser().getUserId()), likeWeight, shareWeight, commentWeight).incrementLikes();
         }
         for (BlogShare share : blogShareRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(startDate, endDate)) {
-            accumulator(engagement, reviewersByUserId.get(share.getUser().getUserId())).incrementShares();
+            accumulator(engagement, reviewersByUserId.get(share.getUser().getUserId()), likeWeight, shareWeight, commentWeight).incrementShares();
         }
         for (Comment comment : commentRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(startDate, endDate)) {
-            accumulator(engagement, reviewersByUserId.get(comment.getUser().getUserId())).incrementComments();
+            accumulator(engagement, reviewersByUserId.get(comment.getUser().getUserId()), likeWeight, shareWeight, commentWeight).incrementComments();
         }
     }
 
-    private EngagementAccumulator accumulator(Map<UUID, EngagementAccumulator> engagement, Reviewer reviewer) {
+    private EngagementAccumulator accumulator(Map<UUID, EngagementAccumulator> engagement, Reviewer reviewer, int likeWeight, int shareWeight, int commentWeight) {
         if (reviewer == null) {
-            return new EngagementAccumulator(null);
+            return new EngagementAccumulator(null, likeWeight, shareWeight, commentWeight);
         }
-        return engagement.computeIfAbsent(reviewer.getReviewerId(), ignored -> new EngagementAccumulator(reviewer));
+        return engagement.computeIfAbsent(reviewer.getReviewerId(), ignored -> new EngagementAccumulator(reviewer, likeWeight, shareWeight, commentWeight));
     }
 
     private ReviewerRankingResponseDTO toRankingResponse(EngagementAccumulator accumulator) {
@@ -460,7 +478,7 @@ public class ReviewerServiceImpl implements ReviewerService {
         response.setShareCount(accumulator.shareCount());
         response.setCommentCount(accumulator.commentCount());
         response.setScore(accumulator.score());
-        response.setBadge(badgeForScore(accumulator.score()));
+        response.setBadge(badgeThresholdService.badgeForScore(accumulator.score()));
         Region region = accumulator.reviewer().getUser().getRegion();
         response.setLocation(region == null ? "unknown" : firstNonBlank(region.getCity(), region.getProvince(), "unknown"));
         return response;
@@ -653,24 +671,8 @@ public class ReviewerServiceImpl implements ReviewerService {
         return fallback;
     }
 
-    private ReviewerBadge badgeForScore(long score) {
-        if (score < 100) {
-            return ReviewerBadge.IRON;
-        }
-        if (score < 300) {
-            return ReviewerBadge.BRONZE;
-        }
-        if (score < 700) {
-            return ReviewerBadge.SILVER;
-        }
-        if (score < 1500) {
-            return ReviewerBadge.GOLD;
-        }
-        return ReviewerBadge.DIAMOND;
-    }
-
     private long calculateScore(long likeCount, long shareCount, long commentCount) {
-        return likeCount + shareCount * 3 + commentCount * 5;
+        return formulaService.calculateScore(likeCount, shareCount, commentCount);
     }
 
     private List<ReviewerScoreCard> buildReviewerScoreCards(DateRange recentRange) {
@@ -1033,12 +1035,18 @@ public class ReviewerServiceImpl implements ReviewerService {
 
     private static class EngagementAccumulator {
         private final Reviewer reviewer;
+        private final int likeWeight;
+        private final int shareWeight;
+        private final int commentWeight;
         private long likeCount;
         private long shareCount;
         private long commentCount;
 
-        EngagementAccumulator(Reviewer reviewer) {
+        EngagementAccumulator(Reviewer reviewer, int likeWeight, int shareWeight, int commentWeight) {
             this.reviewer = reviewer;
+            this.likeWeight = likeWeight;
+            this.shareWeight = shareWeight;
+            this.commentWeight = commentWeight;
         }
 
         Reviewer reviewer() {
@@ -1058,7 +1066,7 @@ public class ReviewerServiceImpl implements ReviewerService {
         }
 
         long score() {
-            return likeCount + shareCount * 3 + commentCount * 5;
+            return likeCount * likeWeight + shareCount * shareWeight + commentCount * commentWeight;
         }
 
         void incrementLikes() {
