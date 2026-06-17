@@ -1,6 +1,12 @@
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { ArrowLeft } from "lucide-react-native";
+import {
+  ArrowLeft,
+  Grid3X3,
+  MessageSquareText,
+  UserPlus,
+  Users,
+} from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Pressable,
@@ -34,10 +40,22 @@ import { colors, spacing, typography } from "../../theme";
 import type { CafePageResponse, UserPostPreview } from "../../types";
 
 type CafePageRouteProp = RouteProp<RootStackParamList, typeof routes.cafeDetail>;
+type CafePageContentTab = "posts" | "reviews" | "members" | "requests";
 
 function adjustCount(value: number | null | undefined, delta: number) {
   return Math.max(0, (value ?? 0) + delta);
 }
+
+const contentTabs: Array<{
+  icon: typeof Grid3X3;
+  key: CafePageContentTab;
+  label: string;
+}> = [
+  { icon: Grid3X3, key: "posts", label: "Posts" },
+  { icon: MessageSquareText, key: "reviews", label: "Reviews" },
+  { icon: Users, key: "members", label: "Members" },
+  { icon: UserPlus, key: "requests", label: "Requests" },
+];
 
 export function CafePageScreen() {
   const navigation =
@@ -53,6 +71,7 @@ export function CafePageScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isFollowPending, setIsFollowPending] = useState(false);
   const [isLikePending, setIsLikePending] = useState(false);
+  const [activeTab, setActiveTab] = useState<CafePageContentTab>("posts");
 
   const isOwner = useMemo(
     () => Boolean(cafePage?.ownerUserId && cafePage.ownerUserId === user?.userId),
@@ -197,6 +216,58 @@ export function CafePageScreen() {
     void loadCafePage(true);
   }, [loadCafePage]);
 
+  const showComingSoon = useCallback((feature: string) => {
+    setError(`${feature} is coming soon.`);
+  }, []);
+
+  const renderTabContent = () => {
+    if (activeTab === "posts") {
+      return posts.length > 0 ? (
+        <View style={styles.grid}>
+          <UserPostGrid onPostPress={openPost} posts={posts} />
+        </View>
+      ) : (
+        <View style={styles.emptyPosts}>
+          <EmptyState
+            description="Posts from this cafe page will appear here."
+            title="No cafe posts yet"
+          />
+        </View>
+      );
+    }
+
+    if (activeTab === "reviews") {
+      return (
+        <View style={styles.emptyPosts}>
+          <EmptyState
+            description="Cafe reviews will appear here when reviewers publish them."
+            title="No reviews yet"
+          />
+        </View>
+      );
+    }
+
+    if (activeTab === "members") {
+      return (
+        <View style={styles.emptyPosts}>
+          <EmptyState
+            description="Page members will appear here when member APIs are connected."
+            title="No members to show"
+          />
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.emptyPosts}>
+        <EmptyState
+          description="Join requests will appear here for page owners."
+          title="No requests right now"
+        />
+      </View>
+    );
+  };
+
   return (
     <Screen padded={false}>
       <View style={styles.topBar}>
@@ -242,6 +313,8 @@ export function CafePageScreen() {
               onEditPress={() => setError("Cafe page editing is coming soon.")}
               onFollowPress={toggleFollow}
               onLikePress={toggleLike}
+              onSharePress={() => showComingSoon("Cafe page sharing")}
+              onSuggestPress={() => showComingSoon("Cafe page suggestions")}
             />
           ) : (
             <View style={styles.emptyPage}>
@@ -252,22 +325,43 @@ export function CafePageScreen() {
             </View>
           )}
 
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Posts</Text>
+          <View style={styles.tabBar}>
+            {contentTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.key;
+
+              return (
+                <Pressable
+                  accessibilityLabel={`Open cafe page ${tab.label.toLowerCase()}`}
+                  accessibilityRole="tab"
+                  key={tab.key}
+                  onPress={() => setActiveTab(tab.key)}
+                  style={({ pressed }) => [
+                    styles.tabItem,
+                    isActive && styles.tabItemActive,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Icon
+                    color={isActive ? colors.foreground : colors.muted}
+                    size={23}
+                    strokeWidth={2.4}
+                  />
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      styles.tabLabel,
+                      isActive && styles.tabLabelActive,
+                    ]}
+                  >
+                    {tab.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
 
-          {posts.length > 0 ? (
-            <View style={styles.grid}>
-              <UserPostGrid onPostPress={openPost} posts={posts} />
-            </View>
-          ) : (
-            <View style={styles.emptyPosts}>
-              <EmptyState
-                description="Posts from this cafe page will appear here."
-                title="No cafe posts yet"
-              />
-            </View>
-          )}
+          {renderTabContent()}
         </ScrollView>
       )}
     </Screen>
@@ -313,18 +407,32 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.72,
   },
-  sectionHeader: {
+  tabBar: {
     borderBottomColor: colors.border,
     borderBottomWidth: 1,
     borderTopColor: colors.border,
     borderTopWidth: 1,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    flexDirection: "row",
   },
-  sectionTitle: {
+  tabItem: {
+    alignItems: "center",
+    borderBottomColor: "transparent",
+    borderBottomWidth: 2,
+    flex: 1,
+    gap: 3,
+    height: 58,
+    justifyContent: "center",
+  },
+  tabItemActive: {
+    borderBottomColor: colors.foreground,
+  },
+  tabLabel: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: "800",
+  },
+  tabLabelActive: {
     color: colors.foreground,
-    fontSize: typography.body,
-    fontWeight: "900",
   },
   topBar: {
     alignItems: "center",

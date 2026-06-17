@@ -1,8 +1,16 @@
-import { CalendarDays, Heart, MapPin, Star, Store, Users } from "lucide-react-native";
+import {
+  CalendarDays,
+  Heart,
+  MapPin,
+  Share2,
+  Sparkles,
+  Star,
+  Store,
+  Users,
+} from "lucide-react-native";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Avatar } from "../ui/avatar";
-import { Button } from "../ui/button";
 import { colors, spacing, typography } from "../../theme";
 import type { CafePageResponse } from "../../types";
 
@@ -14,6 +22,8 @@ type CafePageHeaderProps = {
   onEditPress?: () => void;
   onFollowPress?: () => void;
   onLikePress?: () => void;
+  onSharePress?: () => void;
+  onSuggestPress?: () => void;
 };
 
 function formatCount(value?: number | null) {
@@ -66,6 +76,8 @@ export function CafePageHeader({
   onEditPress,
   onFollowPress,
   onLikePress,
+  onSharePress,
+  onSuggestPress,
 }: CafePageHeaderProps) {
   const location = regionLabel(cafePage);
   const expiresAt = formatDate(cafePage.pageExpiresAt);
@@ -84,30 +96,34 @@ export function CafePageHeader({
         )}
       </View>
 
-      <View style={styles.identityRow}>
-        <View style={styles.avatarRing}>
-          <Avatar size={96} uri={cafePage.avatarUrl} />
-        </View>
+      <View style={styles.identityBlock}>
+        <View style={styles.identityRow}>
+          <View style={styles.avatarRing}>
+            <Avatar size={88} uri={cafePage.avatarUrl} />
+          </View>
 
-        <View style={styles.stats}>
-          <Metric icon={Users} label="Followers" value={formatCount(cafePage.followerCount)} />
-          <Metric icon={Heart} label="Likes" value={formatCount(cafePage.likeCount)} />
-          <Metric
-            icon={Star}
-            label="Rating"
-            value={(cafePage.ratingScore ?? 0).toFixed(1)}
-          />
+          <View style={styles.identityCopy}>
+            <View style={styles.nameRow}>
+              <Text numberOfLines={1} style={styles.name}>
+                {cafePage.name || "Cafe Page"}
+              </Text>
+              {isOwner ? <Text style={styles.ownerBadge}>Owner</Text> : null}
+            </View>
+
+            <View style={styles.stats}>
+              <Metric icon={Heart} label="likes" value={formatCount(cafePage.likeCount)} />
+              <Metric icon={Users} label="followers" value={formatCount(cafePage.followerCount)} />
+              <Metric
+                icon={Star}
+                label="rating"
+                value={(cafePage.ratingScore ?? 0).toFixed(1)}
+              />
+            </View>
+          </View>
         </View>
       </View>
 
       <View style={styles.copy}>
-        <View style={styles.nameRow}>
-          <Text numberOfLines={2} style={styles.name}>
-            {cafePage.name || "Cafe Page"}
-          </Text>
-          {isOwner ? <Text style={styles.ownerBadge}>Owner</Text> : null}
-        </View>
-
         {cafePage.description ? (
           <Text style={styles.description}>{cafePage.description}</Text>
         ) : (
@@ -123,17 +139,79 @@ export function CafePageHeader({
 
       <View style={styles.actions}>
         {isOwner ? (
-          <Button label="Edit Page" onPress={onEditPress} variant="secondary" />
+          <>
+            <Pressable
+              accessibilityLabel="Edit cafe page"
+              accessibilityRole="button"
+              onPress={onEditPress}
+              style={({ pressed }) => [
+                styles.profileActionButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.profileActionText}>Edit Page</Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityLabel="Share cafe page"
+              accessibilityRole="button"
+              onPress={onSharePress}
+              style={({ pressed }) => [
+                styles.profileActionButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.profileActionText}>Share Page</Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityLabel="Open cafe page suggestions"
+              accessibilityRole="button"
+              onPress={onSuggestPress}
+              style={({ pressed }) => [
+                styles.suggestButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Sparkles color={colors.foreground} size={19} strokeWidth={2.5} />
+            </Pressable>
+          </>
         ) : (
           <>
-            <View style={styles.actionButton}>
-              <Button
-                isLoading={isFollowPending}
-                label={isFollowing ? "Following" : "Follow"}
-                onPress={onFollowPress}
-                variant={isFollowing ? "secondary" : "primary"}
-              />
-            </View>
+            <Pressable
+              accessibilityLabel={isFollowing ? "Unfollow cafe page" : "Follow cafe page"}
+              accessibilityRole="button"
+              disabled={isFollowPending}
+              onPress={onFollowPress}
+              style={({ pressed }) => [
+                styles.primaryActionButton,
+                isFollowing && styles.secondaryActionButton,
+                pressed && !isFollowPending && styles.pressed,
+                isFollowPending && styles.disabled,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.primaryActionText,
+                  isFollowing && styles.secondaryActionText,
+                ]}
+              >
+                {isFollowing ? "Following" : "Follow"}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityLabel="Share cafe page"
+              accessibilityRole="button"
+              onPress={onSharePress}
+              style={({ pressed }) => [
+                styles.suggestButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Share2 color={colors.foreground} size={19} strokeWidth={2.5} />
+            </Pressable>
+
             <Pressable
               accessibilityLabel={isLiked ? "Unlike cafe page" : "Like cafe page"}
               accessibilityRole="button"
@@ -204,9 +282,8 @@ const styles = StyleSheet.create({
   avatarRing: {
     backgroundColor: colors.background,
     borderColor: colors.background,
-    borderRadius: 54,
+    borderRadius: 50,
     borderWidth: 4,
-    marginTop: -44,
   },
   container: {
     gap: spacing.md,
@@ -243,10 +320,18 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   identityRow: {
-    alignItems: "flex-end",
+    alignItems: "center",
     flexDirection: "row",
     gap: spacing.md,
+  },
+  identityBlock: {
+    marginTop: -38,
     paddingHorizontal: spacing.lg,
+  },
+  identityCopy: {
+    flex: 1,
+    gap: spacing.sm,
+    paddingTop: 30,
   },
   likeButton: {
     alignItems: "center",
@@ -254,9 +339,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 14,
     borderWidth: 1,
-    height: 52,
+    height: 36,
     justifyContent: "center",
-    width: 58,
+    width: 42,
   },
   likeButtonActive: {
     backgroundColor: colors.primary,
@@ -279,16 +364,18 @@ const styles = StyleSheet.create({
   },
   metric: {
     alignItems: "center",
-    flex: 1,
-    gap: 2,
+    flexDirection: "row",
+    gap: 4,
+    minWidth: 0,
   },
   metricLabel: {
     color: colors.muted,
-    fontSize: typography.caption,
+    fontSize: 11,
+    fontWeight: "700",
   },
   metricValue: {
     color: colors.foreground,
-    fontSize: typography.body,
+    fontSize: typography.caption,
     fontWeight: "900",
   },
   mutedDescription: {
@@ -299,7 +386,7 @@ const styles = StyleSheet.create({
   name: {
     color: colors.foreground,
     flex: 1,
-    fontSize: typography.heading,
+    fontSize: typography.body,
     fontWeight: "900",
   },
   nameRow: {
@@ -320,11 +407,56 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.72,
   },
-  stats: {
-    alignItems: "flex-end",
+  primaryActionButton: {
+    alignItems: "center",
+    backgroundColor: colors.primary,
+    borderRadius: 10,
     flex: 1,
+    height: 36,
+    justifyContent: "center",
+  },
+  primaryActionText: {
+    color: colors.white,
+    fontSize: typography.caption,
+    fontWeight: "900",
+  },
+  profileActionButton: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 10,
+    borderWidth: 1,
+    flex: 1,
+    height: 36,
+    justifyContent: "center",
+  },
+  profileActionText: {
+    color: colors.foreground,
+    fontSize: typography.caption,
+    fontWeight: "800",
+  },
+  secondaryActionButton: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderWidth: 1,
+  },
+  secondaryActionText: {
+    color: colors.foreground,
+  },
+  suggestButton: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 10,
+    borderWidth: 1,
+    height: 36,
+    justifyContent: "center",
+    width: 42,
+  },
+  stats: {
+    alignItems: "center",
     flexDirection: "row",
-    gap: spacing.sm,
-    paddingBottom: spacing.xs,
+    flexWrap: "nowrap",
+    gap: spacing.md,
   },
 });
