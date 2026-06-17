@@ -144,6 +144,13 @@ Enum ranking_period_type {
   MONTHLY
 }
 
+Enum admin_payout_status {
+  PENDING
+  APPROVED
+  PAID
+  CANCELLED
+}
+
 Enum reviewer_payout_status {
   CALCULATED
   PAID
@@ -911,6 +918,75 @@ Table reviewer_ranking_snapshot {
   Note: "Periodic ranking snapshots per reviewer. period format: 'yyyy-MM-dd' (DAILY), 'yyyy-Www' (WEEKLY), 'yyyy-MM' (MONTHLY). Generated via POST /api/admin/reviewer-config/ranking/generate."
 }
 
+Table payout_formula {
+  id uuid [pk]
+  like_payout_amount bigint [not null, default: 100]
+  comment_payout_amount bigint [not null, default: 500]
+  share_payout_amount bigint [not null, default: 300]
+  iron_multiplier decimal(5,2) [not null, default: 1.00]
+  bronze_multiplier decimal(5,2) [not null, default: 1.20]
+  silver_multiplier decimal(5,2) [not null, default: 1.50]
+  gold_multiplier decimal(5,2) [not null, default: 2.00]
+  diamond_multiplier decimal(5,2) [not null, default: 3.00]
+  active boolean [not null, default: false]
+  description text
+  created_by uuid
+  created_at datetime [not null]
+  updated_at datetime
+
+  Note: "Payout formula decoupled from reviewer_scoring_formula. Stores per-action payout amounts and badge multipliers. Only one row can be active at a time (partial unique index on active=true)."
+}
+
+Table reviewer_income {
+  id uuid [pk]
+  reviewer_id uuid [not null]
+  income_date date [not null]
+  like_count bigint [not null, default: 0]
+  comment_count bigint [not null, default: 0]
+  share_count bigint [not null, default: 0]
+  badge reviewer_badge [not null]
+  badge_multiplier decimal(5,2) [not null]
+  base_amount bigint [not null, default: 0]
+  final_amount bigint [not null, default: 0]
+  formula_id uuid [not null]
+  created_at datetime [not null]
+  updated_at datetime
+
+  Indexes {
+    (reviewer_id, income_date) [unique]
+    (income_date)
+    (reviewer_id)
+  }
+
+  Note: "Daily income record per reviewer. base_amount = like*like_payout + comment*comment_payout + share*share_payout. final_amount = base_amount * badge_multiplier. Upsert on (reviewer_id, income_date). Auto-generated daily at 3AM for yesterday."
+}
+
+Table admin_payout {
+  id uuid [pk]
+  reviewer_id uuid [not null]
+  payout_month varchar(7) [not null]
+  total_base_amount bigint [not null, default: 0]
+  badge reviewer_badge [not null]
+  badge_multiplier decimal(5,2) [not null]
+  total_final_amount bigint [not null, default: 0]
+  status admin_payout_status [not null, default: "PENDING"]
+  approved_by uuid
+  approved_at datetime
+  paid_at datetime
+  note text
+  formula_id uuid [not null]
+  created_at datetime [not null]
+  updated_at datetime
+
+  Indexes {
+    (reviewer_id, payout_month) [unique]
+    (payout_month)
+    (status)
+  }
+
+  Note: "Monthly payout per reviewer, managed by admin. payout_month format: 'yyyy-MM'. Status flow: PENDING → APPROVED → PAID (or CANCELLED). total_base_amount = SUM(reviewer_income.base_amount) for the month. total_final_amount = total_base_amount * badge_multiplier. Upsert on (reviewer_id, payout_month). Auto-generated on 1st of each month at 4AM."
+}
+
 Table report_reasons {
   id uuid [pk]
   code varchar(80) [not null, unique]
@@ -1013,12 +1089,16 @@ Ref: notifications.recipient_id > users.user_id
 Ref: notifications.actor_id > users.user_id
 
 Ref: reviewers.user_id > users.user_id
-Ref: reviewer_badges.reviewer_id > reviewers.reviewer_id
-Ref: reviewer_payouts.reviewer_id > reviewers.reviewer_id
 Ref: reviewer_scoring_formula.created_by > users.user_id
 Ref: reviewer_badge_threshold.formula_id > reviewer_scoring_formula.id
 Ref: reviewer_ranking_snapshot.reviewer_id > reviewers.reviewer_id
 Ref: reviewer_ranking_snapshot.formula_id > reviewer_scoring_formula.id
+Ref: payout_formula.created_by > users.user_id
+Ref: reviewer_income.reviewer_id > reviewers.reviewer_id
+Ref: reviewer_income.formula_id > payout_formula.id
+Ref: admin_payout.reviewer_id > reviewers.reviewer_id
+Ref: admin_payout.formula_id > payout_formula.id
+Ref: admin_payout.approved_by > users.user_id
 
 Ref: payments.buyer_id > users.user_id
 Ref: payments.extra_fee_id > extra_fees.extra_fee_id
