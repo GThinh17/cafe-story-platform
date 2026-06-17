@@ -4,7 +4,9 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   ArrowLeft,
   Grid3X3,
+  MessageCircle,
   MessageSquareText,
+  SquarePlus,
   UserPlus,
   Users,
 } from "lucide-react-native";
@@ -31,6 +33,7 @@ import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
 import {
   blogResponseToPostPreview,
+  createCafePageConversation,
   followCafePage,
   getCafePageBlogs,
   getCafePageById,
@@ -75,6 +78,7 @@ export function CafePageScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isFollowPending, setIsFollowPending] = useState(false);
   const [isLikePending, setIsLikePending] = useState(false);
+  const [isMessagePending, setIsMessagePending] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isEditSaving, setIsEditSaving] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -229,6 +233,20 @@ export function CafePageScreen() {
     setError(`${feature} is coming soon.`);
   }, []);
 
+  const cafeLocationName = useMemo(() => {
+    if (!cafePage) {
+      return null;
+    }
+
+    return [
+      cafePage.regionWard,
+      cafePage.regionCity,
+      cafePage.regionProvince,
+    ]
+      .filter(Boolean)
+      .join(", ") || cafePage.address || null;
+  }, [cafePage]);
+
   const openEditModal = useCallback(() => {
     if (!isOwner) {
       return;
@@ -341,6 +359,57 @@ export function CafePageScreen() {
     }
   }, [cafePage, isEditSaving]);
 
+  const openCafePageMessages = useCallback(async () => {
+    if (!cafePage || isMessagePending) {
+      return;
+    }
+
+    if (isOwner) {
+      navigation.navigate(routes.conversations);
+      return;
+    }
+
+    setIsMessagePending(true);
+    setError(null);
+
+    try {
+      const conversation = await createCafePageConversation(cafePage.id);
+
+      navigation.navigate(routes.chatDetail, {
+        chatAvatar: conversation.chatAvatar || cafePage.avatarUrl,
+        chatName: conversation.chatName || cafePage.name || "Cafe Page",
+        conversationId: conversation.id,
+        targetUserId: null,
+        userName: conversation.userName || cafePage.name || "",
+      });
+    } catch (nextError) {
+      setError(
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to open cafe page messages.",
+      );
+    } finally {
+      setIsMessagePending(false);
+    }
+  }, [cafePage, isMessagePending, isOwner, navigation]);
+
+  const openCafePagePostComposer = useCallback(() => {
+    if (!cafePage || !isOwner) {
+      return;
+    }
+
+    navigation.navigate(routes.main, {
+      params: {
+        cafeAvatarUrl: cafePage.avatarUrl,
+        cafePageId: cafePage.id,
+        cafePageName: cafePage.name,
+        locationName: cafeLocationName,
+        regionId: cafePage.regionId,
+      },
+      screen: routes.create,
+    });
+  }, [cafeLocationName, cafePage, isOwner, navigation]);
+
   const renderTabContent = () => {
     if (activeTab === "posts") {
       return posts.length > 0 ? (
@@ -408,7 +477,33 @@ export function CafePageScreen() {
           Cafe Page
         </Text>
 
-        <View style={styles.iconButton} />
+        {isOwner ? (
+          <View style={styles.topBarActions}>
+            <Pressable
+              accessibilityLabel="Create cafe page post"
+              accessibilityRole="button"
+              hitSlop={10}
+              onPress={openCafePagePostComposer}
+              style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+            >
+              <SquarePlus color={colors.foreground} size={27} strokeWidth={2.5} />
+            </Pressable>
+
+            <Pressable
+              accessibilityLabel="Open cafe page messages"
+              accessibilityRole="button"
+              hitSlop={10}
+              onPress={() => {
+                void openCafePageMessages();
+              }}
+              style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+            >
+              <MessageCircle color={colors.foreground} size={28} strokeWidth={2.5} />
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.iconButton} />
+        )}
       </View>
 
       {isLoading && !cafePage ? (
@@ -436,6 +531,9 @@ export function CafePageScreen() {
               onEditPress={openEditModal}
               onFollowPress={toggleFollow}
               onLikePress={toggleLike}
+              onMessagePress={() => {
+                void openCafePageMessages();
+              }}
               onSharePress={() => showComingSoon("Cafe page sharing")}
               onSuggestPress={() => showComingSoon("Cafe page suggestions")}
             />
@@ -594,5 +692,8 @@ const styles = StyleSheet.create({
     fontSize: typography.title,
     fontWeight: "900",
     textAlign: "center",
+  },
+  topBarActions: {
+    flexDirection: "row",
   },
 });

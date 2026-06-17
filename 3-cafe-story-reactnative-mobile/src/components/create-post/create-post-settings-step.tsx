@@ -8,6 +8,11 @@ import type { AuthUser, CreatePostDraft, PostVisibility } from "../../types";
 type CreatePostSettingsStepProps = {
   draft: CreatePostDraft;
   onUpdateDraft: (patch: Partial<CreatePostDraft>) => void;
+  postingIdentity?: {
+    avatarUrl: string | null;
+    id: string;
+    name: string | null;
+  } | null;
   user: AuthUser | null;
 };
 
@@ -34,9 +39,12 @@ const visibilityOptions: Array<{
 export function CreatePostSettingsStep({
   draft,
   onUpdateDraft,
+  postingIdentity,
   user,
 }: CreatePostSettingsStepProps) {
-  const displayName = user?.userFullName || user?.userName || "CafeStory user";
+  const displayName =
+    postingIdentity?.name || user?.userFullName || user?.userName || "CafeStory user";
+  const avatarUri = postingIdentity?.avatarUrl ?? user?.userAvatar;
   const previewImage = draft.mediaUrls[0];
 
   return (
@@ -46,12 +54,14 @@ export function CreatePostSettingsStep({
     >
       <View style={styles.previewCard}>
         <View style={styles.previewHeader}>
-          <Avatar size={46} uri={user?.userAvatar} />
+          <Avatar size={46} uri={avatarUri} />
           <View style={styles.previewCopy}>
             <Text numberOfLines={1} style={styles.previewName}>
               {displayName}
             </Text>
-            <Text style={styles.previewMeta}>Just now</Text>
+            <Text style={styles.previewMeta}>
+              {postingIdentity ? "Cafe page post" : "Just now"}
+            </Text>
           </View>
         </View>
         {previewImage ? (

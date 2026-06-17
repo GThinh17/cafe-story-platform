@@ -13,6 +13,7 @@ export const apiEndpoints = {
   chat: {
     conversations: "/api/chat/conversations",
     directConversation: "/api/chat/conversations/direct",
+    cafePageConversation: "/api/chat/conversations/cafe-page",
     messages: (conversationId: string) =>
       `/api/chat/conversations/${pathId(conversationId)}/messages`,
   },

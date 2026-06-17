@@ -1,6 +1,7 @@
 package com.cafestory.service.serviceImplement;
 
 import com.cafestory.dto.requestDTO.chat.CreateDirectConversationRequest;
+import com.cafestory.dto.requestDTO.chat.CreateCafePageConversationRequest;
 import com.cafestory.dto.requestDTO.chat.CreateGroupConversationRequest;
 import com.cafestory.dto.requestDTO.chat.SendMessageRequest;
 import com.cafestory.dto.requestDTO.chat.UpdateGroupInfoRequest;
@@ -9,6 +10,7 @@ import com.cafestory.dto.responseDTO.chat.ConversationResponseDTO;
 import com.cafestory.dto.responseDTO.chat.SocketEventResponseDTO;
 import com.cafestory.entity.ChatMember;
 import com.cafestory.entity.ChatMessage;
+import com.cafestory.entity.CafePage;
 import com.cafestory.entity.Conversation;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.ConversationType;
@@ -18,6 +20,7 @@ import com.cafestory.entity.enums.MessageType;
 import com.cafestory.mapper.ChatMapper;
 import com.cafestory.repository.ChatMemberRepository;
 import com.cafestory.repository.ChatMessageRepository;
+import com.cafestory.repository.CafePageRepository;
 import com.cafestory.repository.ConversationRepository;
 import com.cafestory.service.serviceInterface.ChatService;
 import com.cafestory.service.serviceInterface.FirebaseChatService;
@@ -45,6 +48,7 @@ public class ChatServiceImpl implements ChatService {
     private final ConversationRepository conversationRepository;
     private final ChatMemberRepository chatMemberRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final CafePageRepository cafePageRepository;
     private final UserValidator userValidator;
     private final ChatMapper chatMapper;
     private final FirebaseChatService firebaseChatService;
@@ -55,6 +59,7 @@ public class ChatServiceImpl implements ChatService {
             ConversationRepository conversationRepository,
             ChatMemberRepository chatMemberRepository,
             ChatMessageRepository chatMessageRepository,
+            CafePageRepository cafePageRepository,
             UserValidator userValidator,
             ChatMapper chatMapper,
             FirebaseChatService firebaseChatService,
@@ -63,6 +68,7 @@ public class ChatServiceImpl implements ChatService {
         this.conversationRepository = conversationRepository;
         this.chatMemberRepository = chatMemberRepository;
         this.chatMessageRepository = chatMessageRepository;
+        this.cafePageRepository = cafePageRepository;
         this.userValidator = userValidator;
         this.chatMapper = chatMapper;
         this.firebaseChatService = firebaseChatService;
@@ -80,6 +86,30 @@ public class ChatServiceImpl implements ChatService {
         return conversationRepository.findDirectConversation(firstUser.getUserId(), secondUser.getUserId())
                 .map(conversation -> toConversationResponse(conversation, firstUser.getUserId()))
                 .orElseGet(() -> createDirectConversation(firstUser, secondUser));
+    }
+
+    @Override
+    @Transactional
+    public ConversationResponseDTO createOrGetCafePageConversation(CreateCafePageConversationRequest request) {
+        CafePage cafePage = cafePageRepository.findById(request.getCafePageId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cafe page not found"));
+        User user = userValidator.validateUserExists(request.getUserId());
+        User owner = cafePage.getOwner();
+
+        if (owner == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cafe page owner is missing");
+        }
+        validateDifferentUsers(user.getUserId(), owner.getUserId());
+
+        ConversationResponseDTO response = conversationRepository
+                .findDirectConversation(user.getUserId(), owner.getUserId())
+                .map(conversation -> toConversationResponse(conversation, user.getUserId()))
+                .orElseGet(() -> createDirectConversation(user, owner));
+
+        response.setChatName(cafePage.getName());
+        response.setUserName(cafePage.getName());
+        response.setChatAvatar(cafePage.getAvatarUrl());
+        return response;
     }
 
     @Override

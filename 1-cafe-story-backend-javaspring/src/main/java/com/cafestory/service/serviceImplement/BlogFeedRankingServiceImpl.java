@@ -190,7 +190,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public List<BlogFeedResponse> getPersonalizedFeed(
             UUID userId,
             TrendWindowType windowType,
@@ -207,11 +207,8 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                 windowType,
                 contextRegionId);
         if (latestComputedAt == null || isPersonalizedCacheStale(userId, latestComputedAt)) {
-            rebuildRecommendationCache(userId, windowType, contextRegionId);
-            latestComputedAt = blogRecommendationScoreRepository.findLatestComputedAt(userId, windowType, contextRegionId);
-        }
-        if (latestComputedAt == null) {
-            return List.of();
+            List<BlogRecommendationScore> scores = buildRecommendationScores(user, windowType, contextRegionId);
+            return toFeedResponses(pageScores(scores, safePage, safeSize));
         }
 
         List<BlogRecommendationScore> scores = blogRecommendationScoreRepository.findLatestPage(
@@ -243,7 +240,16 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             User user,
             TrendWindowType windowType,
             UUID contextRegionId) {
-        UUID userId = user.getUserId();
+        List<BlogRecommendationScore> scores = buildRecommendationScores(user, windowType, contextRegionId);
+
+        upsertRecommendationScores(scores, LocalDateTime.now());
+        return toFeedResponses(scores);
+    }
+
+    private List<BlogRecommendationScore> buildRecommendationScores(
+            User user,
+            TrendWindowType windowType,
+            UUID contextRegionId) {
         LocalDateTime now = LocalDateTime.now();
         Map<UUID, BlogTrendingScore> trendingScores = latestTrendingScores(windowType);
 
@@ -267,8 +273,17 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             scores.get(index).setRankPosition(index + 1);
         }
 
-        upsertRecommendationScores(scores, now);
-        return toFeedResponses(scores);
+        return scores;
+    }
+
+    private List<BlogRecommendationScore> pageScores(List<BlogRecommendationScore> scores, int page, int size) {
+        if (scores.isEmpty()) {
+            return List.of();
+        }
+
+        int fromIndex = Math.min(page * size, scores.size());
+        int toIndex = Math.min(fromIndex + size, scores.size());
+        return scores.subList(fromIndex, toIndex);
     }
 
     private void upsertRecommendationScores(List<BlogRecommendationScore> scores, LocalDateTime createdAt) {

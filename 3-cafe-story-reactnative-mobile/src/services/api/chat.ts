@@ -32,6 +32,13 @@ export function createDirectConversation(secondUserId: string) {
   });
 }
 
+export function createCafePageConversation(cafePageId: string) {
+  return apiFetch<ConversationResponse>(apiEndpoints.chat.cafePageConversation, {
+    body: { cafePageId },
+    method: "POST",
+  });
+}
+
 export function getConversationMessages(
   conversationId: string,
   { page = 0, size = 20 }: MessagePageOptions = {},

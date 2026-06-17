@@ -1,6 +1,7 @@
 package com.cafestory.controller;
 
 import com.cafestory.dto.requestDTO.chat.AddMemberRequest;
+import com.cafestory.dto.requestDTO.chat.CreateCafePageConversationRequest;
 import com.cafestory.dto.requestDTO.chat.CreateDirectConversationRequest;
 import com.cafestory.dto.requestDTO.chat.CreateGroupConversationRequest;
 import com.cafestory.dto.requestDTO.chat.SendMessageRequest;
@@ -44,6 +45,14 @@ public class ChatController {
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         request.setFirstUserId(requireUserId(principal));
         return chatService.createOrGetDirectConversation(request);
+    }
+
+    @PostMapping("/conversations/cafe-page")
+    public ConversationResponseDTO createOrGetCafePageConversation(
+            @Valid @RequestBody CreateCafePageConversationRequest request,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        request.setUserId(requireUserId(principal));
+        return chatService.createOrGetCafePageConversation(request);
     }
 
     @PostMapping("/conversations/group")

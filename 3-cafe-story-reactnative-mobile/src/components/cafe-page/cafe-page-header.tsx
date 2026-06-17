@@ -2,7 +2,7 @@ import {
   CalendarDays,
   Heart,
   MapPin,
-  Share2,
+  MessageCircle,
   Sparkles,
   Star,
   Store,
@@ -22,6 +22,7 @@ type CafePageHeaderProps = {
   onEditPress?: () => void;
   onFollowPress?: () => void;
   onLikePress?: () => void;
+  onMessagePress?: () => void;
   onSharePress?: () => void;
   onSuggestPress?: () => void;
 };
@@ -76,6 +77,7 @@ export function CafePageHeader({
   onEditPress,
   onFollowPress,
   onLikePress,
+  onMessagePress,
   onSharePress,
   onSuggestPress,
 }: CafePageHeaderProps) {
@@ -201,15 +203,15 @@ export function CafePageHeader({
             </Pressable>
 
             <Pressable
-              accessibilityLabel="Share cafe page"
+              accessibilityLabel="Message cafe page"
               accessibilityRole="button"
-              onPress={onSharePress}
+              onPress={onMessagePress}
               style={({ pressed }) => [
                 styles.suggestButton,
                 pressed && styles.pressed,
               ]}
             >
-              <Share2 color={colors.foreground} size={19} strokeWidth={2.5} />
+              <MessageCircle color={colors.foreground} size={19} strokeWidth={2.5} />
             </Pressable>
 
             <Pressable

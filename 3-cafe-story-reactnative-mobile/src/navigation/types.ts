@@ -11,7 +11,13 @@ export type AuthStackParamList = {
 export type MainTabParamList = {
   [routes.home]: undefined;
   [routes.explore]: undefined;
-  [routes.create]: undefined;
+  [routes.create]: {
+    cafeAvatarUrl?: string | null;
+    cafePageId?: string;
+    cafePageName?: string | null;
+    locationName?: string | null;
+    regionId?: string | null;
+  } | undefined;
   [routes.notifications]: undefined;
   [routes.profile]: undefined;
 };

@@ -1,6 +1,7 @@
 package com.cafestory.service.serviceInterface;
 
 import com.cafestory.dto.requestDTO.chat.CreateDirectConversationRequest;
+import com.cafestory.dto.requestDTO.chat.CreateCafePageConversationRequest;
 import com.cafestory.dto.requestDTO.chat.CreateGroupConversationRequest;
 import com.cafestory.dto.requestDTO.chat.SendMessageRequest;
 import com.cafestory.dto.requestDTO.chat.UpdateGroupInfoRequest;
@@ -13,6 +14,8 @@ import java.util.UUID;
 public interface ChatService {
 
     ConversationResponseDTO createOrGetDirectConversation(CreateDirectConversationRequest request);
+
+    ConversationResponseDTO createOrGetCafePageConversation(CreateCafePageConversationRequest request);
 
     ConversationResponseDTO createGroupConversation(CreateGroupConversationRequest request);
 
