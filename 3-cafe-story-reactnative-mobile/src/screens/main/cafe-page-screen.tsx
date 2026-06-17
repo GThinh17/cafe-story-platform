@@ -344,11 +344,13 @@ export function CafePageScreen() {
   const renderTabContent = () => {
     if (activeTab === "posts") {
       return posts.length > 0 ? (
-        <View style={styles.grid}>
-          <UserPostGrid onPostPress={openPost} posts={posts} />
+        <View style={styles.tabContent}>
+          <View style={styles.grid}>
+            <UserPostGrid onPostPress={openPost} posts={posts} />
+          </View>
         </View>
       ) : (
-        <View style={styles.emptyPosts}>
+        <View style={[styles.tabContent, styles.emptyPosts]}>
           <EmptyState
             description="Posts from this cafe page will appear here."
             title="No cafe posts yet"
@@ -359,7 +361,7 @@ export function CafePageScreen() {
 
     if (activeTab === "reviews") {
       return (
-        <View style={styles.emptyPosts}>
+        <View style={[styles.tabContent, styles.emptyPosts]}>
           <EmptyState
             description="Cafe reviews will appear here when reviewers publish them."
             title="No reviews yet"
@@ -370,7 +372,7 @@ export function CafePageScreen() {
 
     if (activeTab === "members") {
       return (
-        <View style={styles.emptyPosts}>
+        <View style={[styles.tabContent, styles.emptyPosts]}>
           <EmptyState
             description="Page members will appear here when member APIs are connected."
             title="No members to show"
@@ -380,7 +382,7 @@ export function CafePageScreen() {
     }
 
     return (
-      <View style={styles.emptyPosts}>
+      <View style={[styles.tabContent, styles.emptyPosts]}>
         <EmptyState
           description="Join requests will appear here for page owners."
           title="No requests right now"
@@ -553,6 +555,9 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     borderTopWidth: 1,
     flexDirection: "row",
+  },
+  tabContent: {
+    paddingTop: spacing.sm,
   },
   tabItem: {
     alignItems: "center",
