@@ -63,7 +63,13 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
     @Override
     @Transactional
     public void generateSnapshot(RankingPeriodType periodType) {
-        LocalDate today = LocalDate.now();
+        generateSnapshot(periodType, LocalDate.now());
+    }
+
+    @Override
+    @Transactional
+    public void generateSnapshot(RankingPeriodType periodType, LocalDate referenceDate) {
+        LocalDate today = referenceDate;
         String period = resolvePeriod(today, periodType);
         DateRange range = resolveDateRange(today, periodType);
         ReviewerScoringFormula formula = formulaService.getActiveFormula();

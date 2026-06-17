@@ -4,11 +4,14 @@ import com.cafestory.dto.responseDTO.reviewer.ReviewerRankingSnapshotResponseDTO
 import com.cafestory.entity.Reviewer;
 import com.cafestory.entity.enums.RankingPeriodType;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public interface ReviewerRankingSnapshotService {
 
     void generateSnapshot(RankingPeriodType periodType);
+
+    void generateSnapshot(RankingPeriodType periodType, LocalDate referenceDate);
 
     void initSnapshotForNewReviewer(Reviewer reviewer);
 
