@@ -82,6 +82,9 @@ public class BlogServiceImpl implements BlogService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.PERSONALIZED_FEED_RANKING_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_BLOGS_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.TRENDING_BLOGS_CACHE, allEntries = true),
             @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })
     public BlogResponseDTO createBlog(BlogCreateDTO blogCreateDTO, UUID actorUserId) {
@@ -91,6 +94,13 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.PERSONALIZED_FEED_RANKING_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_BLOGS_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.TRENDING_BLOGS_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
+    })
     public BlogResponseDTO createModeratedBlog(BlogCreateDTO blogCreateDTO, UUID actorUserId) {
         Blog savedBlog = createBlogEntity(blogCreateDTO, actorUserId);
         Blog moderatedBlog = aiBlogModerationService.moderateBlog(savedBlog);
@@ -170,6 +180,9 @@ public class BlogServiceImpl implements BlogService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE,
+            key = "'saved:' + #p0 + ':' + (#p1 == null ? 'anon' : #p1)")
     public List<BlogResponseDTO> getSavedBlogsByUserId(UUID userId, UUID viewerUserId) {
         userValidator.validateUserExists(userId);
         return blogRepository.findSavedBlogsByUserId(userId)
@@ -222,6 +235,9 @@ public class BlogServiceImpl implements BlogService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.PERSONALIZED_FEED_RANKING_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_BLOGS_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.TRENDING_BLOGS_CACHE, allEntries = true),
             @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0"),
             @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })
@@ -266,6 +282,9 @@ public class BlogServiceImpl implements BlogService {
     @Transactional
     @Caching(evict = {
             @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.PERSONALIZED_FEED_RANKING_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_BLOGS_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.TRENDING_BLOGS_CACHE, allEntries = true),
             @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0"),
             @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })

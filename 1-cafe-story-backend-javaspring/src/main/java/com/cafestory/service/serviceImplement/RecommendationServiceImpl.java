@@ -1,5 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.responseDTO.RecommendationCardResponseDTO;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.Region;
@@ -13,6 +14,7 @@ import com.cafestory.repository.ReviewerRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.RecommendationService;
 import com.cafestory.validation.UserValidator;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -51,6 +53,7 @@ public class RecommendationServiceImpl implements RecommendationService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.RECOMMENDATION_CARDS_CACHE, key = "'users:' + #p0 + ':' + #p1 + ':' + #p2")
     public List<RecommendationCardResponseDTO> getUserRecommendations(UUID currentUserId, int page, int size) {
         User currentUser = validateCurrentUser(currentUserId);
         List<ScoredRecommendation> scored = userRepository.findRecommendationCandidates(
@@ -67,6 +70,7 @@ public class RecommendationServiceImpl implements RecommendationService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.RECOMMENDATION_CARDS_CACHE, key = "'reviewers:' + #p0 + ':' + #p1 + ':' + #p2")
     public List<RecommendationCardResponseDTO> getReviewerRecommendations(UUID currentUserId, int page, int size) {
         User currentUser = validateCurrentUser(currentUserId);
         List<ScoredRecommendation> scored = reviewerRepository.findRecommendationCandidates(
@@ -83,6 +87,7 @@ public class RecommendationServiceImpl implements RecommendationService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.RECOMMENDATION_CARDS_CACHE, key = "'cafe-pages:' + #p0 + ':' + #p1 + ':' + #p2")
     public List<RecommendationCardResponseDTO> getCafePageRecommendations(UUID currentUserId, int page, int size) {
         User currentUser = validateCurrentUser(currentUserId);
         List<ScoredRecommendation> scored = cafePageRepository.findRecommendationCandidates(
@@ -99,6 +104,7 @@ public class RecommendationServiceImpl implements RecommendationService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.RECOMMENDATION_CARDS_CACHE, key = "'mixed:' + #p0 + ':' + #p1 + ':' + #p2")
     public List<RecommendationCardResponseDTO> getMixedRecommendations(UUID currentUserId, int page, int size) {
         int normalizedPage = Math.max(0, page);
         int normalizedSize = normalizeSize(size);

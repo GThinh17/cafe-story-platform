@@ -1,5 +1,6 @@
 import type { ApiEnvelope, ApiErrorPayload } from "../../types";
 import { getApiBaseUrl } from "../../config";
+import { invalidateApiCache } from "./api-cache";
 
 type ApiFetchOptions = Omit<RequestInit, "body"> & {
   body?: BodyInit | Record<string, unknown> | null;
@@ -20,10 +21,14 @@ export class ApiError extends Error {
 }
 
 export function setAuthAccessToken(token: string | null | undefined) {
+  if ((token ?? null) !== authAccessToken) {
+    invalidateApiCache();
+  }
   authAccessToken = token ?? null;
 }
 
 export function clearAuthAccessToken() {
+  invalidateApiCache();
   authAccessToken = null;
 }
 

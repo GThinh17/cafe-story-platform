@@ -23,6 +23,7 @@ import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.CommentValidator;
 import com.cafestory.validation.UserValidator;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -67,7 +68,12 @@ public class ContentReportServiceImpl implements ContentReportService {
 
     @Override
     @Transactional
-    @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.PERSONALIZED_FEED_RANKING_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.RECOMMENDATION_CARDS_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.TRENDING_BLOGS_CACHE, allEntries = true)
+    })
     public ContentReportResponseDTO createReport(UUID reporterUserId, ContentReportRequestDTO request) {
         User reporter = userValidator.validateUserExists(reporterUserId);
         userValidator.validateUserActive(reporter);

@@ -42,7 +42,6 @@ public class BlogLikeServiceImpl implements BlogLikeService {
     @Override
     @Transactional
     @Caching(evict = {
-            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
             @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0"),
             @CacheEvict(cacheNames = {
                     CacheConfig.USER_PROFILE_BY_ID_CACHE,
@@ -71,7 +70,6 @@ public class BlogLikeServiceImpl implements BlogLikeService {
     @Override
     @Transactional
     @Caching(evict = {
-            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
             @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0"),
             @CacheEvict(cacheNames = {
                     CacheConfig.USER_PROFILE_BY_ID_CACHE,

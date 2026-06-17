@@ -6,13 +6,16 @@ import type {
   RegionResponse,
   RegionWardResponse,
 } from "../../types";
+import { apiCacheTtl, cachedApiCall } from "./api-cache";
 import { apiFetch } from "./client";
 import { apiEndpoints } from "./endpoints";
 
 export function getRegionProvinces() {
-  return apiFetch<RegionProvinceResponse[]>(apiEndpoints.regions.provinces, {
-    method: "GET",
-  });
+  return cachedApiCall("regions:provinces", apiCacheTtl.lookup, () =>
+    apiFetch<RegionProvinceResponse[]>(apiEndpoints.regions.provinces, {
+      method: "GET",
+    }),
+  );
 }
 
 export function createRegion(
@@ -26,13 +29,20 @@ export function createRegion(
 }
 
 export function getRegionCities(provinceCode?: string) {
-  return apiFetch<RegionCityResponse[]>(apiEndpoints.regions.cities(provinceCode), {
-    method: "GET",
-  });
+  return cachedApiCall(`regions:cities:${provinceCode ?? "all"}`, apiCacheTtl.lookup, () =>
+    apiFetch<RegionCityResponse[]>(apiEndpoints.regions.cities(provinceCode), {
+      method: "GET",
+    }),
+  );
 }
 
 export function getRegionWards(params: { cityCode?: string; provinceCode?: string } = {}) {
-  return apiFetch<RegionWardResponse[]>(apiEndpoints.regions.wards(params), {
-    method: "GET",
-  });
+  return cachedApiCall(
+    `regions:wards:${params.provinceCode ?? "all"}:${params.cityCode ?? "all"}`,
+    apiCacheTtl.lookup,
+    () =>
+      apiFetch<RegionWardResponse[]>(apiEndpoints.regions.wards(params), {
+        method: "GET",
+      }),
+  );
 }

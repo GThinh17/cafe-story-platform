@@ -1,5 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.responseDTO.PageLikeResponseDTO;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.PageLike;
@@ -9,6 +10,8 @@ import com.cafestory.repository.PageLikeRepository;
 import com.cafestory.service.serviceInterface.PageLikeService;
 import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.UserValidator;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +41,10 @@ public class PageLikeServiceImpl implements PageLikeService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.RECOMMENDATION_CARDS_CACHE, allEntries = true)
+    })
     public PageLikeResponseDTO likePage(UUID cafePageId, UUID userId) {
         CafePage cafePage = cafePageValidator.validateCafePageExists(cafePageId);
         User user = userValidator.validateUserExists(userId);
@@ -58,6 +65,10 @@ public class PageLikeServiceImpl implements PageLikeService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.RECOMMENDATION_CARDS_CACHE, allEntries = true)
+    })
     public void unlikePage(UUID cafePageId, UUID userId) {
         cafePageValidator.validateCafePageExists(cafePageId);
         User user = userValidator.validateUserExists(userId);
