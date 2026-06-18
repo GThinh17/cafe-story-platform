@@ -11,15 +11,16 @@ type StoryRailProps = {
 
 export function StoryRail({ stories }: StoryRailProps) {
   return (
-    <div className="w-full overflow-x-clip">
-      <div className="grid grid-cols-[repeat(auto-fit,64px)] gap-x-4 gap-y-4">
+    <div className="w-full overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex gap-4">
         {stories.map((story) => (
           <button
+            aria-label={`View ${story.name} story`}
             className="grid w-16 justify-items-center text-center"
-            key={story.name}
+            key={story.id}
             type="button"
           >
-            <span className="grid size-16 place-items-center rounded-full bg-[linear-gradient(135deg,var(--primary),var(--accent))] p-1">
+            <span className="grid size-16 place-items-center rounded-full ring-2 ring-primary/25 ring-offset-1 ring-offset-background">
               <Avatar className="size-14">
                 <AvatarImage
                 alt={`${story.name} cafe story`}

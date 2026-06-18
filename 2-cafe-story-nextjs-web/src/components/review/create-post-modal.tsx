@@ -212,7 +212,7 @@ export function CreatePostModal({
           onSubmit={handleSubmit}
         >
           <header className="flex h-[72px] items-center justify-between border-b border-line-soft px-6">
-            <DialogTitle className="font-serif text-xl font-semibold text-espresso">
+            <DialogTitle className="font-sans text-xl font-bold text-espresso">
               {composer.title}
             </DialogTitle>
 

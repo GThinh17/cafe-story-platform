@@ -1,4 +1,5 @@
 export type StoryItem = {
+  id: string;
   name: string;
   image: string;
 };
