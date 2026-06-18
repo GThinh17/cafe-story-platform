@@ -1,7 +1,7 @@
 {
   "ai_model": {
     "provider": "openrouter",
-    "model_name": "nex-agi/nex-n2-pro:free"
+    "model_name": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
   },
   "clip": {
     "_note": "CLIP is kept for reference but is no longer used. AI model handles cafe detection instead.",
@@ -17,35 +17,39 @@
     "high_not_cafe_confidence": 80
   },
   "text_moderator": {
-    "prompt_template": "Bạn là một hệ thống kiểm duyệt nội dung chuyên nghiệp cho một diễn đàn review quán cà phê.\nNhiệm vụ của bạn là phân tích caption đầu vào và đánh giá theo 3 tiêu chí:\n1. Có liên quan đến quán cà phê không? (không gian, đồ uống, nhân viên, giá cả...).\n2. Có vi phạm tiêu chuẩn cộng đồng không? (chửi thề, văng tục, đồi trụy, spam).\n3. Có gây xích mích, chia rẽ không? (phân biệt vùng miền, công kích cá nhân, bóc phốt vô căn cứ tạo thù ghét).\n\nCaption cần phân tích: \"{text}\"\n\nHãy trả về một JSON object với cấu trúc:\n{{\n  \"is_coffee_related\": boolean,\n  \"is_violation\": boolean,\n  \"score\": integer,\n  \"reason\": \"Giải thích ngắn gọn bằng tiếng Việt\"\n}}\n\nQuy tắc chấm điểm score 0-100: 0 là không có độc hại, trên 50 là có từ chửi thề/khiếm nhã, trên 80 là xúc phạm nghiêm trọng, 100 là rất độc hại.\nChỉ trả về JSON, không giải thích thêm."
+    "prompt_template": "Bạn là hệ thống kiểm duyệt nội dung cho nền tảng review quán cà phê CafeStory.\n\nĐỊNH NGHĨA \"liên quan đến quán cafe\":\nBất kỳ nội dung nào gắn với TRẢI NGHIỆM đến quán cafe, bao gồm:\n- Đồ uống: cà phê, trà, nước ép, smoothie, bánh, đồ ăn phục vụ tại quán\n- Không gian: decor, góc chụp hình, ánh sáng, nội thất, cây xanh, bàn ghế\n- Hoạt động TẠI quán: học bài, đọc sách, làm việc, gặp bạn bè, chụp hình\n- Thú cưng của quán: mèo, chó, thỏ...\n- Dịch vụ/phụ kiện quán cung cấp: xếp giấy origami, board game, sách, workshop\n- Nhân viên, barista, menu, giá, khuyến mãi, review chất lượng\n- Cảm nhận khi đến quán: không khí, vibe, góc view đẹp\n\nis_coffee_related = false CHỈ KHI caption hoàn toàn không liên quan đến quán cafe.\n\nVÍ DỤ:\n- \"quán cung cấp cho mình những bộ xếp giấy nhe\" → is_coffee_related: true\n- \"đến quán để nựng những chú mèo dễ thưn nhe\" → is_coffee_related: true\n- \"ly cà phê sáng nay ngon quá\" → is_coffee_related: true\n- \"không gian quán yên tĩnh lắm, mình hay đến học bài\" → is_coffee_related: true\n- \"mình đang bán nhà cần tiền gấp\" → is_coffee_related: false\n- \"đăng ký tham gia sự kiện chính trị\" → is_coffee_related: false\n\nCaption cần phân tích: \"{text}\"\n\nTrả về JSON:\n{{\n  \"is_coffee_related\": boolean,\n  \"is_violation\": boolean,\n  \"score\": integer (0-100),\n  \"reason\": \"Giải thích ngắn gọn bằng tiếng Việt\"\n}}\n\nQuy tắc score: 0 = không độc hại, >50 = chửi thề/khiếm nhã, >80 = xúc phạm nghiêm trọng, 100 = rất độc hại.\nChỉ trả về JSON, không giải thích thêm."
   },
   "image_cafe_detector": {
-    "prompt": "Bạn là hệ thống kiểm duyệt ảnh cho nền tảng review quán cà phê CafeStory.\n\nPhân tích toàn bộ ảnh được cung cấp và đánh giá:\n1. Ảnh có liên quan đến quán cà phê/coffee shop không? (không gian quán, đồ uống, barista, menu, logo, v.v.)\n2. Mức độ tự tin của bạn (0-100).\n\nTrả về JSON object:\n{\n  \"is_cafe\": boolean,\n  \"confidence\": integer (0-100),\n  \"reason\": \"Giải thích ngắn gọn bằng tiếng Việt\"\n}\n\nQuy tắc:\n- is_cafe = true nếu ít nhất 1 ảnh rõ ràng liên quan đến quán cà phê.\n- confidence: mức độ chắc chắn trung bình cho toàn bộ ảnh.\n- Nếu không có ảnh cafe rõ ràng, trả is_cafe = false.\nChỉ trả về JSON, không giải thích thêm."
+    "prompt": "Bạn là hệ thống kiểm duyệt ảnh cho nền tảng review quán cà phê CafeStory.\n\nẢnh liên quan đến quán cafe bao gồm:\n- Không gian: bàn ghế, quầy bar, trang trí nội thất, đèn, cây cối trong quán\n- Đồ uống và thức ăn phục vụ tại quán\n- Con người: barista, khách ngồi trong quán, nhân viên phục vụ\n- Thú cưng của quán (mèo, chó, thỏ...)\n- Chi tiết quán: menu, biển hiệu, cốc chén, máy pha cà phê, decor\n- Phụ kiện quán cung cấp: origami, board game, sách\n- Góc chụp hình nghệ thuật bên trong hoặc ngoài quán\n\nĐánh giá toàn bộ ảnh được cung cấp và trả về JSON:\n{\n  \"is_cafe\": boolean,\n  \"confidence\": integer (0-100),\n  \"reason\": \"Giải thích ngắn gọn bằng tiếng Việt\"\n}\n\nQuy tắc:\n- is_cafe = true nếu ít nhất 1 ảnh liên quan đến không gian hoặc trải nghiệm quán cafe.\n- confidence: mức độ chắc chắn (0-100).\n- Không yêu cầu phải thấy ly cà phê - thú cưng, decor, nhân viên cũng là dấu hiệu hợp lệ.\nChỉ trả về JSON, không giải thích thêm."
   },
   "image_classifier": {
     "max_images": 3,
     "tags": {
-      "photo cafe": "ONLY if the space is clearly designed for photography: neon signs, decorative corners, staged backgrounds. DO NOT choose if it looks like a normal cafe, even if it's photogenic, photo cafe ONLY means: a cafe intentionally designed as a photography destination with staged or decorative photo spots.",
-      "pet cafe": "ONLY if animals are clearly visible (cats, dogs, birds).",
-      "study cafe": "ONLY if people are working OR there are clear signs like laptops, books, large tables, or power outlets.",
-      "vintage cafe": "ONLY if antique/retro furniture or old-style decor is clearly visible.",
-      "garden cafe": "ONLY if many plants/trees outdoor or outdoor garden seating is visible, not just potted plants or plants placed indoor.",
-      "anime cafe": "ONLY if anime or games posters, figures, or cosplay elements are visible.",
-      "model cafe": "ONLY if model-kits: tanks, ships, robot, miniatures, or display collections are visible.",
-      "acoustic cafe": "ONLY if stage, instruments, or microphones are visible.",
-      "brunch cafe": "ONLY if food, bakery items, or display cases with cakes/pastries are visible, or menu with brunch items.",
-      "takeaway": "ONLY if seating is minimal AND the focus is on ordering counter and takeaway cups.",
-      "vietnam traditional cafe": "ONLY if low stools, street setting, or traditional phin coffee setup is visible."
+      "photo cafe": "CHỈ KHI quán được thiết kế ĐẶC BIỆT cho mục đích chụp ảnh: có góc setup sẵn, biển neon riêng cho chụp hình, phòng/khu vực decor staged rõ ràng. KHÔNG áp dụng cho ảnh đẹp, ảnh điện ảnh, ảnh lọc màu vintage.",
+      "pet cafe": "CHỈ KHI nhìn thấy rõ ràng con vật (mèo, chó, thỏ, chim...) trong ảnh. Phải có ít nhất 1 con vật rõ nét.",
+      "study cafe": "CHỈ KHI thấy rõ laptop, sách, vở, hoặc nhiều người đang ngồi làm việc/học bài trong không gian lớn có ổ điện. KHÔNG áp dụng nếu chỉ thấy bàn ghế trống.",
+      "vintage cafe": "CHỈ KHI thấy rõ nội thất cổ điển, đồ vật retro, gỗ cũ, đèn vintage, hoặc phong cách thiết kế hoài cổ rõ nét.",
+      "garden cafe": "CHỈ KHI có nhiều cây xanh, vườn, không gian ngoài trời với cây cối hoặc hoa là điểm nhấn chính, không chỉ vài chậu cây nhỏ.",
+      "anime cafe": "CHỈ KHI thấy rõ poster anime, figure, cosplay, hoặc chủ đề game/manga trong decor quán.",
+      "model cafe": "CHỈ KHI thấy mô hình miniature, xe tăng, robot, tàu thuyền... được trưng bày trong quán.",
+      "acoustic cafe": "CHỈ KHI thấy sân khấu, nhạc cụ, micro, hoặc dấu hiệu biểu diễn âm nhạc live.",
+      "brunch cafe": "CHỈ KHI thấy rõ đồ ăn, bánh ngọt, tủ bánh, hoặc không gian phục vụ bữa sáng/trưa rõ ràng.",
+      "takeaway": "CHỈ KHI quán không có chỗ ngồi hoặc không gian chủ yếu là quầy order, cửa sổ phục vụ takeaway.",
+      "vietnam traditional cafe": "CHỈ KHI thấy ghế nhựa thấp, vỉa hè, phin cà phê, hoặc phong cách cafe vỉa hè truyền thống Việt Nam.",
+      "cafe space": "Dùng khi không gian quán rõ ràng nhưng không fit tag nào ở trên. Bao gồm quán cafe hiện đại, đẹp, trendy, hoặc góc chụp nghệ thuật của quán.",
+      "cafe's drinks": "CHỈ KHI thấy rõ đồ uống: ly cà phê, trà, nước ép, smoothie, bubble tea... được phục vụ hoặc trình bày trong quán. KHÔNG áp dụng nếu chỉ thấy ly nước mờ, xa, hoặc không rõ ràng. CHỈ khi đồ uống là chủ thể chính của ảnh, được chụp gần.",
+      "cafe's menu": "CHỈ KHI thấy rõ menu quán: bảng menu, tờ menu in, màn hình hiển thị menu, hoặc bảng giá của quán. CHINH XÁC phải là menu của quán, không đoán dựa trên đồ uống hay decor. CHỈ khi menu là chủ thể chính của ảnh, được chụp gần. KHÔNG áp dụng nếu chỉ thấy menu mờ, xa, hoặc không rõ ràng."
     },
     "prompt_rules": [
-      "You are a strict image classifier.",
-      "Classify cafe image(s) into EXACTLY 3 tags.",
-      "ONLY choose a tag if there is CLEAR VISUAL EVIDENCE in the image.",
-      "DO NOT guess based on general vibe.",
-      "Avoid generic tags like \"photo cafe\" unless very obvious.",
-      "Prefer concrete objects over abstract vibes."
+      "Chọn 1 đến 3 tag dựa trên BẰNG CHỨNG VISUAL RÕ RÀNG trong ảnh.",
+      "Chỉ chọn tag khi confidence >= 60. Thà chọn ít tag đúng hơn nhiều tag sai.",
+      "KHÔNG đoán dựa trên không khí hay cảm giác chung.",
+      "Nếu ảnh có mèo/chó/thú cưng rõ ràng → phải có 'pet cafe'.",
+      "Ảnh đẹp/điện ảnh/lọc màu vintage KHÔNG phải 'photo cafe' trừ khi quán setup sẵn góc chụp.",
+      "Nếu không chắc tag cụ thể → dùng 'cafe space' thay vì đoán mò.",
+      "Mỗi tag phải được hỗ trợ bởi ít nhất 1 chi tiết nhìn thấy trong ảnh."
     ],
-    "fallback_tags": ["study cafe", "brunch cafe", "photo cafe"]
+    "fallback_tags": []
   },
   "decision": {
     "caption_deny_score": 70,

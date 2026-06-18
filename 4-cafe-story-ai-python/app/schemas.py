@@ -36,5 +36,5 @@ class BlogEvaluateResponse(BaseModel):
     captionReason: str
     imageScore: int
     imageReason: str
-    tags: list[str] = Field(min_length=3, max_length=3)
+    tags: list[str] = Field(min_length=0, max_length=3)
     status: Status

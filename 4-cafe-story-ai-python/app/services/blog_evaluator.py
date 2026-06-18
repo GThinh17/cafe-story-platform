@@ -6,7 +6,7 @@ from PIL import Image
 from app.config.rules import get_rules
 from app.schemas import BlogEvaluateRequest, BlogEvaluateResponse, Status
 from app.services.image_cafe_detector import ImageCafeResult, detect_cafe_images
-from app.services.image_tagger import ImageTagResult, classify_image_tags, get_fallback_tags
+from app.services.image_tagger import ImageTagResult, classify_image_tags
 from app.services.text_moderator import CaptionModerationResult, moderate_caption
 from app.utils.image_loader import load_image_from_url, resize_for_ai
 
@@ -68,13 +68,14 @@ def evaluate_blog(payload: BlogEvaluateRequest) -> BlogEvaluateResponse:
 
     status = _decide_status(caption, cafe_detection, len(image_urls), image_errors)
 
-    tags: list[str]
+    tags: list[str] = []
     if status == "approve":
         max_images = get_rules()["image_classifier"]["max_images"]
         tag_result: ImageTagResult = classify_image_tags(images[:max_images])
-        tags = tag_result.tags if not tag_result.error and len(tag_result.tags) == 3 else get_fallback_tags()
-    else:
-        tags = get_fallback_tags()
+        if not tag_result.error and len(tag_result.tags) >= 1:
+            tags = tag_result.tags
+        else:
+            status = "send Admin"
 
     for _, image in loaded_images:
         image.close()
@@ -95,16 +96,12 @@ def safe_evaluate_blog(payload: BlogEvaluateRequest) -> BlogEvaluateResponse:
         return evaluate_blog(payload)
     except Exception:
         logger.exception("blog evaluation failed blogId=%s", payload.blogId)
-        try:
-            fallback_tags = get_fallback_tags()
-        except Exception:
-            fallback_tags = ["study cafe", "brunch cafe", "photo cafe"]
         return BlogEvaluateResponse(
             blogId=payload.blogId,
             captionScore=0,
             captionReason="Unable to evaluate caption.",
             imageScore=0,
             imageReason="Unable to evaluate images.",
-            tags=fallback_tags,
+            tags=[],
             status="send Admin",
         )

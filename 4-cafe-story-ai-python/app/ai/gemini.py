@@ -18,7 +18,7 @@ class GeminiModel(AIModel):
             raise RuntimeError("GOOGLE_API_KEY is required for Gemini.")
         self._client = genai.Client(api_key=api_key)
 
-    def generate_text(self, prompt: str) -> str:
+    def _generate_text_impl(self, prompt: str) -> str:
         response = self._client.models.generate_content(
             model=self.model_name,
             contents=prompt,
@@ -26,7 +26,7 @@ class GeminiModel(AIModel):
         )
         return response.text or ""
 
-    def generate_with_images(self, prompt: str, images: list[Image.Image]) -> str:
+    def _generate_with_images_impl(self, prompt: str, images: list[Image.Image]) -> str:
         response = self._client.models.generate_content(
             model=self.model_name,
             contents=[prompt, *images],

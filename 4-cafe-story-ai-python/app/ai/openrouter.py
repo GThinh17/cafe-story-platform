@@ -30,16 +30,23 @@ class OpenRouterModel(AIModel):
         image.convert("RGB").save(buf, format="JPEG")
         return base64.b64encode(buf.getvalue()).decode("utf-8")
 
-    def generate_text(self, prompt: str) -> str:
+    def _extract_content(self, response: requests.Response) -> str:
+        response.raise_for_status()
+        body = response.json()
+        if "choices" not in body:
+            error = body.get("error", body)
+            raise RuntimeError(f"OpenRouter error: {error}")
+        return body["choices"][0]["message"]["content"] or ""
+
+    def _generate_text_impl(self, prompt: str) -> str:
         payload = {
             "model": self.model_name,
             "messages": [{"role": "user", "content": prompt}],
         }
         response = requests.post(_API_URL, headers=self._headers, json=payload, timeout=60)
-        response.raise_for_status()
-        return response.json()["choices"][0]["message"]["content"] or ""
+        return self._extract_content(response)
 
-    def generate_with_images(self, prompt: str, images: list[Image.Image]) -> str:
+    def _generate_with_images_impl(self, prompt: str, images: list[Image.Image]) -> str:
         content: list[dict] = [{"type": "text", "text": prompt}]
         for image in images:
             b64 = self._image_to_base64(image)
@@ -52,5 +59,4 @@ class OpenRouterModel(AIModel):
             "messages": [{"role": "user", "content": content}],
         }
         response = requests.post(_API_URL, headers=self._headers, json=payload, timeout=120)
-        response.raise_for_status()
-        return response.json()["choices"][0]["message"]["content"] or ""
+        return self._extract_content(response)
