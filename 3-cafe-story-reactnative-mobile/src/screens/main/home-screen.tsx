@@ -2,8 +2,17 @@ import { useNavigation } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Send } from "lucide-react-native";
-import { useCallback, useEffect, useState } from "react";
-import { RefreshControl, ScrollView, StyleSheet } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from "react-native";
 import {
   BlogFeedList,
   EmptyState,
@@ -20,7 +29,7 @@ import {
   getBlogSavesByUser,
   getFollowingByUserId,
 } from "../../services/api";
-import { spacing } from "../../theme";
+import { colors, spacing, typography } from "../../theme";
 import { routes } from "../../navigation";
 import type { MainTabParamList, RootStackParamList } from "../../navigation";
 import type {
@@ -30,6 +39,9 @@ import type {
   StoryItem,
   UserFollowResponse,
 } from "../../types";
+
+const FEED_PAGE_SIZE = 20;
+const LOAD_MORE_THRESHOLD = 360;
 
 function applyViewerState(
   blogs: BlogFeedResponse[],
@@ -55,6 +67,23 @@ function applyViewerState(
   }));
 }
 
+function mergeUniqueBlogs(
+  currentBlogs: BlogFeedResponse[],
+  nextBlogs: BlogFeedResponse[],
+) {
+  const seenBlogIds = new Set(currentBlogs.map((blog) => blog.blogId));
+  const uniqueNextBlogs = nextBlogs.filter((blog) => {
+    if (seenBlogIds.has(blog.blogId)) {
+      return false;
+    }
+
+    seenBlogIds.add(blog.blogId);
+    return true;
+  });
+
+  return [...currentBlogs, ...uniqueNextBlogs];
+}
+
 export function HomeScreen() {
   const navigation =
     useNavigation<
@@ -62,50 +91,127 @@ export function HomeScreen() {
         NativeStackNavigationProp<RootStackParamList>
     >();
   const { user } = useAuth();
+  const scrollViewRef = useRef<ScrollView | null>(null);
+  const isFetchingRef = useRef(false);
   const [blogs, setBlogs] = useState<BlogFeedResponse[]>([]);
   const [error, setError] = useState("");
+  const [loadMoreError, setLoadMoreError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
 
-  const loadFeed = useCallback(async (refreshing = false) => {
+  const enrichFeedWithViewerState = useCallback(async (
+    response: BlogFeedResponse[],
+  ) => {
+    if (!user?.userId) {
+      return response;
+    }
+
+    const [following, likes, saves] = await Promise.all([
+      getFollowingByUserId(user.userId).catch(() => []),
+      getBlogLikesByUser(user.userId).catch(() => []),
+      getBlogSavesByUser(user.userId).catch(() => []),
+    ]);
+
+    return applyViewerState(response, following, likes, saves, user.userId);
+  }, [user?.userId]);
+
+  const loadFeed = useCallback(async ({
+    append = false,
+    pageToLoad = 0,
+    refreshing = false,
+  }: {
+    append?: boolean;
+    pageToLoad?: number;
+    refreshing?: boolean;
+  } = {}) => {
+    if (isFetchingRef.current) {
+      return;
+    }
+
+    isFetchingRef.current = true;
+
     if (refreshing) {
       setIsRefreshing(true);
+    } else if (append) {
+      setIsLoadingMore(true);
     } else {
       setIsLoading(true);
     }
 
-    setError("");
+    if (!append) {
+      setError("");
+    }
+    setLoadMoreError("");
 
     try {
-      const response = await getBlogFeed({ page: 0, size: 20 });
+      const response = await getBlogFeed({
+        page: pageToLoad,
+        size: FEED_PAGE_SIZE,
+      });
+      const enrichedResponse = await enrichFeedWithViewerState(response);
 
-      if (!user?.userId) {
-        setBlogs(response);
-        return;
-      }
-
-      const [following, likes, saves] = await Promise.all([
-        getFollowingByUserId(user.userId).catch(() => []),
-        getBlogLikesByUser(user.userId).catch(() => []),
-        getBlogSavesByUser(user.userId).catch(() => []),
-      ]);
-
-      setBlogs(applyViewerState(response, following, likes, saves, user.userId));
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to load feed.",
+      setBlogs((currentBlogs) =>
+        append
+          ? mergeUniqueBlogs(currentBlogs, enrichedResponse)
+          : enrichedResponse,
       );
+      setPage(pageToLoad);
+      setHasMore(response.length === FEED_PAGE_SIZE);
+    } catch (requestError) {
+      if (append) {
+        setLoadMoreError("Unable to load more posts.");
+      } else {
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Unable to load feed.",
+        );
+      }
     } finally {
+      isFetchingRef.current = false;
       setIsLoading(false);
+      setIsLoadingMore(false);
       setIsRefreshing(false);
     }
-  }, [user?.userId]);
+  }, [enrichFeedWithViewerState]);
 
   useEffect(() => {
     void loadFeed();
   }, [loadFeed]);
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("tabPress", () => {
+      scrollViewRef.current?.scrollTo({ animated: true, y: 0 });
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  const loadNextPage = useCallback(() => {
+    if (!hasMore || isLoading || isRefreshing || isLoadingMore) {
+      return;
+    }
+
+    void loadFeed({
+      append: true,
+      pageToLoad: page + 1,
+    });
+  }, [hasMore, isLoading, isLoadingMore, isRefreshing, loadFeed, page]);
+
+  const handleFeedScroll = useCallback((
+    event: NativeSyntheticEvent<NativeScrollEvent>,
+  ) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const distanceFromBottom =
+      contentSize.height - (contentOffset.y + layoutMeasurement.height);
+
+    if (distanceFromBottom <= LOAD_MORE_THRESHOLD) {
+      loadNextPage();
+    }
+  }, [loadNextPage]);
 
   const stories: StoryItem[] = [
     {
@@ -126,10 +232,13 @@ export function HomeScreen() {
         rightIcon={Send}
       />
       <ScrollView
+        onScroll={handleFeedScroll}
+        ref={scrollViewRef}
+        scrollEventThrottle={16}
         contentContainerStyle={styles.feedContent}
         refreshControl={
           <RefreshControl
-            onRefresh={() => void loadFeed(true)}
+            onRefresh={() => void loadFeed({ refreshing: true })}
             refreshing={isRefreshing}
           />
         }
@@ -141,7 +250,16 @@ export function HomeScreen() {
         ) : error ? (
           <EmptyState description={error} title="Feed unavailable" />
         ) : blogs.length ? (
-          <BlogFeedList blogs={blogs} />
+          <>
+            <BlogFeedList blogs={blogs} />
+            {isLoadingMore ? (
+              <View style={styles.loadingMore}>
+                <ActivityIndicator color={colors.primary} />
+              </View>
+            ) : loadMoreError ? (
+              <Text style={styles.loadMoreError}>{loadMoreError}</Text>
+            ) : null}
+          </>
         ) : (
           <EmptyState
             description="New cafe stories will appear here when they are ready."
@@ -156,5 +274,16 @@ export function HomeScreen() {
 const styles = StyleSheet.create({
   feedContent: {
     paddingBottom: 112,
+  },
+  loadingMore: {
+    alignItems: "center",
+    paddingVertical: spacing.lg,
+  },
+  loadMoreError: {
+    color: colors.muted,
+    fontSize: typography.label,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
+    textAlign: "center",
   },
 });
