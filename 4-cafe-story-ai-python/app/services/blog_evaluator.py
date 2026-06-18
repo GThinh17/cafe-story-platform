@@ -8,7 +8,7 @@ from app.schemas import BlogEvaluateRequest, BlogEvaluateResponse, Status
 from app.services.image_cafe_detector import ImageCafeResult, detect_cafe_images
 from app.services.image_tagger import ImageTagResult, classify_image_tags, get_fallback_tags
 from app.services.text_moderator import CaptionModerationResult, moderate_caption
-from app.utils.image_loader import load_image_from_url
+from app.utils.image_loader import load_image_from_url, resize_for_ai
 
 
 logger = logging.getLogger("cafestory-ai.evaluator")
@@ -52,7 +52,7 @@ def evaluate_blog(payload: BlogEvaluateRequest) -> BlogEvaluateResponse:
 
     for url in image_urls:
         try:
-            image = load_image_from_url(url)
+            image = resize_for_ai(load_image_from_url(url))
             loaded_images.append((url, image))
         except Exception as exc:
             image_errors.append(f"{url}: {exc}")

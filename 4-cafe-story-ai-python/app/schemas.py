@@ -9,7 +9,7 @@ Status = Literal["deny", "send Admin", "approve"]
 class BlogEvaluateRequest(BaseModel):
     blogId: str = Field(..., min_length=1)
     caption: str | None = ""
-    imageUrls: list[str] | None = Field(default_factory=list)
+    imageUrls: list[str] | None = Field(default_factory=list, max_length=10)
 
     @field_validator("blogId")
     @classmethod
