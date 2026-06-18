@@ -345,30 +345,22 @@ class BlogFeedRankingServiceImplTest {
     }
 
     @Test
-    void getPersonalizedFeed_success_rebuildsCacheWhenCurrentUserHasNewerOwnBlog_TC008() {
+    void getPersonalizedFeed_success_doesNotRebuildCacheWhenCurrentUserHasNewerOwnBlog_TC008() {
         User user = user();
         UUID regionId = user.getRegion().getRegionId();
         Blog ownBlog = blogWithAuthor(user, regionId);
         LocalDateTime oldComputedAt = LocalDateTime.now().minusHours(2);
-        LocalDateTime refreshedComputedAt = LocalDateTime.now();
-        BlogRecommendationScore score = recommendationScore(user, ownBlog, 60.0, 1);
         BlogFeedRankingServiceImpl service = service();
 
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
         when(blogRecommendationScoreRepository.findLatestComputedAt(
                 user.getUserId(),
                 TrendWindowType.HOUR_24,
-                regionId)).thenReturn(oldComputedAt, refreshedComputedAt);
+                regionId)).thenReturn(oldComputedAt);
         when(blogRepository.findFirstByAuthorUserIdAndStatusOrderByCreatedAtDescIdDesc(
                 user.getUserId(),
                 PostStatus.PUBLISHED)).thenReturn(Optional.of(ownBlog));
         when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(ownBlog));
-        when(blogRecommendationScoreRepository.findLatestPage(
-                eq(user.getUserId()),
-                eq(TrendWindowType.HOUR_24),
-                eq(regionId),
-                eq(refreshedComputedAt),
-                any(Pageable.class))).thenReturn(List.of(score));
 
         List<BlogFeedResponse> result = service.getPersonalizedFeed(
                 user.getUserId(),
@@ -379,7 +371,7 @@ class BlogFeedRankingServiceImplTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getBlogId()).isEqualTo(ownBlog.getId());
-        verify(blogRecommendationScoreRepository).upsertRecommendationScore(
+        verify(blogRecommendationScoreRepository, never()).upsertRecommendationScore(
                 any(UUID.class),
                 eq(user.getUserId()),
                 eq(ownBlog.getId()),

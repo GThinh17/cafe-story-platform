@@ -2,6 +2,8 @@ package com.cafestory.repository;
 
 import com.cafestory.entity.BlogLike;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -12,6 +14,16 @@ public interface BlogLikeRepository extends JpaRepository<BlogLike, UUID> {
     boolean existsByUserUserIdAndBlogId(UUID userId, UUID blogId);
 
     Optional<BlogLike> findByUserUserIdAndBlogId(UUID userId, UUID blogId);
+
+    @Query("""
+            select like.blog.id
+            from BlogLike like
+            where like.user.userId = :userId
+            and like.blog.id in :blogIds
+            """)
+    List<UUID> findLikedBlogIdsByUserIdAndBlogIds(
+            @Param("userId") UUID userId,
+            @Param("blogIds") List<UUID> blogIds);
 
     List<BlogLike> findByBlogId(UUID blogId);
 
