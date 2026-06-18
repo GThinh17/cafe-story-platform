@@ -4,6 +4,7 @@ import type {
   UserResponse,
   UserUpdateRequest,
 } from "../../types";
+import { apiCacheTtl, cachedApiCall, invalidateApiCache } from "./api-cache";
 import { apiFetch } from "./client";
 import { apiEndpoints } from "./endpoints";
 
@@ -14,67 +15,100 @@ export type AvatarUploadFile = {
 };
 
 export function getMyProfile() {
-  return apiFetch<UserResponse>(apiEndpoints.users.me, {
-    method: "GET",
-  });
+  return cachedApiCall("users:me", apiCacheTtl.shortUser, () =>
+    apiFetch<UserResponse>(apiEndpoints.users.me, {
+      method: "GET",
+    }),
+  );
 }
 
 export function getUserProfile(userId: string) {
-  return apiFetch<UserResponse>(apiEndpoints.users.byId(userId), {
-    method: "GET",
-  });
+  return cachedApiCall(`users:detail:${userId}`, apiCacheTtl.shortUser, () =>
+    apiFetch<UserResponse>(apiEndpoints.users.byId(userId), {
+      method: "GET",
+    }),
+  );
 }
 
 export function getUserProfileByUsername(username: string) {
-  return apiFetch<UserResponse>(apiEndpoints.users.byUsername(username), {
-    method: "GET",
-  });
+  return cachedApiCall(`users:username:${username}`, apiCacheTtl.dynamic, () =>
+    apiFetch<UserResponse>(apiEndpoints.users.byUsername(username), {
+      method: "GET",
+    }),
+  );
 }
 
-export function updateMyProfile(request: UserUpdateRequest) {
-  return apiFetch<UserResponse>(apiEndpoints.users.me, {
+export async function updateMyProfile(request: UserUpdateRequest) {
+  const response = await apiFetch<UserResponse>(apiEndpoints.users.me, {
     body: request,
     method: "PATCH",
   });
+  invalidateApiCache("users:");
+  invalidateApiCache("blogs:");
+  return response;
 }
 
-export function uploadMyAvatar(file: AvatarUploadFile) {
+export async function uploadMyAvatar(file: AvatarUploadFile) {
   const formData = new FormData();
   formData.append("avatar", file as unknown as Blob);
 
-  return apiFetch<UserResponse>(apiEndpoints.users.meAvatar, {
+  const response = await apiFetch<UserResponse>(apiEndpoints.users.meAvatar, {
     body: formData,
     method: "PATCH",
   });
+  invalidateApiCache("users:");
+  invalidateApiCache("blogs:");
+  return response;
 }
 
-export function updateMyRegion(request: UserRegionUpdateRequest) {
-  return apiFetch<UserResponse>(apiEndpoints.users.meRegion, {
+export async function updateMyRegion(request: UserRegionUpdateRequest) {
+  const response = await apiFetch<UserResponse>(apiEndpoints.users.meRegion, {
     body: request,
     method: "PATCH",
   });
+  invalidateApiCache("users:");
+  invalidateApiCache("recommendations:");
+  invalidateApiCache("feed:");
+  return response;
 }
 
-export function followUser(followingUserId: string) {
-  return apiFetch<UserFollowResponse>(apiEndpoints.users.follow(followingUserId), {
+export async function followUser(followingUserId: string) {
+  const response = await apiFetch<UserFollowResponse>(apiEndpoints.users.follow(followingUserId), {
     method: "POST",
   });
+  invalidateFollowCache(followingUserId);
+  return response;
 }
 
-export function unfollowUser(followingUserId: string) {
-  return apiFetch<void>(apiEndpoints.users.follow(followingUserId), {
+export async function unfollowUser(followingUserId: string) {
+  const response = await apiFetch<void>(apiEndpoints.users.follow(followingUserId), {
     method: "DELETE",
   });
+  invalidateFollowCache(followingUserId);
+  return response;
 }
 
 export function getFollowingByUserId(userId: string) {
-  return apiFetch<UserFollowResponse[]>(apiEndpoints.users.following(userId), {
-    method: "GET",
-  });
+  return cachedApiCall(`users:following:${userId}`, apiCacheTtl.dynamic, () =>
+    apiFetch<UserFollowResponse[]>(apiEndpoints.users.following(userId), {
+      method: "GET",
+    }),
+  );
 }
 
 export function getFollowersByUserId(userId: string) {
-  return apiFetch<UserFollowResponse[]>(apiEndpoints.users.followers(userId), {
-    method: "GET",
-  });
+  return cachedApiCall(`users:followers:${userId}`, apiCacheTtl.dynamic, () =>
+    apiFetch<UserFollowResponse[]>(apiEndpoints.users.followers(userId), {
+      method: "GET",
+    }),
+  );
+}
+
+function invalidateFollowCache(userId: string) {
+  invalidateApiCache(`users:detail:${userId}`);
+  invalidateApiCache("users:me");
+  invalidateApiCache("users:following:");
+  invalidateApiCache("users:followers:");
+  invalidateApiCache("recommendations:");
+  invalidateApiCache("feed:");
 }

@@ -1,5 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.responseDTO.BlogTrendingResponse;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogDailyMetric;
@@ -20,6 +21,8 @@ import com.cafestory.repository.CafePageRepository;
 import com.cafestory.repository.CommentRepository;
 import com.cafestory.service.serviceInterface.BlogRankingService;
 import com.cafestory.service.serviceInterface.BlogTrendingService;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,6 +72,7 @@ public class BlogTrendingServiceImpl implements BlogTrendingService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.TRENDING_BLOGS_CACHE, key = "#p0.name() + ':' + #p1 + ':' + #p2")
     public List<BlogTrendingResponse> getTrendingBlogs(TrendWindowType windowType, int page, int size) {
         LocalDateTime latestComputedAt = blogTrendingScoreRepository.findLatestComputedAt(windowType);
         if (latestComputedAt == null) {
@@ -95,6 +99,7 @@ public class BlogTrendingServiceImpl implements BlogTrendingService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.TRENDING_BLOGS_CACHE, allEntries = true)
     public void calculateTrendingScores() {
         LocalDateTime now = LocalDateTime.now();
         for (TrendWindowType windowType : TrendWindowType.values()) {

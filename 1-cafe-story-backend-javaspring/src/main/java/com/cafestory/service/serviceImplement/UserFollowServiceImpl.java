@@ -9,6 +9,7 @@ import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.service.serviceInterface.UserFollowService;
 import com.cafestory.validation.UserValidator;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -39,7 +40,10 @@ public class UserFollowServiceImpl implements UserFollowService {
     @Caching(evict = {
             @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_ID_CACHE, allEntries = true),
             @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_USERNAME_CACHE, allEntries = true),
-            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.RECOMMENDATION_CARDS_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.PERSONALIZED_FEED_RANKING_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_FOLLOW_LIST_CACHE, key = "'followers:' + #p0"),
+            @CacheEvict(cacheNames = CacheConfig.USER_FOLLOW_LIST_CACHE, key = "'following:' + #p1"),
             @CacheEvict(cacheNames = CacheConfig.USER_FOLLOWING_COUNT_CACHE, key = "#p1")
     })
     public UserFollowResponseDTO followUser(UUID followingUserId, UUID followerUserId) {
@@ -67,7 +71,10 @@ public class UserFollowServiceImpl implements UserFollowService {
     @Caching(evict = {
             @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_ID_CACHE, allEntries = true),
             @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BY_USERNAME_CACHE, allEntries = true),
-            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.RECOMMENDATION_CARDS_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.PERSONALIZED_FEED_RANKING_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_FOLLOW_LIST_CACHE, key = "'followers:' + #p0"),
+            @CacheEvict(cacheNames = CacheConfig.USER_FOLLOW_LIST_CACHE, key = "'following:' + #p1"),
             @CacheEvict(cacheNames = CacheConfig.USER_FOLLOWING_COUNT_CACHE, key = "#p1")
     })
     public void unfollowUser(UUID followingUserId, UUID followerUserId) {
@@ -87,6 +94,7 @@ public class UserFollowServiceImpl implements UserFollowService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.USER_FOLLOW_LIST_CACHE, key = "'followers:' + #p0")
     public List<UserFollowResponseDTO> getFollowersByUserId(UUID followingUserId) {
         userValidator.validateUserExists(followingUserId);
         return userFollowRepository.findByFollowingUserId(followingUserId)
@@ -97,6 +105,7 @@ public class UserFollowServiceImpl implements UserFollowService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.USER_FOLLOW_LIST_CACHE, key = "'following:' + #p0")
     public List<UserFollowResponseDTO> getFollowingByUserId(UUID followerUserId) {
         userValidator.validateUserExists(followerUserId);
         return userFollowRepository.findByFollowerUserId(followerUserId)

@@ -37,6 +37,13 @@ public class CacheConfig implements CachingConfigurer {
     public static final String REGION_WARDS_CACHE = "regionWards";
     public static final String REPORT_REASONS_CACHE = "reportReasons";
     public static final String ORGANIC_FEED_CACHE = "organicFeed";
+    public static final String PERSONALIZED_FEED_RANKING_CACHE = "personalizedFeedRankings";
+    public static final String RECOMMENDATION_CARDS_CACHE = "recommendationCards";
+    public static final String CAFE_PAGE_DETAIL_CACHE = "cafePageDetails";
+    public static final String CAFE_PAGE_BLOGS_CACHE = "cafePageBlogs";
+    public static final String TRENDING_BLOGS_CACHE = "trendingBlogs";
+    public static final String COMMENT_LIST_CACHE = "commentLists";
+    public static final String USER_FOLLOW_LIST_CACHE = "userFollowLists";
     public static final String BLOG_DETAIL_CACHE = "blogDetails";
     public static final String USER_PROFILE_BY_ID_CACHE = "userProfilesById";
     public static final String USER_PROFILE_BY_USERNAME_CACHE = "userProfilesByUsername";
@@ -45,23 +52,32 @@ public class CacheConfig implements CachingConfigurer {
 
     @Bean
     public CacheManager cacheManager(RedisConnectionFactory redisConnectionFactory, ObjectMapper objectMapper) {
-        GenericJackson2JsonRedisSerializer jsonSerializer =
-                new GenericJackson2JsonRedisSerializer(redisObjectMapper(objectMapper));
+        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(
+                redisObjectMapper(objectMapper));
         RedisCacheConfiguration defaultConfig = cacheConfiguration(jsonSerializer, Duration.ofMinutes(10));
 
         RedisCacheManager redisCacheManager = RedisCacheManager.builder(redisConnectionFactory)
                 .cacheDefaults(defaultConfig)
-                .withInitialCacheConfigurations(Map.of(
-                        REGION_PROVINCES_CACHE, cacheConfiguration(jsonSerializer, Duration.ofHours(24)),
-                        REGION_CITIES_CACHE, cacheConfiguration(jsonSerializer, Duration.ofHours(24)),
-                        REGION_WARDS_CACHE, cacheConfiguration(jsonSerializer, Duration.ofHours(24)),
-                        REPORT_REASONS_CACHE, cacheConfiguration(jsonSerializer, Duration.ofMinutes(30)),
-                        ORGANIC_FEED_CACHE, cacheConfiguration(jsonSerializer, Duration.ofSeconds(45)),
-                        BLOG_DETAIL_CACHE, cacheConfiguration(jsonSerializer, Duration.ofMinutes(5)),
-                        USER_PROFILE_BY_ID_CACHE, cacheConfiguration(jsonSerializer, Duration.ofMinutes(5)),
-                        USER_PROFILE_BY_USERNAME_CACHE, cacheConfiguration(jsonSerializer, Duration.ofMinutes(5)),
-                        USER_PROFILE_BLOGS_CACHE, cacheConfiguration(jsonSerializer, Duration.ofSeconds(90)),
-                        USER_FOLLOWING_COUNT_CACHE, cacheConfiguration(jsonSerializer, Duration.ofMinutes(5))))
+                .withInitialCacheConfigurations(Map.ofEntries(
+                        Map.entry(REGION_PROVINCES_CACHE, cacheConfiguration(jsonSerializer, Duration.ofHours(24))),
+                        Map.entry(REGION_CITIES_CACHE, cacheConfiguration(jsonSerializer, Duration.ofHours(24))),
+                        Map.entry(REGION_WARDS_CACHE, cacheConfiguration(jsonSerializer, Duration.ofHours(24))),
+                        Map.entry(REPORT_REASONS_CACHE, cacheConfiguration(jsonSerializer, Duration.ofMinutes(30))),
+                        Map.entry(ORGANIC_FEED_CACHE, cacheConfiguration(jsonSerializer, Duration.ofSeconds(15))),
+                        Map.entry(PERSONALIZED_FEED_RANKING_CACHE,
+                                cacheConfiguration(jsonSerializer, Duration.ofSeconds(15))),
+                        Map.entry(RECOMMENDATION_CARDS_CACHE, cacheConfiguration(jsonSerializer, Duration.ofSeconds(15))),
+                        Map.entry(CAFE_PAGE_DETAIL_CACHE, cacheConfiguration(jsonSerializer, Duration.ofSeconds(15))),
+                        Map.entry(CAFE_PAGE_BLOGS_CACHE, cacheConfiguration(jsonSerializer, Duration.ofSeconds(15))),
+                        Map.entry(TRENDING_BLOGS_CACHE, cacheConfiguration(jsonSerializer, Duration.ofSeconds(15))),
+                        Map.entry(COMMENT_LIST_CACHE, cacheConfiguration(jsonSerializer, Duration.ofSeconds(10))),
+                        Map.entry(USER_FOLLOW_LIST_CACHE, cacheConfiguration(jsonSerializer, Duration.ofSeconds(15))),
+                        Map.entry(BLOG_DETAIL_CACHE, cacheConfiguration(jsonSerializer, Duration.ofSeconds(30))),
+                        Map.entry(USER_PROFILE_BY_ID_CACHE, cacheConfiguration(jsonSerializer, Duration.ofSeconds(15))),
+                        Map.entry(USER_PROFILE_BY_USERNAME_CACHE,
+                                cacheConfiguration(jsonSerializer, Duration.ofSeconds(15))),
+                        Map.entry(USER_PROFILE_BLOGS_CACHE, cacheConfiguration(jsonSerializer, Duration.ofSeconds(15))),
+                        Map.entry(USER_FOLLOWING_COUNT_CACHE, cacheConfiguration(jsonSerializer, Duration.ofSeconds(15)))))
                 .transactionAware()
                 .build();
 

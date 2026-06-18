@@ -1,5 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.requestDTO.CafePageCreateDTO;
 import com.cafestory.dto.requestDTO.CafePageUpdateDTO;
 import com.cafestory.dto.responseDTO.BlogCursorPageResponseDTO;
@@ -30,6 +31,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -96,6 +100,11 @@ public class CafePageServiceImpl implements CafePageService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_BLOGS_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.RECOMMENDATION_CARDS_CACHE, allEntries = true)
+    })
     public CafePageResponseDTO createCafePage(CafePageCreateDTO cafePageCreateDTO) {
         User owner = userValidator.validateUserExists(cafePageCreateDTO.getOwnerUserId());
         userValidator.validateUserActive(owner);
@@ -152,6 +161,7 @@ public class CafePageServiceImpl implements CafePageService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, key = "'all:' + (#p0 == null ? 'anon' : #p0)")
     public List<CafePageResponseDTO> getAllCafePages(UUID viewerUserId) {
         return cafePageRepository.findAll()
                 .stream()
@@ -167,6 +177,7 @@ public class CafePageServiceImpl implements CafePageService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, key = "'owner:' + #p0 + ':' + (#p1 == null ? 'anon' : #p1)")
     public List<CafePageResponseDTO> getCafePagesByOwnerId(UUID ownerUserId, UUID viewerUserId) {
         userValidator.validateUserExists(ownerUserId);
         return cafePageRepository.findByOwnerUserId(ownerUserId)
@@ -177,6 +188,7 @@ public class CafePageServiceImpl implements CafePageService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, key = "'top:' + (#p0 == null ? 'none' : #p0) + ':' + (#p1 == null ? 'none' : #p1) + ':' + #p2")
     public List<CafePageRankingResponseDTO> getTopCafePages(UUID regionId, String city, int size) {
         String normalizedCity = normalizeCity(city);
         int safeSize = Math.min(Math.max(1, size), 50);
@@ -212,12 +224,14 @@ public class CafePageServiceImpl implements CafePageService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, key = "'detail:' + #p0 + ':' + (#p1 == null ? 'anon' : #p1)")
     public CafePageResponseDTO getCafePageById(UUID cafePageId, UUID viewerUserId) {
         return toCafePageResponseDTO(cafePageValidator.validateCafePageExists(cafePageId), viewerUserId);
     }
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.CAFE_PAGE_BLOGS_CACHE, key = "#p0 + ':' + (#p1 == null ? 'first' : #p1) + ':' + #p2")
     public BlogCursorPageResponseDTO getBlogsByCafePageId(UUID cafePageId, String cursor, int size) {
         cafePageValidator.validateCafePageExists(cafePageId);
         int safeSize = normalizeBlogPageSize(size);
@@ -241,6 +255,10 @@ public class CafePageServiceImpl implements CafePageService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.RECOMMENDATION_CARDS_CACHE, allEntries = true)
+    })
     public CafePageResponseDTO updateCafePage(UUID cafePageId, UUID actorUserId, CafePageUpdateDTO cafePageUpdateDTO) {
         cafePageValidator.validateUserCanManagePage(cafePageId, actorUserId);
         CafePage cafePage = cafePageValidator.validateCafePageExists(cafePageId);
@@ -275,6 +293,11 @@ public class CafePageServiceImpl implements CafePageService {
 
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_BLOGS_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.RECOMMENDATION_CARDS_CACHE, allEntries = true)
+    })
     public void deleteCafePage(UUID cafePageId, UUID actorUserId) {
         cafePageValidator.validateUserCanManagePage(cafePageId, actorUserId);
         CafePage cafePage = cafePageValidator.validateCafePageExists(cafePageId);

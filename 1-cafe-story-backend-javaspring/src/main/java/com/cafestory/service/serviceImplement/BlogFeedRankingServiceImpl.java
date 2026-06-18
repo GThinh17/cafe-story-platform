@@ -37,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -191,6 +192,9 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = CacheConfig.PERSONALIZED_FEED_RANKING_CACHE,
+            key = "#p0 + ':' + #p1.name() + ':' + (#p2 == null ? 'none' : #p2) + ':' + #p3 + ':' + #p4")
     public List<BlogFeedResponse> getPersonalizedFeed(
             UUID userId,
             TrendWindowType windowType,

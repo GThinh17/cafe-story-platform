@@ -14,6 +14,7 @@ import com.cafestory.validation.BlogValidator;
 import com.cafestory.validation.CommentValidator;
 import com.cafestory.validation.UserValidator;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -48,7 +49,8 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional
     @Caching(evict = {
-            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.COMMENT_LIST_CACHE, key = "'blog:' + #p0.blogId"),
+            @CacheEvict(cacheNames = CacheConfig.COMMENT_LIST_CACHE, key = "'replies:' + #p0.parentCommentId", condition = "#p0.parentCommentId != null"),
             @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0.blogId"),
             @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })
@@ -79,6 +81,7 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.COMMENT_LIST_CACHE, key = "'blog:' + #p0")
     public List<CommentResponseDTO> getCommentsByBlogId(UUID blogId) {
         blogValidator.validateBlogExists(blogId);
         return commentRepository.findByBlogId(blogId)
@@ -89,6 +92,7 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.COMMENT_LIST_CACHE, key = "'user:' + #p0")
     public List<CommentResponseDTO> getCommentsByUserId(UUID userId) {
         userValidator.validateUserExists(userId);
         return commentRepository.findByUserUserId(userId)
@@ -99,6 +103,7 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = CacheConfig.COMMENT_LIST_CACHE, key = "'replies:' + #p0")
     public List<CommentResponseDTO> getRepliesByCommentId(UUID commentId) {
         commentValidator.validateCommentExists(commentId);
         return commentRepository.findByParentCommentId(commentId)
@@ -116,7 +121,7 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional
     @Caching(evict = {
-            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.COMMENT_LIST_CACHE, allEntries = true),
             @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, allEntries = true),
             @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })
@@ -141,7 +146,7 @@ public class CommentServiceImpl implements CommentService {
     @Override
     @Transactional
     @Caching(evict = {
-            @CacheEvict(cacheNames = CacheConfig.ORGANIC_FEED_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.COMMENT_LIST_CACHE, allEntries = true),
             @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, allEntries = true),
             @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })
