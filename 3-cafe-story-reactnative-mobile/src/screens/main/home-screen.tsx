@@ -4,7 +4,6 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Send } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -42,7 +41,7 @@ import type {
 
 const INITIAL_FEED_PAGE_SIZE = 10;
 const LOAD_MORE_FEED_PAGE_SIZE = 5;
-const LOAD_MORE_THRESHOLD = 360;
+const LOAD_MORE_THRESHOLD = 720;
 
 function applyViewerState(
   blogs: BlogFeedResponse[],
@@ -85,6 +84,26 @@ function mergeUniqueBlogs(
   return [...currentBlogs, ...uniqueNextBlogs];
 }
 
+function FeedSkeletonFooter() {
+  return (
+    <View style={styles.skeletonList}>
+      {[0, 1].map((item) => (
+        <View key={item} style={styles.skeletonCard}>
+          <View style={styles.skeletonHeader}>
+            <View style={styles.skeletonAvatar} />
+            <View style={styles.skeletonHeaderText}>
+              <View style={styles.skeletonLineStrong} />
+              <View style={styles.skeletonLineShort} />
+            </View>
+          </View>
+          <View style={styles.skeletonLine} />
+          <View style={styles.skeletonLineWide} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function HomeScreen() {
   const navigation =
     useNavigation<
@@ -94,6 +113,8 @@ export function HomeScreen() {
   const { user } = useAuth();
   const scrollViewRef = useRef<ScrollView | null>(null);
   const isFetchingRef = useRef(false);
+  const isPrefetchingRef = useRef(false);
+  const prefetchGenerationRef = useRef(0);
   const [blogs, setBlogs] = useState<BlogFeedResponse[]>([]);
   const [error, setError] = useState("");
   const [loadMoreError, setLoadMoreError] = useState("");
@@ -102,6 +123,11 @@ export function HomeScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [nextLoadPage, setNextLoadPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [isPrefetching, setIsPrefetching] = useState(false);
+  const [prefetchedBlogs, setPrefetchedBlogs] = useState<BlogFeedResponse[]>([]);
+  const [prefetchedPage, setPrefetchedPage] = useState<number | null>(null);
+  const [prefetchFailedPage, setPrefetchFailedPage] = useState<number | null>(null);
+  const [shouldAppendPrefetch, setShouldAppendPrefetch] = useState(false);
 
   const enrichFeedWithViewerState = useCallback(async (
     response: BlogFeedResponse[],
@@ -119,6 +145,47 @@ export function HomeScreen() {
     return applyViewerState(response, following, likes, saves, user.userId);
   }, [user?.userId]);
 
+  const fetchFeedPage = useCallback(async (pageToLoad: number, pageSize: number) => {
+    const response = await getBlogFeed({
+      page: pageToLoad,
+      size: pageSize,
+    });
+
+    return enrichFeedWithViewerState(response);
+  }, [enrichFeedWithViewerState]);
+
+  const prefetchFeedPage = useCallback(async (pageToPrefetch: number) => {
+    if (isPrefetchingRef.current) {
+      return;
+    }
+
+    const generation = prefetchGenerationRef.current;
+    isPrefetchingRef.current = true;
+    setIsPrefetching(true);
+    setPrefetchFailedPage(null);
+
+    try {
+      const response = await fetchFeedPage(
+        pageToPrefetch,
+        LOAD_MORE_FEED_PAGE_SIZE,
+      );
+
+      if (prefetchGenerationRef.current !== generation) {
+        return;
+      }
+
+      setPrefetchedBlogs(response);
+      setPrefetchedPage(pageToPrefetch);
+    } catch {
+      if (prefetchGenerationRef.current === generation) {
+        setPrefetchFailedPage(pageToPrefetch);
+      }
+    } finally {
+      isPrefetchingRef.current = false;
+      setIsPrefetching(false);
+    }
+  }, [fetchFeedPage]);
+
   const loadFeed = useCallback(async ({
     append = false,
     pageToLoad = 0,
@@ -133,6 +200,17 @@ export function HomeScreen() {
     }
 
     isFetchingRef.current = true;
+    const requestGeneration = append
+      ? prefetchGenerationRef.current
+      : prefetchGenerationRef.current + 1;
+
+    if (!append) {
+      prefetchGenerationRef.current = requestGeneration;
+      setPrefetchedBlogs([]);
+      setPrefetchedPage(null);
+      setPrefetchFailedPage(null);
+      setShouldAppendPrefetch(false);
+    }
 
     if (refreshing) {
       setIsRefreshing(true);
@@ -149,23 +227,26 @@ export function HomeScreen() {
 
     try {
       const pageSize = append ? LOAD_MORE_FEED_PAGE_SIZE : INITIAL_FEED_PAGE_SIZE;
-      const response = await getBlogFeed({
-        page: pageToLoad,
-        size: pageSize,
-      });
-      const enrichedResponse = await enrichFeedWithViewerState(response);
+      const response = await fetchFeedPage(pageToLoad, pageSize);
 
       setBlogs((currentBlogs) =>
         append
-          ? mergeUniqueBlogs(currentBlogs, enrichedResponse)
-          : enrichedResponse,
+          ? mergeUniqueBlogs(currentBlogs, response)
+          : response,
       );
+      const nextPage = append
+        ? pageToLoad + 1
+        : Math.ceil(response.length / LOAD_MORE_FEED_PAGE_SIZE);
+      const canLoadMore = response.length === pageSize;
+
       setNextLoadPage(
-        append
-          ? pageToLoad + 1
-          : Math.ceil(response.length / LOAD_MORE_FEED_PAGE_SIZE),
+        nextPage,
       );
-      setHasMore(response.length === pageSize);
+      setHasMore(canLoadMore);
+
+      if (canLoadMore) {
+        void prefetchFeedPage(nextPage);
+      }
     } catch (requestError) {
       if (append) {
         setLoadMoreError("Unable to load more posts.");
@@ -182,7 +263,54 @@ export function HomeScreen() {
       setIsLoadingMore(false);
       setIsRefreshing(false);
     }
-  }, [enrichFeedWithViewerState]);
+  }, [fetchFeedPage, prefetchFeedPage]);
+
+  const appendPrefetchedBlogs = useCallback(() => {
+    if (prefetchedPage !== nextLoadPage) {
+      return false;
+    }
+
+    const bufferedBlogs = prefetchedBlogs;
+    const nextPage = nextLoadPage + 1;
+    const canLoadMore = bufferedBlogs.length === LOAD_MORE_FEED_PAGE_SIZE;
+
+    setBlogs((currentBlogs) => mergeUniqueBlogs(currentBlogs, bufferedBlogs));
+    setNextLoadPage(nextPage);
+    setHasMore(canLoadMore);
+    setPrefetchedBlogs([]);
+    setPrefetchedPage(null);
+    setPrefetchFailedPage(null);
+    setShouldAppendPrefetch(false);
+    setIsLoadingMore(false);
+    setLoadMoreError("");
+
+    if (canLoadMore) {
+      void prefetchFeedPage(nextPage);
+    }
+
+    return true;
+  }, [nextLoadPage, prefetchedBlogs, prefetchedPage, prefetchFeedPage]);
+
+  useEffect(() => {
+    if (!shouldAppendPrefetch) {
+      return;
+    }
+
+    if (appendPrefetchedBlogs()) {
+      return;
+    }
+
+    if (prefetchFailedPage === nextLoadPage) {
+      setShouldAppendPrefetch(false);
+      setIsLoadingMore(false);
+      setLoadMoreError("Unable to load more posts.");
+    }
+  }, [
+    appendPrefetchedBlogs,
+    nextLoadPage,
+    prefetchFailedPage,
+    shouldAppendPrefetch,
+  ]);
 
   useEffect(() => {
     void loadFeed();
@@ -201,11 +329,30 @@ export function HomeScreen() {
       return;
     }
 
+    if (appendPrefetchedBlogs()) {
+      return;
+    }
+
+    if (isPrefetching || isPrefetchingRef.current) {
+      setIsLoadingMore(true);
+      setShouldAppendPrefetch(true);
+      return;
+    }
+
     void loadFeed({
       append: true,
       pageToLoad: nextLoadPage,
     });
-  }, [hasMore, isLoading, isLoadingMore, isRefreshing, loadFeed, nextLoadPage]);
+  }, [
+    appendPrefetchedBlogs,
+    hasMore,
+    isLoading,
+    isLoadingMore,
+    isPrefetching,
+    isRefreshing,
+    loadFeed,
+    nextLoadPage,
+  ]);
 
   const handleFeedScroll = useCallback((
     event: NativeSyntheticEvent<NativeScrollEvent>,
@@ -259,9 +406,7 @@ export function HomeScreen() {
           <>
             <BlogFeedList blogs={blogs} />
             {isLoadingMore ? (
-              <View style={styles.loadingMore}>
-                <ActivityIndicator color={colors.primary} />
-              </View>
+              <FeedSkeletonFooter />
             ) : loadMoreError ? (
               <Text style={styles.loadMoreError}>{loadMoreError}</Text>
             ) : null}
@@ -281,15 +426,60 @@ const styles = StyleSheet.create({
   feedContent: {
     paddingBottom: 112,
   },
-  loadingMore: {
-    alignItems: "center",
-    paddingVertical: spacing.lg,
-  },
   loadMoreError: {
     color: colors.muted,
     fontSize: typography.label,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.lg,
     textAlign: "center",
+  },
+  skeletonAvatar: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 18,
+    height: 36,
+    width: 36,
+  },
+  skeletonCard: {
+    backgroundColor: colors.background,
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+  },
+  skeletonHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  skeletonHeaderText: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  skeletonLine: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 8,
+    height: 12,
+    width: "72%",
+  },
+  skeletonLineShort: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 8,
+    height: 10,
+    width: "34%",
+  },
+  skeletonLineStrong: {
+    backgroundColor: colors.border,
+    borderRadius: 8,
+    height: 12,
+    width: "48%",
+  },
+  skeletonLineWide: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 8,
+    height: 12,
+    width: "92%",
+  },
+  skeletonList: {
+    gap: 2,
+    paddingTop: 2,
   },
 });
