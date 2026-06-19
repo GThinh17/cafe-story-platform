@@ -6,7 +6,7 @@ import {
   ConversationRow,
   ConversationTopBar,
   EmptyState,
-  LoadingState,
+  ListRowSkeletonList,
   MessageSearch,
   OnlineUserRail,
   Screen,
@@ -175,7 +175,7 @@ export function ConversationScreen() {
         )}
         ListEmptyComponent={
           isLoading ? (
-            <LoadingState label="Loading conversations..." />
+            <ListRowSkeletonList padded={false} />
           ) : error ? (
             <EmptyState description={error} title="Conversations unavailable" />
           ) : query.trim() ? (

@@ -19,6 +19,7 @@ import com.cafestory.repository.BlogLikeRepository;
 import com.cafestory.repository.BlogRatingRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.BlogSaveRepository;
+import com.cafestory.repository.BlogTaggedUserRepository;
 import com.cafestory.repository.RegionCityRepository;
 import com.cafestory.repository.RegionProvinceRepository;
 import com.cafestory.repository.RegionRepository;
@@ -100,6 +101,18 @@ class CacheableServiceTest {
     private BlogRepository blogRepository;
 
     @jakarta.annotation.Resource
+    private BlogLikeRepository blogLikeRepository;
+
+    @jakarta.annotation.Resource
+    private BlogSaveRepository blogSaveRepository;
+
+    @jakarta.annotation.Resource
+    private BlogRatingRepository blogRatingRepository;
+
+    @jakarta.annotation.Resource
+    private BlogTaggedUserRepository blogTaggedUserRepository;
+
+    @jakarta.annotation.Resource
     private BlogTagService blogTagService;
 
     @jakarta.annotation.Resource
@@ -127,6 +140,10 @@ class CacheableServiceTest {
                 blogValidator,
                 blogMapper,
                 blogRepository,
+                blogLikeRepository,
+                blogSaveRepository,
+                blogRatingRepository,
+                blogTaggedUserRepository,
                 blogTagService,
                 userValidator,
                 userMapper,
@@ -312,7 +329,7 @@ class CacheableServiceTest {
         assertThat(blogService.getAllBlogsByUserId(userId, otherViewerId)).hasSize(1);
         assertThat(blogService.getAllBlogsByUserId(userId, otherViewerId)).hasSize(1);
 
-        verify(blogRepository, times(3)).findByAuthorUserId(userId);
+        verify(blogRepository, times(2)).findByAuthorUserId(userId);
     }
 
     @Test
@@ -422,6 +439,9 @@ class CacheableServiceTest {
                     CacheConfig.REGION_WARDS_CACHE,
                     CacheConfig.REPORT_REASONS_CACHE,
                     CacheConfig.ORGANIC_FEED_CACHE,
+                    CacheConfig.PERSONALIZED_FEED_RANKING_CACHE,
+                    CacheConfig.CAFE_PAGE_BLOGS_CACHE,
+                    CacheConfig.TRENDING_BLOGS_CACHE,
                     CacheConfig.BLOG_DETAIL_CACHE,
                     CacheConfig.USER_PROFILE_BY_ID_CACHE,
                     CacheConfig.USER_PROFILE_BY_USERNAME_CACHE,
@@ -449,6 +469,7 @@ class CacheableServiceTest {
                 BlogLikeRepository blogLikeRepository,
                 BlogSaveRepository blogSaveRepository,
                 BlogRatingRepository blogRatingRepository,
+                BlogTaggedUserRepository blogTaggedUserRepository,
                 RegionRepository regionRepository,
                 RegionService regionService,
                 AiBlogModerationService aiBlogModerationService,
@@ -462,6 +483,7 @@ class CacheableServiceTest {
                     blogLikeRepository,
                     blogSaveRepository,
                     blogRatingRepository,
+                    blogTaggedUserRepository,
                     regionRepository,
                     regionService,
                     aiBlogModerationService,
@@ -544,6 +566,11 @@ class CacheableServiceTest {
         @Bean
         BlogRatingRepository blogRatingRepository() {
             return Mockito.mock(BlogRatingRepository.class);
+        }
+
+        @Bean
+        BlogTaggedUserRepository blogTaggedUserRepository() {
+            return Mockito.mock(BlogTaggedUserRepository.class);
         }
 
         @Bean

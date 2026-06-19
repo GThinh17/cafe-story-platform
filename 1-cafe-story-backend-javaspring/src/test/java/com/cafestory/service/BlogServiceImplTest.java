@@ -5,9 +5,11 @@ import com.cafestory.dto.requestDTO.BlogUpdateDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogRating;
+import com.cafestory.entity.BlogTaggedUser;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
+import com.cafestory.dto.responseDTO.BlogDisplayAuthorType;
 import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.entity.enums.RegionRequirement;
 import com.cafestory.mapper.BlogMapper;
@@ -15,6 +17,7 @@ import com.cafestory.repository.BlogLikeRepository;
 import com.cafestory.repository.BlogRatingRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.BlogSaveRepository;
+import com.cafestory.repository.BlogTaggedUserRepository;
 import com.cafestory.repository.RegionRepository;
 import com.cafestory.service.serviceImplement.BlogServiceImpl;
 import com.cafestory.service.serviceInterface.AiBlogModerationService;
@@ -58,6 +61,9 @@ class BlogServiceImplTest {
     private BlogRatingRepository blogRatingRepository;
 
     @Mock
+    private BlogTaggedUserRepository blogTaggedUserRepository;
+
+    @Mock
     private RegionRepository regionRepository;
 
     @Mock
@@ -90,6 +96,7 @@ class BlogServiceImplTest {
                 blogLikeRepository,
                 blogSaveRepository,
                 blogRatingRepository,
+                blogTaggedUserRepository,
                 regionRepository,
                 regionService,
                 aiBlogModerationService,
@@ -126,7 +133,7 @@ class BlogServiceImplTest {
         assertThat(result).isEqualTo(response);
         assertThat(blog.getAuthor()).isEqualTo(author);
         assertThat(blog.getPage()).isEqualTo(page);
-        assertThat(blog.getPageId()).isEqualTo(request.getPageId());
+        assertThat(blog.getPage().getId()).isEqualTo(request.getPageId());
         assertThat(blog.getIsPinned()).isTrue();
         assertThat(blog.getAllowComment()).isFalse();
         verify(userValidator).validateUserActive(author);
@@ -218,6 +225,8 @@ class BlogServiceImplTest {
         when(cafePageValidator.validateUserCanCreateBlogOnPage(request.getPageId(), actorUserId))
                 .thenReturn(cafePage(request.getPageId()));
         when(blogMapper.toBlog(request)).thenReturn(blog);
+        when(regionService.resolveExistingRegion(request.getRegionId(), RegionRequirement.BLOG_LOCATION))
+                .thenReturn(region(request.getRegionId()));
         when(blogRepository.save(blog)).thenReturn(savedBlog);
         when(aiBlogModerationService.moderateBlog(savedBlog)).thenReturn(moderatedBlog);
         when(blogMapper.toBlogResponseDTO(moderatedBlog)).thenReturn(response);
@@ -234,28 +243,33 @@ class BlogServiceImplTest {
     @Test
     void getAllBlogs_success_TC005() {
         Blog blog = blog();
-        BlogResponseDTO response = blogResponse(blog.getId(), UUID.randomUUID());
 
         when(blogRepository.findAll()).thenReturn(List.of(blog));
-        when(blogMapper.toBlogResponseDTO(blog)).thenReturn(response);
+        when(blogRepository.findImageUrlsByBlogIds(List.of(blog.getId())))
+                .thenReturn(List.of(imageRow(blog.getId(), "https://example.com/blog-1.png")));
+        when(regionRepository.findAllById(List.of(blog.getRegionId()))).thenReturn(List.of(region(blog.getRegionId())));
 
         List<BlogResponseDTO> result = blogService.getAllBlogs();
 
-        assertThat(result).containsExactly(response);
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getId()).isEqualTo(blog.getId());
+        assertThat(result.getFirst().getImageUrls()).containsExactly("https://example.com/blog-1.png");
+        assertThat(result.getFirst().getRegionCity()).isEqualTo("Ho Chi Minh");
+        verify(blogMapper, never()).toBlogResponseDTO(blog);
     }
 
     @Test
     void getBlogsByAuthorId_success_TC006() {
         UUID userId = UUID.randomUUID();
         Blog blog = blog();
-        BlogResponseDTO response = blogResponse(blog.getId(), userId);
+        blog.setAuthor(user(userId));
 
         when(blogRepository.findByAuthorUserId(userId)).thenReturn(List.of(blog));
-        when(blogMapper.toBlogResponseDTO(blog)).thenReturn(response);
 
         List<BlogResponseDTO> result = blogService.getBlogsByAuthorId(userId);
 
-        assertThat(result).containsExactly(response);
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getAuthorUserId()).isEqualTo(userId);
         verify(userValidator).validateUserExists(userId);
     }
 
@@ -263,15 +277,68 @@ class BlogServiceImplTest {
     void getAllBlogsByUserId_success_TC007() {
         UUID userId = UUID.randomUUID();
         Blog blog = blog();
-        BlogResponseDTO response = blogResponse(blog.getId(), userId);
+        UUID viewerUserId = UUID.randomUUID();
+        BlogTaggedUser tag = blogTag(blog, user(UUID.randomUUID()));
 
         when(blogRepository.findByAuthorUserId(userId)).thenReturn(List.of(blog));
-        when(blogMapper.toBlogResponseDTO(blog)).thenReturn(response);
+        when(blogRepository.findImageUrlsByBlogIds(List.of(blog.getId())))
+                .thenReturn(List.of(imageRow(blog.getId(), "https://example.com/blog-1.png")));
+        when(regionRepository.findAllById(List.of(blog.getRegionId()))).thenReturn(List.of(region(blog.getRegionId())));
+        when(blogLikeRepository.findLikedBlogIdsByUserIdAndBlogIds(viewerUserId, List.of(blog.getId())))
+                .thenReturn(List.of(blog.getId()));
+        when(blogSaveRepository.findSavedBlogIdsByUserIdAndBlogIds(viewerUserId, List.of(blog.getId())))
+                .thenReturn(List.of(blog.getId()));
+        when(blogSaveRepository.countSavesByBlogIds(List.of(blog.getId())))
+                .thenReturn(List.of(countRow(blog.getId(), 3L)));
+        when(blogRatingRepository.findRatingSummariesByBlogIds(List.of(blog.getId())))
+                .thenReturn(List.of(ratingSummaryRow(blog.getId(), 4.5, 2L)));
+        when(blogRatingRepository.findUserRatingsByUserIdAndBlogIds(viewerUserId, List.of(blog.getId())))
+                .thenReturn(List.of(userRatingRow(blog.getId(), 4)));
+        when(blogTaggedUserRepository.findByBlogIdInWithTaggedUser(List.of(blog.getId())))
+                .thenReturn(List.of(tag));
+
+        List<BlogResponseDTO> result = blogService.getAllBlogsByUserId(userId, viewerUserId);
+
+        assertThat(result).hasSize(1);
+        BlogResponseDTO response = result.getFirst();
+        assertThat(response.getId()).isEqualTo(blog.getId());
+        assertThat(response.getIsLike()).isTrue();
+        assertThat(response.getIsSave()).isTrue();
+        assertThat(response.getSaveCount()).isEqualTo(3L);
+        assertThat(response.getRatingScore()).isEqualTo(4.5);
+        assertThat(response.getRatingCount()).isEqualTo(2L);
+        assertThat(response.getIsRating()).isTrue();
+        assertThat(response.getMyRating()).isEqualTo(4);
+        assertThat(response.getTaggedUsers()).hasSize(1);
+        assertThat(response.getDisplayAuthorType()).isEqualTo(BlogDisplayAuthorType.CAFE_PAGE);
+        verify(blogRepository).findByAuthorUserId(userId);
+        verify(blogMapper, never()).toBlogResponseDTO(blog);
+        verify(blogLikeRepository, never()).existsByUserUserIdAndBlogId(viewerUserId, blog.getId());
+        verify(blogSaveRepository, never()).findByUserUserIdAndBlogId(viewerUserId, blog.getId());
+        verify(blogSaveRepository, never()).countByBlogId(blog.getId());
+        verify(blogRatingRepository, never()).findAverageRatingByBlogId(blog.getId());
+        verify(blogRatingRepository, never()).countByBlogId(blog.getId());
+        verify(blogRatingRepository, never()).findByUserUserIdAndBlogId(viewerUserId, blog.getId());
+        verify(blogTagService, never()).getTaggedUsers(blog.getId());
+    }
+
+    @Test
+    void getAllBlogsByUserId_success_anonSkipsViewerStateQueries_TC007A() {
+        UUID userId = UUID.randomUUID();
+        Blog blog = blog();
+
+        when(blogRepository.findByAuthorUserId(userId)).thenReturn(List.of(blog));
 
         List<BlogResponseDTO> result = blogService.getAllBlogsByUserId(userId);
 
-        assertThat(result).containsExactly(response);
-        verify(blogRepository).findByAuthorUserId(userId);
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getIsLike()).isFalse();
+        assertThat(result.getFirst().getIsSave()).isFalse();
+        assertThat(result.getFirst().getIsRating()).isFalse();
+        assertThat(result.getFirst().getMyRating()).isNull();
+        verify(blogLikeRepository, never()).findLikedBlogIdsByUserIdAndBlogIds(any(), any());
+        verify(blogSaveRepository, never()).findSavedBlogIdsByUserIdAndBlogIds(any(), any());
+        verify(blogRatingRepository, never()).findUserRatingsByUserIdAndBlogIds(any(), any());
     }
 
     @Test
@@ -383,7 +450,7 @@ class BlogServiceImplTest {
         BlogResponseDTO result = blogService.updateBlog(blogId, actorUserId, request);
 
         assertThat(result).isEqualTo(response);
-        assertThat(blog.getPageId()).isEqualTo(request.getPageId());
+        assertThat(blog.getPage().getId()).isEqualTo(request.getPageId());
         assertThat(blog.getPage()).isNotNull();
         assertThat(blog.getRegionId()).isEqualTo(request.getRegionId());
         assertThat(blog.getContent()).isEqualTo("Updated blog content");
@@ -512,6 +579,75 @@ class BlogServiceImplTest {
         rating.setUser(user);
         rating.setRating(ratingValue);
         return rating;
+    }
+
+    private BlogTaggedUser blogTag(Blog blog, User taggedUser) {
+        BlogTaggedUser tag = new BlogTaggedUser();
+        tag.setId(UUID.randomUUID());
+        tag.setBlog(blog);
+        tag.setTaggedUser(taggedUser);
+        return tag;
+    }
+
+    private BlogRepository.BlogImageUrlRow imageRow(UUID blogId, String imageUrl) {
+        return new BlogRepository.BlogImageUrlRow() {
+            @Override
+            public UUID getBlogId() {
+                return blogId;
+            }
+
+            @Override
+            public String getImageUrl() {
+                return imageUrl;
+            }
+        };
+    }
+
+    private BlogSaveRepository.BlogCountRow countRow(UUID blogId, Long count) {
+        return new BlogSaveRepository.BlogCountRow() {
+            @Override
+            public UUID getBlogId() {
+                return blogId;
+            }
+
+            @Override
+            public Long getCount() {
+                return count;
+            }
+        };
+    }
+
+    private BlogRatingRepository.BlogRatingSummaryRow ratingSummaryRow(UUID blogId, Double averageRating, Long ratingCount) {
+        return new BlogRatingRepository.BlogRatingSummaryRow() {
+            @Override
+            public UUID getBlogId() {
+                return blogId;
+            }
+
+            @Override
+            public Double getAverageRating() {
+                return averageRating;
+            }
+
+            @Override
+            public Long getRatingCount() {
+                return ratingCount;
+            }
+        };
+    }
+
+    private BlogRatingRepository.BlogUserRatingRow userRatingRow(UUID blogId, Integer rating) {
+        return new BlogRatingRepository.BlogUserRatingRow() {
+            @Override
+            public UUID getBlogId() {
+                return blogId;
+            }
+
+            @Override
+            public Integer getRating() {
+                return rating;
+            }
+        };
     }
 
     private CafePage cafePage(UUID pageId) {

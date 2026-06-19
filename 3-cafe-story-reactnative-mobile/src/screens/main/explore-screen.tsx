@@ -16,7 +16,7 @@ import {
   EmptyState,
   ExploreRecommendationList,
   ExploreTabs,
-  LoadingState,
+  FeedCardSkeletonList,
   Screen,
   ShareTopBar,
 } from "../../components";
@@ -266,7 +266,7 @@ export function ExploreScreen() {
 
   const content = activeTab === "trending" ? (
     isLoading && !trendingBlogs.length ? (
-      <LoadingState label="Loading trending posts..." />
+      <FeedCardSkeletonList />
     ) : errors.trending ? (
       <EmptyState description="Pull down to try again." title={errors.trending} />
     ) : trendingBlogs.length ? (

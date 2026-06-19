@@ -5,7 +5,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   ConversationTopBar,
   EmptyState,
-  LoadingState,
+  ListRowSkeletonList,
   NewChatSuggestionRow,
   Screen,
 } from "../../components";
@@ -215,7 +215,7 @@ export function NewChatScreen() {
         )}
         ListEmptyComponent={
           isLoading ? (
-            <LoadingState label="Loading suggestions..." />
+            <ListRowSkeletonList padded={false} />
           ) : error || filteredDiscoverSuggestions.length > 0 ? null : query.trim() ? (
             <EmptyState
               description="Try another name or username."

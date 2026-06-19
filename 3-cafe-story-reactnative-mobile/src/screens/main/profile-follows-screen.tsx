@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import {
   EmptyState,
-  LoadingState,
+  ListRowSkeletonList,
   ProfileFollowUserRow,
   Screen,
 } from "../../components";
@@ -319,7 +319,7 @@ export function ProfileFollowsScreen() {
         )}
         ListEmptyComponent={
           isLoading ? (
-            <LoadingState label="Loading people..." />
+            <ListRowSkeletonList />
           ) : (
             <EmptyState
               description={

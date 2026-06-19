@@ -11,4 +11,5 @@ export * from "./ui/button";
 export * from "./ui/empty-state";
 export * from "./ui/loading-state";
 export * from "./ui/screen";
+export * from "./ui/skeleton";
 export * from "./ui/text-field";

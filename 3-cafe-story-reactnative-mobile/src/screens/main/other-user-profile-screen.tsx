@@ -19,9 +19,9 @@ import {
 import {
   Avatar,
   EmptyState,
-  LoadingState,
   ProfileContentTabs,
   ProfileSkeleton,
+  PostGridSkeleton,
   Screen,
   UserPostGrid,
 } from "../../components";
@@ -544,9 +544,7 @@ export function OtherUserProfileScreen() {
 
         <View style={styles.grid}>
           {isContentLoading ? (
-            <View style={styles.emptyPosts}>
-              <LoadingState label="Loading posts..." />
-            </View>
+            <PostGridSkeleton />
           ) : contentError ? (
             <View style={styles.emptyPosts}>
               <EmptyState

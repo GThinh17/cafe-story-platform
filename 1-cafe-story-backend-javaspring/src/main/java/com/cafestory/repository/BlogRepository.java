@@ -15,10 +15,10 @@ import java.util.UUID;
 
 public interface BlogRepository extends JpaRepository<Blog, UUID> {
     @Override
-    @EntityGraph(attributePaths = {"author"})
+    @EntityGraph(attributePaths = {"author", "page"})
     List<Blog> findAll();
 
-    @EntityGraph(attributePaths = {"author"})
+    @EntityGraph(attributePaths = {"author", "page"})
     List<Blog> findByAuthorUserId(UUID authorUserId);
 
     @Query("""
@@ -27,7 +27,7 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
             where save.user.userId = :userId
             order by save.createdAt desc
             """)
-    @EntityGraph(attributePaths = {"author"})
+    @EntityGraph(attributePaths = {"author", "page"})
     List<Blog> findSavedBlogsByUserId(@Param("userId") UUID userId);
 
     @Query("""
@@ -36,7 +36,7 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
             where share.user.userId = :userId
             order by share.createdAt desc
             """)
-    @EntityGraph(attributePaths = {"author"})
+    @EntityGraph(attributePaths = {"author", "page"})
     List<Blog> findSharedBlogsByUserId(@Param("userId") UUID userId);
 
     @Query("""
@@ -45,7 +45,7 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
             where tag.taggedUser.userId = :userId
             order by tag.createdAt desc
             """)
-    @EntityGraph(attributePaths = {"author"})
+    @EntityGraph(attributePaths = {"author", "page"})
     List<Blog> findTaggedBlogsByUserId(@Param("userId") UUID userId);
 
     @EntityGraph(attributePaths = {"author"})
@@ -58,7 +58,7 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
             from Blog b
             where b.pageId = :pageId
             """)
-    @EntityGraph(attributePaths = {"author"})
+    @EntityGraph(attributePaths = {"author", "page"})
     List<Blog> findByPageId(@Param("pageId") UUID pageId);
 
     @EntityGraph(attributePaths = {"author"})
