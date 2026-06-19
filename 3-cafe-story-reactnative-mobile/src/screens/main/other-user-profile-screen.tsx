@@ -37,6 +37,7 @@ import {
   getSharedBlogsByUser,
   getTaggedBlogsByUser,
   getUserProfile,
+  isUserAuthoredBlog,
   unfollowUser,
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
@@ -168,7 +169,7 @@ export function OtherUserProfileScreen() {
 
       setTabPosts((currentPosts) => ({
         ...currentPosts,
-        [tab]: blogs.map(blogResponseToPostPreview),
+        [tab]: blogs.filter(isUserAuthoredBlog).map(blogResponseToPostPreview),
       }));
       setLoadedTabs((currentTabs) => ({
         ...currentTabs,

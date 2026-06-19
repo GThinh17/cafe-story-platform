@@ -8,6 +8,8 @@ import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -45,6 +47,7 @@ import {
   followUser,
   getMyProfile,
   getMixedRecommendations,
+  isUserAuthoredBlog,
   updateMyProfile,
   updateMyRegion,
   uploadAvatarToCloudinary,
@@ -69,7 +72,9 @@ const emptyTabPosts: Record<ProfileContentTab, UserPostPreview[]> = {
   tagged: [],
 };
 
-const PROFILE_TAB_INITIAL_VISIBLE_COUNT = 6;
+const PROFILE_CONTENT_TABS: ProfileContentTab[] = ["posts", "saved", "shared", "tagged"];
+const PROFILE_SCROLL_LOAD_MORE_THRESHOLD = 220;
+const PROFILE_TAB_INITIAL_VISIBLE_COUNT = 9;
 const PROFILE_TAB_LOAD_MORE_COUNT = 6;
 
 const initialVisiblePostCounts: Record<ProfileContentTab, number> = {
@@ -185,6 +190,8 @@ export function ProfileScreen() {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
   const isProfileLoadInFlightRef = useRef(false);
+  const loadMoreMarkerRef = useRef<string | null>(null);
+  const preloadingTabsRef = useRef<Set<ProfileContentTab>>(new Set());
   const [profile, setProfile] = useState<UserResponse | null>(null);
   const [ownedCafePage, setOwnedCafePage] = useState<CafePageResponse | null>(null);
   const [tabPosts, setTabPosts] =
@@ -277,19 +284,23 @@ export function ProfileScreen() {
   const loadContentTab = useCallback(async (
     tab: ProfileContentTab,
     userId: string,
-    refreshing = false,
+    options: { refreshing?: boolean; silent?: boolean } = {},
   ) => {
+    const { refreshing = false, silent = false } = options;
+
     if (refreshing) {
       setIsRefreshing(true);
-    } else {
+    } else if (!silent) {
       setIsContentLoading(true);
     }
 
     try {
       const blogs = await loadBlogsForProfileTab(tab, userId);
+      const userBlogs = blogs.filter(isUserAuthoredBlog);
+
       setTabPosts((currentPosts) => ({
         ...currentPosts,
-        [tab]: blogs.map(blogResponseToPostPreview),
+        [tab]: userBlogs.map(blogResponseToPostPreview),
       }));
       setVisiblePostCounts((currentCounts) => ({
         ...currentCounts,
@@ -299,16 +310,24 @@ export function ProfileScreen() {
         ...currentTabs,
         [tab]: true,
       }));
-      setContentError(null);
+      if (!silent) {
+        setContentError(null);
+      }
     } catch (nextError) {
-      setContentError(
-        nextError instanceof Error
-          ? nextError.message
-          : "Unable to load this profile section.",
-      );
+      if (!silent) {
+        setContentError(
+          nextError instanceof Error
+            ? nextError.message
+            : "Unable to load this profile section.",
+        );
+      }
     } finally {
-      setIsContentLoading(false);
-      setIsRefreshing(false);
+      if (!silent) {
+        setIsContentLoading(false);
+      }
+      if (refreshing) {
+        setIsRefreshing(false);
+      }
     }
   }, []);
 
@@ -325,7 +344,7 @@ export function ProfileScreen() {
       return;
     }
 
-    void loadContentTab(activeContentTab, currentUserId, true);
+    void loadContentTab(activeContentTab, currentUserId, { refreshing: true });
   }, [activeContentTab, loadContentTab, loadProfile, profile?.userId, user?.userId]);
 
   const loadSuggestions = useCallback(async () => {
@@ -625,7 +644,6 @@ export function ProfileScreen() {
   const activeVisiblePostCount =
     visiblePostCounts[activeContentTab] ?? PROFILE_TAB_INITIAL_VISIBLE_COUNT;
   const visiblePosts = activeTabPosts.slice(0, activeVisiblePostCount);
-  const canLoadMorePosts = visiblePosts.length < activeTabPosts.length;
   const visibleEmptyCopy = getEmptyCopy(activeContentTab);
   const ownedCafePageId = ownedCafePage?.id ?? linkedCafePageId(activeProfile, user);
   const shouldShowCafePageAction = hasCafePageRole(user) || Boolean(ownedCafePageId);
@@ -681,19 +699,51 @@ export function ProfileScreen() {
   }, [activeProfile?.userId, navigation, userName]);
 
   const loadMoreVisiblePosts = useCallback(() => {
+    const currentCount =
+      visiblePostCounts[activeContentTab] ?? PROFILE_TAB_INITIAL_VISIBLE_COUNT;
+    const totalCount = tabPosts[activeContentTab].length;
+
+    if (currentCount >= totalCount) {
+      return;
+    }
+
+    const marker = `${activeContentTab}:${currentCount}:${totalCount}`;
+
+    if (loadMoreMarkerRef.current === marker) {
+      return;
+    }
+
+    loadMoreMarkerRef.current = marker;
     setVisiblePostCounts((currentCounts) => {
-      const currentCount =
+      const nextCurrentCount =
         currentCounts[activeContentTab] ?? PROFILE_TAB_INITIAL_VISIBLE_COUNT;
 
       return {
         ...currentCounts,
         [activeContentTab]: Math.min(
-          currentCount + PROFILE_TAB_LOAD_MORE_COUNT,
+          nextCurrentCount + PROFILE_TAB_LOAD_MORE_COUNT,
           tabPosts[activeContentTab].length,
         ),
       };
     });
-  }, [activeContentTab, tabPosts]);
+    setTimeout(() => {
+      if (loadMoreMarkerRef.current === marker) {
+        loadMoreMarkerRef.current = null;
+      }
+    }, 250);
+  }, [activeContentTab, tabPosts, visiblePostCounts]);
+
+  const handleProfileScroll = useCallback((
+    event: NativeSyntheticEvent<NativeScrollEvent>,
+  ) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const distanceFromBottom =
+      contentSize.height - (contentOffset.y + layoutMeasurement.height);
+
+    if (distanceFromBottom <= PROFILE_SCROLL_LOAD_MORE_THRESHOLD) {
+      loadMoreVisiblePosts();
+    }
+  }, [loadMoreVisiblePosts]);
 
   useEffect(() => {
     const currentUserId = profile?.userId;
@@ -703,6 +753,29 @@ export function ProfileScreen() {
     }
 
     void loadContentTab(activeContentTab, currentUserId);
+  }, [activeContentTab, loadContentTab, loadedTabs, profile?.userId]);
+
+  useEffect(() => {
+    const currentUserId = profile?.userId;
+
+    if (!currentUserId) {
+      return;
+    }
+
+    for (const tab of PROFILE_CONTENT_TABS) {
+      if (
+        tab === activeContentTab ||
+        loadedTabs[tab] ||
+        preloadingTabsRef.current.has(tab)
+      ) {
+        continue;
+      }
+
+      preloadingTabsRef.current.add(tab);
+      void loadContentTab(tab, currentUserId, { silent: true }).finally(() => {
+        preloadingTabsRef.current.delete(tab);
+      });
+    }
   }, [activeContentTab, loadContentTab, loadedTabs, profile?.userId]);
 
   if (isLoading && !profile) {
@@ -738,9 +811,11 @@ export function ProfileScreen() {
 
       <ScrollView
         contentContainerStyle={styles.content}
+        onScroll={handleProfileScroll}
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
         }
+        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       >
         {error ? (
@@ -912,24 +987,7 @@ export function ProfileScreen() {
               />
             </View>
           ) : visiblePosts.length > 0 ? (
-            <>
-              <UserPostGrid onPostPress={openUserPosts} posts={visiblePosts} />
-              {canLoadMorePosts ? (
-                <View style={styles.loadMoreRow}>
-                  <Pressable
-                    accessibilityLabel="Load more profile posts"
-                    accessibilityRole="button"
-                    onPress={loadMoreVisiblePosts}
-                    style={({ pressed }) => [
-                      styles.loadMoreButton,
-                      pressed && styles.actionPressed,
-                    ]}
-                  >
-                    <Text style={styles.loadMoreText}>Load more</Text>
-                  </Pressable>
-                </View>
-              ) : null}
-            </>
+            <UserPostGrid onPostPress={openUserPosts} posts={visiblePosts} />
           ) : (
             <View style={styles.emptyPosts}>
               <EmptyState
@@ -1198,26 +1256,4 @@ const styles = StyleSheet.create({
     gap: 2,
   },
 
-  loadMoreButton: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 999,
-    borderWidth: 1,
-    minHeight: 42,
-    justifyContent: "center",
-    paddingHorizontal: spacing.xl,
-  },
-
-  loadMoreRow: {
-    alignItems: "center",
-    paddingVertical: spacing.lg,
-    width: "100%",
-  },
-
-  loadMoreText: {
-    color: colors.foreground,
-    fontSize: typography.label,
-    fontWeight: "900",
-  },
 });
