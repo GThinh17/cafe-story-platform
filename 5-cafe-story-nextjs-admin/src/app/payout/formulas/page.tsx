@@ -1,10 +1,5 @@
-import { AdminDashboardShell } from "@/components/admin/admin-dashboard-shell";
-import { AdminPayoutFormulasPage } from "@/components/admin/admin-payout-formulas-page";
+import { permanentRedirect } from "next/navigation";
 
 export default function PayoutFormulasPage() {
-  return (
-    <AdminDashboardShell>
-      <AdminPayoutFormulasPage />
-    </AdminDashboardShell>
-  );
+  permanentRedirect("/formulas");
 }

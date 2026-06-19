@@ -214,7 +214,7 @@ export type BlogRankingOverrideRequest = {
   end_at?: string | null;
 };
 
-export type ReviewerScoringFormula = {
+export type ReviewerFormula = {
   id: UUID;
   likeWeight: number;
   commentWeight: number;
@@ -222,6 +222,11 @@ export type ReviewerScoringFormula = {
   likePayoutAmount: number;
   commentPayoutAmount: number;
   sharePayoutAmount: number;
+  ironMultiplier: number;
+  bronzeMultiplier: number;
+  silverMultiplier: number;
+  goldMultiplier: number;
+  diamondMultiplier: number;
   active: boolean;
   description: string | null;
   createdAt: string;
@@ -252,20 +257,6 @@ export type ReviewerRankingSnapshot = {
 
 export type AdminPayoutStatus = "PENDING" | "APPROVED" | "PAID" | "CANCELLED";
 
-export type PayoutFormula = {
-  id: UUID;
-  likePayoutAmount: number;
-  commentPayoutAmount: number;
-  sharePayoutAmount: number;
-  ironMultiplier: number;
-  bronzeMultiplier: number;
-  silverMultiplier: number;
-  goldMultiplier: number;
-  diamondMultiplier: number;
-  active: boolean;
-  description: string | null;
-  createdAt: string;
-};
 
 export type ReviewerIncome = {
   id: UUID;

@@ -1,7 +1,7 @@
 package com.cafestory.service.serviceInterface;
 
-import com.cafestory.dto.requestDTO.notification.CreateNotificationRequest;
-import com.cafestory.dto.responseDTO.notification.NotificationResponseDTO;
+import com.cafestory.dto.requestDTO.CreateNotificationRequestDTO;
+import com.cafestory.dto.responseDTO.NotificationResponseDTO;
 import com.cafestory.entity.enums.NotificationType;
 
 import java.util.List;
@@ -9,7 +9,7 @@ import java.util.UUID;
 
 public interface NotificationService {
 
-    NotificationResponseDTO createNotification(CreateNotificationRequest request);
+    NotificationResponseDTO createNotification(CreateNotificationRequestDTO request);
 
     NotificationResponseDTO createLikeNotification(UUID recipientId, UUID actorId, UUID blogId);
 

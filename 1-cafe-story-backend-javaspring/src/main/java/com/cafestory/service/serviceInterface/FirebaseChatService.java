@@ -1,7 +1,7 @@
 package com.cafestory.service.serviceInterface;
 
-import com.cafestory.dto.responseDTO.chat.ChatMessageResponseDTO;
-import com.cafestory.dto.responseDTO.chat.ConversationResponseDTO;
+import com.cafestory.dto.responseDTO.ChatMessageResponseDTO;
+import com.cafestory.dto.responseDTO.ConversationResponseDTO;
 
 public interface FirebaseChatService {
 

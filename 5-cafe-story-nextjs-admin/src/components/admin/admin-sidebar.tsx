@@ -9,6 +9,7 @@ import {
   CreditCardIcon,
   FileTextIcon,
   FlagIcon,
+  FlaskConicalIcon,
   LayoutDashboardIcon,
   LogOutIcon,
   MenuIcon,
@@ -60,6 +61,7 @@ const NAV_GROUPS: Array<{
       { href: "/payments", icon: CreditCardIcon, label: "Payments" },
       { href: "/extra-fees", icon: BadgeDollarSignIcon, label: "Extra Fees" },
       { href: "/payout", icon: WalletIcon, label: "Payouts" },
+      { href: "/formulas", icon: FlaskConicalIcon, label: "Formulas" },
     ],
   },
 ];

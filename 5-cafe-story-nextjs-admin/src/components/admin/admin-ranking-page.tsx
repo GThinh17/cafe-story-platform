@@ -175,7 +175,7 @@ export function AdminRankingPage() {
         actions={
           <div className="flex flex-wrap gap-2">
             <Button asChild type="button" variant="outline">
-              <Link href="/ranking/formulas">
+              <Link href="/formulas">
                 <ListOrderedIcon data-icon="inline-start" />
                 Scoring formulas
               </Link>

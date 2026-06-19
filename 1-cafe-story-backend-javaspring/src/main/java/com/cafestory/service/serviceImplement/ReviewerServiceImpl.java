@@ -1,13 +1,13 @@
 package com.cafestory.service.serviceImplement;
 
-import com.cafestory.dto.responseDTO.reviewer.ReviewerBadgeResponseDTO;
-import com.cafestory.dto.responseDTO.reviewer.ReviewerDiscoveryResponseDTO;
-import com.cafestory.dto.responseDTO.reviewer.ReviewerGeoAnalyticsResponseDTO;
-import com.cafestory.dto.responseDTO.reviewer.ReviewerPayoutResponseDTO;
-import com.cafestory.dto.responseDTO.reviewer.ReviewerRankingResponseDTO;
-import com.cafestory.dto.responseDTO.reviewer.ReviewerResponseDTO;
-import com.cafestory.dto.responseDTO.reviewer.ReviewerSegmentResponseDTO;
-import com.cafestory.dto.responseDTO.reviewer.ReviewerStatsResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerBadgeResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerDiscoveryResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerGeoAnalyticsResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerPayoutResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerRankingResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerSegmentResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerStatsResponseDTO;
 import com.cafestory.dto.responseDTO.RegionResponseDTO;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogLike;
@@ -18,7 +18,7 @@ import com.cafestory.entity.Reviewer;
 import com.cafestory.entity.ReviewerBadgeHistory;
 import com.cafestory.entity.ReviewerPayout;
 import com.cafestory.entity.Region;
-import com.cafestory.entity.ReviewerScoringFormula;
+import com.cafestory.entity.ReviewerFormula;
 import com.cafestory.entity.Role;
 import com.cafestory.entity.User;
 import com.cafestory.entity.UserRoleAssignment;
@@ -39,7 +39,7 @@ import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRoleAssignmentRepository;
 import com.cafestory.service.serviceInterface.ReviewerBadgeThresholdService;
 import com.cafestory.service.serviceInterface.ReviewerRankingSnapshotService;
-import com.cafestory.service.serviceInterface.ReviewerScoringFormulaService;
+import com.cafestory.service.serviceInterface.ReviewerFormulaService;
 import com.cafestory.service.serviceInterface.ReviewerService;
 import com.cafestory.validation.UserValidator;
 import org.springframework.http.HttpStatus;
@@ -81,7 +81,7 @@ public class ReviewerServiceImpl implements ReviewerService {
     private final UserRepository userRepository;
     private final UserFollowRepository userFollowRepository;
     private final UserValidator userValidator;
-    private final ReviewerScoringFormulaService formulaService;
+    private final ReviewerFormulaService formulaService;
     private final ReviewerBadgeThresholdService badgeThresholdService;
     private final ReviewerRankingSnapshotService snapshotService;
 
@@ -99,7 +99,7 @@ public class ReviewerServiceImpl implements ReviewerService {
             UserRepository userRepository,
             UserFollowRepository userFollowRepository,
             UserValidator userValidator,
-            ReviewerScoringFormulaService formulaService,
+            ReviewerFormulaService formulaService,
             ReviewerBadgeThresholdService badgeThresholdService,
             ReviewerRankingSnapshotService snapshotService) {
         this.blogLikeRepository = blogLikeRepository;
@@ -301,7 +301,7 @@ public class ReviewerServiceImpl implements ReviewerService {
         YearMonth yearMonth = parseMonth(month);
         DateRange range = dateRangeForMonth(yearMonth);
         Map<UUID, EngagementAccumulator> engagement = aggregateEngagementForAllUsers(range.startDate(), range.endDate());
-        ReviewerScoringFormula formula = formulaService.getActiveFormula();
+        ReviewerFormula formula = formulaService.getActiveFormula();
         List<ReviewerPayoutResponseDTO> responses = new ArrayList<>();
         for (EngagementAccumulator accumulator : engagement.values()) {
             if (reviewerPayoutRepository.existsByReviewerReviewerIdAndPayoutMonth(accumulator.reviewer().getReviewerId(), month) && !overwrite) {
@@ -431,7 +431,7 @@ public class ReviewerServiceImpl implements ReviewerService {
     }
 
     private Map<UUID, EngagementAccumulator> aggregateEngagementForAllUsers(LocalDateTime startDate, LocalDateTime endDate) {
-        ReviewerScoringFormula formula = formulaService.getActiveFormula();
+        ReviewerFormula formula = formulaService.getActiveFormula();
         int likeWeight = formula.getLikeWeight();
         int shareWeight = formula.getShareWeight();
         int commentWeight = formula.getCommentWeight();

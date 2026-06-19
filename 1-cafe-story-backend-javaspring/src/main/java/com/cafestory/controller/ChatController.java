@@ -1,13 +1,13 @@
 package com.cafestory.controller;
 
-import com.cafestory.dto.requestDTO.chat.AddMemberRequest;
-import com.cafestory.dto.requestDTO.chat.CreateCafePageConversationRequest;
-import com.cafestory.dto.requestDTO.chat.CreateDirectConversationRequest;
-import com.cafestory.dto.requestDTO.chat.CreateGroupConversationRequest;
-import com.cafestory.dto.requestDTO.chat.SendMessageRequest;
-import com.cafestory.dto.requestDTO.chat.UpdateGroupInfoRequest;
-import com.cafestory.dto.responseDTO.chat.ChatMessageResponseDTO;
-import com.cafestory.dto.responseDTO.chat.ConversationResponseDTO;
+import com.cafestory.dto.requestDTO.AddMemberRequestDTO;
+import com.cafestory.dto.requestDTO.CreateCafePageConversationRequestDTO;
+import com.cafestory.dto.requestDTO.CreateDirectConversationRequestDTO;
+import com.cafestory.dto.requestDTO.CreateGroupConversationRequestDTO;
+import com.cafestory.dto.requestDTO.SendMessageRequestDTO;
+import com.cafestory.dto.requestDTO.UpdateGroupInfoRequestDTO;
+import com.cafestory.dto.responseDTO.ChatMessageResponseDTO;
+import com.cafestory.dto.responseDTO.ConversationResponseDTO;
 import com.cafestory.service.serviceInterface.ChatService;
 import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
@@ -41,7 +41,7 @@ public class ChatController {
 
     @PostMapping("/conversations/direct")
     public ConversationResponseDTO createOrGetDirectConversation(
-            @Valid @RequestBody CreateDirectConversationRequest request,
+            @Valid @RequestBody CreateDirectConversationRequestDTO request,
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         request.setFirstUserId(requireUserId(principal));
         return chatService.createOrGetDirectConversation(request);
@@ -49,7 +49,7 @@ public class ChatController {
 
     @PostMapping("/conversations/cafe-page")
     public ConversationResponseDTO createOrGetCafePageConversation(
-            @Valid @RequestBody CreateCafePageConversationRequest request,
+            @Valid @RequestBody CreateCafePageConversationRequestDTO request,
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         request.setUserId(requireUserId(principal));
         return chatService.createOrGetCafePageConversation(request);
@@ -58,7 +58,7 @@ public class ChatController {
     @PostMapping("/conversations/group")
     @ResponseStatus(HttpStatus.CREATED)
     public ConversationResponseDTO createGroupConversation(
-            @Valid @RequestBody CreateGroupConversationRequest request,
+            @Valid @RequestBody CreateGroupConversationRequestDTO request,
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         request.setCreatorUserId(requireUserId(principal));
         return chatService.createGroupConversation(request);
@@ -83,7 +83,7 @@ public class ChatController {
     @ResponseStatus(HttpStatus.CREATED)
     public ChatMessageResponseDTO sendMessage(
             @PathVariable UUID conversationId,
-            @Valid @RequestBody SendMessageRequest request,
+            @Valid @RequestBody SendMessageRequestDTO request,
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         request.setSenderId(requireUserId(principal));
         return chatService.sendMessage(conversationId, request);
@@ -92,7 +92,7 @@ public class ChatController {
     @PostMapping("/conversations/{conversationId}/members")
     public ConversationResponseDTO addMember(
             @PathVariable UUID conversationId,
-            @Valid @RequestBody AddMemberRequest request,
+            @Valid @RequestBody AddMemberRequestDTO request,
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         return chatService.addMember(conversationId, requireUserId(principal), request.getMemberUserId());
     }
@@ -116,7 +116,7 @@ public class ChatController {
     @PatchMapping("/conversations/{conversationId}/group")
     public ConversationResponseDTO updateGroupInfo(
             @PathVariable UUID conversationId,
-            @Valid @RequestBody UpdateGroupInfoRequest request,
+            @Valid @RequestBody UpdateGroupInfoRequestDTO request,
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         request.setActorUserId(requireUserId(principal));
         return chatService.updateGroupInfo(conversationId, request);

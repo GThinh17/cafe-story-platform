@@ -1,10 +1,10 @@
 package com.cafestory.service.serviceImplement;
 
-import com.cafestory.dto.responseDTO.payout.ReviewerIncomeResponse;
+import com.cafestory.dto.responseDTO.ReviewerIncomeResponseDTO;
 import com.cafestory.entity.BlogLike;
 import com.cafestory.entity.BlogShare;
 import com.cafestory.entity.Comment;
-import com.cafestory.entity.PayoutFormula;
+import com.cafestory.entity.ReviewerFormula;
 import com.cafestory.entity.Reviewer;
 import com.cafestory.entity.ReviewerIncome;
 import com.cafestory.entity.ReviewerRankingSnapshot;
@@ -16,7 +16,7 @@ import com.cafestory.repository.CommentRepository;
 import com.cafestory.repository.ReviewerIncomeRepository;
 import com.cafestory.repository.ReviewerRankingSnapshotRepository;
 import com.cafestory.repository.ReviewerRepository;
-import com.cafestory.service.serviceInterface.PayoutFormulaService;
+import com.cafestory.service.serviceInterface.ReviewerFormulaService;
 import com.cafestory.service.serviceInterface.ReviewerIncomeService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -43,7 +43,7 @@ public class ReviewerIncomeServiceImpl implements ReviewerIncomeService {
     private final BlogLikeRepository blogLikeRepository;
     private final BlogShareRepository blogShareRepository;
     private final CommentRepository commentRepository;
-    private final PayoutFormulaService payoutFormulaService;
+    private final ReviewerFormulaService formulaService;
 
     public ReviewerIncomeServiceImpl(
             ReviewerIncomeRepository incomeRepository,
@@ -52,14 +52,14 @@ public class ReviewerIncomeServiceImpl implements ReviewerIncomeService {
             BlogLikeRepository blogLikeRepository,
             BlogShareRepository blogShareRepository,
             CommentRepository commentRepository,
-            PayoutFormulaService payoutFormulaService) {
+            ReviewerFormulaService formulaService) {
         this.incomeRepository = incomeRepository;
         this.reviewerRepository = reviewerRepository;
         this.snapshotRepository = snapshotRepository;
         this.blogLikeRepository = blogLikeRepository;
         this.blogShareRepository = blogShareRepository;
         this.commentRepository = commentRepository;
-        this.payoutFormulaService = payoutFormulaService;
+        this.formulaService = formulaService;
     }
 
     @Override
@@ -69,9 +69,8 @@ public class ReviewerIncomeServiceImpl implements ReviewerIncomeService {
         LocalDateTime end = date.plusDays(1).atStartOfDay();
         String period = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
 
-        PayoutFormula formula = payoutFormulaService.getActiveFormula();
+        ReviewerFormula formula = formulaService.getActiveFormula();
 
-        // Load all reviewers, build userId→reviewer and reviewerId→counts maps
         List<Reviewer> allReviewers = reviewerRepository.findAll();
         Map<UUID, Reviewer> byUserId = new HashMap<>();
         Map<UUID, long[]> counts = new HashMap<>();
@@ -80,7 +79,6 @@ public class ReviewerIncomeServiceImpl implements ReviewerIncomeService {
             counts.put(reviewer.getReviewerId(), new long[]{0L, 0L, 0L}); // like, share, comment
         }
 
-        // Count engagement in the 24h window
         for (BlogLike like : blogLikeRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(start, end)) {
             Reviewer reviewer = byUserId.get(like.getUser().getUserId());
             if (reviewer != null) counts.get(reviewer.getReviewerId())[0]++;
@@ -94,14 +92,12 @@ public class ReviewerIncomeServiceImpl implements ReviewerIncomeService {
             if (reviewer != null) counts.get(reviewer.getReviewerId())[2]++;
         }
 
-        // Batch load DAILY ranking snapshots for badge lookup
         Map<UUID, ReviewerBadge> badgeByReviewerId = new HashMap<>();
         for (ReviewerRankingSnapshot snapshot : snapshotRepository
                 .findByPeriodAndPeriodTypeOrderByRankPositionAsc(period, RankingPeriodType.DAILY)) {
             badgeByReviewerId.put(snapshot.getReviewer().getReviewerId(), snapshot.getBadge());
         }
 
-        // Batch load existing income records for this date → upsert map
         Map<UUID, ReviewerIncome> existingByReviewerId = new HashMap<>();
         for (ReviewerIncome income : incomeRepository.findByIncomeDate(date)) {
             existingByReviewerId.put(income.getReviewer().getReviewerId(), income);
@@ -137,7 +133,7 @@ public class ReviewerIncomeServiceImpl implements ReviewerIncomeService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ReviewerIncomeResponse> getIncomeByReviewer(UUID reviewerId, String month, Pageable pageable) {
+    public Page<ReviewerIncomeResponseDTO> getIncomeByReviewer(UUID reviewerId, String month, Pageable pageable) {
         YearMonth ym = YearMonth.parse(month);
         LocalDate start = ym.atDay(1);
         LocalDate end = ym.plusMonths(1).atDay(1);
@@ -148,7 +144,7 @@ public class ReviewerIncomeServiceImpl implements ReviewerIncomeService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ReviewerIncomeResponse> getAllIncome(String month, Pageable pageable) {
+    public Page<ReviewerIncomeResponseDTO> getAllIncome(String month, Pageable pageable) {
         YearMonth ym = YearMonth.parse(month);
         LocalDate start = ym.atDay(1);
         LocalDate end = ym.plusMonths(1).atDay(1);
@@ -157,8 +153,8 @@ public class ReviewerIncomeServiceImpl implements ReviewerIncomeService {
                 .map(this::toResponse);
     }
 
-    private ReviewerIncomeResponse toResponse(ReviewerIncome income) {
-        ReviewerIncomeResponse dto = new ReviewerIncomeResponse();
+    private ReviewerIncomeResponseDTO toResponse(ReviewerIncome income) {
+        ReviewerIncomeResponseDTO dto = new ReviewerIncomeResponseDTO();
         dto.setId(income.getId());
         dto.setReviewerId(income.getReviewer().getReviewerId());
         dto.setReviewerUserName(income.getReviewer().getUser().getUserName());

@@ -1,7 +1,7 @@
 package com.cafestory.mapper;
 
-import com.cafestory.dto.responseDTO.notification.NavigationTargetResponseDTO;
-import com.cafestory.dto.responseDTO.notification.NotificationResponseDTO;
+import com.cafestory.dto.responseDTO.NavigationTargetResponseDTO;
+import com.cafestory.dto.responseDTO.NotificationResponseDTO;
 import com.cafestory.entity.Notification;
 import com.cafestory.entity.enums.NotificationTargetType;
 import com.cafestory.entity.enums.NotificationType;

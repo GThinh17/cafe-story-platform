@@ -1,13 +1,13 @@
 package com.cafestory.service.serviceImplement;
 
-import com.cafestory.dto.requestDTO.chat.CreateDirectConversationRequest;
-import com.cafestory.dto.requestDTO.chat.CreateCafePageConversationRequest;
-import com.cafestory.dto.requestDTO.chat.CreateGroupConversationRequest;
-import com.cafestory.dto.requestDTO.chat.SendMessageRequest;
-import com.cafestory.dto.requestDTO.chat.UpdateGroupInfoRequest;
-import com.cafestory.dto.responseDTO.chat.ChatMessageResponseDTO;
-import com.cafestory.dto.responseDTO.chat.ConversationResponseDTO;
-import com.cafestory.dto.responseDTO.chat.SocketEventResponseDTO;
+import com.cafestory.dto.requestDTO.CreateDirectConversationRequestDTO;
+import com.cafestory.dto.requestDTO.CreateCafePageConversationRequestDTO;
+import com.cafestory.dto.requestDTO.CreateGroupConversationRequestDTO;
+import com.cafestory.dto.requestDTO.SendMessageRequestDTO;
+import com.cafestory.dto.requestDTO.UpdateGroupInfoRequestDTO;
+import com.cafestory.dto.responseDTO.ChatMessageResponseDTO;
+import com.cafestory.dto.responseDTO.ConversationResponseDTO;
+import com.cafestory.dto.responseDTO.SocketEventResponseDTO;
 import com.cafestory.entity.ChatMember;
 import com.cafestory.entity.ChatMessage;
 import com.cafestory.entity.CafePage;
@@ -78,7 +78,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public ConversationResponseDTO createOrGetDirectConversation(CreateDirectConversationRequest request) {
+    public ConversationResponseDTO createOrGetDirectConversation(CreateDirectConversationRequestDTO request) {
         validateDifferentUsers(request.getFirstUserId(), request.getSecondUserId());
         User firstUser = userValidator.validateUserExists(request.getFirstUserId());
         User secondUser = userValidator.validateUserExists(request.getSecondUserId());
@@ -90,7 +90,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public ConversationResponseDTO createOrGetCafePageConversation(CreateCafePageConversationRequest request) {
+    public ConversationResponseDTO createOrGetCafePageConversation(CreateCafePageConversationRequestDTO request) {
         CafePage cafePage = cafePageRepository.findById(request.getCafePageId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cafe page not found"));
         User user = userValidator.validateUserExists(request.getUserId());
@@ -114,7 +114,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public ConversationResponseDTO createGroupConversation(CreateGroupConversationRequest request) {
+    public ConversationResponseDTO createGroupConversation(CreateGroupConversationRequestDTO request) {
         User creator = userValidator.validateUserExists(request.getCreatorUserId());
         Conversation conversation = new Conversation();
         conversation.setType(ConversationType.GROUP);
@@ -162,7 +162,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public ChatMessageResponseDTO sendMessage(UUID conversationId, SendMessageRequest request) {
+    public ChatMessageResponseDTO sendMessage(UUID conversationId, SendMessageRequestDTO request) {
         Conversation conversation = validateConversationExists(conversationId);
         User sender = userValidator.validateUserExists(request.getSenderId());
         validateSenderIsMember(conversationId, sender.getUserId());
@@ -244,7 +244,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public ConversationResponseDTO updateGroupInfo(UUID conversationId, UpdateGroupInfoRequest request) {
+    public ConversationResponseDTO updateGroupInfo(UUID conversationId, UpdateGroupInfoRequestDTO request) {
         Conversation conversation = validateGroupConversation(conversationId);
         validateManagePermission(conversationId, request.getActorUserId());
         if (request.getGroupName() != null) {
@@ -322,7 +322,7 @@ public class ChatServiceImpl implements ChatService {
         }
     }
 
-    private void validateMessagePayload(SendMessageRequest request) {
+    private void validateMessagePayload(SendMessageRequestDTO request) {
         boolean hasText = request.getText() != null && !request.getText().isBlank();
         boolean hasImages = request.getImageUrls() != null && !request.getImageUrls().isEmpty();
         boolean hasSticker = (request.getStickerUrl() != null && !request.getStickerUrl().isBlank())

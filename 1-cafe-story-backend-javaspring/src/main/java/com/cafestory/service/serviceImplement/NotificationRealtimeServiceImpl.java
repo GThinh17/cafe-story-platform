@@ -1,7 +1,7 @@
 package com.cafestory.service.serviceImplement;
 
-import com.cafestory.dto.responseDTO.chat.SocketEventResponseDTO;
-import com.cafestory.dto.responseDTO.notification.NotificationResponseDTO;
+import com.cafestory.dto.responseDTO.SocketEventResponseDTO;
+import com.cafestory.dto.responseDTO.NotificationResponseDTO;
 import com.cafestory.service.serviceInterface.NotificationRealtimeService;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;

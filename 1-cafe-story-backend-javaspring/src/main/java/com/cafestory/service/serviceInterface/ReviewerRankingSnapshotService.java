@@ -1,6 +1,6 @@
 package com.cafestory.service.serviceInterface;
 
-import com.cafestory.dto.responseDTO.reviewer.ReviewerRankingSnapshotResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerRankingSnapshotResponseDTO;
 import com.cafestory.entity.Reviewer;
 import com.cafestory.entity.enums.RankingPeriodType;
 

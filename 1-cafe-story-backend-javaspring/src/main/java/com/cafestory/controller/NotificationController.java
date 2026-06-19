@@ -1,7 +1,7 @@
 package com.cafestory.controller;
 
-import com.cafestory.dto.responseDTO.notification.NotificationResponseDTO;
-import com.cafestory.dto.responseDTO.notification.UnreadCountResponseDTO;
+import com.cafestory.dto.responseDTO.NotificationResponseDTO;
+import com.cafestory.dto.responseDTO.UnreadCountResponseDTO;
 import com.cafestory.entity.enums.NotificationType;
 import com.cafestory.service.serviceInterface.NotificationService;
 import com.cafestory.until.security.AuthenticatedUserPrincipal;

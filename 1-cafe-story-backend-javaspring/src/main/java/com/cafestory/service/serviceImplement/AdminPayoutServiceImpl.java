@@ -1,9 +1,9 @@
 package com.cafestory.service.serviceImplement;
 
 import com.cafestory.dto.requestDTO.AdminPayoutStatusRequest;
-import com.cafestory.dto.responseDTO.payout.AdminPayoutResponse;
+import com.cafestory.dto.responseDTO.AdminPayoutResponseDTO;
 import com.cafestory.entity.AdminPayout;
-import com.cafestory.entity.PayoutFormula;
+import com.cafestory.entity.ReviewerFormula;
 import com.cafestory.entity.Reviewer;
 import com.cafestory.entity.ReviewerIncome;
 import com.cafestory.entity.ReviewerRankingSnapshot;
@@ -16,7 +16,7 @@ import com.cafestory.repository.ReviewerIncomeRepository;
 import com.cafestory.repository.ReviewerRankingSnapshotRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.AdminPayoutService;
-import com.cafestory.service.serviceInterface.PayoutFormulaService;
+import com.cafestory.service.serviceInterface.ReviewerFormulaService;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -41,19 +41,19 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
     private final ReviewerIncomeRepository incomeRepository;
     private final ReviewerRankingSnapshotRepository snapshotRepository;
     private final UserRepository userRepository;
-    private final PayoutFormulaService payoutFormulaService;
+    private final ReviewerFormulaService formulaService;
 
     public AdminPayoutServiceImpl(
             AdminPayoutRepository payoutRepository,
             ReviewerIncomeRepository incomeRepository,
             ReviewerRankingSnapshotRepository snapshotRepository,
             UserRepository userRepository,
-            PayoutFormulaService payoutFormulaService) {
+            ReviewerFormulaService formulaService) {
         this.payoutRepository = payoutRepository;
         this.incomeRepository = incomeRepository;
         this.snapshotRepository = snapshotRepository;
         this.userRepository = userRepository;
-        this.payoutFormulaService = payoutFormulaService;
+        this.formulaService = formulaService;
     }
 
     @Override
@@ -63,9 +63,8 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
         LocalDate start = ym.atDay(1);
         LocalDate end = ym.plusMonths(1).atDay(1);
 
-        PayoutFormula formula = payoutFormulaService.getActiveFormula();
+        ReviewerFormula formula = formulaService.getActiveFormula();
 
-        // Aggregate income records for the month → totalBaseAmount per reviewer
         List<ReviewerIncome> monthlyIncomes = incomeRepository
                 .findByIncomeDateGreaterThanEqualAndIncomeDateLessThan(start, end);
 
@@ -81,14 +80,12 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
             return;
         }
 
-        // Batch load MONTHLY ranking snapshots for badge lookup
         Map<UUID, ReviewerBadge> badgeByReviewerId = new HashMap<>();
         for (ReviewerRankingSnapshot snapshot : snapshotRepository
                 .findByPeriodAndPeriodTypeOrderByRankPositionAsc(month, RankingPeriodType.MONTHLY)) {
             badgeByReviewerId.put(snapshot.getReviewer().getReviewerId(), snapshot.getBadge());
         }
 
-        // Batch load existing payout records for upsert
         Map<UUID, AdminPayout> existingPayouts = new HashMap<>();
         for (AdminPayout payout : payoutRepository.findByPayoutMonth(month)) {
             existingPayouts.put(payout.getReviewer().getReviewerId(), payout);
@@ -111,7 +108,6 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
             payout.setBadgeMultiplier(multiplier);
             payout.setTotalFinalAmount(totalFinal);
             payout.setFormula(formula);
-            // Preserve existing status on update; new records default to PENDING via @PrePersist
             toSave.add(payout);
         }
         payoutRepository.saveAll(toSave);
@@ -119,7 +115,7 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<AdminPayoutResponse> getPayouts(String month, AdminPayoutStatus status, Pageable pageable) {
+    public Page<AdminPayoutResponseDTO> getPayouts(String month, AdminPayoutStatus status, Pageable pageable) {
         Page<AdminPayout> page;
         if (month != null && status != null) {
             page = payoutRepository.findByPayoutMonthAndStatus(month, status, pageable);
@@ -135,7 +131,7 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
 
     @Override
     @Transactional
-    public AdminPayoutResponse updatePayoutStatus(UUID payoutId, UUID adminUserId, AdminPayoutStatusRequest request) {
+    public AdminPayoutResponseDTO updatePayoutStatus(UUID payoutId, UUID adminUserId, AdminPayoutStatusRequest request) {
         AdminPayout payout = payoutRepository.findById(payoutId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout record not found"));
 
@@ -169,8 +165,8 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
         }
     }
 
-    private AdminPayoutResponse toResponse(AdminPayout payout) {
-        AdminPayoutResponse dto = new AdminPayoutResponse();
+    private AdminPayoutResponseDTO toResponse(AdminPayout payout) {
+        AdminPayoutResponseDTO dto = new AdminPayoutResponseDTO();
         dto.setId(payout.getId());
         dto.setReviewerId(payout.getReviewer().getReviewerId());
         dto.setReviewerUserName(payout.getReviewer().getUser().getUserName());

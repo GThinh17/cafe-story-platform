@@ -1,7 +1,7 @@
 package com.cafestory.service.serviceInterface;
 
 import com.cafestory.dto.requestDTO.ReviewerBadgeThresholdRequest;
-import com.cafestory.dto.responseDTO.reviewer.ReviewerBadgeThresholdResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerBadgeThresholdResponseDTO;
 import com.cafestory.entity.enums.ReviewerBadge;
 
 import java.util.List;

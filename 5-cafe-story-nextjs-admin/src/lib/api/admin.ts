@@ -18,15 +18,14 @@ import type {
   PageStatus,
   Payment,
   PaymentStatus,
-  PayoutFormula,
   PostStatus,
   RankingPeriodType,
   ReportStatus,
   ReportTargetType,
   ReviewerBadgeThreshold,
+  ReviewerFormula,
   ReviewerIncome,
   ReviewerRankingSnapshot,
-  ReviewerScoringFormula,
   UserRole,
 } from "@/types/admin";
 
@@ -384,61 +383,33 @@ export function generateReviewerRanking(periodType: RankingPeriodType) {
   );
 }
 
-export function getReviewerFormulas(signal?: AbortSignal) {
-  return apiFetch<ReviewerScoringFormula[]>(apiEndpoints.admin.reviewerFormulas, {
+// ── Unified formulas ─────────────────────────────────────────────────────────
+
+export function getFormulas(signal?: AbortSignal) {
+  return apiFetch<ReviewerFormula[]>(apiEndpoints.admin.formulas, {
     method: "GET",
     signal,
   });
 }
 
-export function getReviewerFormulaThresholds(formulaId: string, signal?: AbortSignal) {
+export function createFormula(request: Omit<ReviewerFormula, "id" | "active" | "createdAt">) {
+  return apiFetch<ReviewerFormula>(apiEndpoints.admin.formulas, {
+    method: "POST",
+    body: request,
+  });
+}
+
+export function activateFormula(id: string) {
+  return apiFetch<ReviewerFormula>(apiEndpoints.admin.formulaActivate(id), {
+    method: "PUT",
+  });
+}
+
+export function getFormulaThresholds(formulaId: string, signal?: AbortSignal) {
   return apiFetch<ReviewerBadgeThreshold[]>(
-    apiEndpoints.admin.reviewerFormulaThresholds(formulaId),
+    apiEndpoints.admin.formulaThresholds(formulaId),
     { method: "GET", signal },
   );
-}
-
-export function createReviewerScoringFormula(request: {
-  likeWeight: number;
-  commentWeight: number;
-  shareWeight: number;
-  likePayoutAmount: number;
-  commentPayoutAmount: number;
-  sharePayoutAmount: number;
-  description?: string | null;
-}) {
-  return apiFetch<ReviewerScoringFormula>(apiEndpoints.admin.reviewerFormulas, {
-    method: "POST",
-    body: request,
-  });
-}
-
-export function activateReviewerScoringFormula(id: string) {
-  return apiFetch<ReviewerScoringFormula>(apiEndpoints.admin.reviewerFormulaActivate(id), {
-    method: "PUT",
-  });
-}
-
-// ── Payout formulas ──────────────────────────────────────────────────────────
-
-export function getPayoutFormulas(signal?: AbortSignal) {
-  return apiFetch<PayoutFormula[]>(apiEndpoints.admin.payoutFormulas, {
-    method: "GET",
-    signal,
-  });
-}
-
-export function createPayoutFormula(request: Omit<PayoutFormula, "id" | "active" | "createdAt">) {
-  return apiFetch<PayoutFormula>(apiEndpoints.admin.payoutFormulas, {
-    method: "POST",
-    body: request,
-  });
-}
-
-export function activatePayoutFormula(id: string) {
-  return apiFetch<PayoutFormula>(apiEndpoints.admin.activatePayoutFormula(id), {
-    method: "PUT",
-  });
 }
 
 // ── Reviewer daily income ─────────────────────────────────────────────────────

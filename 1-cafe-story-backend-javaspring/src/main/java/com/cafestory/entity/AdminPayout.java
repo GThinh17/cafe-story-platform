@@ -83,7 +83,7 @@ public class AdminPayout {
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "formula_id", nullable = false)
-    private PayoutFormula formula;
+    private ReviewerFormula formula;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

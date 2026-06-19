@@ -1,7 +1,7 @@
 package com.cafestory.service.serviceImplement;
 
-import com.cafestory.dto.requestDTO.notification.CreateNotificationRequest;
-import com.cafestory.dto.responseDTO.notification.NotificationResponseDTO;
+import com.cafestory.dto.requestDTO.CreateNotificationRequestDTO;
+import com.cafestory.dto.responseDTO.NotificationResponseDTO;
 import com.cafestory.entity.Notification;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.NotificationType;
@@ -44,7 +44,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    public NotificationResponseDTO createNotification(CreateNotificationRequest request) {
+    public NotificationResponseDTO createNotification(CreateNotificationRequestDTO request) {
         validateCreateRequest(request);
         if (request.getActorId().equals(request.getRecipientId())) {
             return null;
@@ -73,21 +73,21 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public NotificationResponseDTO createLikeNotification(UUID recipientId, UUID actorId, UUID blogId) {
-        CreateNotificationRequest request = baseRequest(recipientId, actorId, NotificationType.LIKE);
+        CreateNotificationRequestDTO request = baseRequest(recipientId, actorId, NotificationType.LIKE);
         request.setBlogId(blogId);
         return createNotification(request);
     }
 
     @Override
     public NotificationResponseDTO createShareNotification(UUID recipientId, UUID actorId, UUID blogId) {
-        CreateNotificationRequest request = baseRequest(recipientId, actorId, NotificationType.SHARE);
+        CreateNotificationRequestDTO request = baseRequest(recipientId, actorId, NotificationType.SHARE);
         request.setBlogId(blogId);
         return createNotification(request);
     }
 
     @Override
     public NotificationResponseDTO createCommentNotification(UUID recipientId, UUID actorId, UUID blogId, UUID commentId) {
-        CreateNotificationRequest request = baseRequest(recipientId, actorId, NotificationType.COMMENT);
+        CreateNotificationRequestDTO request = baseRequest(recipientId, actorId, NotificationType.COMMENT);
         request.setBlogId(blogId);
         request.setCommentId(commentId);
         return createNotification(request);
@@ -95,7 +95,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public NotificationResponseDTO createMessageNotification(UUID recipientId, UUID actorId, UUID conversationId, UUID messageId) {
-        CreateNotificationRequest request = baseRequest(recipientId, actorId, NotificationType.MESSAGE);
+        CreateNotificationRequestDTO request = baseRequest(recipientId, actorId, NotificationType.MESSAGE);
         request.setConversationId(conversationId);
         request.setMessageId(messageId);
         return createNotification(request);
@@ -103,14 +103,14 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public NotificationResponseDTO createFollowNotification(UUID recipientId, UUID actorId, UUID userId) {
-        CreateNotificationRequest request = baseRequest(recipientId, actorId, NotificationType.FOLLOW);
+        CreateNotificationRequestDTO request = baseRequest(recipientId, actorId, NotificationType.FOLLOW);
         request.setUserId(userId);
         return createNotification(request);
     }
 
     @Override
     public NotificationResponseDTO createTagNotification(UUID recipientId, UUID actorId, UUID blogId) {
-        CreateNotificationRequest request = baseRequest(recipientId, actorId, NotificationType.TAG);
+        CreateNotificationRequestDTO request = baseRequest(recipientId, actorId, NotificationType.TAG);
         request.setBlogId(blogId);
         return createNotification(request);
     }
@@ -186,7 +186,7 @@ public class NotificationServiceImpl implements NotificationService {
         return notification;
     }
 
-    private void validateCreateRequest(CreateNotificationRequest request) {
+    private void validateCreateRequest(CreateNotificationRequestDTO request) {
         if (request.getRecipientId() == null || request.getActorId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Actor id and recipient id are required");
         }
@@ -202,7 +202,7 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
-    private void validateBlogTarget(CreateNotificationRequest request) {
+    private void validateBlogTarget(CreateNotificationRequestDTO request) {
         if (request.getBlogId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "blogId is required");
         }
@@ -211,7 +211,7 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
-    private void validateMessageTarget(CreateNotificationRequest request) {
+    private void validateMessageTarget(CreateNotificationRequestDTO request) {
         if (request.getConversationId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "conversationId is required");
         }
@@ -220,7 +220,7 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
-    private void validateFollowTarget(CreateNotificationRequest request) {
+    private void validateFollowTarget(CreateNotificationRequestDTO request) {
         if (request.getUserId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required");
         }
@@ -229,8 +229,8 @@ public class NotificationServiceImpl implements NotificationService {
         }
     }
 
-    private CreateNotificationRequest baseRequest(UUID recipientId, UUID actorId, NotificationType type) {
-        CreateNotificationRequest request = new CreateNotificationRequest();
+    private CreateNotificationRequestDTO baseRequest(UUID recipientId, UUID actorId, NotificationType type) {
+        CreateNotificationRequestDTO request = new CreateNotificationRequestDTO();
         request.setRecipientId(recipientId);
         request.setActorId(actorId);
         request.setType(type);
