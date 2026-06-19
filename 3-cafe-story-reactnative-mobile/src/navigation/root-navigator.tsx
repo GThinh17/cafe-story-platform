@@ -7,6 +7,7 @@ import {
   ConversationScreen,
   NewChatScreen,
   OtherUserProfileScreen,
+  PaymentOptionsScreen,
   ProfileFollowsScreen,
   SettingsScreen,
   UserPostsScreen,
@@ -50,6 +51,10 @@ export function RootNavigator() {
           <Stack.Screen
             component={ProfileFollowsScreen}
             name={routes.profileFollows}
+          />
+          <Stack.Screen
+            component={PaymentOptionsScreen}
+            name={routes.paymentOptions}
           />
           <Stack.Screen component={SettingsScreen} name={routes.settings} />
           <Stack.Screen component={ChatDetailScreen} name={routes.chatDetail} />

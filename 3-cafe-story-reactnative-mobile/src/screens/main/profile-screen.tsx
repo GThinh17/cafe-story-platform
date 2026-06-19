@@ -7,6 +7,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -152,11 +153,21 @@ function linkedCafePageId(
 function hasCafePageRole(user: AuthUser | null | undefined) {
   return Boolean(
     user?.roles?.some((role) => {
-      const normalizedRole = role.replace(/^ROLE_/, "").toUpperCase();
+      const normalizedRole = normalizeRole(role);
 
       return normalizedRole === "CAFE_PAGE" || normalizedRole === "CAFE";
     }),
   );
+}
+
+function hasReviewerRole(user: AuthUser | null | undefined) {
+  return Boolean(
+    user?.roles?.some((role) => normalizeRole(role) === "REVIEWER"),
+  );
+}
+
+function normalizeRole(role: string) {
+  return role.replace(/^ROLE_/, "").toUpperCase();
 }
 
 export function ProfileScreen() {
@@ -617,9 +628,14 @@ export function ProfileScreen() {
   const visibleEmptyCopy = getEmptyCopy(activeContentTab);
   const ownedCafePageId = ownedCafePage?.id ?? linkedCafePageId(activeProfile, user);
   const shouldShowCafePageAction = hasCafePageRole(user) || Boolean(ownedCafePageId);
+  const shouldShowReviewerDashboardAction = hasReviewerRole(user);
 
   const openOwnedCafePage = useCallback(() => {
     if (!ownedCafePageId) {
+      Alert.alert(
+        "Cafe page",
+        "Cafe page is not available yet.",
+      );
       return;
     }
 
@@ -627,6 +643,19 @@ export function ProfileScreen() {
       cafeId: ownedCafePageId,
     });
   }, [navigation, ownedCafePageId]);
+
+  const openPayment = useCallback(() => {
+    navigation.navigate(routes.paymentOptions, {
+      initialTab: "reviewer",
+    });
+  }, [navigation]);
+
+  const openReviewerDashboard = useCallback(() => {
+    Alert.alert(
+      "Reviewer dashboard",
+      "Reviewer dashboard is not available on mobile yet.",
+    );
+  }, []);
 
   const openUserPosts = useCallback((post?: UserPostPreview) => {
     if (!activeProfile?.userId) {
@@ -669,8 +698,11 @@ export function ProfileScreen() {
         <ProfileTopBar
           onCafePagePress={openOwnedCafePage}
           onMessagePress={() => navigation.navigate(routes.conversations)}
+          onPaymentPress={openPayment}
+          onReviewerDashboardPress={openReviewerDashboard}
           onSettingsPress={() => navigation.navigate(routes.settings)}
           showCafePageAction={shouldShowCafePageAction}
+          showReviewerDashboardAction={shouldShowReviewerDashboardAction}
           userName={userName}
         />
         <ProfileSkeleton />
@@ -683,8 +715,11 @@ export function ProfileScreen() {
       <ProfileTopBar
         onCafePagePress={openOwnedCafePage}
         onMessagePress={() => navigation.navigate(routes.conversations)}
+        onPaymentPress={openPayment}
+        onReviewerDashboardPress={openReviewerDashboard}
         onSettingsPress={() => navigation.navigate(routes.settings)}
         showCafePageAction={shouldShowCafePageAction}
+        showReviewerDashboardAction={shouldShowReviewerDashboardAction}
         userName={userName}
       />
 
@@ -905,6 +940,7 @@ export function ProfileScreen() {
         profile={activeProfile}
         visible={isLocationModalVisible}
       />
+
     </Screen>
   );
 }

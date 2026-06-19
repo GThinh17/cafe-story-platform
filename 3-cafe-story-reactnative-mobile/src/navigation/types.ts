@@ -1,6 +1,6 @@
 import type { NavigatorScreenParams } from "@react-navigation/native";
 import type { routes } from "./routes";
-import type { ProfileContentTab } from "../types";
+import type { PaymentPlanTab, ProfileContentTab } from "../types";
 
 export type AuthStackParamList = {
   [routes.login]: undefined;
@@ -42,6 +42,9 @@ export type RootStackParamList = {
     userId: string;
     userName?: string | null;
   };
+  [routes.paymentOptions]: {
+    initialTab?: PaymentPlanTab;
+  } | undefined;
   [routes.profileFollows]: {
     initialTab?: "followers" | "following";
     userId: string;
