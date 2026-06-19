@@ -69,6 +69,16 @@ const emptyTabPosts: Record<ProfileContentTab, UserPostPreview[]> = {
   tagged: [],
 };
 
+const PROFILE_TAB_INITIAL_VISIBLE_COUNT = 6;
+const PROFILE_TAB_LOAD_MORE_COUNT = 6;
+
+const initialVisiblePostCounts: Record<ProfileContentTab, number> = {
+  posts: PROFILE_TAB_INITIAL_VISIBLE_COUNT,
+  saved: PROFILE_TAB_INITIAL_VISIBLE_COUNT,
+  shared: PROFILE_TAB_INITIAL_VISIBLE_COUNT,
+  tagged: PROFILE_TAB_INITIAL_VISIBLE_COUNT,
+};
+
 function initialsFor(name?: string | null) {
   if (!name) {
     return "CS";
@@ -179,6 +189,8 @@ export function ProfileScreen() {
   const [ownedCafePage, setOwnedCafePage] = useState<CafePageResponse | null>(null);
   const [tabPosts, setTabPosts] =
     useState<Record<ProfileContentTab, UserPostPreview[]>>(emptyTabPosts);
+  const [visiblePostCounts, setVisiblePostCounts] =
+    useState<Record<ProfileContentTab, number>>(initialVisiblePostCounts);
   const [loadedTabs, setLoadedTabs] =
     useState<Partial<Record<ProfileContentTab, boolean>>>({});
   const [error, setError] = useState<string | null>(null);
@@ -239,33 +251,15 @@ export function ProfileScreen() {
 
     try {
       const nextProfile = await getMyProfile();
-      const [blogsResult, cafePageResult] = await Promise.allSettled([
-        getBlogsByUser(nextProfile.userId),
-        loadOwnedCafePage(nextProfile),
-      ]);
 
       setProfile(nextProfile);
-      setOwnedCafePage(
-        cafePageResult.status === "fulfilled" ? cafePageResult.value : null,
-      );
-      if (blogsResult.status === "fulfilled") {
-        setTabPosts((currentPosts) => ({
-          ...currentPosts,
-          posts: blogsResult.value.map(blogResponseToPostPreview),
-        }));
-        setLoadedTabs((currentTabs) => ({
-          ...currentTabs,
-          posts: true,
-        }));
-        setContentError(null);
-      } else {
-        setContentError(
-          blogsResult.reason instanceof Error
-            ? blogsResult.reason.message
-            : "Unable to load your posts.",
-        );
-      }
       setError(null);
+
+      try {
+        setOwnedCafePage(await loadOwnedCafePage(nextProfile));
+      } catch {
+        setOwnedCafePage(null);
+      }
     } catch (nextError) {
       setOwnedCafePage(null);
       setError(
@@ -297,6 +291,10 @@ export function ProfileScreen() {
         ...currentPosts,
         [tab]: blogs.map(blogResponseToPostPreview),
       }));
+      setVisiblePostCounts((currentCounts) => ({
+        ...currentCounts,
+        [tab]: PROFILE_TAB_INITIAL_VISIBLE_COUNT,
+      }));
       setLoadedTabs((currentTabs) => ({
         ...currentTabs,
         [tab]: true,
@@ -321,14 +319,13 @@ export function ProfileScreen() {
   const onRefresh = useCallback(() => {
     const currentUserId = profile?.userId ?? user?.userId;
 
-    if (activeContentTab === "posts") {
-      void loadProfile(true);
+    void loadProfile(true);
+
+    if (!currentUserId) {
       return;
     }
 
-    if (currentUserId) {
-      void loadContentTab(activeContentTab, currentUserId, true);
-    }
+    void loadContentTab(activeContentTab, currentUserId, true);
   }, [activeContentTab, loadContentTab, loadProfile, profile?.userId, user?.userId]);
 
   const loadSuggestions = useCallback(async () => {
@@ -624,7 +621,11 @@ export function ProfileScreen() {
       ),
     [activeProfile?.userId, dismissedSuggestionIds, suggestions],
   );
-  const visiblePosts = tabPosts[activeContentTab];
+  const activeTabPosts = tabPosts[activeContentTab];
+  const activeVisiblePostCount =
+    visiblePostCounts[activeContentTab] ?? PROFILE_TAB_INITIAL_VISIBLE_COUNT;
+  const visiblePosts = activeTabPosts.slice(0, activeVisiblePostCount);
+  const canLoadMorePosts = visiblePosts.length < activeTabPosts.length;
   const visibleEmptyCopy = getEmptyCopy(activeContentTab);
   const ownedCafePageId = ownedCafePage?.id ?? linkedCafePageId(activeProfile, user);
   const shouldShowCafePageAction = hasCafePageRole(user) || Boolean(ownedCafePageId);
@@ -679,15 +680,30 @@ export function ProfileScreen() {
     });
   }, [activeProfile?.userId, navigation, userName]);
 
+  const loadMoreVisiblePosts = useCallback(() => {
+    setVisiblePostCounts((currentCounts) => {
+      const currentCount =
+        currentCounts[activeContentTab] ?? PROFILE_TAB_INITIAL_VISIBLE_COUNT;
+
+      return {
+        ...currentCounts,
+        [activeContentTab]: Math.min(
+          currentCount + PROFILE_TAB_LOAD_MORE_COUNT,
+          tabPosts[activeContentTab].length,
+        ),
+      };
+    });
+  }, [activeContentTab, tabPosts]);
+
   useEffect(() => {
-    const currentUserId = activeProfile?.userId;
+    const currentUserId = profile?.userId;
 
     if (!currentUserId || loadedTabs[activeContentTab]) {
       return;
     }
 
     void loadContentTab(activeContentTab, currentUserId);
-  }, [activeContentTab, activeProfile?.userId, loadContentTab, loadedTabs]);
+  }, [activeContentTab, loadContentTab, loadedTabs, profile?.userId]);
 
   if (isLoading && !profile) {
     return (
@@ -896,7 +912,24 @@ export function ProfileScreen() {
               />
             </View>
           ) : visiblePosts.length > 0 ? (
-            <UserPostGrid onPostPress={openUserPosts} posts={visiblePosts} />
+            <>
+              <UserPostGrid onPostPress={openUserPosts} posts={visiblePosts} />
+              {canLoadMorePosts ? (
+                <View style={styles.loadMoreRow}>
+                  <Pressable
+                    accessibilityLabel="Load more profile posts"
+                    accessibilityRole="button"
+                    onPress={loadMoreVisiblePosts}
+                    style={({ pressed }) => [
+                      styles.loadMoreButton,
+                      pressed && styles.actionPressed,
+                    ]}
+                  >
+                    <Text style={styles.loadMoreText}>Load more</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </>
           ) : (
             <View style={styles.emptyPosts}>
               <EmptyState
@@ -1163,5 +1196,28 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 2,
+  },
+
+  loadMoreButton: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    minHeight: 42,
+    justifyContent: "center",
+    paddingHorizontal: spacing.xl,
+  },
+
+  loadMoreRow: {
+    alignItems: "center",
+    paddingVertical: spacing.lg,
+    width: "100%",
+  },
+
+  loadMoreText: {
+    color: colors.foreground,
+    fontSize: typography.label,
+    fontWeight: "900",
   },
 });
