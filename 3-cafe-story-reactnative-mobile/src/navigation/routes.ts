@@ -18,6 +18,7 @@ export const routes = {
   profileFollows: "ProfileFollows",
   region: "Region",
   register: "Register",
+  reviewerDashboard: "ReviewerDashboard",
   settings: "Settings",
   userPosts: "UserPosts",
 } as const;

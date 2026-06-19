@@ -50,6 +50,7 @@ export type RootStackParamList = {
     userId: string;
     userName?: string | null;
   };
+  [routes.reviewerDashboard]: undefined;
   [routes.userPosts]: {
     contentTab?: ProfileContentTab;
     initialBlogId?: string;

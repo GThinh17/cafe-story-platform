@@ -13,5 +13,6 @@ export * from "./main/other-user-profile-screen";
 export * from "./main/payment-options-screen";
 export * from "./main/profile-follows-screen";
 export * from "./main/profile-screen";
+export * from "./main/reviewer-dashboard-screen";
 export * from "./main/settings-screen";
 export * from "./main/user-posts-screen";

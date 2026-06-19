@@ -10,3 +10,4 @@ export * from "./payment-options";
 export * from "./profile";
 export * from "./region";
 export * from "./report";
+export * from "./reviewer-dashboard";

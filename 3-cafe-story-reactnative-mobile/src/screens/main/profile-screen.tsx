@@ -651,11 +651,8 @@ export function ProfileScreen() {
   }, [navigation]);
 
   const openReviewerDashboard = useCallback(() => {
-    Alert.alert(
-      "Reviewer dashboard",
-      "Reviewer dashboard is not available on mobile yet.",
-    );
-  }, []);
+    navigation.navigate(routes.reviewerDashboard);
+  }, [navigation]);
 
   const openUserPosts = useCallback((post?: UserPostPreview) => {
     if (!activeProfile?.userId) {
