@@ -215,7 +215,7 @@ export function FilterSelect<T extends string>({
       value={value || "all"}
       onValueChange={(nextValue) => onChange(nextValue === "all" ? "" : (nextValue as T))}
     >
-      <SelectTrigger className="h-10 w-full bg-surface sm:w-44">
+      <SelectTrigger size="lg" className="rounded-md w-full bg-surface sm:w-44">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
@@ -261,7 +261,7 @@ export function BooleanFilterSelect({
         onChange(nextValue === "all" ? null : nextValue === "true")
       }
     >
-      <SelectTrigger className="h-10 w-full bg-surface sm:w-44">
+      <SelectTrigger size="lg" className="rounded-md w-full bg-surface sm:w-44">
         <SelectValue placeholder="Status" />
       </SelectTrigger>
       <SelectContent>
@@ -287,19 +287,30 @@ export function BooleanFilterSelect({
 export function FilterInput({
   value,
   placeholder,
+  label,
   onChange,
 }: {
   value: string;
   placeholder: string;
+  label?: string;
   onChange: (value: string) => void;
 }) {
-  return (
+  const input = (
     <Input
-      className="h-10 bg-surface sm:w-64"
+      className="h-10 bg-surface sm:w-44"
       value={value}
       placeholder={placeholder}
       onChange={(event) => onChange(event.target.value)}
     />
+  );
+
+  if (!label) return input;
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-xs font-medium text-muted">{label}</span>
+      {input}
+    </div>
   );
 }
 
@@ -311,7 +322,7 @@ export function Toolbar({
   onRefresh: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-md border border-border bg-surface p-3 sm:flex-row sm:flex-wrap sm:items-center">
+    <div className="flex flex-col gap-3 rounded-md border border-border bg-surface p-3 sm:flex-row sm:flex-wrap sm:items-end">
       {children}
       <Button
         className="sm:ml-auto"

@@ -168,7 +168,7 @@ export function AdminCafePagesPage() {
           placeholder="All statuses"
           onChange={setStatus}
         />
-        <FilterInput value={ownerUserId} placeholder="Owner user ID" onChange={setOwnerUserId} />
+        <FilterInput label="Owner user ID" value={ownerUserId} placeholder="Enter user ID" onChange={setOwnerUserId} />
       </Toolbar>
       <AdminDataTable
         columns={columns}

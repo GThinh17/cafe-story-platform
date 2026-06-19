@@ -190,30 +190,45 @@ export function ActivityList({ items, onClose }: ActivityListProps) {
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden">
-          <section>
-            <h2 className="text-xl font-black text-foreground">
-              {"Th\u00e1ng n\u00e0y"}
-            </h2>
-            <div className="mt-5 flex flex-col">
-              {thisMonthItems.map((item) => (
-                <div key={item.id}>
-                  <NotificationRow item={item} />
-                  <Separator />
-                </div>
-              ))}
+          {thisMonthItems.length === 0 && earlierItems.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-20 text-center">
+              <p className="text-base font-medium text-foreground">Ch\u01b0a c\u00f3 th\u00f4ng b\u00e1o n\u00e0o.</p>
+              <p className="max-w-[240px] text-sm leading-6 text-muted">
+                Theo d\u00f5i ai \u0111\u00f3 \u0111\u1ec3 nh\u1eadn c\u1eadp nh\u1eadt v\u1ec1 b\u00e0i vi\u1ebft v\u00e0 ho\u1ea1t \u0111\u1ed9ng c\u1ee7a h\u1ecd.
+              </p>
             </div>
-          </section>
+          ) : (
+            <>
+              {thisMonthItems.length > 0 && (
+                <section>
+                  <h2 className="text-xl font-black text-foreground">
+                    {"Th\u00e1ng n\u00e0y"}
+                  </h2>
+                  <div className="mt-5 flex flex-col">
+                    {thisMonthItems.map((item) => (
+                      <div key={item.id}>
+                        <NotificationRow item={item} />
+                        <Separator />
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
 
-          <section className="mt-7">
-            <h2 className="text-xl font-black text-foreground">
-              {"Tr\u01b0\u1edbc \u0111\u00f3"}
-            </h2>
-            <div className="mt-5 flex flex-col gap-2">
-              {earlierItems.map((item) => (
-                <NotificationRow item={item} key={item.id} />
-              ))}
-            </div>
-          </section>
+              {earlierItems.length > 0 && (
+                <section className="mt-7">
+                  <h2 className="text-xl font-black text-foreground">
+                    {"Tr\u01b0\u1edbc \u0111\u00f3"}
+                  </h2>
+                  <div className="mt-5 flex flex-col gap-2">
+                    {earlierItems.map((item) => (
+                      <NotificationRow item={item} key={item.id} />
+                    ))}
+                  </div>
+                </section>
+              )}
+            </>
+          )}
         </div>
       </section>
     </main>

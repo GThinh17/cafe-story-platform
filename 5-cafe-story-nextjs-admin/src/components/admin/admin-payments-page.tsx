@@ -156,7 +156,7 @@ export function AdminPaymentsPage() {
           placeholder="All statuses"
           onChange={setPaymentStatus}
         />
-        <FilterInput value={buyerId} placeholder="Buyer ID" onChange={setBuyerId} />
+        <FilterInput label="Buyer ID" value={buyerId} placeholder="Enter user ID" onChange={setBuyerId} />
       </Toolbar>
       <AdminDataTable
         columns={columns}

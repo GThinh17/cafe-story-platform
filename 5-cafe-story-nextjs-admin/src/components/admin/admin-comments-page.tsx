@@ -166,8 +166,8 @@ export function AdminCommentsPage() {
           placeholder="All statuses"
           onChange={setStatus}
         />
-        <FilterInput value={blogId} placeholder="Blog ID" onChange={setBlogId} />
-        <FilterInput value={userId} placeholder="User ID" onChange={setUserId} />
+        <FilterInput label="Blog ID" value={blogId} placeholder="Enter blog ID" onChange={setBlogId} />
+        <FilterInput label="User ID" value={userId} placeholder="Enter user ID" onChange={setUserId} />
       </Toolbar>
       <AdminDataTable
         columns={columns}

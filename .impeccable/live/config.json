@@ -1,0 +1,6 @@
+{
+  "files": ["2-cafe-story-nextjs-web/src/app/layout.tsx"],
+  "insertBefore": "</body>",
+  "commentSyntax": "jsx",
+  "cspChecked": true
+}

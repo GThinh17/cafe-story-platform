@@ -73,7 +73,7 @@ function ChatPanelLoadingState() {
   return (
     <section
       aria-busy="true"
-      className="flex h-screen min-h-0 flex-col bg-background"
+      className="flex h-full min-h-0 flex-col bg-background"
     >
       <header className="flex h-[78px] shrink-0 items-center justify-between gap-4 border-b border-border bg-surface px-4 sm:h-[94px] sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
@@ -193,7 +193,7 @@ export function ChatPanel({
 
   if (!conversation) {
     return (
-      <section className="flex h-screen min-h-0 items-center justify-center bg-background px-6 text-center">
+      <section className="flex h-full min-h-0 items-center justify-center bg-background px-6 text-center">
         <div>
           <h2 className="text-xl font-black">Select a conversation</h2>
           <p className="mt-2 text-sm font-semibold text-muted">
@@ -209,7 +209,7 @@ export function ChatPanel({
   }
 
   return (
-    <section className="flex h-screen min-h-0 flex-col bg-background">
+    <section className="flex h-full min-h-0 flex-col bg-background">
       <header className="flex h-[78px] shrink-0 items-center justify-between gap-4 border-b border-border bg-surface px-4 sm:h-[94px] sm:px-6">
         <div className="flex min-w-0 items-center gap-3">
           <Avatar className="size-12 sm:size-14">

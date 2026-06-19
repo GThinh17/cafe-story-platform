@@ -4,31 +4,50 @@ type AdminStatusBadgeProps = {
   value: string | boolean | null | undefined;
 };
 
+const STATUS_LABELS: Record<string, string> = {
+  ACTIVE: "Active",
+  PAID: "Paid",
+  PUBLISHED: "Published",
+  SAFE: "Safe",
+  RESOLVED: "Resolved",
+  APPROVE: "Approved",
+  APPROVED: "Approved",
+  PENDING: "Pending",
+  OPEN: "Open",
+  REVIEWING: "Reviewing",
+  NEEDS_REVIEW: "Needs review",
+  DRAFT: "Draft",
+  PROCESSING: "Processing",
+  HIDE: "Hidden",
+  FAILED: "Failed",
+  HIDDEN: "Hidden",
+  REMOVED: "Removed",
+  REMOVE: "Removed",
+  VIOLATION: "Violation",
+  REJECTED: "Rejected",
+  CANCELLED: "Cancelled",
+  EXPIRED: "Expired",
+  INACTIVE: "Inactive",
+  SUSPENDED: "Suspended",
+};
+
 function getStatusClassName(normalized: string) {
   if (
-    ["ACTIVE", "PAID", "PUBLISHED", "SAFE", "RESOLVED", "APPROVE", "APPROVED"].includes(
-      normalized,
-    )
+    ["ACTIVE", "PAID", "PUBLISHED", "SAFE", "RESOLVED", "APPROVE", "APPROVED"].includes(normalized)
   ) {
-    return "bg-emerald-100 text-emerald-800";
+    return "bg-primary/10 text-primary-strong border-transparent";
   }
 
   if (
-    [
-      "PENDING",
-      "OPEN",
-      "REVIEWING",
-      "NEEDS_REVIEW",
-      "DRAFT",
-      "HIDE",
-    ].includes(normalized)
+    ["PENDING", "OPEN", "REVIEWING", "NEEDS_REVIEW", "DRAFT", "PROCESSING"].includes(normalized)
   ) {
-    return "bg-amber-100 text-amber-800";
+    return "bg-rating/10 text-rating border-transparent";
   }
 
   if (
     [
       "FAILED",
+      "HIDE",
       "HIDDEN",
       "REMOVED",
       "REMOVE",
@@ -40,21 +59,18 @@ function getStatusClassName(normalized: string) {
       "SUSPENDED",
     ].includes(normalized)
   ) {
-    return "bg-red-100 text-red-800";
+    return "bg-accent/10 text-accent border-transparent";
   }
 
-  return "bg-blue-100 text-blue-800";
+  return "bg-surface-muted text-coffee-muted border-transparent";
 }
 
 export function AdminStatusBadge({ value }: AdminStatusBadgeProps) {
-  const label =
-    typeof value === "boolean"
-      ? value
-        ? "ACTIVE"
-        : "INACTIVE"
-      : value || "UNKNOWN";
+  const raw =
+    typeof value === "boolean" ? (value ? "ACTIVE" : "INACTIVE") : value || "UNKNOWN";
 
-  const normalized = String(label).toUpperCase();
+  const normalized = String(raw).toUpperCase();
+  const label = STATUS_LABELS[normalized] ?? String(raw);
 
   return <Badge className={getStatusClassName(normalized)}>{label}</Badge>;
 }

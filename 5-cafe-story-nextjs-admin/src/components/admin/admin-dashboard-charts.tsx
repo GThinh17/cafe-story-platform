@@ -123,7 +123,7 @@ function ModerationQueueChart({ pending }: { pending: number }) {
             <p className="text-3xl font-black text-espresso">{pending.toLocaleString()}</p>
             <p className="text-xs font-semibold text-muted">pending items</p>
           </div>
-          <ShieldAlertIcon className="size-9 text-amber-600" />
+          <ShieldAlertIcon className="size-9 text-rating" />
         </div>
         <div className="grid h-20 grid-cols-10 items-end gap-1">
           {Array.from({ length: 10 }).map((_, index) => {
@@ -134,7 +134,7 @@ function ModerationQueueChart({ pending }: { pending: number }) {
               <div
                 className={cn(
                   "rounded-sm",
-                  isActive ? "bg-amber-500" : "bg-surface-muted",
+                  isActive ? "bg-rating" : "bg-surface-muted",
                 )}
                 key={threshold}
                 style={{ height: `${18 + index * 7}%` }}
@@ -156,29 +156,18 @@ export function AdminDashboardCharts({ summary }: { summary: AdminDashboardSumma
         total={summary.totalUsers}
         primaryLabel="active users"
         totalLabel="users"
-        className="bg-emerald-500"
+        className="bg-primary"
       />
       <StackedStatusChart
         title="Blog status"
         total={summary.totalBlogs}
         segments={[
-          {
-            label: "Published",
-            value: summary.publishedBlogs,
-            className: "bg-emerald-500",
-          },
-          {
-            label: "Hidden",
-            value: summary.hiddenBlogs,
-            className: "bg-red-500",
-          },
+          { label: "Published", value: summary.publishedBlogs, className: "bg-primary" },
+          { label: "Hidden", value: summary.hiddenBlogs, className: "bg-accent" },
           {
             label: "Other",
-            value: Math.max(
-              summary.totalBlogs - summary.publishedBlogs - summary.hiddenBlogs,
-              0,
-            ),
-            className: "bg-blue-500",
+            value: Math.max(summary.totalBlogs - summary.publishedBlogs - summary.hiddenBlogs, 0),
+            className: "bg-coffee-muted",
           },
         ]}
       />
@@ -186,21 +175,9 @@ export function AdminDashboardCharts({ summary }: { summary: AdminDashboardSumma
         title="Payment status"
         total={summary.totalPayments}
         segments={[
-          {
-            label: "Paid",
-            value: summary.paidPayments,
-            className: "bg-emerald-500",
-          },
-          {
-            label: "Pending",
-            value: summary.pendingPayments,
-            className: "bg-amber-500",
-          },
-          {
-            label: "Failed",
-            value: summary.failedPayments,
-            className: "bg-red-500",
-          },
+          { label: "Paid", value: summary.paidPayments, className: "bg-primary" },
+          { label: "Pending", value: summary.pendingPayments, className: "bg-rating" },
+          { label: "Failed", value: summary.failedPayments, className: "bg-accent" },
         ]}
       />
       <RatioChart
@@ -209,7 +186,7 @@ export function AdminDashboardCharts({ summary }: { summary: AdminDashboardSumma
         total={summary.totalCafePages}
         primaryLabel="active cafe pages"
         totalLabel="pages"
-        className="bg-blue-500"
+        className="bg-coffee-muted"
       />
       <ModerationQueueChart pending={summary.pendingModerationItems} />
     </div>
@@ -217,9 +194,8 @@ export function AdminDashboardCharts({ summary }: { summary: AdminDashboardSumma
 }
 
 export const dashboardChartLegend = [
-  { label: "Active / paid / published", icon: CheckCircle2Icon, className: "text-emerald-600" },
-  { label: "Pending / review", icon: ClockIcon, className: "text-amber-600" },
-  { label: "Failed / hidden", icon: AlertTriangleIcon, className: "text-red-600" },
-  { label: "Total / other", icon: CircleIcon, className: "text-blue-600" },
+  { label: "Active / paid / published", icon: CheckCircle2Icon, className: "text-primary" },
+  { label: "Pending / review", icon: ClockIcon, className: "text-rating" },
+  { label: "Failed / hidden", icon: AlertTriangleIcon, className: "text-accent" },
+  { label: "Total / other", icon: CircleIcon, className: "text-coffee-muted" },
 ] as const;
-

@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
-  BadgeDollarSignIcon,
   BellIcon,
+  SparklesIcon,
   CompassIcon,
   HomeIcon,
   MessageCircleIcon,
@@ -14,7 +14,6 @@ import {
 import { ActivityList } from "@/components/notification/activity-list";
 import { PricingPlanModal } from "@/components/layout/pricing-plan-modal";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
-import { CreatePostModal } from "@/components/review/create-post-modal";
 import { BrandIcon } from "@/components/ui/brand-icon";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -24,9 +23,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { getCafePagesByOwnerId } from "@/lib/api/cafes";
-import { mockReviewComposer, mockReviewDraftHints } from "@/mocks/reviews";
-import type { CafePageResponse } from "@/types/cafe";
+import { useCreatePost } from "@/context/create-post-context";
 import { usePathname } from "next/navigation";
 
 type SidebarItem = {
@@ -61,59 +58,19 @@ function isActivePath(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function isActiveCafePage(cafe: CafePageResponse) {
-  return cafe.pageActive === true || cafe.status === "ACTIVE";
-}
 
 export function SharedSidebar() {
   const pathname = usePathname();
   const { user, isLoading } = useCurrentUser();
+  const { isOpen: isCreatePostOpen, open: openCreatePost } = useCreatePost();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
   const [isPricingPlanOpen, setIsPricingPlanOpen] = useState(false);
-  const [ownedCafePage, setOwnedCafePage] = useState<CafePageResponse | null>(null);
   const profileHref = user?.userName ? `/${user.userName}` : "/login";
-  const userId = user?.userId;
-
-  useEffect(() => {
-    let isCurrentRequest = true;
-
-    if (!userId) {
-      setOwnedCafePage(null);
-      return () => {
-        isCurrentRequest = false;
-      };
-    }
-
-    const ownerUserId = userId;
-
-    async function loadOwnedCafePage() {
-      try {
-        const cafes = await getCafePagesByOwnerId(ownerUserId);
-
-        if (!isCurrentRequest) {
-          return;
-        }
-
-        setOwnedCafePage(cafes.find(isActiveCafePage) ?? null);
-      } catch {
-        if (isCurrentRequest) {
-          setOwnedCafePage(null);
-        }
-      }
-    }
-
-    void loadOwnedCafePage();
-
-    return () => {
-      isCurrentRequest = false;
-    };
-  }, [userId]);
 
   return (
     <>
       <aside
-        className="group fixed inset-y-0 left-0 z-50 flex w-16 flex-col overflow-hidden border-r border-border bg-surface shadow-lg transition-[width,box-shadow] duration-200 ease-out hover:w-60 hover:shadow-2xl focus-within:w-60 focus-within:shadow-2xl sm:w-[72px]"
+        className="group fixed inset-y-0 left-0 z-50 hidden w-16 flex-col overflow-hidden border-r border-border bg-surface shadow-lg transition-[width,box-shadow] duration-200 ease-out hover:w-60 hover:shadow-lg focus-within:w-60 focus-within:shadow-lg sm:flex sm:w-[72px]"
         aria-label="Primary navigation"
       >
         <Link
@@ -201,7 +158,7 @@ export function SharedSidebar() {
                   key={item.href}
                   onClick={() => {
                     setIsNotificationsOpen(false);
-                    setIsCreatePostOpen(true);
+                    openCreatePost();
                   }}
                   type="button"
                   variant="ghost"
@@ -237,14 +194,13 @@ export function SharedSidebar() {
             )}
             onClick={() => {
               setIsNotificationsOpen(false);
-              setIsCreatePostOpen(false);
               setIsPricingPlanOpen(true);
             }}
             type="button"
             variant="ghost"
           >
             <span className="grid size-6 shrink-0 place-items-center">
-              <BadgeDollarSignIcon aria-hidden="true" />
+              <SparklesIcon aria-hidden="true" />
             </span>
             <span className="translate-x-[-4px] whitespace-nowrap opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100">
               Pricing plan
@@ -275,14 +231,6 @@ export function SharedSidebar() {
           />
         </SheetContent>
       </Sheet>
-
-      <CreatePostModal
-        composer={mockReviewComposer}
-        hints={mockReviewDraftHints}
-        isOpen={isCreatePostOpen}
-        ownedCafePage={ownedCafePage}
-        onClose={() => setIsCreatePostOpen(false)}
-      />
 
       <PricingPlanModal
         isOpen={isPricingPlanOpen}

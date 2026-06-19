@@ -180,7 +180,7 @@ export function AdminUsersPage() {
         description="Search users, filter by status or role, and manage account activation."
       />
       <Toolbar onRefresh={resource.refetch}>
-        <FilterInput value={search} placeholder="Search users" onChange={setSearch} />
+        <FilterInput label="Search" value={search} placeholder="Name, email, username" onChange={setSearch} />
         <BooleanFilterSelect label="Account status" value={accountStatus} onChange={setAccountStatus} />
         <FilterSelect
           label="Role"

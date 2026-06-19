@@ -1,0 +1,267 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-18T00:00:00.000Z",
+  "title": "Design System: CafeStory",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Bloom Teal",
+        "canonical": "#0f766e",
+        "tonalRamp": ["#021a18", "#04312e", "#074d47", "#0a6560", "#0f766e", "#2d9c93", "#6ec4bd", "#c3e9e7"]
+      },
+      "primary-strong": {
+        "role": "primary",
+        "displayName": "Maillard",
+        "canonical": "#115e59",
+        "tonalRamp": ["#021a18", "#04312e", "#074d47", "#0a5551", "#115e59", "#257a73", "#62b4ac", "#bce9e6"]
+      },
+      "accent": {
+        "role": "secondary",
+        "displayName": "Brick Chaff",
+        "canonical": "#9f1239",
+        "tonalRamp": ["#2a0510", "#57091f", "#7b0e2d", "#9f1239", "#c72050", "#de5a7a", "#ef9db5", "#fad8e3"]
+      },
+      "rating": {
+        "role": "tertiary",
+        "displayName": "Caramel Crack",
+        "canonical": "#d97706",
+        "tonalRamp": ["#3d2000", "#7a4100", "#b36100", "#d97706", "#e99c2b", "#f3bb5e", "#f9d99b", "#fdf1d1"]
+      },
+      "espresso": {
+        "role": "neutral",
+        "displayName": "Italian Roast",
+        "canonical": "#271310",
+        "tonalRamp": ["#0d0605", "#1c0d0b", "#271310", "#3a1d19", "#523028", "#7a524b", "#b09088", "#ddc9c4"]
+      },
+      "coffee-muted": {
+        "role": "neutral",
+        "displayName": "Medium Roast",
+        "canonical": "#504442",
+        "tonalRamp": ["#18100f", "#2e1f1d", "#40302d", "#504442", "#6b5a57", "#8c7a77", "#b7a9a7", "#e0d7d6"]
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "Green Bean",
+        "canonical": "#f7f4ef",
+        "tonalRamp": ["#2e2b27", "#554f48", "#7d7569", "#a5998e", "#c8bfb4", "#ddd8d0", "#ece9e4", "#f7f4ef"]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Parchment Skin",
+        "canonical": "#fffdf8",
+        "tonalRamp": ["#32302b", "#5e5a52", "#8b857b", "#b8b2a8", "#d4d0c8", "#e6e3dc", "#f2f0eb", "#fffdf8"]
+      },
+      "surface-muted": {
+        "role": "neutral",
+        "displayName": "Silver Skin",
+        "canonical": "#efe7da",
+        "tonalRamp": ["#2e2720", "#574d43", "#80736a", "#a99990", "#cbbdb5", "#ddd3cc", "#e9e1da", "#efe7da"]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Chaff Dust",
+        "canonical": "#e1d7c8",
+        "tonalRamp": ["#2b2620", "#51493f", "#776d60", "#9d9181", "#bfb5a4", "#d2cabb", "#ddd6ca", "#e1d7c8"]
+      },
+      "foreground": {
+        "role": "neutral",
+        "displayName": "Dark Roast",
+        "canonical": "#1f2937",
+        "tonalRamp": ["#0b0d10", "#1f2937", "#374151", "#4b5563", "#6b7280", "#9ca3af", "#d1d5db", "#f3f4f6"]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Ash Gray",
+        "canonical": "#6b7280",
+        "tonalRamp": ["#111317", "#232830", "#374151", "#4b5563", "#6b7280", "#9ca3af", "#d1d5db", "#f3f4f6"]
+      },
+      "line-soft": {
+        "role": "neutral",
+        "displayName": "Pale Chaff",
+        "canonical": "#d3c3c0",
+        "tonalRamp": ["#2b1e1d", "#523c3a", "#7a5b58", "#a17a76", "#c4a09c", "#d3c3c0", "#e4d8d6", "#f5efee"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Post heroes, page headings, profile display names at maximum scale. Used sparingly — one per screen at most." },
+      "headline": { "displayName": "Headline", "purpose": "Card titles, cafe names in listing views, section headings within content." },
+      "title": { "displayName": "Title", "purpose": "Structural labels — modal headings, form section names, sidebar section titles." },
+      "body": { "displayName": "Body", "purpose": "Post captions, review text, comment body. Line-height 1.714 for readability." },
+      "label": { "displayName": "Label", "purpose": "Badges, metadata chips, timestamps, navigation labels. Never uppercase." }
+    },
+    "shadows": [
+      {
+        "name": "structural",
+        "value": "0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1)",
+        "purpose": "Sidebar at rest and hovered state, sheet/drawer panels. Marks navigation chrome as above the content layer."
+      },
+      {
+        "name": "ambient-card",
+        "value": "0 1px 2px 0 rgba(0,0,0,0.05)",
+        "purpose": "Card component ambient containment signal. Not elevation — just discrete surface boundary."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out-standard",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Default easing for all state transitions: sidebar expand, sheet open, hover state changes."
+      },
+      {
+        "name": "duration-fast",
+        "value": "150ms",
+        "purpose": "Label fade-in/out on sidebar expand, opacity transitions for inline elements."
+      },
+      {
+        "name": "duration-standard",
+        "value": "200ms",
+        "purpose": "Sidebar width transition, card hover border-color shift."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary CTA. Forest Teal background, white text. Used for the single most important action on a surface.",
+      "html": "<button class=\"ds-btn-primary\">Follow</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #0f766e; color: #ffffff; padding: 10px 16px; height: 40px; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; font-family: Inter, ui-sans-serif, system-ui, sans-serif; white-space: nowrap; cursor: pointer; transition: background 200ms cubic-bezier(0.16,1,0.3,1); outline: none; } .ds-btn-primary:hover { background: #115e59; } .ds-btn-primary:focus-visible { outline: 3px solid rgba(15,118,110,0.3); outline-offset: 2px; } .ds-btn-primary:disabled { opacity: 0.5; pointer-events: none; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Secondary action. Bordered, no fill. Becomes primary-teal bordered on hover.",
+      "html": "<button class=\"ds-btn-outline\">Edit Profile</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: #fffdf8; color: #1f2937; padding: 10px 16px; height: 40px; border: 1px solid #e1d7c8; border-radius: 8px; font-size: 14px; font-weight: 500; font-family: Inter, ui-sans-serif, system-ui, sans-serif; white-space: nowrap; cursor: pointer; transition: border-color 200ms, color 200ms; outline: none; } .ds-btn-outline:hover { border-color: #0f766e; color: #0f766e; } .ds-btn-outline:focus-visible { outline: 3px solid rgba(15,118,110,0.3); outline-offset: 2px; } .ds-btn-outline:disabled { opacity: 0.5; pointer-events: none; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Action buttons inside content — Like, Comment, Share, Bookmark. Transparent at rest, linen-muted on hover.",
+      "html": "<button class=\"ds-btn-ghost\"><svg class=\"ds-btn-ghost-icon\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z\"/></svg><span>24</span></button>",
+      "css": ".ds-btn-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: transparent; color: #1f2937; padding: 0; height: auto; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; font-family: Inter, ui-sans-serif, system-ui, sans-serif; cursor: pointer; transition: color 150ms; outline: none; } .ds-btn-ghost-icon { width: 24px; height: 24px; } .ds-btn-ghost:hover { color: #0f766e; } .ds-btn-ghost:focus-visible { outline: 3px solid rgba(15,118,110,0.3); outline-offset: 2px; } .ds-btn-ghost:disabled { opacity: 0.5; pointer-events: none; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Form text field. Pure cream background, bordered. Focus shifts border to primary teal.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Search cafes...\">",
+      "css": ".ds-input { display: flex; width: 100%; height: 48px; padding: 0 16px; background: #fffdf8; color: #1f2937; border: 1px solid #e1d7c8; border-radius: 8px; font-size: 14px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; outline: none; transition: border-color 200ms; box-sizing: border-box; } .ds-input::placeholder { color: #6b7280; } .ds-input:focus { border-color: #0f766e; } .ds-input:disabled { opacity: 0.5; cursor: not-allowed; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Primary content container. Pure cream surface, parchment border, minimal ambient shadow.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-header\"><div class=\"ds-card-title\">Arabica House</div><div class=\"ds-card-desc\">Hoan Kiem, Ha Noi · 0.4 km</div></div><div class=\"ds-card-content\">A quiet corner roastery with exceptional single-origin pour-overs.</div></div>",
+      "css": ".ds-card { background: #fffdf8; color: #1f2937; border: 1px solid #e1d7c8; border-radius: 8px; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); overflow: hidden; transition: border-color 200ms; } .ds-card:hover { border-color: rgba(15,118,110,0.5); } .ds-card-header { padding: 16px 16px 0; } .ds-card-title { font-size: 18px; font-weight: 900; line-height: 1.3; color: #1f2937; font-family: Inter, ui-sans-serif, system-ui, sans-serif; } .ds-card-desc { margin-top: 4px; font-size: 14px; color: #6b7280; font-family: Inter, ui-sans-serif, system-ui, sans-serif; } .ds-card-content { padding: 16px; font-size: 14px; line-height: 1.714; color: #1f2937; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }"
+    },
+    {
+      "name": "Primary Badge",
+      "kind": "chip",
+      "refersTo": "badge-primary",
+      "description": "Category and status labels. Forest Teal fill, white text.",
+      "html": "<span class=\"ds-badge-primary\">Specialty Coffee</span>",
+      "css": ".ds-badge-primary { display: inline-flex; align-items: center; background: #0f766e; color: #ffffff; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 500; font-family: Inter, ui-sans-serif, system-ui, sans-serif; white-space: nowrap; }"
+    },
+    {
+      "name": "Secondary Badge",
+      "kind": "chip",
+      "refersTo": "badge-secondary",
+      "description": "Content tags on post cards and cafe cards. Linen muted background, deep teal text.",
+      "html": "<span class=\"ds-badge-secondary\">#coldbrew</span>",
+      "css": ".ds-badge-secondary { display: inline-flex; align-items: center; background: #efe7da; color: #115e59; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; font-family: Inter, ui-sans-serif, system-ui, sans-serif; white-space: nowrap; }"
+    },
+    {
+      "name": "Rating Badge",
+      "kind": "chip",
+      "refersTo": "badge-rating",
+      "description": "Review score display only. Amber at 15% opacity background, amber text. Exclusive to ratings.",
+      "html": "<span class=\"ds-badge-rating\">4.8</span>",
+      "css": ".ds-badge-rating { display: inline-flex; align-items: center; background: rgba(217,119,6,0.15); color: #d97706; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 900; font-family: Inter, ui-sans-serif, system-ui, sans-serif; white-space: nowrap; }"
+    },
+    {
+      "name": "Sidebar Navigation",
+      "kind": "nav",
+      "description": "Fixed left rail, 64px collapsed / 240px expanded on hover or focus. Expands with a width transition.",
+      "html": "<aside class=\"ds-sidebar\" tabindex=\"0\"><a class=\"ds-sidebar-brand\" href=\"/\"><svg class=\"ds-sidebar-logo\" xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 40 40\" width=\"40\" height=\"40\" fill=\"none\"><circle cx=\"20\" cy=\"20\" r=\"20\" fill=\"#0f766e\"/><circle cx=\"20\" cy=\"16\" r=\"7\" fill=\"#ffffff\" opacity=\"0.9\"/><path d=\"M12 28c0-4.4 3.6-8 8-8s8 3.6 8 8\" stroke=\"#ffffff\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg><span class=\"ds-sidebar-brand-label\">Cafe Story</span></a><nav class=\"ds-sidebar-nav\"><a class=\"ds-sidebar-item ds-sidebar-item--active\" href=\"/\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\"/><polyline points=\"9 22 9 12 15 12 15 22\"/></svg><span class=\"ds-sidebar-label\">Home</span></a><a class=\"ds-sidebar-item\" href=\"/explore\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><polygon points=\"16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76\"/></svg><span class=\"ds-sidebar-label\">Explore</span></a></nav></aside>",
+      "css": ".ds-sidebar { position: relative; display: flex; flex-direction: column; width: 64px; overflow: hidden; border-right: 1px solid #e1d7c8; background: #fffdf8; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1); transition: width 200ms cubic-bezier(0.16,1,0.3,1); } .ds-sidebar:hover, .ds-sidebar:focus-within { width: 240px; } .ds-sidebar-brand { display: flex; align-items: center; gap: 12px; height: 72px; padding: 0 12px; text-decoration: none; color: #6b7280; } .ds-sidebar-logo { flex-shrink: 0; } .ds-sidebar-brand-label { white-space: nowrap; font-size: 18px; font-weight: 500; color: #115e59; opacity: 0; transform: translateX(-4px); transition: opacity 150ms, transform 150ms; font-family: Inter, ui-sans-serif, system-ui, sans-serif; } .ds-sidebar:hover .ds-sidebar-brand-label, .ds-sidebar:focus-within .ds-sidebar-brand-label { opacity: 1; transform: translateX(0); } .ds-sidebar-nav { display: grid; gap: 6px; padding: 8px; } .ds-sidebar-item { display: flex; align-items: center; gap: 12px; height: 48px; padding: 0 12px; border-radius: 8px; text-decoration: none; color: #6b7280; font-size: 14px; font-weight: 500; transition: background 150ms, color 150ms; font-family: Inter, ui-sans-serif, system-ui, sans-serif; } .ds-sidebar-item:hover { background: #efe7da; } .ds-sidebar-item--active { font-weight: 700; color: #115e59; } .ds-sidebar-label { white-space: nowrap; opacity: 0; transform: translateX(-4px); transition: opacity 150ms, transform 150ms; } .ds-sidebar:hover .ds-sidebar-label, .ds-sidebar:focus-within .ds-sidebar-label { opacity: 1; transform: translateX(0); }"
+    },
+    {
+      "name": "Post Card",
+      "kind": "card",
+      "description": "Primary feed unit. Avatar + author header, optional media, action bar (Like/Comment/Share/Bookmark), caption, tags.",
+      "html": "<div class=\"ds-post-card\"><div class=\"ds-post-header\"><div class=\"ds-post-avatar-wrap\"><img class=\"ds-post-avatar\" src=\"https://i.pravatar.cc/44?img=3\" alt=\"User avatar\"></div><div class=\"ds-post-meta\"><span class=\"ds-post-author\">Minh Trang</span><span class=\"ds-post-sublabel\">@minhtrang</span></div></div><div class=\"ds-post-media\"><img class=\"ds-post-image\" src=\"https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=600&q=80\" alt=\"Cafe photo\"></div><div class=\"ds-post-content\"><div class=\"ds-post-actions\"><div class=\"ds-post-actions-left\"><button class=\"ds-btn-ghost\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z\"/></svg><span>48</span></button><button class=\"ds-btn-ghost\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z\"/></svg><span>12</span></button></div><button class=\"ds-btn-ghost\"><svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z\"/></svg></button></div><p class=\"ds-post-caption\"><strong>Minh Trang</strong> Ánh sáng chiều tà qua cửa sổ quán, ly long black nguội dần trên bàn — buổi chiều không cần vội.</p><div class=\"ds-post-tags\"><span class=\"ds-badge-secondary\">#longblack</span><span class=\"ds-badge-secondary\">#hanoi</span></div></div></div>",
+      "css": ".ds-post-card { background: #fffdf8; border: 1px solid #e1d7c8; border-radius: 8px; box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05); overflow: hidden; width: 85%; max-width: 100%; margin: 0 auto; } .ds-post-header { display: flex; align-items: center; gap: 12px; padding: 16px; } .ds-post-avatar-wrap { flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; overflow: hidden; border: 1px solid rgba(225,215,200,0.4); box-shadow: inset 0 0 0 999px rgba(217,119,6,0.07); } .ds-post-avatar { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; } .ds-post-meta { min-width: 0; } .ds-post-author { display: block; font-size: 16px; font-weight: 700; color: #1f2937; font-family: Inter, ui-sans-serif, system-ui, sans-serif; } .ds-post-sublabel { display: block; font-size: 12px; font-weight: 700; color: #504442; font-family: Inter, ui-sans-serif, system-ui, sans-serif; } .ds-post-media img.ds-post-image { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block; } .ds-post-content { padding: 16px; display: flex; flex-direction: column; gap: 16px; } .ds-post-actions { display: flex; align-items: center; justify-content: space-between; } .ds-post-actions-left { display: flex; align-items: center; gap: 16px; } .ds-btn-ghost { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: none; color: #1f2937; font-size: 14px; font-weight: 700; font-family: Inter, ui-sans-serif, system-ui, sans-serif; cursor: pointer; padding: 0; transition: color 150ms; } .ds-btn-ghost:hover { color: #0f766e; } .ds-post-caption { margin: 0; font-size: 14px; line-height: 1.714; color: #1f2937; font-family: Inter, ui-sans-serif, system-ui, sans-serif; } .ds-post-tags { display: flex; flex-wrap: wrap; gap: 8px; } .ds-badge-secondary { display: inline-flex; align-items: center; background: #efe7da; color: #115e59; padding: 4px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Considered Roast",
+    "overview": "CafeStory is built for people who already know what they like — they don't need to be seduced by the interface, they need the interface to get out of the way. Every design decision is deliberate the way a single-origin roast profile is deliberate: each choice is made with a specific outcome in mind, nothing is added for decoration, and the result is judged by the experience it produces, not how it looks in a screenshot.\n\nThe system is warm without being sentimental. The palette draws from roasted tones and cafe environments — aged paper, dark espresso, muted brick — but warmth is delivered through color relationships and typographic weight, never through decorative layering or visual noise.\n\nThis system explicitly rejects: the noisy-blue corporate social feed; the utilitarian directory feel; the mass-produced AI-default warm-cream + teal + eyebrow-labels SaaS scaffold; and the engagement-metric-everywhere energy of Instagram clones.",
+    "keyCharacteristics": [
+      "Single sans-serif (Inter) across all surfaces — no display pairing, no decorative type",
+      "Restrained color: Bloom Teal for actions, Brick Chaff for emotion, Caramel Crack for ratings only",
+      "Tonal depth: layers are separated by surface color shifts (Green Bean → Parchment Skin → Silver Skin), not shadow stacks",
+      "Sidebar-first navigation that expands on focus — chrome shrinks to let content breathe",
+      "Dark mode is first-class, not an afterthought: Italian Roast backgrounds, not inverted pastels"
+    ],
+    "rules": [
+      {
+        "name": "The One Signal Rule",
+        "body": "Each color role is used for one semantic purpose only. Bloom Teal = action. Brick Chaff = emotion/danger. Caramel Crack = rating. Never borrow a role color for a non-role purpose.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tonal Depth Rule",
+        "body": "Depth between layers is created by stepping through the neutral ramp (background → surface → surface-muted), never by stacking box-shadows on content cards.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Content surfaces — post cards, cafe cards, comment threads — have no elevation shadow at rest. If an element needs a shadow to feel distinct, check whether a tonal background shift would serve better first.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No-Display-In-UI Rule",
+        "body": "Body copy, button labels, form fields, and navigation items always use Body or Label scale. Display and Headline are for content identity, not chrome.",
+        "section": "typography"
+      },
+      {
+        "name": "The Weight-Not-Size Rule",
+        "body": "Hierarchy is communicated first through font-weight, then through size. Use weight contrast (400 → 700 → 900) to do the heavy lifting.",
+        "section": "typography"
+      }
+    ],
+    "dos": [
+      "Do keep Bloom Teal (#0f766e) exclusive to interactive actions and current selection.",
+      "Do separate content layers through background tonal shifts (Green Bean → Parchment Skin → Silver Skin) before reaching for a shadow.",
+      "Do use font-weight contrast (400 → 700 → 900) as the primary hierarchy tool within a given type size.",
+      "Do maintain ≥4.5:1 contrast for all body and placeholder text against their background — verify at the border cases (Ash Gray on Parchment Skin, Ash Gray on Silver Skin).",
+      "Do support @media (prefers-reduced-motion: reduce) for all transitions.",
+      "Do use Inter system-stack fallback so the layout doesn't shift if the web font is slow.",
+      "Do keep the sidebar nav labels hidden at rest and revealed on hover/focus only.",
+      "Do use the dark mode token mapping consistently — map each role token to its dark counterpart explicitly."
+    ],
+    "donts": [
+      "Don't make the interface feel like Facebook/generic social feed — too noisy, too blue, too many competing elements on screen at once.",
+      "Don't use the Yelp/TripAdvisor utilitarian directory pattern.",
+      "Don't use the generic SaaS warm-cream body + teal primary + uppercase eyebrow label scaffold.",
+      "Don't clone the engagement-metric-everywhere energy of Instagram — social counters are present but subordinate.",
+      "Don't use border-left or border-right greater than 1px as a colored accent stripe on cards or list items.",
+      "Don't use gradient text (background-clip: text with a gradient). Use solid color.",
+      "Don't nest cards inside cards.",
+      "Don't use Caramel Crack (#d97706) for anything other than rating scores.",
+      "Don't use decorative motion — page-load choreography or scroll-triggered entrance stacks applied uniformly.",
+      "Don't use a display or headline font weight in navigation labels, button text, or form fields."
+    ]
+  }
+}
