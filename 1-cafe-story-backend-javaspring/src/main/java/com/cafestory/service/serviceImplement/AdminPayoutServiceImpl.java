@@ -17,6 +17,9 @@ import com.cafestory.repository.ReviewerRankingSnapshotRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.AdminPayoutService;
 import com.cafestory.service.serviceInterface.ReviewerFormulaService;
+import com.cafestory.service.serviceInterface.ReviewerIncomeService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -30,30 +33,37 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class AdminPayoutServiceImpl implements AdminPayoutService {
+
+    private static final Logger log = LoggerFactory.getLogger(AdminPayoutServiceImpl.class);
 
     private final AdminPayoutRepository payoutRepository;
     private final ReviewerIncomeRepository incomeRepository;
     private final ReviewerRankingSnapshotRepository snapshotRepository;
     private final UserRepository userRepository;
     private final ReviewerFormulaService formulaService;
+    private final ReviewerIncomeService reviewerIncomeService;
 
     public AdminPayoutServiceImpl(
             AdminPayoutRepository payoutRepository,
             ReviewerIncomeRepository incomeRepository,
             ReviewerRankingSnapshotRepository snapshotRepository,
             UserRepository userRepository,
-            ReviewerFormulaService formulaService) {
+            ReviewerFormulaService formulaService,
+            ReviewerIncomeService reviewerIncomeService) {
         this.payoutRepository = payoutRepository;
         this.incomeRepository = incomeRepository;
         this.snapshotRepository = snapshotRepository;
         this.userRepository = userRepository;
         this.formulaService = formulaService;
+        this.reviewerIncomeService = reviewerIncomeService;
     }
 
     @Override
@@ -61,12 +71,40 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
     public void generateMonthlyPayout(String month) {
         YearMonth ym = YearMonth.parse(month);
         LocalDate start = ym.atDay(1);
-        LocalDate end = ym.plusMonths(1).atDay(1);
+        LocalDate end = ym.plusMonths(1).atDay(1);   // exclusive upper bound
+
+        // Guard: block mid-month generation — incomplete data produces wrong payout
+        LocalDate today = LocalDate.now();
+        if (end.isAfter(today)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Cannot generate payout for an incomplete month. " + month + " ends on "
+                            + end.minusDays(1) + ", today is " + today + ".");
+        }
 
         ReviewerFormula formula = formulaService.getActiveFormula();
 
         List<ReviewerIncome> monthlyIncomes = incomeRepository
                 .findByIncomeDateGreaterThanEqualAndIncomeDateLessThan(start, end);
+
+        // Gap detection: find days in the month that have no income record, then backfill
+        Set<LocalDate> coveredDates = new HashSet<>();
+        for (ReviewerIncome income : monthlyIncomes) {
+            coveredDates.add(income.getIncomeDate());
+        }
+        List<LocalDate> missingDates = new ArrayList<>();
+        for (LocalDate d = start; d.isBefore(end); d = d.plusDays(1)) {
+            if (!coveredDates.contains(d)) missingDates.add(d);
+        }
+        if (!missingDates.isEmpty()) {
+            log.warn("generateMonthlyPayout[{}]: missing income for {} day(s) — backfilling: {}",
+                    month, missingDates.size(), missingDates);
+            for (LocalDate missing : missingDates) {
+                reviewerIncomeService.generateDailyIncome(missing);
+            }
+            // Re-query to include newly generated records
+            monthlyIncomes = incomeRepository
+                    .findByIncomeDateGreaterThanEqualAndIncomeDateLessThan(start, end);
+        }
 
         Map<UUID, Long> totalBaseByReviewerId = new HashMap<>();
         Map<UUID, Reviewer> reviewerById = new HashMap<>();
