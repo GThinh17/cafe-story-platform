@@ -3,7 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { colors, spacing, typography } from "../../theme";
 import type { RecommendationCardResponse } from "../../types";
 import { EmptyState } from "../ui/empty-state";
-import { LoadingState } from "../ui/loading-state";
+import { ListRowSkeletonList } from "../ui/skeleton";
 import { ExploreRecommendationCard } from "./explore-recommendation-card";
 
 type ExploreRecommendationListProps = {
@@ -26,7 +26,12 @@ export function ExploreRecommendationList({
   title,
 }: ExploreRecommendationListProps) {
   if (isLoading) {
-    return <LoadingState label="Loading recommendations..." />;
+    return (
+      <View style={styles.section}>
+        <Text style={styles.title}>{title}</Text>
+        <ListRowSkeletonList padded={false} />
+      </View>
+    );
   }
 
   if (error) {

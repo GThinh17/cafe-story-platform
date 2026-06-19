@@ -26,6 +26,7 @@ import {
   ProfileSkeleton,
   ProfileSuggestions,
   ProfileTopBar,
+  PostGridSkeleton,
   Screen,
   UserPostGrid,
 } from "../../components";
@@ -854,12 +855,7 @@ export function ProfileScreen() {
 
         <View style={styles.grid}>
           {isContentLoading ? (
-            <View style={styles.emptyPosts}>
-              <EmptyState
-                description="This profile section is being prepared."
-                title="Loading posts..."
-              />
-            </View>
+            <PostGridSkeleton />
           ) : contentError ? (
             <View style={styles.emptyPosts}>
               <EmptyState

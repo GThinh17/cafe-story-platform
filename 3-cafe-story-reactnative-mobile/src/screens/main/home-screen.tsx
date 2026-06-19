@@ -8,14 +8,13 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
 import {
   BlogFeedList,
   EmptyState,
-  LoadingState,
+  FeedCardSkeletonList,
   Screen,
   ShareTopBar,
   StoryRail,
@@ -82,26 +81,6 @@ function mergeUniqueBlogs(
   });
 
   return [...currentBlogs, ...uniqueNextBlogs];
-}
-
-function FeedSkeletonFooter() {
-  return (
-    <View style={styles.skeletonList}>
-      {[0, 1].map((item) => (
-        <View key={item} style={styles.skeletonCard}>
-          <View style={styles.skeletonHeader}>
-            <View style={styles.skeletonAvatar} />
-            <View style={styles.skeletonHeaderText}>
-              <View style={styles.skeletonLineStrong} />
-              <View style={styles.skeletonLineShort} />
-            </View>
-          </View>
-          <View style={styles.skeletonLine} />
-          <View style={styles.skeletonLineWide} />
-        </View>
-      ))}
-    </View>
-  );
 }
 
 export function HomeScreen() {
@@ -399,14 +378,14 @@ export function HomeScreen() {
       >
         <StoryRail stories={stories} />
         {isLoading ? (
-          <LoadingState label="Loading feed..." />
+          <FeedCardSkeletonList />
         ) : error ? (
           <EmptyState description={error} title="Feed unavailable" />
         ) : blogs.length ? (
           <>
             <BlogFeedList blogs={blogs} />
             {isLoadingMore ? (
-              <FeedSkeletonFooter />
+              <FeedCardSkeletonList count={2} />
             ) : loadMoreError ? (
               <Text style={styles.loadMoreError}>{loadMoreError}</Text>
             ) : null}
@@ -432,54 +411,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.lg,
     textAlign: "center",
-  },
-  skeletonAvatar: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 18,
-    height: 36,
-    width: 36,
-  },
-  skeletonCard: {
-    backgroundColor: colors.background,
-    gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.lg,
-  },
-  skeletonHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.md,
-  },
-  skeletonHeaderText: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  skeletonLine: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 8,
-    height: 12,
-    width: "72%",
-  },
-  skeletonLineShort: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 8,
-    height: 10,
-    width: "34%",
-  },
-  skeletonLineStrong: {
-    backgroundColor: colors.border,
-    borderRadius: 8,
-    height: 12,
-    width: "48%",
-  },
-  skeletonLineWide: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 8,
-    height: 12,
-    width: "92%",
-  },
-  skeletonList: {
-    gap: 2,
-    paddingTop: 2,
   },
 });

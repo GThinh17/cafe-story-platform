@@ -10,7 +10,12 @@ import {
   Text,
   View,
 } from "react-native";
-import { BlogFeedCard, EmptyState, LoadingState, Screen } from "../../components";
+import {
+  BlogFeedCard,
+  EmptyState,
+  FeedCardSkeletonList,
+  Screen,
+} from "../../components";
 import {
   blogResponseToFeedBlog,
   getBlogsByUser,
@@ -188,7 +193,7 @@ export function UserPostsScreen() {
       </View>
 
       {isLoading ? (
-        <LoadingState label="Loading posts..." />
+        <FeedCardSkeletonList />
       ) : (
         <FlatList
           contentContainerStyle={[

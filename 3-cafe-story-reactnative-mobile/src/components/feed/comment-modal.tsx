@@ -18,7 +18,7 @@ import {
 } from "react-native";
 
 import { Avatar } from "../ui/avatar";
-import { LoadingState } from "../ui/loading-state";
+import { CommentSkeletonList } from "../ui/skeleton";
 import { useAuth } from "../../features/auth";
 import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
@@ -519,7 +519,7 @@ export function CommentModal({
 
           <View style={styles.content}>
             {isLoading ? (
-              <LoadingState label="Loading comments..." />
+              <CommentSkeletonList />
             ) : error ? (
               <View style={styles.emptyBlock}>
                 <Text style={styles.emptyTitle}>Comments unavailable</Text>
