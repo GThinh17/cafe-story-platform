@@ -3,6 +3,9 @@ function pathId(id: string) {
 }
 
 export const apiEndpoints = {
+  adFees: {
+    list: "/api/ad-fees",
+  },
   auth: {
     login: "/api/auth/login",
     register: "/api/auth/register",
@@ -44,6 +47,14 @@ export const apiEndpoints = {
     list: "/api/comments",
     byBlog: (blogId: string) => `/api/comments/blogs/${pathId(blogId)}`,
     replies: (commentId: string) => `/api/comments/${pathId(commentId)}/replies`,
+  },
+  extraFees: {
+    list: "/api/extra-fees",
+  },
+  payments: {
+    byId: (paymentId: string) => `/api/payments/${pathId(paymentId)}`,
+    list: "/api/payments",
+    vnpayReturn: "/api/payments/vnpay/return",
   },
   reportReasons: {
     list: (targetType?: string) =>

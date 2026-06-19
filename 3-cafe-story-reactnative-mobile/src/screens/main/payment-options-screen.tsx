@@ -1,33 +1,161 @@
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
+  AlertCircle,
   ArrowLeft,
   BadgeCheck,
   CheckCircle2,
   CreditCard,
+  Landmark,
   Megaphone,
+  RefreshCw,
   Store,
+  X,
 } from "lucide-react-native";
-import { useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Linking,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Button, Screen } from "../../components";
-import { mockPaymentPlans, paymentPlanTabs } from "../../mocks";
+import { Button, EmptyState, LoadingState, Screen } from "../../components";
+import { useAuth } from "../../features/auth";
 import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
+import {
+  createPayment,
+  getAdFees,
+  getExtraFees,
+  getPayment,
+} from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
-import type { PaymentPlan, PaymentPlanTab } from "../../types";
+import type {
+  AdFeeResponse,
+  AuthUser,
+  CheckoutPaymentMethod,
+  ExtraFeeResponse,
+  PaymentPlanTab,
+  PaymentResponse,
+} from "../../types";
 
 type PaymentOptionsRouteProp = RouteProp<
   RootStackParamList,
   typeof routes.paymentOptions
 >;
 
+type PaymentDisplayPlan = {
+  adFeeId?: string;
+  badge?: string;
+  billingLabel: string;
+  ctaLabel: string;
+  durationLabel: string;
+  extraFeeId?: string;
+  features: string[];
+  highlighted?: boolean;
+  id: string;
+  note?: string;
+  priceVnd: number;
+  source: "adFee" | "extraFee";
+  subtitle: string;
+  tab: PaymentPlanTab;
+  title: string;
+};
+
+type PaymentFlowState =
+  | {
+      status: "idle";
+    }
+  | {
+      error?: string | null;
+      message: string;
+      method: CheckoutPaymentMethod;
+      payment: PaymentResponse;
+      paymentId: string;
+      plan: PaymentDisplayPlan;
+      status: "checking" | "externalPaymentOpened" | "failed" | "pending" | "success";
+    };
+
+type PaymentTabMeta = {
+  label: string;
+  subtitle: string;
+  value: PaymentPlanTab;
+};
+
 const PAYMENT_HEADER_HEIGHT = 72;
 
-function formatVnd(value: number) {
-  return `${String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} VND`;
+const paymentPlanTabs: PaymentTabMeta[] = [
+  {
+    label: "Reviewer",
+    subtitle: "Become a paid reviewer",
+    value: "reviewer",
+  },
+  {
+    label: "Cafe page",
+    subtitle: "Open and manage a cafe page",
+    value: "cafe-page",
+  },
+  {
+    label: "Ads",
+    subtitle: "Promote posts and cafes",
+    value: "ads",
+  },
+];
+
+const paymentMethods: {
+  description: string;
+  label: string;
+  method: CheckoutPaymentMethod;
+  Icon: typeof CreditCard;
+}[] = [
+  {
+    description: "Pay by card through Stripe checkout.",
+    Icon: CreditCard,
+    label: "Stripe",
+    method: "STRIPE_CARD",
+  },
+  {
+    description: "Pay through the VNPAY hosted payment page.",
+    Icon: Landmark,
+    label: "VNPAY",
+    method: "VNPAY",
+  },
+];
+
+function formatVnd(value: number | string | null | undefined) {
+  const safeValue = Number(value ?? 0);
+
+  return `${String(safeValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} VND`;
+}
+
+function formatMonths(value: number | null | undefined) {
+  if (!value || value <= 0) {
+    return "No expiry";
+  }
+
+  return `${value} ${value === 1 ? "month" : "months"}`;
+}
+
+function formatAdFeeType(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return fallback;
 }
 
 function getTabIcon(tab: PaymentPlanTab) {
@@ -41,11 +169,114 @@ function getTabIcon(tab: PaymentPlanTab) {
   }
 }
 
-function handleChoosePlan(plan: PaymentPlan) {
-  Alert.alert(
-    "Mock payment",
-    `${plan.title} is selected. Payment API is not connected on mobile yet.`,
+function normalizeRole(role: string) {
+  return role.replace(/^ROLE_/, "").toUpperCase();
+}
+
+function hasAdminRole(user: AuthUser | null | undefined) {
+  return Boolean(user?.roles?.some((role) => normalizeRole(role) === "ADMIN"));
+}
+
+function hasCafePageRole(user: AuthUser | null | undefined) {
+  return Boolean(
+    user?.roles?.some((role) => {
+      const normalizedRole = normalizeRole(role);
+
+      return normalizedRole === "CAFE_PAGE" || normalizedRole === "CAFE";
+    }),
   );
+}
+
+function linkedCafePageId(user: AuthUser | null | undefined) {
+  return user?.cafePageId ?? user?.pageId ?? null;
+}
+
+function isPaidStatus(status: string | null | undefined) {
+  const normalizedStatus = String(status ?? "").trim().toUpperCase();
+
+  return ["COMPLETED", "PAID", "PAID_SUCCESS", "SUCCESS"].includes(
+    normalizedStatus,
+  );
+}
+
+function isPendingStatus(status: string | null | undefined) {
+  return String(status ?? "").trim().toUpperCase() === "PENDING";
+}
+
+function extraFeeToPlan(fee: ExtraFeeResponse): PaymentDisplayPlan | null {
+  if (fee.feeType === "REVIEWER_REGISTRATION") {
+    return {
+      badge: "Reviewer",
+      billingLabel: "one-time",
+      ctaLabel: "Choose reviewer package",
+      durationLabel: formatMonths(fee.durationMonths),
+      extraFeeId: fee.extraFeeId,
+      features: [
+        "Reviewer role activates after payment is verified",
+        `${formatMonths(fee.durationMonths)} reviewer access`,
+        "Reviewer dashboard and payout eligibility",
+        "Profile badge and reviewer discovery tools",
+      ],
+      highlighted: true,
+      id: fee.extraFeeId,
+      note: "Existing reviewer access is extended by the server payment rule.",
+      priceVnd: fee.price,
+      source: "extraFee",
+      subtitle: fee.description || "Unlock reviewer tools on CafeStory.",
+      tab: "reviewer",
+      title: fee.name,
+    };
+  }
+
+  if (fee.feeType === "CAFE_PAGE_OPENING") {
+    return {
+      badge: "Cafe",
+      billingLabel: "one-time",
+      ctaLabel: "Choose cafe page package",
+      durationLabel: formatMonths(fee.durationMonths),
+      extraFeeId: fee.extraFeeId,
+      features: [
+        "Cafe page role activates after payment is verified",
+        `${formatMonths(fee.durationMonths)} cafe page access`,
+        fee.maxMembers
+          ? `Up to ${fee.maxMembers} page members`
+          : "Default page member limit",
+        "Draft cafe page is created if you do not have one",
+      ],
+      highlighted: true,
+      id: fee.extraFeeId,
+      note: "Existing active cafe page access is extended by the server payment rule.",
+      priceVnd: fee.price,
+      source: "extraFee",
+      subtitle: fee.description || "Open and manage an official cafe page.",
+      tab: "cafe-page",
+      title: fee.name,
+    };
+  }
+
+  return null;
+}
+
+function adFeeToPlan(fee: AdFeeResponse): PaymentDisplayPlan {
+  return {
+    adFeeId: fee.adFeeId,
+    badge: "Ads",
+    billingLabel: "campaign",
+    ctaLabel: "Choose ads package",
+    durationLabel: "30 days",
+    features: [
+      "Ads payment flow for cafe page promotion",
+      "Feed ad package configured by backend",
+      "Payment is created with adFeeId",
+    ],
+    id: fee.adFeeId,
+    note: "Ads packages are available for cafe page and admin accounts.",
+    priceVnd: Number(fee.price ?? 0),
+    source: "adFee",
+    subtitle: "Promote CafeStory content through an ad package.",
+    tab: "ads",
+    title: formatAdFeeType(fee.feeType),
+  };
 }
 
 export function PaymentOptionsScreen() {
@@ -53,11 +284,267 @@ export function PaymentOptionsScreen() {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<PaymentOptionsRouteProp>();
   const insets = useSafeAreaInsets();
+  const { refreshCurrentUser, user } = useAuth();
+  const isAdmin = hasAdminRole(user);
+  const canAccessAds =
+    isAdmin || hasCafePageRole(user) || Boolean(linkedCafePageId(user));
   const [activeTab, setActiveTab] = useState<PaymentPlanTab>(
     route.params?.initialTab ?? "reviewer",
   );
-  const plans = mockPaymentPlans.filter((plan) => plan.tab === activeTab);
-  const activeTabMeta = paymentPlanTabs.find((tab) => tab.value === activeTab);
+  const [extraFees, setExtraFees] = useState<ExtraFeeResponse[]>([]);
+  const [adFees, setAdFees] = useState<AdFeeResponse[]>([]);
+  const [isLoadingPlans, setIsLoadingPlans] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<PaymentDisplayPlan | null>(
+    null,
+  );
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [activeMethod, setActiveMethod] = useState<CheckoutPaymentMethod | null>(
+    null,
+  );
+  const [isCreatingPayment, setIsCreatingPayment] = useState(false);
+  const [paymentFlow, setPaymentFlow] = useState<PaymentFlowState>({
+    status: "idle",
+  });
+
+  const availableTabs = useMemo(
+    () => paymentPlanTabs.filter((tab) => canAccessAds || tab.value !== "ads"),
+    [canAccessAds],
+  );
+
+  const activeTabMeta =
+    availableTabs.find((tab) => tab.value === activeTab) ?? availableTabs[0];
+
+  const loadPaymentPlans = useCallback(async () => {
+    setIsLoadingPlans(true);
+    setLoadError(null);
+
+    try {
+      const [nextExtraFees, nextAdFees] = await Promise.all([
+        getExtraFees(),
+        canAccessAds ? getAdFees() : Promise.resolve<AdFeeResponse[]>([]),
+      ]);
+
+      setExtraFees(nextExtraFees);
+      setAdFees(nextAdFees);
+    } catch (error) {
+      setLoadError(getErrorMessage(error, "Unable to load payment plans."));
+    } finally {
+      setIsLoadingPlans(false);
+    }
+  }, [canAccessAds]);
+
+  useEffect(() => {
+    void loadPaymentPlans();
+  }, [loadPaymentPlans]);
+
+  useEffect(() => {
+    if (activeTab === "ads" && !canAccessAds) {
+      setActiveTab("reviewer");
+    }
+  }, [activeTab, canAccessAds]);
+
+  const plans = useMemo(() => {
+    const extraFeePlans = extraFees
+      .filter((fee) => fee.status !== false)
+      .map(extraFeeToPlan)
+      .filter((plan): plan is PaymentDisplayPlan => Boolean(plan));
+    const adFeePlans = canAccessAds
+      ? adFees.filter((fee) => fee.status !== false).map(adFeeToPlan)
+      : [];
+
+    return [...extraFeePlans, ...adFeePlans]
+      .filter((plan) => plan.tab === activeTab)
+      .sort((left, right) => left.priceVnd - right.priceVnd);
+  }, [activeTab, adFees, canAccessAds, extraFees]);
+
+  const openPaymentModal = useCallback((plan: PaymentDisplayPlan) => {
+    setSelectedPlan(plan);
+    setModalError(null);
+  }, []);
+
+  const closePaymentModal = useCallback(() => {
+    if (isCreatingPayment) {
+      return;
+    }
+
+    setSelectedPlan(null);
+    setModalError(null);
+  }, [isCreatingPayment]);
+
+  const createExternalPayment = useCallback(
+    async (method: CheckoutPaymentMethod) => {
+      if (!selectedPlan) {
+        return;
+      }
+
+      setActiveMethod(method);
+      setIsCreatingPayment(true);
+      setModalError(null);
+
+      try {
+        const payment = await createPayment({
+          ...(selectedPlan.source === "extraFee"
+            ? { extraFeeId: selectedPlan.extraFeeId }
+            : { adFeeId: selectedPlan.adFeeId }),
+          paymentMethod: method,
+        });
+        const paymentUrl = payment.paymentUrl?.trim();
+
+        if (!paymentUrl) {
+          setModalError("Payment URL was not returned by the server.");
+          return;
+        }
+
+        const nextPaymentFlow: PaymentFlowState = {
+          message: "Complete payment in the browser, then return here to check status.",
+          method,
+          payment,
+          paymentId: payment.paymentId,
+          plan: selectedPlan,
+          status: "externalPaymentOpened",
+        };
+
+        setPaymentFlow(nextPaymentFlow);
+        setSelectedPlan(null);
+
+        try {
+          await Linking.openURL(paymentUrl);
+        } catch (openError) {
+          setPaymentFlow({
+            ...nextPaymentFlow,
+            error: getErrorMessage(openError, "Unable to open payment URL."),
+            message:
+              "Payment was created, but the payment page could not be opened.",
+            status: "failed",
+          });
+        }
+      } catch (error) {
+        setModalError(getErrorMessage(error, "Unable to create payment."));
+      } finally {
+        setActiveMethod(null);
+        setIsCreatingPayment(false);
+      }
+    },
+    [selectedPlan],
+  );
+
+  const checkPaymentStatus = useCallback(async () => {
+    if (paymentFlow.status === "idle") {
+      return;
+    }
+
+    setPaymentFlow({
+      ...paymentFlow,
+      error: null,
+      message: "Checking payment status...",
+      status: "checking",
+    });
+
+    try {
+      const payment = await getPayment(paymentFlow.paymentId);
+
+      if (isPaidStatus(payment.paymentStatus)) {
+        await refreshCurrentUser();
+        setPaymentFlow({
+          ...paymentFlow,
+          error: null,
+          message: "Payment verified. Your account has been updated.",
+          payment,
+          status: "success",
+        });
+        return;
+      }
+
+      if (isPendingStatus(payment.paymentStatus)) {
+        setPaymentFlow({
+          ...paymentFlow,
+          error: null,
+          message: "Payment is still pending. Please check again after the provider finishes processing.",
+          payment,
+          status: "pending",
+        });
+        return;
+      }
+
+      setPaymentFlow({
+        ...paymentFlow,
+        error: null,
+        message: `Payment status: ${payment.paymentStatus}`,
+        payment,
+        status: "failed",
+      });
+    } catch (error) {
+      setPaymentFlow({
+        ...paymentFlow,
+        error: getErrorMessage(error, "Unable to verify payment."),
+        message: "Payment verification failed.",
+        status: "failed",
+      });
+    }
+  }, [paymentFlow, refreshCurrentUser]);
+
+  const openSuccessTarget = useCallback(() => {
+    if (paymentFlow.status !== "success") {
+      return;
+    }
+
+    const cafePageId = linkedCafePageId(user);
+
+    if (paymentFlow.plan.tab === "cafe-page" && cafePageId) {
+      navigation.navigate(routes.cafeDetail, {
+        cafeId: cafePageId,
+      });
+      return;
+    }
+
+    navigation.navigate(routes.main, {
+      screen: routes.profile,
+    });
+  }, [navigation, paymentFlow, user]);
+
+  function renderPlanContent() {
+    if (isLoadingPlans) {
+      return (
+        <View style={styles.stateCard}>
+          <LoadingState label="Loading payment plans..." />
+        </View>
+      );
+    }
+
+    if (loadError) {
+      return (
+        <View style={styles.stateCard}>
+          <EmptyState
+            description="Pull plans from the backend again when the connection is ready."
+            title={loadError}
+          />
+          <Button label="Retry" onPress={loadPaymentPlans} variant="outlined" />
+        </View>
+      );
+    }
+
+    if (!plans.length) {
+      return (
+        <View style={styles.stateCard}>
+          <EmptyState
+            description={
+              activeTab === "ads"
+                ? "No active ad fee packages are available for this account."
+                : "No active package is available for this tab yet."
+            }
+            title="No packages"
+          />
+        </View>
+      );
+    }
+
+    return plans.map((plan) => (
+      <PlanCard key={plan.id} onChoose={openPaymentModal} plan={plan} />
+    ));
+  }
+
+  const isSuccess = paymentFlow.status === "success";
 
   return (
     <Screen padded={false}>
@@ -80,64 +567,98 @@ export function PaymentOptionsScreen() {
         <View style={styles.headerCopy}>
           <Text style={styles.title}>Payment options</Text>
           <Text style={styles.subtitle}>
-            {activeTabMeta?.subtitle ?? "Choose a CafeStory package"}
+            {isSuccess
+              ? "Payment completed"
+              : activeTabMeta?.subtitle ?? "Choose a CafeStory package"}
           </Text>
         </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.planList}
+        contentContainerStyle={[
+          styles.planList,
+          isSuccess && styles.successPlanList,
+        ]}
         showsVerticalScrollIndicator={false}
       >
-        {plans.map((plan) => (
-          <PlanCard key={plan.id} plan={plan} />
-        ))}
+        {paymentFlow.status !== "idle" ? (
+          <PaymentStatusCard
+            cafePageId={linkedCafePageId(user)}
+            flow={paymentFlow}
+            onCheckStatus={checkPaymentStatus}
+            onChooseAgain={() => {
+              if (paymentFlow.status !== "checking") {
+                setPaymentFlow({ status: "idle" });
+                openPaymentModal(paymentFlow.plan);
+              }
+            }}
+            onSuccessAction={openSuccessTarget}
+          />
+        ) : null}
+        {!isSuccess ? renderPlanContent() : null}
       </ScrollView>
 
-      <View
-        style={[
-          styles.tabsShell,
-          { paddingBottom: Math.max(insets.bottom, 10) },
-        ]}
-      >
-        <View style={styles.tabs}>
-          {paymentPlanTabs.map((tab) => {
-            const Icon = getTabIcon(tab.value);
-            const isActive = activeTab === tab.value;
+      {!isSuccess ? (
+        <View
+          style={[
+            styles.tabsShell,
+            { paddingBottom: Math.max(insets.bottom, 10) },
+          ]}
+        >
+          <View style={styles.tabs}>
+            {availableTabs.map((tab) => {
+              const Icon = getTabIcon(tab.value);
+              const isActive = activeTab === tab.value;
 
-            return (
-              <Pressable
-                accessibilityLabel={`Show ${tab.label} packages`}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: isActive }}
-                key={tab.value}
-                onPress={() => setActiveTab(tab.value)}
-                style={({ pressed }) => [
-                  styles.tab,
-                  isActive && styles.activeTab,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <Icon
-                  color={isActive ? colors.white : colors.foreground}
-                  size={22}
-                  strokeWidth={isActive ? 2.7 : 2.1}
-                />
-                {isActive ? (
-                  <Text numberOfLines={1} style={styles.activeTabText}>
-                    {tab.label}
-                  </Text>
-                ) : null}
-              </Pressable>
-            );
-          })}
+              return (
+                <Pressable
+                  accessibilityLabel={`Show ${tab.label} packages`}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: isActive }}
+                  key={tab.value}
+                  onPress={() => setActiveTab(tab.value)}
+                  style={({ pressed }) => [
+                    styles.tab,
+                    isActive && styles.activeTab,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Icon
+                    color={isActive ? colors.white : colors.foreground}
+                    size={22}
+                    strokeWidth={isActive ? 2.7 : 2.1}
+                  />
+                  {isActive ? (
+                    <Text numberOfLines={1} style={styles.activeTabText}>
+                      {tab.label}
+                    </Text>
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
-      </View>
+      ) : null}
+
+      <PaymentMethodModal
+        activeMethod={activeMethod}
+        error={modalError}
+        isCreatingPayment={isCreatingPayment}
+        onClose={closePaymentModal}
+        onPay={createExternalPayment}
+        plan={selectedPlan}
+      />
     </Screen>
   );
 }
 
-function PlanCard({ plan }: { plan: PaymentPlan }) {
+function PlanCard({
+  onChoose,
+  plan,
+}: {
+  onChoose: (plan: PaymentDisplayPlan) => void;
+  plan: PaymentDisplayPlan;
+}) {
   return (
     <View style={[styles.planCard, plan.highlighted && styles.highlightedCard]}>
       <View style={styles.planHeader}>
@@ -219,9 +740,206 @@ function PlanCard({ plan }: { plan: PaymentPlan }) {
 
       <Button
         label={plan.ctaLabel}
-        onPress={() => handleChoosePlan(plan)}
+        onPress={() => onChoose(plan)}
         variant={plan.highlighted ? "secondary" : "primary"}
       />
+    </View>
+  );
+}
+
+function PaymentMethodModal({
+  activeMethod,
+  error,
+  isCreatingPayment,
+  onClose,
+  onPay,
+  plan,
+}: {
+  activeMethod: CheckoutPaymentMethod | null;
+  error: string | null;
+  isCreatingPayment: boolean;
+  onClose: () => void;
+  onPay: (method: CheckoutPaymentMethod) => void;
+  plan: PaymentDisplayPlan | null;
+}) {
+  return (
+    <Modal
+      animationType="fade"
+      onRequestClose={onClose}
+      transparent
+      visible={Boolean(plan)}
+    >
+      <View style={styles.modalBackdrop}>
+        <View style={styles.modalCard}>
+          <View style={styles.modalHeader}>
+            <View style={styles.modalTitleBlock}>
+              <Text style={styles.modalTitle}>Choose payment method</Text>
+              {plan ? (
+                <Text style={styles.modalSubtitle}>
+                  {plan.title} - {formatVnd(plan.priceVnd)}
+                </Text>
+              ) : null}
+            </View>
+            <Pressable
+              accessibilityLabel="Close payment method"
+              accessibilityRole="button"
+              disabled={isCreatingPayment}
+              onPress={onClose}
+              style={({ pressed }) => [
+                styles.modalCloseButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <X color={colors.foreground} size={22} strokeWidth={2.4} />
+            </Pressable>
+          </View>
+
+          {plan ? (
+            <View style={styles.modalSummary}>
+              <Text style={styles.modalSummaryLabel}>Package duration</Text>
+              <Text style={styles.modalSummaryValue}>{plan.durationLabel}</Text>
+            </View>
+          ) : null}
+
+          {error ? (
+            <View style={styles.errorBanner}>
+              <AlertCircle color={colors.danger} size={18} strokeWidth={2.4} />
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          ) : null}
+
+          <View style={styles.methodList}>
+            {paymentMethods.map(({ Icon, description, label, method }) => {
+              const isActive = activeMethod === method;
+
+              return (
+                <Pressable
+                  accessibilityLabel={`Pay with ${label}`}
+                  accessibilityRole="button"
+                  disabled={isCreatingPayment}
+                  key={method}
+                  onPress={() => onPay(method)}
+                  style={({ pressed }) => [
+                    styles.methodItem,
+                    pressed && !isCreatingPayment && styles.pressed,
+                    isCreatingPayment && styles.disabled,
+                  ]}
+                >
+                  <View style={styles.methodIcon}>
+                    {isActive ? (
+                      <ActivityIndicator color={colors.primary} />
+                    ) : (
+                      <Icon
+                        color={colors.primary}
+                        size={22}
+                        strokeWidth={2.4}
+                      />
+                    )}
+                  </View>
+                  <View style={styles.methodCopy}>
+                    <Text style={styles.methodTitle}>
+                      {isActive ? `Redirecting to ${label}...` : label}
+                    </Text>
+                    <Text style={styles.methodDescription}>{description}</Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function PaymentStatusCard({
+  cafePageId,
+  flow,
+  onCheckStatus,
+  onChooseAgain,
+  onSuccessAction,
+}: {
+  cafePageId: string | null;
+  flow: Exclude<PaymentFlowState, { status: "idle" }>;
+  onCheckStatus: () => void;
+  onChooseAgain: () => void;
+  onSuccessAction: () => void;
+}) {
+  const isChecking = flow.status === "checking";
+  const isSuccess = flow.status === "success";
+  const isFailure = flow.status === "failed";
+  const Icon = isFailure ? AlertCircle : isSuccess ? CheckCircle2 : RefreshCw;
+
+  return (
+    <View
+      style={[
+        styles.statusCard,
+        isSuccess && styles.successStatusCard,
+        isFailure && styles.failedStatusCard,
+      ]}
+    >
+      <View style={styles.statusHeader}>
+        <View style={styles.statusIcon}>
+          {isChecking ? (
+            <ActivityIndicator color={colors.primary} />
+          ) : (
+            <Icon
+              color={isFailure ? colors.danger : colors.primary}
+              size={24}
+              strokeWidth={2.6}
+            />
+          )}
+        </View>
+        <View style={styles.statusCopy}>
+          <Text style={styles.statusTitle}>
+            {isChecking
+              ? "Checking payment..."
+              : isSuccess
+                ? "Payment successful"
+                : isFailure
+                  ? "Payment not completed"
+                  : "Finish payment in browser"}
+          </Text>
+          <Text style={styles.statusDescription}>
+            {flow.error ?? flow.message}
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.statusMeta}>
+        <Text style={styles.statusMetaText}>{flow.plan.title}</Text>
+        <Text style={styles.statusMetaText}>
+          {formatVnd(flow.payment.amount ?? flow.plan.priceVnd)} -{" "}
+          {flow.payment.paymentStatus}
+        </Text>
+      </View>
+
+      {isSuccess ? (
+        <Button
+          label={
+            flow.plan.tab === "cafe-page" && cafePageId
+              ? "Open cafe page"
+              : "Back to profile"
+          }
+          onPress={onSuccessAction}
+        />
+      ) : (
+        <View style={styles.statusActions}>
+          <Button
+            isLoading={isChecking}
+            label={isChecking ? "Checking..." : "Check status"}
+            onPress={onCheckStatus}
+          />
+          {isFailure ? (
+            <Button
+              disabled={isChecking}
+              label="Choose another method"
+              onPress={onChooseAgain}
+              variant="outlined"
+            />
+          ) : null}
+        </View>
+      )}
     </View>
   );
 }
@@ -231,6 +949,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     gap: spacing.xs,
     minWidth: 116,
+  },
+  activeTabText: {
+    color: colors.white,
+    fontSize: typography.caption,
+    fontWeight: "800",
   },
   backButton: {
     alignItems: "center",
@@ -254,6 +977,29 @@ const styles = StyleSheet.create({
     fontSize: typography.caption,
     fontWeight: "800",
     textAlign: "right",
+  },
+  disabled: {
+    opacity: 0.65,
+  },
+  errorBanner: {
+    alignItems: "flex-start",
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.sm,
+    padding: spacing.md,
+  },
+  errorText: {
+    color: colors.danger,
+    flex: 1,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 18,
+  },
+  failedStatusCard: {
+    borderColor: colors.border,
   },
   featureRow: {
     alignItems: "flex-start",
@@ -305,6 +1051,99 @@ const styles = StyleSheet.create({
   highlightedText: {
     color: colors.white,
   },
+  methodCopy: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  methodDescription: {
+    color: colors.muted,
+    fontSize: typography.caption,
+    lineHeight: 18,
+  },
+  methodIcon: {
+    alignItems: "center",
+    backgroundColor: colors.primarySoft,
+    borderRadius: 18,
+    height: 36,
+    justifyContent: "center",
+    width: 36,
+  },
+  methodItem: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    padding: spacing.md,
+  },
+  methodList: {
+    gap: spacing.md,
+  },
+  methodTitle: {
+    color: colors.foreground,
+    fontSize: typography.label,
+    fontWeight: "900",
+  },
+  modalBackdrop: {
+    alignItems: "center",
+    backgroundColor: "rgba(33,29,28,0.42)",
+    flex: 1,
+    justifyContent: "flex-end",
+    padding: spacing.xl,
+  },
+  modalCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    gap: spacing.lg,
+    maxWidth: 520,
+    padding: spacing.xl,
+    width: "100%",
+  },
+  modalCloseButton: {
+    alignItems: "center",
+    height: 40,
+    justifyContent: "center",
+    width: 40,
+  },
+  modalHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.md,
+    justifyContent: "space-between",
+  },
+  modalSubtitle: {
+    color: colors.muted,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 18,
+  },
+  modalSummary: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 8,
+    gap: spacing.xs,
+    padding: spacing.md,
+  },
+  modalSummaryLabel: {
+    color: colors.muted,
+    fontSize: typography.caption,
+    fontWeight: "800",
+  },
+  modalSummaryValue: {
+    color: colors.foreground,
+    fontSize: typography.label,
+    fontWeight: "900",
+  },
+  modalTitle: {
+    color: colors.foreground,
+    fontSize: typography.body,
+    fontWeight: "900",
+  },
+  modalTitleBlock: {
+    flex: 1,
+    gap: spacing.xs,
+  },
   note: {
     color: colors.muted,
     fontSize: typography.caption,
@@ -354,10 +1193,75 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     gap: spacing.xs,
   },
+  stateCard: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: spacing.md,
+    minHeight: 220,
+    overflow: "hidden",
+    padding: spacing.lg,
+  },
+  statusActions: {
+    gap: spacing.md,
+  },
+  statusCard: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: spacing.lg,
+    padding: spacing.xl,
+  },
+  statusCopy: {
+    flex: 1,
+    gap: spacing.xs,
+  },
+  statusDescription: {
+    color: colors.muted,
+    fontSize: typography.label,
+    lineHeight: 21,
+  },
+  statusHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  statusIcon: {
+    alignItems: "center",
+    backgroundColor: colors.primarySoft,
+    borderRadius: 22,
+    height: 44,
+    justifyContent: "center",
+    width: 44,
+  },
+  statusMeta: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 8,
+    gap: spacing.xs,
+    padding: spacing.md,
+  },
+  statusMetaText: {
+    color: colors.foreground,
+    fontSize: typography.caption,
+    fontWeight: "800",
+  },
+  statusTitle: {
+    color: colors.foreground,
+    fontSize: typography.body,
+    fontWeight: "900",
+  },
   subtitle: {
     color: colors.muted,
     fontSize: typography.caption,
     fontWeight: "700",
+  },
+  successPlanList: {
+    paddingBottom: spacing.xl,
+  },
+  successStatusCard: {
+    borderColor: colors.primarySoft,
   },
   tab: {
     alignItems: "center",
@@ -367,11 +1271,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minWidth: 46,
     paddingHorizontal: spacing.md,
-  },
-  activeTabText: {
-    color: colors.white,
-    fontSize: typography.caption,
-    fontWeight: "800",
   },
   tabs: {
     alignItems: "center",
