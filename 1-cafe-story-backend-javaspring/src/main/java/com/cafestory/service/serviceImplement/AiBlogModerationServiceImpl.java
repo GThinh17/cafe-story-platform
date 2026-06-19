@@ -86,10 +86,12 @@ public class AiBlogModerationServiceImpl implements AiBlogModerationService {
     }
 
     protected AiBlogModerationResponseDTO callAiService(Blog blog) {
+        List<String> rawImageUrls = blog.getImageUrls() == null ? List.of() : blog.getImageUrls();
+        List<String> imageUrls = rawImageUrls.size() > 10 ? rawImageUrls.subList(0, 10) : rawImageUrls;
         AiBlogModerationRequestDTO request = new AiBlogModerationRequestDTO(
                 blog.getId(),
                 blog.getContent(),
-                blog.getImageUrls() == null ? List.of() : blog.getImageUrls());
+                imageUrls);
 
         AiModerationRawResponse rawResponse = restClient.post()
                 .uri("/api/ai/blogs/evaluate")

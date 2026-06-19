@@ -77,6 +77,8 @@ export function CreatePostModal({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const trimmedCaption = caption.trim();
   const isPostDisabled = isSubmitting || !trimmedCaption;
+  const MAX_IMAGES = 10;
+  const isImageLimitReached = selectedImages.length >= MAX_IMAGES;
 
   useEffect(() => {
     selectedImagesRef.current = selectedImages;
@@ -127,15 +129,20 @@ export function CreatePostModal({
       );
 
       if (files.length > 0) {
-        setSelectedImages((currentImages) => [
-          ...currentImages,
-          ...files.map((file) => ({
-            id: createImageId(file),
-            file,
-            name: file.name,
-            previewUrl: URL.createObjectURL(file),
-          })),
-        ]);
+        setSelectedImages((currentImages) => {
+          const remaining = MAX_IMAGES - currentImages.length;
+          if (remaining <= 0) return currentImages;
+          const allowed = files.slice(0, remaining);
+          return [
+            ...currentImages,
+            ...allowed.map((file) => ({
+              id: createImageId(file),
+              file,
+              name: file.name,
+              previewUrl: URL.createObjectURL(file),
+            })),
+          ];
+        });
       }
 
       event.target.value = "";
@@ -231,16 +238,20 @@ export function CreatePostModal({
                 <h3>Selected Photos ({selectedImages.length})</h3>
                 <Button
                   className="h-auto p-0 text-sm font-medium text-espresso"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isImageLimitReached}
                   onClick={() => fileInputRef.current?.click()}
                   type="button"
                   variant="link"
                 >
                   {selectedImages.length > 0 ? (
-                    <>
-                      <PlusIcon data-icon="inline-start" />
-                      Add more
-                    </>
+                    isImageLimitReached ? (
+                      <span className="text-muted">Max {MAX_IMAGES} photos</span>
+                    ) : (
+                      <>
+                        <PlusIcon data-icon="inline-start" />
+                        Add more
+                      </>
+                    )
                   ) : (
                     <>
                       <ImageIcon data-icon="inline-start" />

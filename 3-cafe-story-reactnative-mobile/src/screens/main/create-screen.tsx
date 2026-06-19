@@ -201,7 +201,7 @@ export function CreateScreen() {
       allowsMultipleSelection: true,
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.86,
-      selectionLimit: 8,
+      selectionLimit: 10,
     });
 
     if (result.canceled) {
@@ -218,7 +218,7 @@ export function CreateScreen() {
 
     setDraft((currentDraft) => ({
       ...currentDraft,
-      mediaUrls: [...currentDraft.mediaUrls, ...uris].slice(0, 8),
+      mediaUrls: [...currentDraft.mediaUrls, ...uris].slice(0, 10),
     }));
     setError("");
   }, []);

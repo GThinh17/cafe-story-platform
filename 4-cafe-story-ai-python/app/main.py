@@ -7,9 +7,6 @@ from fastapi.responses import JSONResponse
 from app.config.rules import get_rules
 from app.schemas import BlogEvaluateRequest, BlogEvaluateResponse
 from app.services.blog_evaluator import safe_evaluate_blog
-from app.services.clip_cafe_detector import preload_clip_model
-from app.services.gemini_image_classifier import preload_image_classifier
-from app.services.gemini_text_moderator import preload_text_moderator
 
 
 logging.basicConfig(level=logging.INFO)
@@ -18,10 +15,6 @@ logger = logging.getLogger("cafestory-ai")
 
 def preload_ai_services() -> None:
     get_rules()
-    logger.info("preloading CLIP model...")
-    preload_clip_model()
-    preload_text_moderator()
-    preload_image_classifier()
     logger.info("AI backend startup complete")
 
 
@@ -33,7 +26,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="CafeStory AI Moderation Backend",
-    version="1.0.0",
+    version="2.0.0",
     lifespan=lifespan,
     default_response_class=JSONResponse,
 )

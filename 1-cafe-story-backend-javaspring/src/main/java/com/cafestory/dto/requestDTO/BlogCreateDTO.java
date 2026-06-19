@@ -1,6 +1,7 @@
 package com.cafestory.dto.requestDTO;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.util.List;
@@ -18,6 +19,7 @@ public class BlogCreateDTO {
     @NotBlank(message = "Content is mandatory")
     private String content;
 
+    @Size(max = 10, message = "Maximum 10 images allowed")
     private List<String> imageUrls;
 
     private List<UUID> taggedUserIds;
