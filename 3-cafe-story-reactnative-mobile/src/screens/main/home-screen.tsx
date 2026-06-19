@@ -40,7 +40,8 @@ import type {
   UserFollowResponse,
 } from "../../types";
 
-const FEED_PAGE_SIZE = 20;
+const INITIAL_FEED_PAGE_SIZE = 10;
+const LOAD_MORE_FEED_PAGE_SIZE = 5;
 const LOAD_MORE_THRESHOLD = 360;
 
 function applyViewerState(
@@ -99,7 +100,7 @@ export function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [page, setPage] = useState(0);
+  const [nextLoadPage, setNextLoadPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
 
   const enrichFeedWithViewerState = useCallback(async (
@@ -147,9 +148,10 @@ export function HomeScreen() {
     setLoadMoreError("");
 
     try {
+      const pageSize = append ? LOAD_MORE_FEED_PAGE_SIZE : INITIAL_FEED_PAGE_SIZE;
       const response = await getBlogFeed({
         page: pageToLoad,
-        size: FEED_PAGE_SIZE,
+        size: pageSize,
       });
       const enrichedResponse = await enrichFeedWithViewerState(response);
 
@@ -158,8 +160,12 @@ export function HomeScreen() {
           ? mergeUniqueBlogs(currentBlogs, enrichedResponse)
           : enrichedResponse,
       );
-      setPage(pageToLoad);
-      setHasMore(response.length === FEED_PAGE_SIZE);
+      setNextLoadPage(
+        append
+          ? pageToLoad + 1
+          : Math.ceil(response.length / LOAD_MORE_FEED_PAGE_SIZE),
+      );
+      setHasMore(response.length === pageSize);
     } catch (requestError) {
       if (append) {
         setLoadMoreError("Unable to load more posts.");
@@ -197,9 +203,9 @@ export function HomeScreen() {
 
     void loadFeed({
       append: true,
-      pageToLoad: page + 1,
+      pageToLoad: nextLoadPage,
     });
-  }, [hasMore, isLoading, isLoadingMore, isRefreshing, loadFeed, page]);
+  }, [hasMore, isLoading, isLoadingMore, isRefreshing, loadFeed, nextLoadPage]);
 
   const handleFeedScroll = useCallback((
     event: NativeSyntheticEvent<NativeScrollEvent>,

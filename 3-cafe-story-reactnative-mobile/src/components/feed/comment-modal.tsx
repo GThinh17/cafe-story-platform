@@ -1,8 +1,10 @@
 import { Heart, Send, X } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  Animated,
   FlatList,
   Keyboard,
   KeyboardAvoidingView,
@@ -33,13 +35,17 @@ type CommentModalProps = {
 };
 
 type CommentItemProps = {
-  comment: CommentResponse;
+  comment: CommentListItem;
   isLiked: boolean;
   likeCount: number;
   level?: number;
   onOpenProfile: (userId: string, userName?: string | null) => void;
-  onReply: (comment: CommentResponse) => void;
+  onReply: (comment: CommentListItem) => void;
   onToggleLike: (commentId: string) => void;
+};
+
+type CommentListItem = CommentResponse & {
+  isPending?: boolean;
 };
 
 const reactions = ["❤️", "🙌", "🔥", "👏", "🥲", "😍", "😮", "😂"];
@@ -114,12 +120,20 @@ function CommentItem({
 }: CommentItemProps) {
   const authorName = getCommentAuthor(comment);
   const isReply = level > 0;
+  const isPending = Boolean(comment.isPending);
 
   return (
-    <View style={[styles.commentItem, isReply && styles.replyItem]}>
+    <View
+      style={[
+        styles.commentItem,
+        isReply && styles.replyItem,
+        isPending && styles.pendingCommentItem,
+      ]}
+    >
       <Pressable
         accessibilityLabel={`Open ${authorName} profile`}
         accessibilityRole="button"
+        disabled={isPending}
         onPress={() => onOpenProfile(comment.userId, comment.authorUserName)}
         style={({ pressed }) => pressed && styles.pressed}
       >
@@ -134,21 +148,30 @@ function CommentItem({
             </Text>
             <View style={styles.commentMetaRow}>
               <Text style={styles.commentMeta}>{formatCommentTime(comment.createdAt)}</Text>
-              <Pressable
-                accessibilityLabel={`Reply to ${authorName}`}
-                accessibilityRole="button"
-                onPress={() => onReply(comment)}
-              >
-                <Text style={styles.commentMeta}>Reply</Text>
-              </Pressable>
+              {isPending ? (
+                <View style={styles.pendingStatus}>
+                  <ActivityIndicator color={colors.primary} size="small" />
+                  <Text style={styles.pendingText}>Sending</Text>
+                </View>
+              ) : (
+                <Pressable
+                  accessibilityLabel={`Reply to ${authorName}`}
+                  accessibilityRole="button"
+                  onPress={() => onReply(comment)}
+                >
+                  <Text style={styles.commentMeta}>Reply</Text>
+                </Pressable>
+              )}
             </View>
           </View>
           <Pressable
             accessibilityLabel={isLiked ? "Unlike comment" : "Like comment"}
             accessibilityRole="button"
+            disabled={isPending}
             onPress={() => onToggleLike(comment.id)}
             style={({ pressed }) => [
               styles.commentHeartButton,
+              isPending && styles.disabledAction,
               pressed && styles.pressed,
             ]}
           >
@@ -176,15 +199,85 @@ export function CommentModal({
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
-  const [comments, setComments] = useState<CommentResponse[]>([]);
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const isClosingRef = useRef(false);
+  const isMountedRef = useRef(visible);
+  const previousVisibleRef = useRef(false);
+  const sheetTranslateY = useRef(new Animated.Value(1)).current;
+  const [comments, setComments] = useState<CommentListItem[]>([]);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const [expandedReplyIds, setExpandedReplyIds] = useState<Set<string>>(new Set());
   const [likedCommentIds, setLikedCommentIds] = useState<Set<string>>(new Set());
   const [localLikeCounts, setLocalLikeCounts] = useState<Record<string, number>>({});
-  const [replyTarget, setReplyTarget] = useState<CommentResponse | null>(null);
+  const [replyTarget, setReplyTarget] = useState<CommentListItem | null>(null);
+  const [isMounted, setIsMounted] = useState(visible);
   const [isLoading, setIsLoading] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
+
+  const closeModal = useCallback((notifyParent = true, afterClose?: () => void) => {
+    if (isClosingRef.current) {
+      return;
+    }
+
+    isClosingRef.current = true;
+
+    Animated.timing(sheetTranslateY, {
+      duration: 180,
+      toValue: 1,
+      useNativeDriver: true,
+    }).start(() => {
+      Animated.timing(backdropOpacity, {
+        duration: 130,
+        toValue: 0,
+        useNativeDriver: true,
+      }).start(() => {
+        isMountedRef.current = false;
+        setIsMounted(false);
+        isClosingRef.current = false;
+
+        if (notifyParent) {
+          onClose();
+        }
+
+        afterClose?.();
+      });
+    });
+  }, [backdropOpacity, onClose, sheetTranslateY]);
+
+  useEffect(() => {
+    const wasVisible = previousVisibleRef.current;
+    previousVisibleRef.current = visible;
+
+    if (visible && !wasVisible) {
+      isClosingRef.current = false;
+      isMountedRef.current = true;
+      setIsMounted(true);
+      sheetTranslateY.setValue(1);
+      backdropOpacity.setValue(0);
+
+      requestAnimationFrame(() => {
+        Animated.parallel([
+          Animated.timing(backdropOpacity, {
+            duration: 150,
+            toValue: 1,
+            useNativeDriver: true,
+          }),
+          Animated.timing(sheetTranslateY, {
+            duration: 220,
+            toValue: 0,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      });
+
+      return;
+    }
+
+    if (!visible && wasVisible && isMountedRef.current) {
+      closeModal(false);
+    }
+  }, [backdropOpacity, closeModal, sheetTranslateY, visible]);
 
   useEffect(() => {
     let isActive = true;
@@ -232,7 +325,7 @@ export function CommentModal({
   );
 
   const repliesByParentId = useMemo(() => {
-    const groupedReplies: Record<string, CommentResponse[]> = {};
+    const groupedReplies: Record<string, CommentListItem[]> = {};
 
     for (const comment of comments) {
       if (!comment.parentCommentId) {
@@ -299,30 +392,59 @@ export function CommentModal({
     setIsPosting(true);
     setError("");
 
+    const currentReplyTarget = replyTarget;
+    const pendingCommentId = `pending-${Date.now()}`;
+    const pendingComment: CommentListItem = {
+      authorUserName: user?.userName || "You",
+      blogId,
+      content,
+      createdAt: new Date().toISOString(),
+      id: pendingCommentId,
+      imageUrls: null,
+      isPending: true,
+      parentCommentId: currentReplyTarget?.id ?? null,
+      status: "PENDING",
+      updatedAt: null,
+      userId: user?.userId ?? "pending-user",
+    };
+
+    setComments((currentComments) =>
+      currentReplyTarget
+        ? [...currentComments, pendingComment]
+        : [pendingComment, ...currentComments],
+    );
+
+    if (currentReplyTarget) {
+      setExpandedReplyIds((currentIds) => {
+        const nextIds = new Set(currentIds);
+        nextIds.add(currentReplyTarget.id);
+        return nextIds;
+      });
+    }
+
+    setDraft("");
+    setReplyTarget(null);
+    Keyboard.dismiss();
+
     try {
       const createdComment = await createComment({
         blogId,
         content,
-        parentCommentId: replyTarget?.id,
+        parentCommentId: currentReplyTarget?.id,
       });
 
       setComments((currentComments) =>
-        replyTarget ? [...currentComments, createdComment] : [createdComment, ...currentComments],
+        currentComments.map((comment) =>
+          comment.id === pendingCommentId ? createdComment : comment,
+        ),
       );
-
-      if (replyTarget) {
-        setExpandedReplyIds((currentIds) => {
-          const nextIds = new Set(currentIds);
-          nextIds.add(replyTarget.id);
-          return nextIds;
-        });
-      }
-
-      setDraft("");
-      setReplyTarget(null);
-      Keyboard.dismiss();
       onCommentCreated?.();
     } catch (requestError) {
+      setComments((currentComments) =>
+        currentComments.filter((comment) => comment.id !== pendingCommentId),
+      );
+      setDraft(content);
+      setReplyTarget(currentReplyTarget);
       setError(
         requestError instanceof Error
           ? requestError.message
@@ -334,32 +456,49 @@ export function CommentModal({
   }
 
   function handleOpenProfile(userId: string, userName?: string | null) {
-    onClose();
-    setTimeout(() => {
+    closeModal(true, () => {
       navigation.navigate(routes.otherUserProfile, {
         userId,
         userName,
       });
-    }, 120);
+    });
   }
 
   return (
     <Modal
-      animationType="slide"
-      onRequestClose={onClose}
+      animationType="none"
+      onRequestClose={() => closeModal()}
       transparent
-      visible={visible}
+      visible={isMounted}
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.overlay}
       >
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.backdrop, { opacity: backdropOpacity }]}
+        />
         <Pressable
           accessibilityLabel="Close comments"
-          onPress={onClose}
-          style={styles.backdrop}
+          onPress={() => closeModal()}
+          style={styles.backdropPressable}
         />
-        <View style={styles.sheet}>
+        <Animated.View
+          style={[
+            styles.sheet,
+            {
+              transform: [
+                {
+                  translateY: sheetTranslateY.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 420],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
           <View style={styles.handle} />
           <View style={styles.header}>
             <Text numberOfLines={1} style={styles.title}>
@@ -368,7 +507,7 @@ export function CommentModal({
             <Pressable
               accessibilityLabel="Close comments"
               accessibilityRole="button"
-              onPress={onClose}
+              onPress={() => closeModal()}
               style={({ pressed }) => [
                 styles.closeButton,
                 pressed && styles.pressed,
@@ -520,7 +659,7 @@ export function CommentModal({
               </Pressable>
             </View>
           </View>
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -528,8 +667,11 @@ export function CommentModal({
 
 const styles = StyleSheet.create({
   backdrop: {
-    flex: 1,
-    width: "100%",
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(33, 29, 28, 0.42)",
+  },
+  backdropPressable: {
+    ...StyleSheet.absoluteFillObject,
   },
   cancelReplyText: {
     color: colors.primary,
@@ -610,6 +752,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  disabledAction: {
+    opacity: 0.45,
+  },
   emptyBlock: {
     alignItems: "center",
     flex: 1,
@@ -664,9 +809,21 @@ const styles = StyleSheet.create({
     color: colors.link,
   },
   overlay: {
-    backgroundColor: "rgba(33, 29, 28, 0.42)",
     flex: 1,
     justifyContent: "flex-end",
+  },
+  pendingCommentItem: {
+    opacity: 0.86,
+  },
+  pendingStatus: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
+  pendingText: {
+    color: colors.primary,
+    fontSize: typography.caption,
+    fontWeight: "900",
   },
   pressed: {
     opacity: 0.72,
