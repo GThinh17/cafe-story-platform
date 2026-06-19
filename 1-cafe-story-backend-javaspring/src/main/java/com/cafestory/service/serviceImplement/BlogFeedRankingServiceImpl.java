@@ -53,6 +53,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -66,6 +67,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
     private static final int MAX_ORGANIC_FEED_SIZE = 50;
     private static final int ORGANIC_CURSOR_VERSION = 1;
     private static final double OWN_AUTHOR_SCORE = 40.0;
+    private static final LocalDateTime REPORT_EPOCH = LocalDateTime.of(1970, 1, 1, 0, 0);
     private static final ObjectMapper CURSOR_OBJECT_MAPPER = JsonMapper.builder()
             .addModule(new JavaTimeModule())
             .build();
@@ -139,12 +141,19 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             OrganicFeedCursor organicCursor,
             int safeSize,
             LocalDateTime scoredAt) {
-        List<ScoredOrganicBlog> scoredBlogs = blogRepository.findByStatus(PostStatus.PUBLISHED)
+        List<Blog> publishedBlogs = blogRepository.findByStatus(PostStatus.PUBLISHED);
+        List<UUID> blogIds = publishedBlogs.stream()
+                .map(Blog::getId)
+                .filter(blogId -> blogId != null)
+                .distinct()
+                .toList();
+        Set<UUID> violationBlogIds = violationBlogIds(blogIds);
+        Map<UUID, Long> reportCountsByBlogId = reportCountsByBlogId(blogIds, REPORT_EPOCH, scoredAt);
+
+        List<ScoredOrganicBlog> scoredBlogs = publishedBlogs
                 .stream()
-                .filter(blog -> !aiModerationResultRepository.existsByBlogIdAndDecision(
-                        blog.getId(),
-                        ModerationDecision.VIOLATION))
-                .map(blog -> new ScoredOrganicBlog(blog, calculateOrganicScore(blog, scoredAt)))
+                .filter(blog -> !violationBlogIds.contains(blog.getId()))
+                .map(blog -> new ScoredOrganicBlog(blog, calculateOrganicScore(blog, scoredAt, reportCountsByBlogId)))
                 .sorted(organicFeedComparator())
                 .filter(item -> isAfterOrganicCursor(item, organicCursor))
                 .limit(safeSize + 1L)
@@ -256,19 +265,19 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             UUID contextRegionId) {
         LocalDateTime now = LocalDateTime.now();
         Map<UUID, BlogTrendingScore> trendingScores = latestTrendingScores(windowType);
+        List<Blog> publishedBlogs = blogRepository.findByStatus(PostStatus.PUBLISHED);
+        FeedScoringContext scoringContext = buildFeedScoringContext(user, contextRegionId, windowType, now, publishedBlogs);
 
-        List<BlogRecommendationScore> scores = blogRepository.findByStatus(PostStatus.PUBLISHED)
+        List<BlogRecommendationScore> scores = publishedBlogs
                 .stream()
-                .filter(blog -> !aiModerationResultRepository.existsByBlogIdAndDecision(
-                        blog.getId(),
-                        ModerationDecision.VIOLATION))
+                .filter(blog -> !scoringContext.violationBlogIds().contains(blog.getId()))
                 .map(blog -> createRecommendationScore(
                         user,
                         blog,
                         trendingScores.get(blog.getId()),
                         windowType,
                         contextRegionId,
-                        resolveContextCity(user, contextRegionId),
+                        scoringContext,
                         now))
                 .sorted(Comparator.comparing(BlogRecommendationScore::getFeedScore).reversed())
                 .toList();
@@ -288,6 +297,98 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         int fromIndex = Math.min(page * size, scores.size());
         int toIndex = Math.min(fromIndex + size, scores.size());
         return scores.subList(fromIndex, toIndex);
+    }
+
+    private FeedScoringContext buildFeedScoringContext(
+            User user,
+            UUID contextRegionId,
+            TrendWindowType windowType,
+            LocalDateTime now,
+            List<Blog> blogs) {
+        List<UUID> blogIds = blogs.stream()
+                .map(Blog::getId)
+                .filter(blogId -> blogId != null)
+                .distinct()
+                .toList();
+        List<UUID> pageIds = blogs.stream()
+                .map(Blog::getPageId)
+                .filter(pageId -> pageId != null)
+                .distinct()
+                .toList();
+        List<UUID> authorIds = blogs.stream()
+                .map(Blog::getAuthor)
+                .filter(author -> author != null && author.getUserId() != null)
+                .map(User::getUserId)
+                .distinct()
+                .toList();
+        List<UUID> regionIds = blogs.stream()
+                .map(Blog::getRegionId)
+                .filter(regionId -> regionId != null)
+                .distinct()
+                .toList();
+
+        LocalDateTime reportStartAt = switch (windowType) {
+            case HOUR_24 -> now.minusHours(24);
+            case DAY_7 -> now.minusDays(7);
+            case MONTH_1 -> now.minusMonths(1);
+        };
+
+        return new FeedScoringContext(
+                user.getUserId(),
+                resolveContextCity(user, contextRegionId),
+                violationBlogIds(blogIds),
+                followedPageIds(user.getUserId(), pageIds),
+                followedUserIds(user.getUserId(), authorIds),
+                cityByRegionId(regionIds),
+                reportCountsByBlogId(blogIds, reportStartAt, now));
+    }
+
+    private Set<UUID> violationBlogIds(List<UUID> blogIds) {
+        if (blogIds.isEmpty()) {
+            return Set.of();
+        }
+        return Set.copyOf(aiModerationResultRepository.findBlogIdsByBlogIdInAndDecision(
+                blogIds,
+                ModerationDecision.VIOLATION));
+    }
+
+    private Set<UUID> followedPageIds(UUID userId, List<UUID> pageIds) {
+        if (pageIds.isEmpty()) {
+            return Set.of();
+        }
+        return Set.copyOf(pageFollowRepository.findFollowedCafePageIds(userId, pageIds));
+    }
+
+    private Set<UUID> followedUserIds(UUID userId, List<UUID> authorIds) {
+        if (authorIds.isEmpty()) {
+            return Set.of();
+        }
+        return Set.copyOf(userFollowRepository.findFollowedUserIds(userId, authorIds));
+    }
+
+    private Map<UUID, String> cityByRegionId(List<UUID> regionIds) {
+        if (regionIds.isEmpty()) {
+            return Map.of();
+        }
+        return regionRepository.findAllById(regionIds)
+                .stream()
+                .filter(region -> region.getRegionId() != null && region.getCity() != null)
+                .collect(Collectors.toMap(Region::getRegionId, Region::getCity));
+    }
+
+    private Map<UUID, Long> reportCountsByBlogId(List<UUID> blogIds, LocalDateTime startAt, LocalDateTime endAt) {
+        if (blogIds.isEmpty()) {
+            return Map.of();
+        }
+        return blogEventRepository.countByBlogIdsAndEventTypeAndCreatedAtBetween(
+                        blogIds,
+                        BlogEventType.REPORT,
+                        startAt,
+                        endAt)
+                .stream()
+                .collect(Collectors.toMap(
+                        BlogEventRepository.BlogEventCountRow::getBlogId,
+                        row -> row.getEventCount() == null ? 0L : row.getEventCount()));
     }
 
     private void upsertRecommendationScores(List<BlogRecommendationScore> scores, LocalDateTime createdAt) {
@@ -356,16 +457,16 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             BlogTrendingScore trendingScore,
             TrendWindowType windowType,
             UUID contextRegionId,
-            String contextCity,
+            FeedScoringContext scoringContext,
             LocalDateTime now) {
         double baseTrendingScore = trendingScore == null ? 0.0 : trendingScore.getTrendScore();
         double trendingComponent = baseTrendingScore * 0.4;
         double ownAuthorScore = calculateOwnAuthorScore(blog, user.getUserId());
-        double followedPageScore = calculateFollowedPageScore(blog, user.getUserId());
-        double followedUserScore = calculateFollowedUserScore(blog, user.getUserId());
-        double sameRegionScore = calculateSameRegionScore(blog, contextCity);
+        double followedPageScore = calculateFollowedPageScore(blog, scoringContext.followedPageIds());
+        double followedUserScore = calculateFollowedUserScore(blog, scoringContext.userId(), scoringContext.followedUserIds());
+        double sameRegionScore = calculateSameRegionScore(blog, scoringContext.contextCity(), scoringContext.cityByRegionId());
         double freshnessScore = calculateFreshnessScore(blog, now);
-        double reportPenalty = calculateReportPenalty(blog, windowType, now);
+        double reportPenalty = scoringContext.reportCountsByBlogId().getOrDefault(blog.getId(), 0L) * 10.0;
         double feedScore = trendingComponent
                 + ownAuthorScore
                 + followedPageScore
@@ -495,11 +596,11 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         return fallback;
     }
 
-    private double calculateFollowedPageScore(Blog blog, UUID userId) {
+    private double calculateFollowedPageScore(Blog blog, Set<UUID> followedPageIds) {
         if (blog.getPageId() == null) {
             return 0.0;
         }
-        return pageFollowRepository.existsByUserUserIdAndCafePageId(userId, blog.getPageId()) ? 30.0 : 0.0;
+        return followedPageIds.contains(blog.getPageId()) ? 30.0 : 0.0;
     }
 
     private double calculateOwnAuthorScore(Blog blog, UUID userId) {
@@ -509,25 +610,23 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         return blog.getAuthor().getUserId().equals(userId) ? OWN_AUTHOR_SCORE : 0.0;
     }
 
-    private double calculateFollowedUserScore(Blog blog, UUID userId) {
+    private double calculateFollowedUserScore(Blog blog, UUID userId, Set<UUID> followedUserIds) {
         if (blog.getAuthor() == null || blog.getAuthor().getUserId() == null) {
             return 0.0;
         }
         if (blog.getAuthor().getUserId().equals(userId)) {
             return 0.0;
         }
-        return userFollowRepository.existsByFollowerUserIdAndFollowingUserId(userId, blog.getAuthor().getUserId())
+        return followedUserIds.contains(blog.getAuthor().getUserId())
                 ? 25.0
                 : 0.0;
     }
 
-    private double calculateSameRegionScore(Blog blog, String contextCity) {
+    private double calculateSameRegionScore(Blog blog, String contextCity, Map<UUID, String> cityByRegionId) {
         if (isBlank(contextCity) || blog.getRegionId() == null) {
             return 0.0;
         }
-        String blogCity = regionRepository.findById(blog.getRegionId())
-                .map(Region::getCity)
-                .orElse(null);
+        String blogCity = cityByRegionId.get(blog.getRegionId());
         if (isBlank(blogCity)) {
             return 0.0;
         }
@@ -557,20 +656,6 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         }
         double ageHours = Math.max(0, Duration.between(blog.getCreatedAt(), now).toMinutes() / 60.0);
         return Math.exp(-ageHours / 48.0) * 10.0;
-    }
-
-    private double calculateReportPenalty(Blog blog, TrendWindowType windowType, LocalDateTime now) {
-        LocalDateTime startAt = switch (windowType) {
-            case HOUR_24 -> now.minusHours(24);
-            case DAY_7 -> now.minusDays(7);
-            case MONTH_1 -> now.minusMonths(1);
-        };
-        long reports = blogEventRepository.countByBlogIdAndEventTypeAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
-                blog.getId(),
-                BlogEventType.REPORT,
-                startAt,
-                now);
-        return reports * 10.0;
     }
 
     private String buildReason(
@@ -604,13 +689,13 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         return Math.min(size, MAX_ORGANIC_FEED_SIZE);
     }
 
-    private double calculateOrganicScore(Blog blog, LocalDateTime scoredAt) {
+    private double calculateOrganicScore(Blog blog, LocalDateTime scoredAt, Map<UUID, Long> reportCountsByBlogId) {
         double engagementScore = valueOrZero(blog.getLikeCount()) * 2.0
                 + valueOrZero(blog.getCommentCount()) * 4.0
                 + valueOrZero(blog.getShareCount()) * 5.0;
         double freshnessScore = calculateOrganicFreshnessScore(blog, scoredAt);
         double pageBonus = blog.getPageId() == null ? 0.0 : 5.0;
-        double reportPenalty = calculateOrganicReportPenalty(blog, scoredAt);
+        double reportPenalty = reportCountsByBlogId.getOrDefault(blog.getId(), 0L) * 10.0;
         return engagementScore + freshnessScore + pageBonus - reportPenalty;
     }
 
@@ -624,15 +709,6 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         }
         double ageHours = Math.max(0, Duration.between(blog.getCreatedAt(), scoredAt).toMinutes() / 60.0);
         return Math.exp(-ageHours / 36.0) * 30.0;
-    }
-
-    private double calculateOrganicReportPenalty(Blog blog, LocalDateTime scoredAt) {
-        long reports = blogEventRepository.countByBlogIdAndEventTypeAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
-                blog.getId(),
-                BlogEventType.REPORT,
-                LocalDateTime.of(1970, 1, 1, 0, 0),
-                scoredAt);
-        return reports * 10.0;
     }
 
     private Comparator<ScoredOrganicBlog> organicFeedComparator() {
@@ -814,6 +890,16 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             UUID afterId,
             String scoredAt,
             int version) {
+    }
+
+    private record FeedScoringContext(
+            UUID userId,
+            String contextCity,
+            Set<UUID> violationBlogIds,
+            Set<UUID> followedPageIds,
+            Set<UUID> followedUserIds,
+            Map<UUID, String> cityByRegionId,
+            Map<UUID, Long> reportCountsByBlogId) {
     }
 
     private record RecommendationCacheKey(

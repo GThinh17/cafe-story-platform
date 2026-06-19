@@ -13,6 +13,16 @@ import java.util.UUID;
 public interface PageFollowRepository extends JpaRepository<PageFollow, UUID> {
     boolean existsByUserUserIdAndCafePageId(UUID userId, UUID cafePageId);
 
+    @Query("""
+            select follow.cafePage.id
+            from PageFollow follow
+            where follow.user.userId = :userId
+            and follow.cafePage.id in :cafePageIds
+            """)
+    List<UUID> findFollowedCafePageIds(
+            @Param("userId") UUID userId,
+            @Param("cafePageIds") List<UUID> cafePageIds);
+
     Optional<PageFollow> findByUserUserIdAndCafePageId(UUID userId, UUID cafePageId);
 
     List<PageFollow> findByCafePageId(UUID cafePageId);

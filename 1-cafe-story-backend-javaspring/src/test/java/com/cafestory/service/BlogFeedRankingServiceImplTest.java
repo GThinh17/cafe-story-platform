@@ -10,7 +10,6 @@ import com.cafestory.entity.BlogTrendingScore;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
-import com.cafestory.entity.enums.ModerationDecision;
 import com.cafestory.entity.enums.FeedItemType;
 import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.entity.enums.TrendWindowType;
@@ -258,13 +257,11 @@ class BlogFeedRankingServiceImplTest {
                 TrendWindowType.HOUR_24,
                 trendingComputedAt)).thenReturn(List.of(trendingScore));
         when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(blog));
-        when(aiModerationResultRepository.existsByBlogIdAndDecision(blog.getId(), ModerationDecision.VIOLATION))
-                .thenReturn(false);
         when(regionRepository.findById(regionId)).thenReturn(java.util.Optional.of(user.getRegion()));
-        when(regionRepository.findById(blog.getRegionId())).thenReturn(java.util.Optional.of(blogRegion));
-        when(pageFollowRepository.existsByUserUserIdAndCafePageId(user.getUserId(), blog.getPageId())).thenReturn(true);
-        when(userFollowRepository.existsByFollowerUserIdAndFollowingUserId(user.getUserId(), blog.getAuthor().getUserId()))
-                .thenReturn(true);
+        when(pageFollowRepository.findFollowedCafePageIds(user.getUserId(), List.of(blog.getPageId())))
+                .thenReturn(List.of(blog.getPageId()));
+        when(userFollowRepository.findFollowedUserIds(user.getUserId(), List.of(blog.getAuthor().getUserId())))
+                .thenReturn(List.of(blog.getAuthor().getUserId()));
 
         List<BlogFeedResponse> result = service.rebuildRecommendationCache(
                 user.getUserId(),
@@ -404,13 +401,11 @@ class BlogFeedRankingServiceImplTest {
                 TrendWindowType.HOUR_24,
                 trendingComputedAt)).thenReturn(List.of(trendingScore));
         when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(blog));
-        when(aiModerationResultRepository.existsByBlogIdAndDecision(blog.getId(), ModerationDecision.VIOLATION))
-                .thenReturn(false);
-        when(blogEventRepository.countByBlogIdAndEventTypeAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
-                eq(blog.getId()),
+        when(blogEventRepository.countByBlogIdsAndEventTypeAndCreatedAtBetween(
+                eq(List.of(blog.getId())),
                 any(),
                 any(),
-                any())).thenReturn(3L);
+                any())).thenReturn(List.of(blogEventCountRow(blog.getId(), 3L)));
 
         service.rebuildRecommendationCache(
                 user.getUserId(),
@@ -447,6 +442,11 @@ class BlogFeedRankingServiceImplTest {
                 any(),
                 any())).thenReturn(0L);
         lenient().when(aiModerationResultRepository.existsByBlogIdAndDecision(any(UUID.class), any())).thenReturn(false);
+        lenient().when(aiModerationResultRepository.findBlogIdsByBlogIdInAndDecision(any(), any())).thenReturn(List.of());
+        lenient().when(blogEventRepository.countByBlogIdsAndEventTypeAndCreatedAtBetween(any(), any(), any(), any()))
+                .thenReturn(List.of());
+        lenient().when(pageFollowRepository.findFollowedCafePageIds(any(UUID.class), any())).thenReturn(List.of());
+        lenient().when(userFollowRepository.findFollowedUserIds(any(UUID.class), any())).thenReturn(List.of());
         lenient().when(blogRepository.findByIdIn(any())).thenAnswer(invocation -> {
             List<UUID> blogIds = invocation.getArgument(0);
             List<Blog> publishedBlogs = blogRepository.findByStatus(PostStatus.PUBLISHED);
@@ -503,6 +503,20 @@ class BlogFeedRankingServiceImplTest {
                 userRepository,
                 userValidator,
                 new ConcurrentMapCacheManager(CacheConfig.ORGANIC_FEED_CACHE));
+    }
+
+    private BlogEventRepository.BlogEventCountRow blogEventCountRow(UUID blogId, Long eventCount) {
+        return new BlogEventRepository.BlogEventCountRow() {
+            @Override
+            public UUID getBlogId() {
+                return blogId;
+            }
+
+            @Override
+            public Long getEventCount() {
+                return eventCount;
+            }
+        };
     }
 
     private User user() {
