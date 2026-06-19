@@ -31,6 +31,13 @@ import type { ContentReport, ReportStatus, ReportTargetType } from "@/types/admi
 const reportStatuses: ReportStatus[] = ["OPEN", "REVIEWING", "RESOLVED", "REJECTED"];
 const targetTypes: ReportTargetType[] = ["BLOG", "COMMENT", "USER", "CAFE_PAGE"];
 
+const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
+  OPEN: "Reopen",
+  REVIEWING: "Mark reviewing",
+  RESOLVED: "Resolve",
+  REJECTED: "Reject",
+};
+
 type PendingReportAction = { report: ContentReport; status: ReportStatus };
 
 export function AdminReportsPage() {
@@ -89,7 +96,7 @@ export function AdminReportsPage() {
                   key={nextStatus}
                   onClick={() => setPendingAction({ report, status: nextStatus })}
                 >
-                  {nextStatus}
+                  {REPORT_STATUS_LABELS[nextStatus]}
                 </Button>
               ))}
           </div>
@@ -196,9 +203,13 @@ export function AdminReportsPage() {
             setActionError(null);
           }
         }}
-        title="Update report status"
-        description="This updates the selected content report."
-        confirmLabel="Update"
+        title={pendingAction ? `${REPORT_STATUS_LABELS[pendingAction.status]} report` : "Update report"}
+        description={
+          pendingAction
+            ? `Change this report's status to "${pendingAction.status.toLowerCase().replace("_", " ")}".`
+            : "Confirm the status change."
+        }
+        confirmLabel={pendingAction ? REPORT_STATUS_LABELS[pendingAction.status] : "Update"}
         isSubmitting={isSubmitting}
         onConfirm={handleConfirm}
       >

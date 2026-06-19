@@ -44,6 +44,12 @@ const resolveActions: ModerationResolveAction[] = ["APPROVE", "HIDE", "REMOVE"];
 const decisionOptions: ModerationDecision[] = ["SAFE", "NEEDS_REVIEW", "VIOLATION"];
 const resolvedActionOptions: ModerationResolveAction[] = ["APPROVE", "HIDE", "REMOVE"];
 
+const ACTION_LABELS: Record<ModerationResolveAction, string> = {
+  APPROVE: "Approve",
+  HIDE: "Hide",
+  REMOVE: "Remove",
+};
+
 type PendingModerationAction = {
   result: AdminModerationResult;
   action: ModerationResolveAction;
@@ -151,7 +157,7 @@ export function AdminModerationPage() {
                   setPendingAction({ result, action });
                 }}
               >
-                {action}
+                {ACTION_LABELS[action]}
               </Button>
             ))}
           </div>
@@ -267,7 +273,7 @@ export function AdminModerationPage() {
                   key={action}
                   onClick={() => setPendingAction({ result: detailResult, action })}
                 >
-                  {action}
+                  {ACTION_LABELS[action]}
                 </Button>
               ))}
             </div>
@@ -375,9 +381,13 @@ export function AdminModerationPage() {
             setActionError(null);
           }
         }}
-        title="Resolve moderation result"
-        description="This applies the selected moderation resolution."
-        confirmLabel={pendingAction?.action || "Resolve"}
+        title={pendingAction ? `${ACTION_LABELS[pendingAction.action]} content` : "Confirm action"}
+        description={
+          pendingAction
+            ? `This will ${ACTION_LABELS[pendingAction.action].toLowerCase()} the flagged content${pendingAction.result.authorUserName ? ` by ${pendingAction.result.authorUserName}` : ""}. This action cannot be undone.`
+            : "Confirm the selected moderation action."
+        }
+        confirmLabel={pendingAction ? ACTION_LABELS[pendingAction.action] : "Confirm"}
         isSubmitting={isSubmitting}
         onConfirm={handleConfirm}
       >

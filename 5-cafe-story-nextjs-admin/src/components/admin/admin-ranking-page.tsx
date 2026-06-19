@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { generateReviewerRanking, getReviewerRanking } from "@/lib/api/admin";
+import { cn } from "@/lib/utils";
 import type {
   RankingPeriodType,
   ReviewerBadge,
@@ -165,7 +166,7 @@ export function AdminRankingPage() {
     <div className="flex flex-col gap-6">
       <AdminPageHeader
         title="Reviewer Ranking"
-        description="Xem ranking snapshot của reviewer theo period và tạo snapshot mới."
+        description="Browse reviewer ranking snapshots by period and generate new ones."
         actions={
           <div className="flex flex-wrap gap-2">
             <Button asChild type="button" variant="outline">
@@ -192,7 +193,7 @@ export function AdminRankingPage() {
               setPeriod(defaultPeriod(nextType));
             }}
           >
-            <SelectTrigger className="h-10 w-full bg-surface sm:w-44">
+            <SelectTrigger size="lg" className="rounded-md w-full bg-surface sm:w-44">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -204,7 +205,7 @@ export function AdminRankingPage() {
             </SelectContent>
           </Select>
         </div>
-        <FilterInput value={period} placeholder="Period, ví dụ 2026-06" onChange={setPeriod} />
+        <FilterInput label="Period" value={period} placeholder="2026-06" onChange={setPeriod} />
       </Toolbar>
       <AdminDataTable
         columns={columns}
@@ -212,8 +213,8 @@ export function AdminRankingPage() {
         getRowKey={(row) => row.id}
         isLoading={isLoading}
         error={error}
-        emptyTitle="Chưa có ranking"
-        emptyDescription="Chưa có snapshot cho period này. Generate snapshot để tạo mới."
+        emptyTitle="No ranking data"
+        emptyDescription="No snapshot found for this period. Use Generate snapshot to create one."
       />
       <div className="flex items-center justify-between rounded-md border border-border bg-surface px-4 py-3 text-sm text-muted">
         <span>Page {page}</span>
@@ -248,28 +249,30 @@ export function AdminRankingPage() {
           }
         }}
         title="Generate ranking snapshot"
-        description="Chọn period type để tạo snapshot ranking cho thời điểm hiện tại."
+        description="Select a period type to generate a ranking snapshot for the current time."
         confirmLabel="Generate"
         isSubmitting={isSubmitting}
         onConfirm={handleGenerate}
       >
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium">Period type</span>
-          <Select
-            value={generatePeriodType}
-            onValueChange={(value) => setGeneratePeriodType(value as RankingPeriodType)}
-          >
-            <SelectTrigger className="bg-surface">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                {periodTypes.map((type) => (
-                  <SelectItem value={type} key={type}>{type}</SelectItem>
-                ))}
-              </SelectGroup>
-            </SelectContent>
-          </Select>
+          <div className="flex rounded-md border border-border overflow-hidden">
+            {periodTypes.map((type) => (
+              <button
+                key={type}
+                type="button"
+                className={cn(
+                  "flex-1 px-4 py-2 text-sm font-semibold transition border-r border-border last:border-r-0",
+                  generatePeriodType === type
+                    ? "bg-primary text-white"
+                    : "bg-surface text-muted hover:bg-surface-muted hover:text-foreground",
+                )}
+                onClick={() => setGeneratePeriodType(type)}
+              >
+                {type.charAt(0) + type.slice(1).toLowerCase()}
+              </button>
+            ))}
+          </div>
         </div>
         {generateError ? <p className="text-sm text-accent">{generateError}</p> : null}
       </AdminConfirmDialog>

@@ -304,8 +304,8 @@ export function AdminBlogsPage() {
           placeholder="All statuses"
           onChange={setStatus}
         />
-        <FilterInput value={authorUserId} placeholder="Author user ID" onChange={setAuthorUserId} />
-        <FilterInput value={pageId} placeholder="Cafe page ID" onChange={setPageId} />
+        <FilterInput label="Author user ID" value={authorUserId} placeholder="Enter user ID" onChange={setAuthorUserId} />
+        <FilterInput label="Cafe page ID" value={pageId} placeholder="Enter page ID" onChange={setPageId} />
       </Toolbar>
       <AdminDataTable
         columns={columns}
