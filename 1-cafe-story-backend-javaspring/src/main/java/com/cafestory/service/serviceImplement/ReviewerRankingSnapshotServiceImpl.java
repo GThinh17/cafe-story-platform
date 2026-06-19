@@ -211,6 +211,8 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
         ReviewerRankingSnapshotResponseDTO dto = new ReviewerRankingSnapshotResponseDTO();
         dto.setId(snapshot.getId());
         dto.setReviewerId(snapshot.getReviewer().getReviewerId());
+        dto.setReviewerUserName(snapshot.getReviewer().getUser().getUserName());
+        dto.setReviewerUserAvatar(snapshot.getReviewer().getUser().getUserAvatar());
         dto.setPeriod(snapshot.getPeriod());
         dto.setPeriodType(snapshot.getPeriodType());
         dto.setRankPosition(snapshot.getRankPosition());

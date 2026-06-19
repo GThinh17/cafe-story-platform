@@ -52,5 +52,16 @@ export const apiEndpoints = {
     reviewerFormulas: "/api/admin/reviewer-config/formulas",
     reviewerFormulaThresholds: (formulaId: string) =>
       `/api/admin/reviewer-config/formulas/${pathId(formulaId)}/thresholds`,
+    reviewerFormulaActivate: (id: string) =>
+      `/api/admin/reviewer-config/formulas/${pathId(id)}/activate`,
+    payoutFormulas: "/api/admin/payout/formulas",
+    activatePayoutFormula: (id: string) =>
+      `/api/admin/payout/formulas/${pathId(id)}/activate`,
+    payoutIncome: "/api/admin/payout/income",
+    generatePayoutIncome: "/api/admin/payout/income/generate",
+    payoutMonthly: "/api/admin/payout/monthly",
+    generatePayoutMonthly: "/api/admin/payout/monthly/generate",
+    payoutMonthlyStatus: (id: string) =>
+      `/api/admin/payout/monthly/${pathId(id)}/status`,
   },
 } as const;

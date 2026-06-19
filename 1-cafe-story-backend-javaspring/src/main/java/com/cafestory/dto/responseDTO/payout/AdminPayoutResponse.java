@@ -13,6 +13,8 @@ public class AdminPayoutResponse {
 
     private UUID id;
     private UUID reviewerId;
+    private String reviewerUserName;
+    private String reviewerUserAvatar;
     private String payoutMonth;
     private long totalBaseAmount;
     private ReviewerBadge badge;

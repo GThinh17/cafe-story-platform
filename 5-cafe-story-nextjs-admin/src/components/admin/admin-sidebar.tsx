@@ -16,6 +16,7 @@ import {
   ShieldCheckIcon,
   TrophyIcon,
   UsersIcon,
+  WalletIcon,
 } from "lucide-react";
 import { BrandIcon } from "@/components/ui/brand-icon";
 import { Button } from "@/components/ui/button";
@@ -58,6 +59,7 @@ const NAV_GROUPS: Array<{
     items: [
       { href: "/payments", icon: CreditCardIcon, label: "Payments" },
       { href: "/extra-fees", icon: BadgeDollarSignIcon, label: "Extra Fees" },
+      { href: "/payout", icon: WalletIcon, label: "Payouts" },
     ],
   },
 ];

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { EyeIcon } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
+import { UserCell } from "@/components/admin/user-cell";
 import {
   AdminDataTable,
   AdminPagination,
@@ -58,14 +59,16 @@ export function AdminCommentsPage() {
   const columns = useMemo<AdminTableColumn<Comment>[]>(
     () => [
       {
+        header: "User",
+        cell: (comment) => (
+          <UserCell name={comment.authorUserName} avatar={comment.authorUserAvatar} subtitle={comment.userId.slice(0, 8)} />
+        ),
+      },
+      { header: "ID", cell: (comment) => comment.userId },
+      {
         header: "Comment",
         cell: (comment) => (
-          <div className="max-w-md">
-            <p className="font-bold text-espresso">{comment.authorUserName}</p>
-            <p className="mt-1 text-sm leading-6 text-muted">
-              {textPreview(comment.content)}
-            </p>
-          </div>
+          <p className="max-w-md text-sm leading-6 text-muted">{textPreview(comment.content)}</p>
         ),
       },
       { header: "Blog", cell: (comment) => comment.blogId.slice(0, 8) },

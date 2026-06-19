@@ -11,6 +11,8 @@ public class ReviewerRankingSnapshotResponseDTO {
 
     private UUID id;
     private UUID reviewerId;
+    private String reviewerUserName;
+    private String reviewerUserAvatar;
     private String period;
     private RankingPeriodType periodType;
     private int rankPosition;

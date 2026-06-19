@@ -27,6 +27,7 @@ import {
 } from "@/components/admin/admin-page-utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { UserCell } from "@/components/admin/user-cell";
 import { getAdminUser, getUsers, updateUserRoles, updateUserStatus } from "@/lib/api/admin";
 import type { AdminUser, UserRole } from "@/types/admin";
 
@@ -56,10 +57,11 @@ export function AdminUsersPage() {
       {
         header: "User",
         cell: (user) => (
-          <div className="min-w-0">
-            <p className="font-bold text-espresso">{user.userName}</p>
-            <p className="text-xs text-muted">{user.userFullName || user.userEmail}</p>
-          </div>
+          <UserCell
+            name={user.userName}
+            avatar={user.userAvatar}
+            subtitle={user.userFullName || user.userEmail}
+          />
         ),
       },
       { header: "Email", cell: (user) => user.userEmail },

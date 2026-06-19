@@ -173,6 +173,8 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
         AdminPayoutResponse dto = new AdminPayoutResponse();
         dto.setId(payout.getId());
         dto.setReviewerId(payout.getReviewer().getReviewerId());
+        dto.setReviewerUserName(payout.getReviewer().getUser().getUserName());
+        dto.setReviewerUserAvatar(payout.getReviewer().getUser().getUserAvatar());
         dto.setPayoutMonth(payout.getPayoutMonth());
         dto.setTotalBaseAmount(payout.getTotalBaseAmount());
         dto.setBadge(payout.getBadge());

@@ -153,7 +153,7 @@ public class ReviewerIncomeServiceImpl implements ReviewerIncomeService {
         LocalDate start = ym.atDay(1);
         LocalDate end = ym.plusMonths(1).atDay(1);
         return incomeRepository
-                .findByIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDesc(start, end, pageable)
+                .findByIncomeDateGreaterThanEqualAndIncomeDateLessThan(start, end, pageable)
                 .map(this::toResponse);
     }
 
@@ -161,6 +161,8 @@ public class ReviewerIncomeServiceImpl implements ReviewerIncomeService {
         ReviewerIncomeResponse dto = new ReviewerIncomeResponse();
         dto.setId(income.getId());
         dto.setReviewerId(income.getReviewer().getReviewerId());
+        dto.setReviewerUserName(income.getReviewer().getUser().getUserName());
+        dto.setReviewerUserAvatar(income.getReviewer().getUser().getUserAvatar());
         dto.setIncomeDate(income.getIncomeDate());
         dto.setLikeCount(income.getLikeCount());
         dto.setCommentCount(income.getCommentCount());

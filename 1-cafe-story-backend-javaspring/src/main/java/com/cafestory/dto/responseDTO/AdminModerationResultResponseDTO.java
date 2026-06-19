@@ -22,6 +22,8 @@ public class AdminModerationResultResponseDTO {
 
     private String authorUserFullName;
 
+    private String authorUserAvatar;
+
     private String caption;
 
     private Double score;

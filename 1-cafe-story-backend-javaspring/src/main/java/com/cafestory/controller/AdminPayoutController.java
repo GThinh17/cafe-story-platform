@@ -91,9 +91,13 @@ public class AdminPayoutController {
             @RequestParam(required = false) UUID reviewerId,
             @RequestParam(required = false) String month,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "desc") String sortDir) {
         String resolvedMonth = month != null ? month : YearMonth.now().toString();
-        Pageable pageable = PageRequest.of(page, size, Sort.by("incomeDate").descending());
+        Sort sort = "asc".equalsIgnoreCase(sortDir)
+                ? Sort.by("finalAmount").ascending()
+                : Sort.by("finalAmount").descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
         if (reviewerId != null) {
             return incomeService.getIncomeByReviewer(reviewerId, resolvedMonth, pageable);
         }
@@ -117,8 +121,12 @@ public class AdminPayoutController {
             @RequestParam(required = false) String month,
             @RequestParam(required = false) AdminPayoutStatus status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "desc") String sortDir) {
+        Sort sort = "asc".equalsIgnoreCase(sortDir)
+                ? Sort.by("totalFinalAmount").ascending()
+                : Sort.by("totalFinalAmount").descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
         return payoutService.getPayouts(month, status, pageable);
     }
 

@@ -14,10 +14,12 @@ public class PaymentResponseDTO {
     private UUID paymentId;
 
     private UUID buyerId;
+    private String buyerUserName;
+    private String buyerUserAvatar;
 
     private UUID extraFeeId;
-
     private UUID adFeeId;
+    private String productName;
 
     private PaymentMethod paymentMethod;
 

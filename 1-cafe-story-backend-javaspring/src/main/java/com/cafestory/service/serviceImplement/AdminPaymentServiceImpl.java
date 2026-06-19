@@ -84,8 +84,15 @@ public class AdminPaymentServiceImpl implements AdminPaymentService {
         PaymentResponseDTO response = new PaymentResponseDTO();
         response.setPaymentId(payment.getPaymentId());
         response.setBuyerId(payment.getBuyer() == null ? null : payment.getBuyer().getUserId());
+        response.setBuyerUserName(payment.getBuyer() == null ? null : payment.getBuyer().getUserName());
+        response.setBuyerUserAvatar(payment.getBuyer() == null ? null : payment.getBuyer().getUserAvatar());
         response.setExtraFeeId(payment.getExtraFee() == null ? null : payment.getExtraFee().getExtraFeeId());
         response.setAdFeeId(payment.getAdFee() == null ? null : payment.getAdFee().getAdFeeId());
+        if (payment.getExtraFee() != null) {
+            response.setProductName(payment.getExtraFee().getName());
+        } else if (payment.getAdFee() != null) {
+            response.setProductName(payment.getAdFee().getFeeType().name());
+        }
         response.setPaymentMethod(payment.getPaymentMethod());
         response.setAmount(payment.getAmount());
         response.setCurrency(payment.getCurrency());

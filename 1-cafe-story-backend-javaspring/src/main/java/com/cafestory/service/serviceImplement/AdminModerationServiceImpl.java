@@ -105,6 +105,7 @@ public class AdminModerationServiceImpl implements AdminModerationService {
                 response.setAuthorUserId(blog.getAuthor().getUserId());
                 response.setAuthorUserName(blog.getAuthor().getUserName());
                 response.setAuthorUserFullName(blog.getAuthor().getUserFullName());
+                response.setAuthorUserAvatar(blog.getAuthor().getUserAvatar());
             }
         }
         response.setCaption(result.getCaption());

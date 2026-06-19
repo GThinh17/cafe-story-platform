@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ListOrderedIcon, TrophyIcon } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
+import { UserCell } from "@/components/admin/user-cell";
 import {
   AdminDataTable,
   type AdminTableColumn,
@@ -11,7 +12,6 @@ import {
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import {
   FilterInput,
-  shortId,
   Toolbar,
 } from "@/components/admin/admin-page-utils";
 import { Badge } from "@/components/ui/badge";
@@ -132,7 +132,12 @@ export function AdminRankingPage() {
   const columns = useMemo<AdminTableColumn<ReviewerRankingSnapshot>[]>(
     () => [
       { header: "Rank", className: "w-16", cell: (row) => `#${row.rankPosition}` },
-      { header: "Reviewer", cell: (row) => shortId(row.reviewerId) },
+      {
+        header: "Reviewer",
+        cell: (row) => (
+          <UserCell name={row.reviewerUserName} avatar={row.reviewerUserAvatar} />
+        ),
+      },
       {
         header: "Badge",
         cell: (row) => <Badge variant={badgeVariant[row.badge]}>{row.badge}</Badge>,

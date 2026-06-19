@@ -13,6 +13,8 @@ public class ReviewerIncomeResponse {
 
     private UUID id;
     private UUID reviewerId;
+    private String reviewerUserName;
+    private String reviewerUserAvatar;
     private LocalDate incomeDate;
     private long likeCount;
     private long commentCount;
