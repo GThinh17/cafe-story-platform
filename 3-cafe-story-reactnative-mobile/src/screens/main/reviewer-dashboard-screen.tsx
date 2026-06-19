@@ -12,21 +12,19 @@ import {
   Trophy,
   Wallet,
 } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { Avatar, Button, Screen } from "../../components";
+import { Avatar, Button, EmptyState, LoadingState, Screen } from "../../components";
 import { useAuth } from "../../features/auth";
 import {
-  mockReviewerDashboardActivities,
-  mockReviewerDashboardBadges,
-  mockReviewerDashboardPayouts,
-  mockReviewerDashboardPerformance,
-  mockReviewerDashboardProfile,
-  mockReviewerDashboardRanking,
-  mockReviewerDashboardSegment,
-  mockReviewerDashboardStats,
-} from "../../mocks";
+  ApiError,
+  getReviewerBadges,
+  getReviewerByUserId,
+  getReviewerPayouts,
+  getReviewerRanking,
+  getReviewerStats,
+} from "../../services/api";
 import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
 import { colors, spacing, typography } from "../../theme";
@@ -34,9 +32,13 @@ import type {
   AuthUser,
   ReviewerDashboardActivity,
   ReviewerDashboardBadge,
+  ReviewerDashboardBadgeHistoryItem,
+  ReviewerDashboardPerformancePoint,
   ReviewerDashboardPeriod,
   ReviewerDashboardPayout,
+  ReviewerDashboardProfile,
   ReviewerDashboardRankingItem,
+  ReviewerDashboardStats,
 } from "../../types";
 
 const periods: {
@@ -93,14 +95,14 @@ function formatDate(value: string | null) {
   });
 }
 
-function regionLabel() {
-  const region = mockReviewerDashboardProfile.region;
+function regionLabel(profile: ReviewerDashboardProfile | null) {
+  const region = profile?.region;
 
   return [region?.area, region?.city].filter(Boolean).join(", ") || "CafeStory";
 }
 
-function badgeLabel(badge: ReviewerDashboardBadge) {
-  return badge.toLowerCase();
+function badgeLabel(badge?: ReviewerDashboardBadge | null) {
+  return (badge ?? "IRON").toLowerCase();
 }
 
 function activityIcon(type: ReviewerDashboardActivity["type"]) {
@@ -118,25 +120,296 @@ function activityIcon(type: ReviewerDashboardActivity["type"]) {
   }
 }
 
+function deriveSegment(score: number) {
+  if (score === 0) {
+    return "inactive";
+  }
+  if (score < 100) {
+    return "new";
+  }
+  if (score < 300) {
+    return "active";
+  }
+  if (score < 700) {
+    return "strong";
+  }
+  if (score < 1500) {
+    return "top";
+  }
+
+  return "elite";
+}
+
+function compactMonthLabel(value: string) {
+  const [year, month] = value.split("-");
+  const date = new Date(Number(year), Number(month) - 1, 1);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString(undefined, { month: "short" });
+}
+
+function buildPerformancePoints(
+  badges: ReviewerDashboardBadgeHistoryItem[],
+  stats: ReviewerDashboardStats | null,
+  period: ReviewerDashboardPeriod,
+): ReviewerDashboardPerformancePoint[] {
+  const badgePoints = badges
+    .slice(0, 6)
+    .reverse()
+    .map((badge) => ({
+      comments: badge.commentCount,
+      label: compactMonthLabel(badge.month),
+      likes: badge.likeCount,
+      score: badge.score,
+      shares: badge.shareCount,
+    }));
+
+  if (badgePoints.length > 0) {
+    return badgePoints;
+  }
+
+  if (!stats) {
+    return [];
+  }
+
+  return [
+    {
+      comments: stats.commentCount,
+      label: period === "3months" ? "3M" : period,
+      likes: stats.likeCount,
+      score: stats.score,
+      shares: stats.shareCount,
+    },
+  ];
+}
+
+function buildActivities({
+  currentPayout,
+  currentRank,
+  latestBadge,
+  stats,
+}: {
+  currentPayout?: ReviewerDashboardPayout;
+  currentRank?: ReviewerDashboardRankingItem;
+  latestBadge?: ReviewerDashboardBadgeHistoryItem;
+  stats: ReviewerDashboardStats | null;
+}): ReviewerDashboardActivity[] {
+  const activities: ReviewerDashboardActivity[] = [];
+
+  if (stats) {
+    activities.push({
+      description: `${formatCount(stats.likeCount)} likes, ${formatCount(stats.shareCount)} shares, and ${formatCount(stats.commentCount)} comments in this period.`,
+      id: `stats-${stats.period}`,
+      time: "Current",
+      title: "Performance updated",
+      type: "like",
+    });
+  }
+
+  if (latestBadge) {
+    activities.push({
+      description: `${latestBadge.month} closed with ${formatCount(latestBadge.score)} score.`,
+      id: `badge-${latestBadge.id}`,
+      time: latestBadge.month,
+      title: `${latestBadge.badge} badge recorded`,
+      type: "badge",
+    });
+  }
+
+  if (currentPayout) {
+    activities.push({
+      description: `${formatVnd(currentPayout.totalAmount)} from likes, shares, and comments.`,
+      id: `payout-${currentPayout.id}`,
+      time: currentPayout.payoutMonth,
+      title: `${currentPayout.payoutStatus} payout`,
+      type: "payout",
+    });
+  }
+
+  if (currentRank) {
+    activities.push({
+      description: `${formatCount(currentRank.score)} score in ${currentRank.location}.`,
+      id: `ranking-${currentRank.reviewerId}`,
+      time: "Current",
+      title: `Ranked #${currentRank.rank}`,
+      type: "ranking",
+    });
+  }
+
+  return activities;
+}
+
+function accessErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof ApiError && error.statusCode === 403) {
+    return fallback;
+  }
+
+  return error instanceof Error ? error.message : fallback;
+}
+
 export function ReviewerDashboardScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
   const [period, setPeriod] = useState<ReviewerDashboardPeriod>("month");
+  const [profile, setProfile] = useState<ReviewerDashboardProfile | null>(null);
+  const [stats, setStats] = useState<ReviewerDashboardStats | null>(null);
+  const [ranking, setRanking] = useState<ReviewerDashboardRankingItem[]>([]);
+  const [payouts, setPayouts] = useState<ReviewerDashboardPayout[]>([]);
+  const [badges, setBadges] = useState<ReviewerDashboardBadgeHistoryItem[]>([]);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+  const [periodError, setPeriodError] = useState<string | null>(null);
+  const [payoutError, setPayoutError] = useState<string | null>(null);
+  const [badgeError, setBadgeError] = useState<string | null>(null);
+  const [isDashboardLoading, setIsDashboardLoading] = useState(false);
+  const [isPeriodLoading, setIsPeriodLoading] = useState(false);
   const isReviewer = hasReviewerRole(user);
-  const stats = mockReviewerDashboardStats[period];
-  const currentPayout = mockReviewerDashboardPayouts[0];
+  const currentPayout = payouts[0];
   const allTimePayout = useMemo(
+    () => payouts.reduce((total, payout) => total + payout.totalAmount, 0),
+    [payouts],
+  );
+  const currentRank = ranking.find(
+    (item) => item.reviewerId === profile?.reviewerId,
+  );
+  const latestBadge = badges[0];
+  const segment = deriveSegment(stats?.score ?? profile?.score ?? 0);
+  const performance = useMemo(
+    () => buildPerformancePoints(badges, stats, period),
+    [badges, period, stats],
+  );
+  const activities = useMemo(
     () =>
-      mockReviewerDashboardPayouts.reduce(
-        (total, payout) => total + payout.totalAmount,
-        0,
-      ),
-    [],
+      buildActivities({
+        currentPayout,
+        currentRank,
+        latestBadge,
+        stats,
+      }),
+    [currentPayout, currentRank, latestBadge, stats],
   );
-  const currentRank = mockReviewerDashboardRanking.find(
-    (item) => item.reviewerId === mockReviewerDashboardProfile.reviewerId,
-  );
+
+  const loadPeriodData = useCallback(async (
+    reviewerId: string,
+    nextPeriod: ReviewerDashboardPeriod,
+    showInlineLoading = true,
+  ) => {
+    if (showInlineLoading) {
+      setIsPeriodLoading(true);
+    }
+    setPeriodError(null);
+
+    const [statsResult, rankingResult] = await Promise.allSettled([
+      getReviewerStats(reviewerId, nextPeriod),
+      getReviewerRanking(nextPeriod, 1, 5),
+    ]);
+
+    if (statsResult.status === "fulfilled") {
+      setStats(statsResult.value);
+    } else {
+      setStats(null);
+      setPeriodError(
+        statsResult.reason instanceof Error
+          ? statsResult.reason.message
+          : "Unable to load reviewer stats.",
+      );
+    }
+
+    if (rankingResult.status === "fulfilled") {
+      setRanking(rankingResult.value);
+    } else {
+      setRanking([]);
+      setPeriodError(
+        rankingResult.reason instanceof Error
+          ? rankingResult.reason.message
+          : "Unable to load reviewer ranking.",
+      );
+    }
+
+    if (showInlineLoading) {
+      setIsPeriodLoading(false);
+    }
+  }, []);
+
+  const loadDashboard = useCallback(async () => {
+    if (!user?.userId || !isReviewer) {
+      return;
+    }
+
+    setIsDashboardLoading(true);
+    setDashboardError(null);
+    setPayoutError(null);
+    setBadgeError(null);
+
+    try {
+      const nextProfile = await getReviewerByUserId(user.userId);
+      setProfile(nextProfile);
+
+      const [payoutResult, badgeResult] = await Promise.allSettled([
+        getReviewerPayouts(nextProfile.reviewerId),
+        getReviewerBadges(nextProfile.reviewerId),
+      ]);
+
+      if (payoutResult.status === "fulfilled") {
+        setPayouts(payoutResult.value);
+      } else {
+        setPayouts([]);
+        setPayoutError(
+          accessErrorMessage(
+            payoutResult.reason,
+            "Payout wallet is unavailable for this account.",
+          ),
+        );
+      }
+
+      if (badgeResult.status === "fulfilled") {
+        setBadges(badgeResult.value);
+      } else {
+        setBadges([]);
+        setBadgeError(
+          accessErrorMessage(
+            badgeResult.reason,
+            "Badge history is unavailable for this account.",
+          ),
+        );
+      }
+
+      await loadPeriodData(nextProfile.reviewerId, "month", false);
+    } catch (nextError) {
+      setDashboardError(
+        nextError instanceof Error
+          ? nextError.message
+          : "Unable to load reviewer dashboard.",
+      );
+      setProfile(null);
+      setStats(null);
+      setRanking([]);
+      setPayouts([]);
+      setBadges([]);
+    } finally {
+      setIsDashboardLoading(false);
+    }
+  }, [isReviewer, loadPeriodData, user?.userId]);
+
+  const selectPeriod = useCallback(async (nextPeriod: ReviewerDashboardPeriod) => {
+    if (nextPeriod === period || !profile?.reviewerId) {
+      return;
+    }
+
+    setPeriod(nextPeriod);
+    await loadPeriodData(profile.reviewerId, nextPeriod);
+  }, [loadPeriodData, period, profile?.reviewerId]);
+
+  useEffect(() => {
+    if (!isReviewer) {
+      return;
+    }
+
+    void loadDashboard();
+  }, [isReviewer, loadDashboard]);
 
   if (!isReviewer) {
     return (
@@ -164,6 +437,30 @@ export function ReviewerDashboardScreen() {
     );
   }
 
+  if (isDashboardLoading && !profile) {
+    return (
+      <Screen padded={false}>
+        <DashboardHeader onBack={() => navigation.goBack()} />
+        <DashboardSkeleton />
+      </Screen>
+    );
+  }
+
+  if (dashboardError || !profile) {
+    return (
+      <Screen padded={false}>
+        <DashboardHeader onBack={() => navigation.goBack()} />
+        <View style={styles.stateContainer}>
+          <EmptyState
+            description="Pull to retry is not available here yet. Use the button below to reload reviewer data."
+            title={dashboardError ?? "Reviewer dashboard unavailable"}
+          />
+          <Button label="Retry" onPress={() => void loadDashboard()} />
+        </View>
+      </Screen>
+    );
+  }
+
   return (
     <Screen padded={false}>
       <DashboardHeader onBack={() => navigation.goBack()} />
@@ -173,41 +470,41 @@ export function ReviewerDashboardScreen() {
       >
         <View style={styles.hero}>
           <View style={styles.heroTop}>
-            <Avatar uri={mockReviewerDashboardProfile.avatar} size={76} />
+            <Avatar uri={profile.avatar} size={76} />
             <View style={styles.heroCopy}>
               <Text style={styles.heroEyebrow}>Reviewer workspace</Text>
               <Text style={styles.heroName}>
-                {mockReviewerDashboardProfile.name}
+                {profile.name ?? user?.userName ?? "CafeStory reviewer"}
               </Text>
-              <Text style={styles.heroMeta}>{regionLabel()}</Text>
+              <Text style={styles.heroMeta}>{regionLabel(profile)}</Text>
             </View>
           </View>
           <View style={styles.heroBadges}>
             <InfoPill
-              label={`${badgeLabel(mockReviewerDashboardProfile.badge)} badge`}
+              label={`${badgeLabel(profile.badge)} badge`}
             />
             <InfoPill
-              label={`Expires ${formatDate(mockReviewerDashboardProfile.expireDate)}`}
+              label={`Expires ${formatDate(profile.expireDate)}`}
             />
           </View>
           <View style={styles.heroStats}>
             <HeroStat
               label="Followers"
-              value={formatCount(mockReviewerDashboardProfile.follower)}
+              value={formatCount(profile.follower)}
             />
             <HeroStat
               label="Likes"
-              value={formatCount(mockReviewerDashboardProfile.like)}
+              value={formatCount(profile.like)}
             />
             <HeroStat
               label="Score"
-              value={formatCount(mockReviewerDashboardProfile.score)}
+              value={formatCount(profile.score)}
             />
           </View>
         </View>
 
         <SectionHeader
-          subtitle="Mock values mirror reviewer stats DTO periods."
+          subtitle={isPeriodLoading ? "Updating performance..." : periodError ?? "Live reviewer stats from backend."}
           title="Performance"
         />
         <View style={styles.periods}>
@@ -219,7 +516,9 @@ export function ReviewerDashboardScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: isActive }}
                 key={item.value}
-                onPress={() => setPeriod(item.value)}
+                onPress={() => {
+                  void selectPeriod(item.value);
+                }}
                 style={({ pressed }) => [
                   styles.periodItem,
                   isActive && styles.periodItemActive,
@@ -242,33 +541,40 @@ export function ReviewerDashboardScreen() {
           <MetricCard
             Icon={BarChart3}
             label="Score"
-            value={formatCount(stats.score)}
+            value={formatCount(stats?.score ?? 0)}
           />
           <MetricCard
             Icon={Heart}
             label="Likes"
-            value={formatCount(stats.likeCount)}
+            value={formatCount(stats?.likeCount ?? 0)}
           />
           <MetricCard
             Icon={Share2}
             label="Shares"
-            value={formatCount(stats.shareCount)}
+            value={formatCount(stats?.shareCount ?? 0)}
           />
           <MetricCard
             Icon={MessageCircle}
             label="Comments"
-            value={formatCount(stats.commentCount)}
+            value={formatCount(stats?.commentCount ?? 0)}
           />
         </View>
 
         <SectionHeader
-          subtitle="Earnings are mock payout rows from reviewer-only data."
+          subtitle="Earnings from reviewer-only payout history."
           title="Payout wallet"
         />
-        <WalletCard payout={currentPayout} total={allTimePayout} />
+        {currentPayout ? (
+          <WalletCard payout={currentPayout} total={allTimePayout} />
+        ) : (
+          <DashboardStateCard
+            description={payoutError ?? "Payout rows will appear after monthly payout generation."}
+            title="No payout history yet"
+          />
+        )}
 
         <SectionHeader
-          subtitle="Monthly ranking preview with current reviewer highlighted."
+          subtitle="Ranking preview with current reviewer highlighted when present."
           title="Ranking"
         />
         <View style={styles.rankSummary}>
@@ -278,64 +584,87 @@ export function ReviewerDashboardScreen() {
           </View>
           <View style={styles.segmentPill}>
             <Text style={styles.segmentText}>
-              {mockReviewerDashboardSegment.segment}
+              {segment}
             </Text>
           </View>
         </View>
-        <View style={styles.rankingList}>
-          {mockReviewerDashboardRanking.map((item) => (
-            <RankingRow
-              item={item}
-              key={item.reviewerId}
-              isCurrent={
-                item.reviewerId === mockReviewerDashboardProfile.reviewerId
-              }
-            />
-          ))}
-        </View>
+        {ranking.length > 0 ? (
+          <View style={styles.rankingList}>
+            {ranking.map((item) => (
+              <RankingRow
+                item={item}
+                key={item.reviewerId}
+                isCurrent={item.reviewerId === profile.reviewerId}
+              />
+            ))}
+          </View>
+        ) : (
+          <DashboardStateCard
+            description={periodError ?? "Ranking data will appear after reviewer activity is available."}
+            title="No ranking data yet"
+          />
+        )}
 
         <SectionHeader
           subtitle="Badge history and reviewer-only activity."
           title="Badges and activity"
         />
-        <View style={styles.badgeList}>
-          {mockReviewerDashboardBadges.map((item) => (
-            <View style={styles.badgeRow} key={item.id}>
-              <View style={styles.badgeIcon}>
-                <Award color={colors.primary} size={18} strokeWidth={2.4} />
-              </View>
-              <View style={styles.badgeCopy}>
-                <Text style={styles.badgeTitle}>{item.badge}</Text>
-                <Text style={styles.badgeDescription}>
-                  {item.month} - {formatCount(item.score)} score
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.chartCard}>
-          <Text style={styles.chartTitle}>Score trend</Text>
-          <View style={styles.chartBars}>
-            {mockReviewerDashboardPerformance.map((item) => (
-              <View style={styles.chartItem} key={item.label}>
-                <View
-                  style={[
-                    styles.chartBar,
-                    { height: Math.max(24, item.score / 22) },
-                  ]}
-                />
-                <Text style={styles.chartLabel}>{item.label}</Text>
+        {badges.length > 0 ? (
+          <View style={styles.badgeList}>
+            {badges.map((item) => (
+              <View style={styles.badgeRow} key={item.id}>
+                <View style={styles.badgeIcon}>
+                  <Award color={colors.primary} size={18} strokeWidth={2.4} />
+                </View>
+                <View style={styles.badgeCopy}>
+                  <Text style={styles.badgeTitle}>{item.badge}</Text>
+                  <Text style={styles.badgeDescription}>
+                    {item.month} - {formatCount(item.score)} score
+                  </Text>
+                </View>
               </View>
             ))}
           </View>
+        ) : (
+          <DashboardStateCard
+            description={badgeError ?? "Badge history will appear after monthly badge generation."}
+            title="No badge history yet"
+          />
+        )}
+
+        <View style={styles.chartCard}>
+          <Text style={styles.chartTitle}>Score trend</Text>
+          {performance.length > 0 ? (
+            <View style={styles.chartBars}>
+              {performance.map((item) => (
+                <View style={styles.chartItem} key={item.label}>
+                  <View
+                    style={[
+                      styles.chartBar,
+                      { height: Math.min(120, Math.max(24, item.score / 22)) },
+                    ]}
+                  />
+                  <Text style={styles.chartLabel}>{item.label}</Text>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.chartEmptyText}>Score trend will appear after reviewer activity is available.</Text>
+          )}
         </View>
 
-        <View style={styles.activityList}>
-          {mockReviewerDashboardActivities.map((item) => (
-            <ActivityRow activity={item} key={item.id} />
-          ))}
-        </View>
+        {activities.length > 0 ? (
+          <View style={styles.activityList}>
+            {activities.map((item) => (
+              <ActivityRow activity={item} key={item.id} />
+            ))}
+          </View>
+        ) : (
+          <DashboardStateCard
+            description="Recent activity will appear after stats, payouts, or badges are available."
+            title="No recent activity yet"
+          />
+        )}
       </ScrollView>
     </Screen>
   );
@@ -358,8 +687,46 @@ function DashboardHeader({ onBack }: { onBack: () => void }) {
       </View>
       <View style={styles.headerCopy}>
         <Text style={styles.title}>Reviewer dashboard</Text>
-        <Text style={styles.subtitle}>Mock reviewer-only workspace</Text>
+        <Text style={styles.subtitle}>Reviewer-only workspace</Text>
       </View>
+    </View>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <ScrollView
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={styles.skeletonHero}>
+        <View style={styles.skeletonAvatar} />
+        <View style={styles.skeletonBlockWide} />
+        <View style={styles.skeletonBlock} />
+      </View>
+      <View style={styles.statGrid}>
+        {[0, 1, 2, 3].map((item) => (
+          <View key={item} style={styles.skeletonMetric} />
+        ))}
+      </View>
+      <View style={styles.skeletonPanel} />
+      <View style={styles.skeletonPanel} />
+      <LoadingState label="Loading reviewer dashboard..." />
+    </ScrollView>
+  );
+}
+
+function DashboardStateCard({
+  description,
+  title,
+}: {
+  description: string;
+  title: string;
+}) {
+  return (
+    <View style={styles.dashboardStateCard}>
+      <Text style={styles.dashboardStateTitle}>{title}</Text>
+      <Text style={styles.dashboardStateDescription}>{description}</Text>
     </View>
   );
 }
@@ -619,6 +986,12 @@ const styles = StyleSheet.create({
     fontSize: typography.caption,
     fontWeight: "800",
   },
+  chartEmptyText: {
+    color: colors.muted,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 18,
+  },
   chartTitle: {
     color: colors.foreground,
     fontSize: typography.label,
@@ -628,6 +1001,25 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
     padding: spacing.xl,
     paddingBottom: spacing.xxl,
+  },
+  dashboardStateCard: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    gap: spacing.xs,
+    padding: spacing.lg,
+  },
+  dashboardStateDescription: {
+    color: colors.muted,
+    fontSize: typography.caption,
+    fontWeight: "700",
+    lineHeight: 18,
+  },
+  dashboardStateTitle: {
+    color: colors.foreground,
+    fontSize: typography.label,
+    fontWeight: "900",
   },
   header: {
     alignItems: "center",
@@ -871,10 +1263,52 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     textTransform: "uppercase",
   },
+  skeletonAvatar: {
+    backgroundColor: "rgba(255,255,255,0.24)",
+    borderRadius: 38,
+    height: 76,
+    width: 76,
+  },
+  skeletonBlock: {
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 999,
+    height: 16,
+    width: "46%",
+  },
+  skeletonBlockWide: {
+    backgroundColor: "rgba(255,255,255,0.22)",
+    borderRadius: 999,
+    height: 22,
+    width: "72%",
+  },
+  skeletonHero: {
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    gap: spacing.lg,
+    padding: spacing.xl,
+  },
+  skeletonMetric: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 8,
+    flexBasis: "47%",
+    flexGrow: 1,
+    height: 118,
+  },
+  skeletonPanel: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 8,
+    height: 140,
+  },
   statGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.md,
+  },
+  stateContainer: {
+    flex: 1,
+    gap: spacing.lg,
+    justifyContent: "center",
+    padding: spacing.xl,
   },
   subtitle: {
     color: colors.muted,

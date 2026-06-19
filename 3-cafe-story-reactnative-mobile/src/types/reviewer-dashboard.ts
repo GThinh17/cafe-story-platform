@@ -17,12 +17,12 @@ export type ReviewerDashboardSegment =
 
 export type ReviewerDashboardProfile = {
   avatar: string | null;
-  badge: ReviewerDashboardBadge;
+  badge: ReviewerDashboardBadge | null;
   expireDate: string | null;
   follow: number;
   follower: number;
   like: number;
-  name: string;
+  name: string | null;
   region: {
     area?: string | null;
     city?: string | null;
@@ -47,7 +47,7 @@ export type ReviewerDashboardStats = {
 };
 
 export type ReviewerDashboardRankingItem = {
-  badge: ReviewerDashboardBadge;
+  badge: ReviewerDashboardBadge | null;
   commentCount: number;
   likeCount: number;
   location: string;

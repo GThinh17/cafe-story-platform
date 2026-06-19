@@ -3,10 +3,13 @@ package com.cafestory.config;
 import com.cafestory.dto.responseDTO.VnpayIpnResponseDTO;
 import com.cafestory.dto.responseDTO.VnpayReturnResponseDTO;
 import com.cafestory.dto.responseDTO.UsernameSuggestionResponse;
+import com.cafestory.dto.responseDTO.reviewer.ReviewerBadgeResponseDTO;
+import com.cafestory.dto.responseDTO.reviewer.ReviewerPayoutResponseDTO;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.PaymentStatus;
 import com.cafestory.service.serviceInterface.AuthService;
 import com.cafestory.service.serviceInterface.PaymentService;
+import com.cafestory.service.serviceInterface.ReviewerService;
 import com.cafestory.until.security.JwtAuthenticationFilter;
 import com.cafestory.until.security.JwtService;
 
@@ -49,6 +52,9 @@ class SecurityConfigTest {
 
     @MockBean
     private AuthService authService;
+
+    @MockBean
+    private ReviewerService reviewerService;
 
     @Test
     void me_fail_withoutAccessToken_TC001() throws Exception {
@@ -146,9 +152,47 @@ class SecurityConfigTest {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void reviewerPayoutHistory_success_reviewerRoleCanReachSelfOrAdminService_TC010() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID reviewerId = UUID.randomUUID();
+        String accessToken = jwtService.createAccessToken(user(userId), List.of("REVIEWER"));
+        when(reviewerService.getReviewerPayoutHistory(userId, reviewerId)).thenReturn(List.of(new ReviewerPayoutResponseDTO()));
+
+        mockMvc.perform(get("/api/reviewers/{reviewerId}/payouts", reviewerId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void reviewerBadgeHistory_success_reviewerRoleCanReachSelfOrAdminService_TC011() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID reviewerId = UUID.randomUUID();
+        String accessToken = jwtService.createAccessToken(user(userId), List.of("REVIEWER"));
+        when(reviewerService.getReviewerBadgeHistory(userId, reviewerId)).thenReturn(List.of(new ReviewerBadgeResponseDTO()));
+
+        mockMvc.perform(get("/api/reviewers/{reviewerId}/badges", reviewerId)
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void reviewerPayoutGenerate_fail_reviewerRoleCannotAccessAdminGeneration_TC012() throws Exception {
+        String accessToken = jwtService.createAccessToken(user(), List.of("REVIEWER"));
+
+        mockMvc.perform(post("/api/reviewers/payouts/generate")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .param("month", "2026-06"))
+                .andExpect(status().isForbidden());
+    }
+
     private User user() {
+        return user(UUID.randomUUID());
+    }
+
+    private User user(UUID userId) {
         User user = new User();
-        user.setUserId(UUID.randomUUID());
+        user.setUserId(userId);
         user.setUserName("luan123");
         user.setUserEmail("luan123@example.com");
         return user;

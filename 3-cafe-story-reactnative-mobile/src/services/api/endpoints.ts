@@ -98,7 +98,11 @@ export const apiEndpoints = {
     list: "/api/reports",
   },
   reviewers: {
+    badges: (reviewerId: string) => `/api/reviewers/${pathId(reviewerId)}/badges`,
     byUser: (userId: string) => `/api/reviewers/${pathId(userId)}`,
+    payouts: (reviewerId: string) => `/api/reviewers/${pathId(reviewerId)}/payouts`,
+    ranking: "/api/reviewers/ranking",
+    stats: (reviewerId: string) => `/api/reviewers/${pathId(reviewerId)}/stats`,
   },
   users: {
     byId: (userId: string) => `/api/users/${pathId(userId)}`,
