@@ -1,6 +1,6 @@
 package com.cafestory.service.serviceInterface;
 
-import com.cafestory.dto.responseDTO.notification.NotificationResponseDTO;
+import com.cafestory.dto.responseDTO.NotificationResponseDTO;
 
 import java.util.UUID;
 

@@ -1,6 +1,6 @@
 package com.cafestory.service.serviceInterface;
 
-import com.cafestory.dto.responseDTO.payout.ReviewerIncomeResponse;
+import com.cafestory.dto.responseDTO.ReviewerIncomeResponseDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -11,7 +11,7 @@ public interface ReviewerIncomeService {
 
     void generateDailyIncome(LocalDate date);
 
-    Page<ReviewerIncomeResponse> getIncomeByReviewer(UUID reviewerId, String month, Pageable pageable);
+    Page<ReviewerIncomeResponseDTO> getIncomeByReviewer(UUID reviewerId, String month, Pageable pageable);
 
-    Page<ReviewerIncomeResponse> getAllIncome(String month, Pageable pageable);
+    Page<ReviewerIncomeResponseDTO> getAllIncome(String month, Pageable pageable);
 }

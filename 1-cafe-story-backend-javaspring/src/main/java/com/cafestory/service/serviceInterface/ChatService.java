@@ -1,29 +1,29 @@
 package com.cafestory.service.serviceInterface;
 
-import com.cafestory.dto.requestDTO.chat.CreateDirectConversationRequest;
-import com.cafestory.dto.requestDTO.chat.CreateCafePageConversationRequest;
-import com.cafestory.dto.requestDTO.chat.CreateGroupConversationRequest;
-import com.cafestory.dto.requestDTO.chat.SendMessageRequest;
-import com.cafestory.dto.requestDTO.chat.UpdateGroupInfoRequest;
-import com.cafestory.dto.responseDTO.chat.ChatMessageResponseDTO;
-import com.cafestory.dto.responseDTO.chat.ConversationResponseDTO;
+import com.cafestory.dto.requestDTO.CreateDirectConversationRequestDTO;
+import com.cafestory.dto.requestDTO.CreateCafePageConversationRequestDTO;
+import com.cafestory.dto.requestDTO.CreateGroupConversationRequestDTO;
+import com.cafestory.dto.requestDTO.SendMessageRequestDTO;
+import com.cafestory.dto.requestDTO.UpdateGroupInfoRequestDTO;
+import com.cafestory.dto.responseDTO.ChatMessageResponseDTO;
+import com.cafestory.dto.responseDTO.ConversationResponseDTO;
 
 import java.util.List;
 import java.util.UUID;
 
 public interface ChatService {
 
-    ConversationResponseDTO createOrGetDirectConversation(CreateDirectConversationRequest request);
+    ConversationResponseDTO createOrGetDirectConversation(CreateDirectConversationRequestDTO request);
 
-    ConversationResponseDTO createOrGetCafePageConversation(CreateCafePageConversationRequest request);
+    ConversationResponseDTO createOrGetCafePageConversation(CreateCafePageConversationRequestDTO request);
 
-    ConversationResponseDTO createGroupConversation(CreateGroupConversationRequest request);
+    ConversationResponseDTO createGroupConversation(CreateGroupConversationRequestDTO request);
 
     List<ConversationResponseDTO> getUserConversations(UUID userId);
 
     List<ChatMessageResponseDTO> getMessagesByConversationId(UUID conversationId, UUID userId, int page, int size);
 
-    ChatMessageResponseDTO sendMessage(UUID conversationId, SendMessageRequest request);
+    ChatMessageResponseDTO sendMessage(UUID conversationId, SendMessageRequestDTO request);
 
     ConversationResponseDTO addMember(UUID conversationId, UUID actorUserId, UUID memberUserId);
 
@@ -31,5 +31,5 @@ public interface ChatService {
 
     void leaveGroup(UUID conversationId, UUID actorUserId);
 
-    ConversationResponseDTO updateGroupInfo(UUID conversationId, UpdateGroupInfoRequest request);
+    ConversationResponseDTO updateGroupInfo(UUID conversationId, UpdateGroupInfoRequestDTO request);
 }

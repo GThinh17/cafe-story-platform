@@ -71,7 +71,7 @@ public class ReviewerRankingSnapshot {
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "formula_id", nullable = false)
-    private ReviewerScoringFormula formula;
+    private ReviewerFormula formula;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -1,10 +1,10 @@
 package com.cafestory.controller;
 
 import com.cafestory.controller.ChatSocketController;
-import com.cafestory.dto.requestDTO.chat.SendMessageRequest;
-import com.cafestory.dto.requestDTO.chat.TypingRequest;
-import com.cafestory.dto.responseDTO.chat.ChatMessageResponseDTO;
-import com.cafestory.dto.responseDTO.chat.SocketEventResponseDTO;
+import com.cafestory.dto.requestDTO.SendMessageRequestDTO;
+import com.cafestory.dto.requestDTO.TypingRequestDTO;
+import com.cafestory.dto.responseDTO.ChatMessageResponseDTO;
+import com.cafestory.dto.responseDTO.SocketEventResponseDTO;
 import com.cafestory.entity.enums.MessageStatus;
 import com.cafestory.entity.enums.MessageType;
 import com.cafestory.service.serviceInterface.ChatService;
@@ -38,7 +38,7 @@ class ChatSocketControllerTest {
         ChatSocketController controller = new ChatSocketController(chatService, messagingTemplate);
         UUID conversationId = UUID.randomUUID();
         UUID senderId = UUID.randomUUID();
-        SendMessageRequest request = new SendMessageRequest();
+        SendMessageRequestDTO request = new SendMessageRequestDTO();
         request.setSenderId(senderId);
         request.setType(MessageType.TEXT);
         request.setText("hello ws");
@@ -61,7 +61,7 @@ class ChatSocketControllerTest {
         ChatSocketController controller = new ChatSocketController(chatService, messagingTemplate);
         UUID conversationId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
-        TypingRequest request = new TypingRequest();
+        TypingRequestDTO request = new TypingRequestDTO();
         request.setConversationId(conversationId);
         request.setUserId(userId);
 

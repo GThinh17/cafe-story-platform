@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { EyeIcon } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
+import { UserCell } from "@/components/admin/user-cell";
 import {
   AdminDataTable,
   AdminPagination,
@@ -67,7 +68,12 @@ export function AdminReportsPage() {
           </div>
         ),
       },
-      { header: "Reporter", cell: (report) => report.reporterUserName || report.reporterUserId.slice(0, 8) },
+      {
+        header: "Reporter",
+        cell: (report) => (
+          <UserCell name={report.reporterUserName} avatar={report.reporterUserAvatar} />
+        ),
+      },
       { header: "Target", cell: (report) => report.targetType },
       { header: "Status", cell: (report) => <AdminStatusBadge value={report.status} /> },
       { header: "Created", cell: (report) => formatDate(report.createdAt) },

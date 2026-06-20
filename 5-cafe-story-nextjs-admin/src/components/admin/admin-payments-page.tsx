@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { EyeIcon } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
+import { UserCell } from "@/components/admin/user-cell";
 import {
   AdminDataTable,
   AdminPagination,
@@ -63,7 +64,13 @@ export function AdminPaymentsPage() {
   const columns = useMemo<AdminTableColumn<Payment>[]>(
     () => [
       { header: "Payment", cell: (payment) => payment.paymentId.slice(0, 8) },
-      { header: "Buyer", cell: (payment) => payment.buyerId.slice(0, 8) },
+      {
+        header: "Buyer",
+        cell: (payment) => (
+          <UserCell name={payment.buyerUserName} avatar={payment.buyerUserAvatar} />
+        ),
+      },
+      { header: "Product", cell: (payment) => payment.productName ?? "—" },
       { header: "Method", cell: (payment) => payment.paymentMethod },
       {
         header: "Amount",

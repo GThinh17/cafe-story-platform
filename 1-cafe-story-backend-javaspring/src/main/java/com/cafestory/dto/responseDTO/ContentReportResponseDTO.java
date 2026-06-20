@@ -12,6 +12,7 @@ public class ContentReportResponseDTO {
     private UUID id;
     private UUID reporterUserId;
     private String reporterUserName;
+    private String reporterUserAvatar;
     private ReportTargetType targetType;
     private UUID targetId;
     private UUID blogId;

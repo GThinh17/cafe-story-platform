@@ -241,6 +241,7 @@ public class ContentReportServiceImpl implements ContentReportService {
         response.setId(report.getId());
         response.setReporterUserId(report.getReporter().getUserId());
         response.setReporterUserName(report.getReporter().getUserName());
+        response.setReporterUserAvatar(report.getReporter().getUserAvatar());
         response.setTargetType(report.getTargetType());
         response.setTargetId(targetId(report));
         response.setBlogId(report.getBlog() == null ? null : report.getBlog().getId());

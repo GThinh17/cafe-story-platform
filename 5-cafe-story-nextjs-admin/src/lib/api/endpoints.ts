@@ -49,8 +49,14 @@ export const apiEndpoints = {
       `/api/admin/extra-fees/${pathId(extraFeeId)}/status`,
     reviewerRanking: "/api/admin/reviewer-config/ranking",
     generateReviewerRanking: "/api/admin/reviewer-config/ranking/generate",
-    reviewerFormulas: "/api/admin/reviewer-config/formulas",
-    reviewerFormulaThresholds: (formulaId: string) =>
-      `/api/admin/reviewer-config/formulas/${pathId(formulaId)}/thresholds`,
+    formulas: "/api/admin/formulas",
+    formulaActivate: (id: string) => `/api/admin/formulas/${pathId(id)}/activate`,
+    formulaThresholds: (id: string) => `/api/admin/formulas/${pathId(id)}/thresholds`,
+    payoutIncome: "/api/admin/payout/income",
+    generatePayoutIncome: "/api/admin/payout/income/generate",
+    payoutMonthly: "/api/admin/payout/monthly",
+    generatePayoutMonthly: "/api/admin/payout/monthly/generate",
+    payoutMonthlyStatus: (id: string) =>
+      `/api/admin/payout/monthly/${pathId(id)}/status`,
   },
 } as const;

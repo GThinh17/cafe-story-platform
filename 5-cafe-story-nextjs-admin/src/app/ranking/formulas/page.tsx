@@ -1,10 +1,5 @@
-import { AdminDashboardShell } from "@/components/admin/admin-dashboard-shell";
-import { AdminRankingFormulaPage } from "@/components/admin/admin-ranking-formula-page";
+import { permanentRedirect } from "next/navigation";
 
 export default function RankingFormulasPage() {
-  return (
-    <AdminDashboardShell>
-      <AdminRankingFormulaPage />
-    </AdminDashboardShell>
-  );
+  permanentRedirect("/formulas");
 }

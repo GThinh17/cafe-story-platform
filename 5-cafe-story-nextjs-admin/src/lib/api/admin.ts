@@ -4,6 +4,8 @@ import type { PageResponse } from "@/types/api";
 import type {
   AdminDashboardSummary,
   AdminModerationResult,
+  AdminPayout,
+  AdminPayoutStatus,
   AdminUser,
   Blog,
   BlogRankingOverrideRequest,
@@ -21,8 +23,9 @@ import type {
   ReportStatus,
   ReportTargetType,
   ReviewerBadgeThreshold,
+  ReviewerFormula,
+  ReviewerIncome,
   ReviewerRankingSnapshot,
-  ReviewerScoringFormula,
   UserRole,
 } from "@/types/admin";
 
@@ -380,16 +383,82 @@ export function generateReviewerRanking(periodType: RankingPeriodType) {
   );
 }
 
-export function getReviewerFormulas(signal?: AbortSignal) {
-  return apiFetch<ReviewerScoringFormula[]>(apiEndpoints.admin.reviewerFormulas, {
+// ── Unified formulas ─────────────────────────────────────────────────────────
+
+export function getFormulas(signal?: AbortSignal) {
+  return apiFetch<ReviewerFormula[]>(apiEndpoints.admin.formulas, {
     method: "GET",
     signal,
   });
 }
 
-export function getReviewerFormulaThresholds(formulaId: string, signal?: AbortSignal) {
+export function createFormula(request: Omit<ReviewerFormula, "id" | "active" | "createdAt">) {
+  return apiFetch<ReviewerFormula>(apiEndpoints.admin.formulas, {
+    method: "POST",
+    body: request,
+  });
+}
+
+export function activateFormula(id: string) {
+  return apiFetch<ReviewerFormula>(apiEndpoints.admin.formulaActivate(id), {
+    method: "PUT",
+  });
+}
+
+export function getFormulaThresholds(formulaId: string, signal?: AbortSignal) {
   return apiFetch<ReviewerBadgeThreshold[]>(
-    apiEndpoints.admin.reviewerFormulaThresholds(formulaId),
+    apiEndpoints.admin.formulaThresholds(formulaId),
     { method: "GET", signal },
   );
+}
+
+// ── Reviewer daily income ─────────────────────────────────────────────────────
+
+export function generatePayoutIncome(date?: string) {
+  return apiFetch<void>(
+    withQuery(apiEndpoints.admin.generatePayoutIncome, { date }),
+    { method: "POST" },
+  );
+}
+
+export function getPayoutIncome(params: {
+  reviewerId?: string;
+  month?: string;
+  page: number;
+  size: number;
+  sortDir?: "asc" | "desc";
+}, signal?: AbortSignal) {
+  return apiFetch<PageResponse<ReviewerIncome>>(
+    withQuery(apiEndpoints.admin.payoutIncome, params),
+    { method: "GET", signal },
+  );
+}
+
+// ── Admin monthly payout ──────────────────────────────────────────────────────
+
+export function generateMonthlyPayout(month?: string) {
+  return apiFetch<void>(
+    withQuery(apiEndpoints.admin.generatePayoutMonthly, { month }),
+    { method: "POST" },
+  );
+}
+
+export function getMonthlyPayouts(params: {
+  month?: string;
+  status?: AdminPayoutStatus | "";
+  page: number;
+  size: number;
+  sortDir?: "asc" | "desc";
+}, signal?: AbortSignal) {
+  return apiFetch<PageResponse<AdminPayout>>(
+    withQuery(apiEndpoints.admin.payoutMonthly, params),
+    { method: "GET", signal },
+  );
+}
+
+export function updatePayoutStatus(id: string, status: AdminPayoutStatus, note?: string) {
+  return apiFetch<AdminPayout>(apiEndpoints.admin.payoutMonthlyStatus(id), {
+    method: "PATCH",
+    body: { status, note },
+  });
 }

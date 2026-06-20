@@ -1,8 +1,8 @@
 package com.cafestory.mapper;
 
-import com.cafestory.dto.responseDTO.chat.ChatMemberResponseDTO;
-import com.cafestory.dto.responseDTO.chat.ChatMessageResponseDTO;
-import com.cafestory.dto.responseDTO.chat.ConversationResponseDTO;
+import com.cafestory.dto.responseDTO.ChatMemberResponseDTO;
+import com.cafestory.dto.responseDTO.ChatMessageResponseDTO;
+import com.cafestory.dto.responseDTO.ConversationResponseDTO;
 import com.cafestory.entity.ChatMember;
 import com.cafestory.entity.ChatMessage;
 import com.cafestory.entity.Conversation;

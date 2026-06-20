@@ -1,9 +1,9 @@
 package com.cafestory.service.serviceImplement;
 
 import com.cafestory.dto.requestDTO.AdminPayoutStatusRequest;
-import com.cafestory.dto.responseDTO.payout.AdminPayoutResponse;
+import com.cafestory.dto.responseDTO.AdminPayoutResponseDTO;
 import com.cafestory.entity.AdminPayout;
-import com.cafestory.entity.PayoutFormula;
+import com.cafestory.entity.ReviewerFormula;
 import com.cafestory.entity.Reviewer;
 import com.cafestory.entity.ReviewerIncome;
 import com.cafestory.entity.ReviewerRankingSnapshot;
@@ -16,7 +16,10 @@ import com.cafestory.repository.ReviewerIncomeRepository;
 import com.cafestory.repository.ReviewerRankingSnapshotRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.AdminPayoutService;
-import com.cafestory.service.serviceInterface.PayoutFormulaService;
+import com.cafestory.service.serviceInterface.ReviewerFormulaService;
+import com.cafestory.service.serviceInterface.ReviewerIncomeService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -30,30 +33,37 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 public class AdminPayoutServiceImpl implements AdminPayoutService {
 
+    private static final Logger log = LoggerFactory.getLogger(AdminPayoutServiceImpl.class);
+
     private final AdminPayoutRepository payoutRepository;
     private final ReviewerIncomeRepository incomeRepository;
     private final ReviewerRankingSnapshotRepository snapshotRepository;
     private final UserRepository userRepository;
-    private final PayoutFormulaService payoutFormulaService;
+    private final ReviewerFormulaService formulaService;
+    private final ReviewerIncomeService reviewerIncomeService;
 
     public AdminPayoutServiceImpl(
             AdminPayoutRepository payoutRepository,
             ReviewerIncomeRepository incomeRepository,
             ReviewerRankingSnapshotRepository snapshotRepository,
             UserRepository userRepository,
-            PayoutFormulaService payoutFormulaService) {
+            ReviewerFormulaService formulaService,
+            ReviewerIncomeService reviewerIncomeService) {
         this.payoutRepository = payoutRepository;
         this.incomeRepository = incomeRepository;
         this.snapshotRepository = snapshotRepository;
         this.userRepository = userRepository;
-        this.payoutFormulaService = payoutFormulaService;
+        this.formulaService = formulaService;
+        this.reviewerIncomeService = reviewerIncomeService;
     }
 
     @Override
@@ -61,13 +71,40 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
     public void generateMonthlyPayout(String month) {
         YearMonth ym = YearMonth.parse(month);
         LocalDate start = ym.atDay(1);
-        LocalDate end = ym.plusMonths(1).atDay(1);
+        LocalDate end = ym.plusMonths(1).atDay(1);   // exclusive upper bound
 
-        PayoutFormula formula = payoutFormulaService.getActiveFormula();
+        // Guard: block mid-month generation — incomplete data produces wrong payout
+        LocalDate today = LocalDate.now();
+        if (end.isAfter(today)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Cannot generate payout for an incomplete month. " + month + " ends on "
+                            + end.minusDays(1) + ", today is " + today + ".");
+        }
 
-        // Aggregate income records for the month → totalBaseAmount per reviewer
+        ReviewerFormula formula = formulaService.getActiveFormula();
+
         List<ReviewerIncome> monthlyIncomes = incomeRepository
                 .findByIncomeDateGreaterThanEqualAndIncomeDateLessThan(start, end);
+
+        // Gap detection: find days in the month that have no income record, then backfill
+        Set<LocalDate> coveredDates = new HashSet<>();
+        for (ReviewerIncome income : monthlyIncomes) {
+            coveredDates.add(income.getIncomeDate());
+        }
+        List<LocalDate> missingDates = new ArrayList<>();
+        for (LocalDate d = start; d.isBefore(end); d = d.plusDays(1)) {
+            if (!coveredDates.contains(d)) missingDates.add(d);
+        }
+        if (!missingDates.isEmpty()) {
+            log.warn("generateMonthlyPayout[{}]: missing income for {} day(s) — backfilling: {}",
+                    month, missingDates.size(), missingDates);
+            for (LocalDate missing : missingDates) {
+                reviewerIncomeService.generateDailyIncome(missing);
+            }
+            // Re-query to include newly generated records
+            monthlyIncomes = incomeRepository
+                    .findByIncomeDateGreaterThanEqualAndIncomeDateLessThan(start, end);
+        }
 
         Map<UUID, Long> totalBaseByReviewerId = new HashMap<>();
         Map<UUID, Reviewer> reviewerById = new HashMap<>();
@@ -81,14 +118,12 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
             return;
         }
 
-        // Batch load MONTHLY ranking snapshots for badge lookup
         Map<UUID, ReviewerBadge> badgeByReviewerId = new HashMap<>();
         for (ReviewerRankingSnapshot snapshot : snapshotRepository
                 .findByPeriodAndPeriodTypeOrderByRankPositionAsc(month, RankingPeriodType.MONTHLY)) {
             badgeByReviewerId.put(snapshot.getReviewer().getReviewerId(), snapshot.getBadge());
         }
 
-        // Batch load existing payout records for upsert
         Map<UUID, AdminPayout> existingPayouts = new HashMap<>();
         for (AdminPayout payout : payoutRepository.findByPayoutMonth(month)) {
             existingPayouts.put(payout.getReviewer().getReviewerId(), payout);
@@ -111,7 +146,6 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
             payout.setBadgeMultiplier(multiplier);
             payout.setTotalFinalAmount(totalFinal);
             payout.setFormula(formula);
-            // Preserve existing status on update; new records default to PENDING via @PrePersist
             toSave.add(payout);
         }
         payoutRepository.saveAll(toSave);
@@ -119,7 +153,7 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<AdminPayoutResponse> getPayouts(String month, AdminPayoutStatus status, Pageable pageable) {
+    public Page<AdminPayoutResponseDTO> getPayouts(String month, AdminPayoutStatus status, Pageable pageable) {
         Page<AdminPayout> page;
         if (month != null && status != null) {
             page = payoutRepository.findByPayoutMonthAndStatus(month, status, pageable);
@@ -135,7 +169,7 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
 
     @Override
     @Transactional
-    public AdminPayoutResponse updatePayoutStatus(UUID payoutId, UUID adminUserId, AdminPayoutStatusRequest request) {
+    public AdminPayoutResponseDTO updatePayoutStatus(UUID payoutId, UUID adminUserId, AdminPayoutStatusRequest request) {
         AdminPayout payout = payoutRepository.findById(payoutId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payout record not found"));
 
@@ -169,10 +203,12 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
         }
     }
 
-    private AdminPayoutResponse toResponse(AdminPayout payout) {
-        AdminPayoutResponse dto = new AdminPayoutResponse();
+    private AdminPayoutResponseDTO toResponse(AdminPayout payout) {
+        AdminPayoutResponseDTO dto = new AdminPayoutResponseDTO();
         dto.setId(payout.getId());
         dto.setReviewerId(payout.getReviewer().getReviewerId());
+        dto.setReviewerUserName(payout.getReviewer().getUser().getUserName());
+        dto.setReviewerUserAvatar(payout.getReviewer().getUser().getUserAvatar());
         dto.setPayoutMonth(payout.getPayoutMonth());
         dto.setTotalBaseAmount(payout.getTotalBaseAmount());
         dto.setBadge(payout.getBadge());

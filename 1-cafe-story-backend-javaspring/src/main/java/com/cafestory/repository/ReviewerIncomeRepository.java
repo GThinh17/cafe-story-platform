@@ -18,6 +18,6 @@ public interface ReviewerIncomeRepository extends JpaRepository<ReviewerIncome, 
     Page<ReviewerIncome> findByReviewerReviewerIdAndIncomeDateGreaterThanEqualAndIncomeDateLessThan(
             UUID reviewerId, LocalDate startInclusive, LocalDate endExclusive, Pageable pageable);
 
-    Page<ReviewerIncome> findByIncomeDateGreaterThanEqualAndIncomeDateLessThanOrderByIncomeDateDesc(
+    Page<ReviewerIncome> findByIncomeDateGreaterThanEqualAndIncomeDateLessThan(
             LocalDate startInclusive, LocalDate endExclusive, Pageable pageable);
 }

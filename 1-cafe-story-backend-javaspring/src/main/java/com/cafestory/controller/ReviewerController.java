@@ -1,13 +1,13 @@
 package com.cafestory.controller;
 
-import com.cafestory.dto.responseDTO.reviewer.ReviewerBadgeResponseDTO;
-import com.cafestory.dto.responseDTO.reviewer.ReviewerDiscoveryResponseDTO;
-import com.cafestory.dto.responseDTO.reviewer.ReviewerGeoAnalyticsResponseDTO;
-import com.cafestory.dto.responseDTO.reviewer.ReviewerPayoutResponseDTO;
-import com.cafestory.dto.responseDTO.reviewer.ReviewerRankingResponseDTO;
-import com.cafestory.dto.responseDTO.reviewer.ReviewerResponseDTO;
-import com.cafestory.dto.responseDTO.reviewer.ReviewerSegmentResponseDTO;
-import com.cafestory.dto.responseDTO.reviewer.ReviewerStatsResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerBadgeResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerDiscoveryResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerGeoAnalyticsResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerPayoutResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerRankingResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerSegmentResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerStatsResponseDTO;
 import com.cafestory.service.serviceInterface.ReviewerService;
 import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;

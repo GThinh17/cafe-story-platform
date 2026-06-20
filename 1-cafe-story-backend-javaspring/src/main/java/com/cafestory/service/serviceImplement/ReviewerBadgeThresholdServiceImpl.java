@@ -1,14 +1,14 @@
 package com.cafestory.service.serviceImplement;
 
 import com.cafestory.dto.requestDTO.ReviewerBadgeThresholdRequest;
-import com.cafestory.dto.responseDTO.reviewer.ReviewerBadgeThresholdResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerBadgeThresholdResponseDTO;
 import com.cafestory.entity.ReviewerBadgeThreshold;
-import com.cafestory.entity.ReviewerScoringFormula;
+import com.cafestory.entity.ReviewerFormula;
 import com.cafestory.entity.enums.ReviewerBadge;
 import com.cafestory.repository.ReviewerBadgeThresholdRepository;
-import com.cafestory.repository.ReviewerScoringFormulaRepository;
+import com.cafestory.repository.ReviewerFormulaRepository;
 import com.cafestory.service.serviceInterface.ReviewerBadgeThresholdService;
-import com.cafestory.service.serviceInterface.ReviewerScoringFormulaService;
+import com.cafestory.service.serviceInterface.ReviewerFormulaService;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,13 +24,13 @@ import java.util.stream.Collectors;
 public class ReviewerBadgeThresholdServiceImpl implements ReviewerBadgeThresholdService {
 
     private final ReviewerBadgeThresholdRepository thresholdRepository;
-    private final ReviewerScoringFormulaRepository formulaRepository;
-    private final ReviewerScoringFormulaService formulaService;
+    private final ReviewerFormulaRepository formulaRepository;
+    private final ReviewerFormulaService formulaService;
 
     public ReviewerBadgeThresholdServiceImpl(
             ReviewerBadgeThresholdRepository thresholdRepository,
-            ReviewerScoringFormulaRepository formulaRepository,
-            ReviewerScoringFormulaService formulaService) {
+            ReviewerFormulaRepository formulaRepository,
+            ReviewerFormulaService formulaService) {
         this.thresholdRepository = thresholdRepository;
         this.formulaRepository = formulaRepository;
         this.formulaService = formulaService;
@@ -39,7 +39,7 @@ public class ReviewerBadgeThresholdServiceImpl implements ReviewerBadgeThreshold
     @Override
     @Transactional(readOnly = true)
     public ReviewerBadge badgeForScore(long score) {
-        ReviewerScoringFormula activeFormula = formulaService.getActiveFormula();
+        ReviewerFormula activeFormula = formulaService.getActiveFormula();
         List<ReviewerBadgeThreshold> thresholds = thresholdRepository
                 .findByFormulaIdOrderByMinScoreAsc(activeFormula.getId());
         if (thresholds.isEmpty()) {
@@ -71,7 +71,7 @@ public class ReviewerBadgeThresholdServiceImpl implements ReviewerBadgeThreshold
             UUID adminUserId,
             UUID formulaId,
             List<ReviewerBadgeThresholdRequest> thresholds) {
-        ReviewerScoringFormula formula = formulaRepository.findById(formulaId)
+        ReviewerFormula formula = formulaRepository.findById(formulaId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Formula not found"));
         Set<ReviewerBadge> requestedBadges = thresholds.stream()
                 .map(ReviewerBadgeThresholdRequest::getBadge)

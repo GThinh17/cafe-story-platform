@@ -9,6 +9,7 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
+import { UserCell } from "@/components/admin/user-cell";
 import {
   AdminDataTable,
   AdminPagination,
@@ -174,12 +175,11 @@ export function AdminBlogsPage() {
       {
         header: "Author / page",
         cell: (blog) => (
-          <div className="max-w-xs">
-            <p className="font-bold text-espresso">
-              {blog.displayName || blog.authorUserFullName || blog.authorUserName}
-            </p>
-            <p className="mt-1 text-xs text-muted">{blog.pageName || "Personal post"}</p>
-          </div>
+          <UserCell
+            name={blog.displayName || blog.authorUserFullName || blog.authorUserName}
+            avatar={blog.authorUserAvatar}
+            subtitle={blog.pageName || "Personal post"}
+          />
         ),
       },
       {

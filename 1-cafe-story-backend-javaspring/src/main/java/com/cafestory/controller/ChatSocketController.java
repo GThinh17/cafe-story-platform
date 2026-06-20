@@ -1,10 +1,10 @@
 package com.cafestory.controller;
 
-import com.cafestory.dto.requestDTO.chat.SendMessageRequest;
-import com.cafestory.dto.requestDTO.chat.SocketConversationRequest;
-import com.cafestory.dto.requestDTO.chat.TypingRequest;
-import com.cafestory.dto.responseDTO.chat.ChatMessageResponseDTO;
-import com.cafestory.dto.responseDTO.chat.SocketEventResponseDTO;
+import com.cafestory.dto.requestDTO.SendMessageRequestDTO;
+import com.cafestory.dto.requestDTO.SocketConversationRequestDTO;
+import com.cafestory.dto.requestDTO.TypingRequestDTO;
+import com.cafestory.dto.responseDTO.ChatMessageResponseDTO;
+import com.cafestory.dto.responseDTO.SocketEventResponseDTO;
 import com.cafestory.service.serviceInterface.ChatService;
 import jakarta.validation.Valid;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
@@ -27,14 +27,14 @@ public class ChatSocketController {
     }
 
     @MessageMapping("/chat/join_conversation")
-    public void joinConversation(@Valid SocketConversationRequest request) {
+    public void joinConversation(@Valid SocketConversationRequestDTO request) {
         messagingTemplate.convertAndSend(
                 topic(request.getConversationId()),
                 new SocketEventResponseDTO("join_conversation", request.getConversationId(), request.getUserId(), null));
     }
 
     @MessageMapping("/chat/leave_conversation")
-    public void leaveConversation(@Valid SocketConversationRequest request) {
+    public void leaveConversation(@Valid SocketConversationRequestDTO request) {
         messagingTemplate.convertAndSend(
                 topic(request.getConversationId()),
                 new SocketEventResponseDTO("leave_conversation", request.getConversationId(), request.getUserId(), null));
@@ -43,7 +43,7 @@ public class ChatSocketController {
     @MessageMapping("/chat/{conversationId}/send_message")
     public void sendMessage(
             @DestinationVariable UUID conversationId,
-            @Valid SendMessageRequest request) {
+            @Valid SendMessageRequestDTO request) {
         try {
             ChatMessageResponseDTO message = chatService.sendMessage(conversationId, request);
             messagingTemplate.convertAndSendToUser(
@@ -60,14 +60,14 @@ public class ChatSocketController {
     }
 
     @MessageMapping("/chat/typing_start")
-    public void typingStart(@Valid TypingRequest request) {
+    public void typingStart(@Valid TypingRequestDTO request) {
         messagingTemplate.convertAndSend(
                 topic(request.getConversationId()),
                 new SocketEventResponseDTO("typing_start", request.getConversationId(), request.getUserId(), null));
     }
 
     @MessageMapping("/chat/typing_stop")
-    public void typingStop(@Valid TypingRequest request) {
+    public void typingStop(@Valid TypingRequestDTO request) {
         messagingTemplate.convertAndSend(
                 topic(request.getConversationId()),
                 new SocketEventResponseDTO("typing_stop", request.getConversationId(), request.getUserId(), null));

@@ -1,6 +1,6 @@
 package com.cafestory.controller;
 
-import com.cafestory.dto.responseDTO.reviewer.ReviewerResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerResponseDTO;
 import com.cafestory.service.serviceInterface.ReviewerService;
 import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.junit.jupiter.api.Test;

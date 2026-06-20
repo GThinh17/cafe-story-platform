@@ -1,13 +1,10 @@
 package com.cafestory.controller;
 
 import com.cafestory.dto.requestDTO.AdminPayoutStatusRequest;
-import com.cafestory.dto.requestDTO.PayoutFormulaRequest;
-import com.cafestory.dto.responseDTO.payout.AdminPayoutResponse;
-import com.cafestory.dto.responseDTO.payout.PayoutFormulaResponse;
-import com.cafestory.dto.responseDTO.payout.ReviewerIncomeResponse;
+import com.cafestory.dto.responseDTO.AdminPayoutResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerIncomeResponseDTO;
 import com.cafestory.entity.enums.AdminPayoutStatus;
 import com.cafestory.service.serviceInterface.AdminPayoutService;
-import com.cafestory.service.serviceInterface.PayoutFormulaService;
 import com.cafestory.service.serviceInterface.ReviewerIncomeService;
 import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
@@ -22,7 +19,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,7 +27,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.util.List;
 import java.util.UUID;
 
 import static com.cafestory.until.security.AuthenticationPrincipalUtils.requireUserId;
@@ -40,39 +35,14 @@ import static com.cafestory.until.security.AuthenticationPrincipalUtils.requireU
 @RequestMapping("/api/admin/payout")
 public class AdminPayoutController {
 
-    private final PayoutFormulaService formulaService;
     private final ReviewerIncomeService incomeService;
     private final AdminPayoutService payoutService;
 
     public AdminPayoutController(
-            PayoutFormulaService formulaService,
             ReviewerIncomeService incomeService,
             AdminPayoutService payoutService) {
-        this.formulaService = formulaService;
         this.incomeService = incomeService;
         this.payoutService = payoutService;
-    }
-
-    // ── Payout formulas ──────────────────────────────────────────────────────
-
-    @GetMapping("/formulas")
-    public List<PayoutFormulaResponse> getFormulas() {
-        return formulaService.getAllFormulas();
-    }
-
-    @PostMapping("/formulas")
-    @ResponseStatus(HttpStatus.CREATED)
-    public PayoutFormulaResponse createFormula(
-            @Valid @RequestBody PayoutFormulaRequest request,
-            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
-        return formulaService.createFormula(requireUserId(principal), request);
-    }
-
-    @PutMapping("/formulas/{id}/activate")
-    public PayoutFormulaResponse activateFormula(
-            @PathVariable UUID id,
-            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
-        return formulaService.activateFormula(requireUserId(principal), id);
     }
 
     // ── Reviewer daily income ────────────────────────────────────────────────
@@ -87,13 +57,17 @@ public class AdminPayoutController {
     }
 
     @GetMapping("/income")
-    public Page<ReviewerIncomeResponse> getIncome(
+    public Page<ReviewerIncomeResponseDTO> getIncome(
             @RequestParam(required = false) UUID reviewerId,
             @RequestParam(required = false) String month,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "desc") String sortDir) {
         String resolvedMonth = month != null ? month : YearMonth.now().toString();
-        Pageable pageable = PageRequest.of(page, size, Sort.by("incomeDate").descending());
+        Sort sort = "asc".equalsIgnoreCase(sortDir)
+                ? Sort.by("finalAmount").ascending()
+                : Sort.by("finalAmount").descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
         if (reviewerId != null) {
             return incomeService.getIncomeByReviewer(reviewerId, resolvedMonth, pageable);
         }
@@ -113,17 +87,21 @@ public class AdminPayoutController {
     }
 
     @GetMapping("/monthly")
-    public Page<AdminPayoutResponse> getPayouts(
+    public Page<AdminPayoutResponseDTO> getPayouts(
             @RequestParam(required = false) String month,
             @RequestParam(required = false) AdminPayoutStatus status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "desc") String sortDir) {
+        Sort sort = "asc".equalsIgnoreCase(sortDir)
+                ? Sort.by("totalFinalAmount").ascending()
+                : Sort.by("totalFinalAmount").descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
         return payoutService.getPayouts(month, status, pageable);
     }
 
     @PatchMapping("/monthly/{id}/status")
-    public AdminPayoutResponse updatePayoutStatus(
+    public AdminPayoutResponseDTO updatePayoutStatus(
             @PathVariable UUID id,
             @Valid @RequestBody AdminPayoutStatusRequest request,
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {

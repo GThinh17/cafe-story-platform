@@ -109,6 +109,7 @@ export type Comment = {
   blogId: UUID;
   userId: UUID;
   authorUserName: string;
+  authorUserAvatar: string | null;
   parentCommentId: UUID | null;
   content: string | null;
   imageUrls: string[];
@@ -123,6 +124,7 @@ export type AdminModerationResult = {
   authorUserId: UUID | null;
   authorUserName: string | null;
   authorUserFullName: string | null;
+  authorUserAvatar: string | null;
   caption: string | null;
   score: number | null;
   decision: ModerationDecision | null;
@@ -147,6 +149,7 @@ export type ContentReport = {
   id: UUID;
   reporterUserId: UUID;
   reporterUserName: string | null;
+  reporterUserAvatar: string | null;
   targetType: ReportTargetType;
   targetId: UUID;
   blogId: UUID | null;
@@ -163,8 +166,11 @@ export type ContentReport = {
 export type Payment = {
   paymentId: UUID;
   buyerId: UUID;
+  buyerUserName: string | null;
+  buyerUserAvatar: string | null;
   extraFeeId: UUID | null;
   adFeeId: UUID | null;
+  productName: string | null;
   paymentMethod: PaymentMethod;
   amount: number;
   currency: string;
@@ -208,7 +214,7 @@ export type BlogRankingOverrideRequest = {
   end_at?: string | null;
 };
 
-export type ReviewerScoringFormula = {
+export type ReviewerFormula = {
   id: UUID;
   likeWeight: number;
   commentWeight: number;
@@ -216,6 +222,11 @@ export type ReviewerScoringFormula = {
   likePayoutAmount: number;
   commentPayoutAmount: number;
   sharePayoutAmount: number;
+  ironMultiplier: number;
+  bronzeMultiplier: number;
+  silverMultiplier: number;
+  goldMultiplier: number;
+  diamondMultiplier: number;
   active: boolean;
   description: string | null;
   createdAt: string;
@@ -231,6 +242,8 @@ export type ReviewerBadgeThreshold = {
 export type ReviewerRankingSnapshot = {
   id: UUID;
   reviewerId: UUID;
+  reviewerUserName: string | null;
+  reviewerUserAvatar: string | null;
   period: string;
   periodType: RankingPeriodType;
   rankPosition: number;
@@ -240,4 +253,45 @@ export type ReviewerRankingSnapshot = {
   commentCount: number;
   badge: ReviewerBadge;
   formulaId: UUID | null;
+};
+
+export type AdminPayoutStatus = "PENDING" | "APPROVED" | "PAID" | "CANCELLED";
+
+
+export type ReviewerIncome = {
+  id: UUID;
+  reviewerId: UUID;
+  reviewerUserName: string | null;
+  reviewerUserAvatar: string | null;
+  incomeDate: string;
+  likeCount: number;
+  commentCount: number;
+  shareCount: number;
+  badge: ReviewerBadge;
+  badgeMultiplier: number;
+  baseAmount: number;
+  finalAmount: number;
+  formulaId: UUID;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AdminPayout = {
+  id: UUID;
+  reviewerId: UUID;
+  reviewerUserName: string | null;
+  reviewerUserAvatar: string | null;
+  payoutMonth: string;
+  totalBaseAmount: number;
+  badge: ReviewerBadge;
+  badgeMultiplier: number;
+  totalFinalAmount: number;
+  status: AdminPayoutStatus;
+  approvedBy: UUID | null;
+  approvedAt: string | null;
+  paidAt: string | null;
+  note: string | null;
+  formulaId: UUID;
+  createdAt: string;
+  updatedAt: string;
 };

@@ -1,6 +1,6 @@
 package com.cafestory.service;
 
-import com.cafestory.dto.requestDTO.notification.CreateNotificationRequest;
+import com.cafestory.dto.requestDTO.CreateNotificationRequestDTO;
 import com.cafestory.entity.Notification;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.NotificationTargetType;
@@ -158,7 +158,7 @@ class NotificationServiceImplTest {
 
     @Test
     void createNotification_fail_invalidTypeAndMismatchedTarget_TC008() {
-        CreateNotificationRequest invalidType = new CreateNotificationRequest();
+        CreateNotificationRequestDTO invalidType = new CreateNotificationRequestDTO();
         invalidType.setRecipientId(recipientId());
         invalidType.setActorId(actorId());
 
@@ -166,7 +166,7 @@ class NotificationServiceImplTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
 
-        CreateNotificationRequest mismatched = baseRequest(NotificationType.MESSAGE);
+        CreateNotificationRequestDTO mismatched = baseRequest(NotificationType.MESSAGE);
         mismatched.setConversationId(UUID.randomUUID());
         mismatched.setBlogId(UUID.randomUUID());
 
@@ -252,8 +252,8 @@ class NotificationServiceImplTest {
         }).when(notificationRepository).save(any(Notification.class));
     }
 
-    private CreateNotificationRequest baseRequest(NotificationType type) {
-        CreateNotificationRequest request = new CreateNotificationRequest();
+    private CreateNotificationRequestDTO baseRequest(NotificationType type) {
+        CreateNotificationRequestDTO request = new CreateNotificationRequestDTO();
         request.setRecipientId(recipientId());
         request.setActorId(actorId());
         request.setType(type);

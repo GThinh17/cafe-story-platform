@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { EyeIcon } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
+import { UserCell } from "@/components/admin/user-cell";
 import {
   AdminDataTable,
   AdminPagination,
@@ -119,8 +120,12 @@ export function AdminModerationPage() {
       { header: "Blog", cell: (result) => result.blogId?.slice(0, 8) || "-" },
       {
         header: "Author",
-        cell: (result) =>
-          result.authorUserName || result.authorUserFullName || result.authorUserId?.slice(0, 8) || "-",
+        cell: (result) => (
+          <UserCell
+            name={result.authorUserName || result.authorUserFullName}
+            avatar={result.authorUserAvatar}
+          />
+        ),
       },
       {
         header: "Caption",
