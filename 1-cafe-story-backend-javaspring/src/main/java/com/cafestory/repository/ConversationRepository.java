@@ -47,7 +47,7 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
             @Param("cafePageId") UUID cafePageId);
 
     @Query("""
-            select distinct c from Conversation c
+            select c from Conversation c
             left join fetch c.cafePage
             where exists (
                 select m.id from ChatMember m
