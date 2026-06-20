@@ -7,6 +7,7 @@ import com.cafestory.entity.ReviewerFormula;
 import com.cafestory.entity.Reviewer;
 import com.cafestory.entity.ReviewerIncome;
 import com.cafestory.entity.ReviewerRankingSnapshot;
+import com.cafestory.entity.ReviewerStripeAccount;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.AdminPayoutStatus;
 import com.cafestory.entity.enums.RankingPeriodType;
@@ -14,12 +15,19 @@ import com.cafestory.entity.enums.ReviewerBadge;
 import com.cafestory.repository.AdminPayoutRepository;
 import com.cafestory.repository.ReviewerIncomeRepository;
 import com.cafestory.repository.ReviewerRankingSnapshotRepository;
+import com.cafestory.repository.ReviewerStripeAccountRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.AdminPayoutService;
 import com.cafestory.service.serviceInterface.ReviewerFormulaService;
 import com.cafestory.service.serviceInterface.ReviewerIncomeService;
+import com.stripe.Stripe;
+import com.stripe.exception.StripeException;
+import com.stripe.model.Transfer;
+import com.stripe.net.RequestOptions;
+import com.stripe.param.TransferCreateParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -44,26 +52,32 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
 
     private static final Logger log = LoggerFactory.getLogger(AdminPayoutServiceImpl.class);
 
+    private final String stripeSecretKey;
     private final AdminPayoutRepository payoutRepository;
     private final ReviewerIncomeRepository incomeRepository;
     private final ReviewerRankingSnapshotRepository snapshotRepository;
     private final UserRepository userRepository;
     private final ReviewerFormulaService formulaService;
     private final ReviewerIncomeService reviewerIncomeService;
+    private final ReviewerStripeAccountRepository stripeAccountRepository;
 
     public AdminPayoutServiceImpl(
+            @Value("${stripe.secret-key:}") String stripeSecretKey,
             AdminPayoutRepository payoutRepository,
             ReviewerIncomeRepository incomeRepository,
             ReviewerRankingSnapshotRepository snapshotRepository,
             UserRepository userRepository,
             ReviewerFormulaService formulaService,
-            ReviewerIncomeService reviewerIncomeService) {
+            ReviewerIncomeService reviewerIncomeService,
+            ReviewerStripeAccountRepository stripeAccountRepository) {
+        this.stripeSecretKey = stripeSecretKey;
         this.payoutRepository = payoutRepository;
         this.incomeRepository = incomeRepository;
         this.snapshotRepository = snapshotRepository;
         this.userRepository = userRepository;
         this.formulaService = formulaService;
         this.reviewerIncomeService = reviewerIncomeService;
+        this.stripeAccountRepository = stripeAccountRepository;
     }
 
     @Override
@@ -185,10 +199,44 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
             payout.setApprovedBy(admin);
             payout.setApprovedAt(LocalDateTime.now());
         } else if (request.getStatus() == AdminPayoutStatus.PAID) {
+            triggerStripeTransfer(payout);
             payout.setPaidAt(LocalDateTime.now());
         }
 
         return toResponse(payoutRepository.save(payout));
+    }
+
+    private void triggerStripeTransfer(AdminPayout payout) {
+        ReviewerStripeAccount stripeAccount = stripeAccountRepository
+                .findByReviewerReviewerId(payout.getReviewer().getReviewerId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Reviewer has no Stripe Connect account. Cannot process payout."));
+
+        if (!stripeAccount.isPayoutsEnabled()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Reviewer's Stripe account is not fully verified. Cannot send payout.");
+        }
+
+        String idempotencyKey = "payout-" + payout.getId().toString();
+        Stripe.apiKey = stripeSecretKey;
+        try {
+            TransferCreateParams params = TransferCreateParams.builder()
+                    .setAmount(payout.getTotalFinalAmount())
+                    .setCurrency("vnd")
+                    .setDestination(stripeAccount.getStripeAccountId())
+                    .build();
+            Transfer transfer = Transfer.create(
+                    params,
+                    RequestOptions.builder().setIdempotencyKey(idempotencyKey).build()
+            );
+            payout.setStripeTransferId(transfer.getId());
+            payout.setStripeIdempotencyKey(idempotencyKey);
+            log.info("Stripe transfer {} created for payout {}", transfer.getId(), payout.getId());
+        } catch (StripeException e) {
+            log.error("Stripe transfer failed for payout {}: {}", payout.getId(), e.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Stripe transfer failed: " + e.getMessage());
+        }
     }
 
     private void validateStatusTransition(AdminPayoutStatus current, AdminPayoutStatus next) {
@@ -220,6 +268,7 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
         dto.setPaidAt(payout.getPaidAt());
         dto.setNote(payout.getNote());
         dto.setFormulaId(payout.getFormula().getId());
+        dto.setStripeTransferId(payout.getStripeTransferId());
         dto.setCreatedAt(payout.getCreatedAt());
         dto.setUpdatedAt(payout.getUpdatedAt());
         return dto;

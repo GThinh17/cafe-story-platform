@@ -45,12 +45,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/auth/usernames/suggestions").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/regions/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/payments/stripe/webhook").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/stripe-connect/webhook").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/payments/vnpay/return", "/api/payments/vnpay/ipn")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/reviewers/payouts/**", "/api/reviewers/badges/**").hasRole("ADMIN")
+                        .requestMatchers("/api/reviewers/connect/**").hasRole("REVIEWER")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();

@@ -105,6 +105,11 @@ public class ReviewerIncomeServiceImpl implements ReviewerIncomeService {
 
         List<ReviewerIncome> toSave = new ArrayList<>();
         for (Reviewer reviewer : allReviewers) {
+            // Skip reviewer whose subscription expired before this income date
+            if (reviewer.getReviewerExpiresAt() != null
+                    && date.isAfter(reviewer.getReviewerExpiresAt().toLocalDate())) {
+                continue;
+            }
             long[] c = counts.get(reviewer.getReviewerId());
             long likeCount = c[0], shareCount = c[1], commentCount = c[2];
 

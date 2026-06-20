@@ -37,6 +37,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.net.Webhook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -54,6 +56,7 @@ import java.util.UUID;
 @Service
 public class PaymentServiceImpl implements PaymentService {
 
+    private static final Logger log = LoggerFactory.getLogger(PaymentServiceImpl.class);
     private static final String REVIEWER_ROLE = "REVIEWER";
     private static final String CAFE_PAGE_ROLE = "CAFE_PAGE";
     private static final String ADMIN_ROLE = "ADMIN";
@@ -297,7 +300,23 @@ public class PaymentServiceImpl implements PaymentService {
                 paymentDetailRepository.save(detail);
             });
         }
-        activatePurchasedProduct(payment);
+        try {
+            activatePurchasedProduct(payment);
+        } catch (Exception ex) {
+            log.error("Activation failed for payment {} — initiating refund. Error: {}",
+                    payment.getPaymentId(), ex.getMessage());
+            if (payment.getPaymentMethod() == com.cafestory.entity.enums.PaymentMethod.STRIPE_CARD
+                    && providerTransactionId != null) {
+                try {
+                    stripeCheckoutClient.refundPaymentIntent(providerTransactionId);
+                } catch (Exception refundEx) {
+                    log.error("Stripe refund also failed for payment {}: {}",
+                            payment.getPaymentId(), refundEx.getMessage());
+                }
+            }
+            payment.setPaymentStatus(PaymentStatus.REFUNDED);
+            paymentRepository.save(payment);
+        }
     }
 
     private ProductPurchase resolveProductPurchase(CreatePaymentRequestDTO request) {

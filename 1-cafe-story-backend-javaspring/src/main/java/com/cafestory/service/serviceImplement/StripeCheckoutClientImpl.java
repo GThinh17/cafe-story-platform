@@ -4,7 +4,9 @@ import com.cafestory.entity.Payment;
 import com.cafestory.service.serviceInterface.StripeCheckoutClient;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
+import com.stripe.model.Refund;
 import com.stripe.model.checkout.Session;
+import com.stripe.param.RefundCreateParams;
 import com.stripe.param.checkout.SessionCreateParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,6 +76,49 @@ public class StripeCheckoutClientImpl implements StripeCheckoutClient {
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY,
                     "Stripe checkout session creation failed: " + safeMessage(ex.getMessage()));
+        }
+    }
+
+    @Override
+    public String getSessionStatus(String sessionId) {
+        Stripe.apiKey = secretKey;
+        try {
+            Session session = Session.retrieve(sessionId);
+            return session.getStatus();
+        } catch (StripeException ex) {
+            log.error("Failed to retrieve Stripe session {}: {}", sessionId, ex.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Failed to retrieve Stripe session: " + safeStripeMessage(ex));
+        }
+    }
+
+    @Override
+    public void expireSession(String sessionId) {
+        Stripe.apiKey = secretKey;
+        try {
+            Session session = Session.retrieve(sessionId);
+            session.expire();
+            log.info("Stripe session {} expired", sessionId);
+        } catch (StripeException ex) {
+            log.error("Failed to expire Stripe session {}: {}", sessionId, ex.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Failed to expire Stripe session: " + safeStripeMessage(ex));
+        }
+    }
+
+    @Override
+    public void refundPaymentIntent(String paymentIntentId) {
+        Stripe.apiKey = secretKey;
+        try {
+            RefundCreateParams params = RefundCreateParams.builder()
+                    .setPaymentIntent(paymentIntentId)
+                    .build();
+            Refund.create(params);
+            log.info("Stripe refund created for paymentIntent {}", paymentIntentId);
+        } catch (StripeException ex) {
+            log.error("Failed to refund Stripe paymentIntent {}: {}", paymentIntentId, ex.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Failed to refund Stripe payment: " + safeStripeMessage(ex));
         }
     }
 

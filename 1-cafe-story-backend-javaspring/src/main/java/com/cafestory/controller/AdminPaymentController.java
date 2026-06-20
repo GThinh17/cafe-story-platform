@@ -50,6 +50,11 @@ public class AdminPaymentController {
         return adminPaymentService.refundPayment(paymentId);
     }
 
+    @PostMapping("/expire-stale")
+    public int expireStalePayments() {
+        return adminPaymentService.expireStalePayments();
+    }
+
     private Pageable pageable(int page, int size) {
         return PageRequest.of(
                 Math.max(0, page),
