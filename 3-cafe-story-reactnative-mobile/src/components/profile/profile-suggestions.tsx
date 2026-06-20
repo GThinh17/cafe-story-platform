@@ -43,14 +43,12 @@ export function ProfileSuggestions({
   return (
     <View style={styles.section}>
       <View style={styles.header}>
-        <Text style={styles.title}>Discover people</Text>
+        <Text style={styles.title}>Discovery</Text>
         <Text style={styles.link}>See all</Text>
       </View>
 
       {isLoading ? (
-        <View style={styles.stateCard}>
-          <Text style={styles.stateTitle}>Loading suggestions...</Text>
-        </View>
+        <ProfileSuggestionSkeleton />
       ) : error ? (
         <View style={styles.stateCard}>
           <Text style={styles.stateTitle}>{error}</Text>
@@ -140,6 +138,27 @@ export function ProfileSuggestions({
   );
 }
 
+function ProfileSuggestionSkeleton() {
+  return (
+    <ScrollView
+      accessibilityLabel="Loading suggestions"
+      accessibilityRole="progressbar"
+      contentContainerStyle={styles.list}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+    >
+      {[0, 1, 2].map((item) => (
+        <View key={item} style={styles.skeletonCard}>
+          <View style={styles.skeletonAvatar} />
+          <View style={styles.skeletonName} />
+          <View style={styles.skeletonReason} />
+          <View style={styles.skeletonButton} />
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
+
 const styles = StyleSheet.create({
   card: {
     alignItems: "center",
@@ -190,8 +209,8 @@ const styles = StyleSheet.create({
   },
   link: {
     color: colors.link,
-    fontSize: typography.label,
-    fontWeight: "900",
+    fontSize: typography.caption,
+    fontWeight: "800",
   },
   list: {
     gap: spacing.sm,
@@ -223,6 +242,43 @@ const styles = StyleSheet.create({
   section: {
     gap: spacing.md,
   },
+  skeletonAvatar: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 46,
+    height: 92,
+    width: 92,
+  },
+  skeletonButton: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 8,
+    height: 40,
+    marginTop: spacing.md,
+    width: "100%",
+  },
+  skeletonCard: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 10,
+    borderWidth: 1,
+    minHeight: 218,
+    padding: spacing.md,
+    width: 172,
+  },
+  skeletonName: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 999,
+    height: 14,
+    marginTop: spacing.lg,
+    width: "78%",
+  },
+  skeletonReason: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 999,
+    height: 12,
+    marginTop: spacing.sm,
+    width: "62%",
+  },
   stateCard: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
@@ -246,7 +302,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.foreground,
-    fontSize: typography.body,
-    fontWeight: "900",
+    fontSize: typography.caption,
+    fontWeight: "800",
   },
 });

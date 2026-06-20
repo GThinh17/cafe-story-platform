@@ -131,6 +131,7 @@ export type BlogFeedParams = {
 };
 
 export type CommentResponse = {
+  authorUserAvatar?: string | null;
   authorUserName?: string | null;
   blogId: string;
   content: string;

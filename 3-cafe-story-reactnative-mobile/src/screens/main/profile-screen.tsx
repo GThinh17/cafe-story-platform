@@ -7,6 +7,9 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  Alert,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -44,6 +47,7 @@ import {
   followUser,
   getMyProfile,
   getMixedRecommendations,
+  isUserAuthoredBlog,
   updateMyProfile,
   updateMyRegion,
   uploadAvatarToCloudinary,
@@ -66,6 +70,18 @@ const emptyTabPosts: Record<ProfileContentTab, UserPostPreview[]> = {
   saved: [],
   shared: [],
   tagged: [],
+};
+
+const PROFILE_CONTENT_TABS: ProfileContentTab[] = ["posts", "saved", "shared", "tagged"];
+const PROFILE_SCROLL_LOAD_MORE_THRESHOLD = 220;
+const PROFILE_TAB_INITIAL_VISIBLE_COUNT = 9;
+const PROFILE_TAB_LOAD_MORE_COUNT = 6;
+
+const initialVisiblePostCounts: Record<ProfileContentTab, number> = {
+  posts: PROFILE_TAB_INITIAL_VISIBLE_COUNT,
+  saved: PROFILE_TAB_INITIAL_VISIBLE_COUNT,
+  shared: PROFILE_TAB_INITIAL_VISIBLE_COUNT,
+  tagged: PROFILE_TAB_INITIAL_VISIBLE_COUNT,
 };
 
 function initialsFor(name?: string | null) {
@@ -152,11 +168,21 @@ function linkedCafePageId(
 function hasCafePageRole(user: AuthUser | null | undefined) {
   return Boolean(
     user?.roles?.some((role) => {
-      const normalizedRole = role.replace(/^ROLE_/, "").toUpperCase();
+      const normalizedRole = normalizeRole(role);
 
       return normalizedRole === "CAFE_PAGE" || normalizedRole === "CAFE";
     }),
   );
+}
+
+function hasReviewerRole(user: AuthUser | null | undefined) {
+  return Boolean(
+    user?.roles?.some((role) => normalizeRole(role) === "REVIEWER"),
+  );
+}
+
+function normalizeRole(role: string) {
+  return role.replace(/^ROLE_/, "").toUpperCase();
 }
 
 export function ProfileScreen() {
@@ -164,10 +190,14 @@ export function ProfileScreen() {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
   const isProfileLoadInFlightRef = useRef(false);
+  const loadMoreMarkerRef = useRef<string | null>(null);
+  const preloadingTabsRef = useRef<Set<ProfileContentTab>>(new Set());
   const [profile, setProfile] = useState<UserResponse | null>(null);
   const [ownedCafePage, setOwnedCafePage] = useState<CafePageResponse | null>(null);
   const [tabPosts, setTabPosts] =
     useState<Record<ProfileContentTab, UserPostPreview[]>>(emptyTabPosts);
+  const [visiblePostCounts, setVisiblePostCounts] =
+    useState<Record<ProfileContentTab, number>>(initialVisiblePostCounts);
   const [loadedTabs, setLoadedTabs] =
     useState<Partial<Record<ProfileContentTab, boolean>>>({});
   const [error, setError] = useState<string | null>(null);
@@ -228,33 +258,15 @@ export function ProfileScreen() {
 
     try {
       const nextProfile = await getMyProfile();
-      const [blogsResult, cafePageResult] = await Promise.allSettled([
-        getBlogsByUser(nextProfile.userId),
-        loadOwnedCafePage(nextProfile),
-      ]);
 
       setProfile(nextProfile);
-      setOwnedCafePage(
-        cafePageResult.status === "fulfilled" ? cafePageResult.value : null,
-      );
-      if (blogsResult.status === "fulfilled") {
-        setTabPosts((currentPosts) => ({
-          ...currentPosts,
-          posts: blogsResult.value.map(blogResponseToPostPreview),
-        }));
-        setLoadedTabs((currentTabs) => ({
-          ...currentTabs,
-          posts: true,
-        }));
-        setContentError(null);
-      } else {
-        setContentError(
-          blogsResult.reason instanceof Error
-            ? blogsResult.reason.message
-            : "Unable to load your posts.",
-        );
-      }
       setError(null);
+
+      try {
+        setOwnedCafePage(await loadOwnedCafePage(nextProfile));
+      } catch {
+        setOwnedCafePage(null);
+      }
     } catch (nextError) {
       setOwnedCafePage(null);
       setError(
@@ -272,34 +284,50 @@ export function ProfileScreen() {
   const loadContentTab = useCallback(async (
     tab: ProfileContentTab,
     userId: string,
-    refreshing = false,
+    options: { refreshing?: boolean; silent?: boolean } = {},
   ) => {
+    const { refreshing = false, silent = false } = options;
+
     if (refreshing) {
       setIsRefreshing(true);
-    } else {
+    } else if (!silent) {
       setIsContentLoading(true);
     }
 
     try {
       const blogs = await loadBlogsForProfileTab(tab, userId);
+      const userBlogs = blogs.filter(isUserAuthoredBlog);
+
       setTabPosts((currentPosts) => ({
         ...currentPosts,
-        [tab]: blogs.map(blogResponseToPostPreview),
+        [tab]: userBlogs.map(blogResponseToPostPreview),
+      }));
+      setVisiblePostCounts((currentCounts) => ({
+        ...currentCounts,
+        [tab]: PROFILE_TAB_INITIAL_VISIBLE_COUNT,
       }));
       setLoadedTabs((currentTabs) => ({
         ...currentTabs,
         [tab]: true,
       }));
-      setContentError(null);
+      if (!silent) {
+        setContentError(null);
+      }
     } catch (nextError) {
-      setContentError(
-        nextError instanceof Error
-          ? nextError.message
-          : "Unable to load this profile section.",
-      );
+      if (!silent) {
+        setContentError(
+          nextError instanceof Error
+            ? nextError.message
+            : "Unable to load this profile section.",
+        );
+      }
     } finally {
-      setIsContentLoading(false);
-      setIsRefreshing(false);
+      if (!silent) {
+        setIsContentLoading(false);
+      }
+      if (refreshing) {
+        setIsRefreshing(false);
+      }
     }
   }, []);
 
@@ -310,14 +338,13 @@ export function ProfileScreen() {
   const onRefresh = useCallback(() => {
     const currentUserId = profile?.userId ?? user?.userId;
 
-    if (activeContentTab === "posts") {
-      void loadProfile(true);
+    void loadProfile(true);
+
+    if (!currentUserId) {
       return;
     }
 
-    if (currentUserId) {
-      void loadContentTab(activeContentTab, currentUserId, true);
-    }
+    void loadContentTab(activeContentTab, currentUserId, { refreshing: true });
   }, [activeContentTab, loadContentTab, loadProfile, profile?.userId, user?.userId]);
 
   const loadSuggestions = useCallback(async () => {
@@ -613,13 +640,21 @@ export function ProfileScreen() {
       ),
     [activeProfile?.userId, dismissedSuggestionIds, suggestions],
   );
-  const visiblePosts = tabPosts[activeContentTab];
+  const activeTabPosts = tabPosts[activeContentTab];
+  const activeVisiblePostCount =
+    visiblePostCounts[activeContentTab] ?? PROFILE_TAB_INITIAL_VISIBLE_COUNT;
+  const visiblePosts = activeTabPosts.slice(0, activeVisiblePostCount);
   const visibleEmptyCopy = getEmptyCopy(activeContentTab);
   const ownedCafePageId = ownedCafePage?.id ?? linkedCafePageId(activeProfile, user);
   const shouldShowCafePageAction = hasCafePageRole(user) || Boolean(ownedCafePageId);
+  const shouldShowReviewerDashboardAction = hasReviewerRole(user);
 
   const openOwnedCafePage = useCallback(() => {
     if (!ownedCafePageId) {
+      Alert.alert(
+        "Cafe page",
+        "Cafe page is not available yet.",
+      );
       return;
     }
 
@@ -627,6 +662,16 @@ export function ProfileScreen() {
       cafeId: ownedCafePageId,
     });
   }, [navigation, ownedCafePageId]);
+
+  const openPayment = useCallback(() => {
+    navigation.navigate(routes.paymentOptions, {
+      initialTab: "reviewer",
+    });
+  }, [navigation]);
+
+  const openReviewerDashboard = useCallback(() => {
+    navigation.navigate(routes.reviewerDashboard);
+  }, [navigation]);
 
   const openUserPosts = useCallback((post?: UserPostPreview) => {
     if (!activeProfile?.userId) {
@@ -653,15 +698,85 @@ export function ProfileScreen() {
     });
   }, [activeProfile?.userId, navigation, userName]);
 
+  const loadMoreVisiblePosts = useCallback(() => {
+    const currentCount =
+      visiblePostCounts[activeContentTab] ?? PROFILE_TAB_INITIAL_VISIBLE_COUNT;
+    const totalCount = tabPosts[activeContentTab].length;
+
+    if (currentCount >= totalCount) {
+      return;
+    }
+
+    const marker = `${activeContentTab}:${currentCount}:${totalCount}`;
+
+    if (loadMoreMarkerRef.current === marker) {
+      return;
+    }
+
+    loadMoreMarkerRef.current = marker;
+    setVisiblePostCounts((currentCounts) => {
+      const nextCurrentCount =
+        currentCounts[activeContentTab] ?? PROFILE_TAB_INITIAL_VISIBLE_COUNT;
+
+      return {
+        ...currentCounts,
+        [activeContentTab]: Math.min(
+          nextCurrentCount + PROFILE_TAB_LOAD_MORE_COUNT,
+          tabPosts[activeContentTab].length,
+        ),
+      };
+    });
+    setTimeout(() => {
+      if (loadMoreMarkerRef.current === marker) {
+        loadMoreMarkerRef.current = null;
+      }
+    }, 250);
+  }, [activeContentTab, tabPosts, visiblePostCounts]);
+
+  const handleProfileScroll = useCallback((
+    event: NativeSyntheticEvent<NativeScrollEvent>,
+  ) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    const distanceFromBottom =
+      contentSize.height - (contentOffset.y + layoutMeasurement.height);
+
+    if (distanceFromBottom <= PROFILE_SCROLL_LOAD_MORE_THRESHOLD) {
+      loadMoreVisiblePosts();
+    }
+  }, [loadMoreVisiblePosts]);
+
   useEffect(() => {
-    const currentUserId = activeProfile?.userId;
+    const currentUserId = profile?.userId;
 
     if (!currentUserId || loadedTabs[activeContentTab]) {
       return;
     }
 
     void loadContentTab(activeContentTab, currentUserId);
-  }, [activeContentTab, activeProfile?.userId, loadContentTab, loadedTabs]);
+  }, [activeContentTab, loadContentTab, loadedTabs, profile?.userId]);
+
+  useEffect(() => {
+    const currentUserId = profile?.userId;
+
+    if (!currentUserId) {
+      return;
+    }
+
+    for (const tab of PROFILE_CONTENT_TABS) {
+      if (
+        tab === activeContentTab ||
+        loadedTabs[tab] ||
+        preloadingTabsRef.current.has(tab)
+      ) {
+        continue;
+      }
+
+      preloadingTabsRef.current.add(tab);
+      void loadContentTab(tab, currentUserId, { silent: true }).finally(() => {
+        preloadingTabsRef.current.delete(tab);
+      });
+    }
+  }, [activeContentTab, loadContentTab, loadedTabs, profile?.userId]);
 
   if (isLoading && !profile) {
     return (
@@ -669,8 +784,11 @@ export function ProfileScreen() {
         <ProfileTopBar
           onCafePagePress={openOwnedCafePage}
           onMessagePress={() => navigation.navigate(routes.conversations)}
+          onPaymentPress={openPayment}
+          onReviewerDashboardPress={openReviewerDashboard}
           onSettingsPress={() => navigation.navigate(routes.settings)}
           showCafePageAction={shouldShowCafePageAction}
+          showReviewerDashboardAction={shouldShowReviewerDashboardAction}
           userName={userName}
         />
         <ProfileSkeleton />
@@ -683,16 +801,21 @@ export function ProfileScreen() {
       <ProfileTopBar
         onCafePagePress={openOwnedCafePage}
         onMessagePress={() => navigation.navigate(routes.conversations)}
+        onPaymentPress={openPayment}
+        onReviewerDashboardPress={openReviewerDashboard}
         onSettingsPress={() => navigation.navigate(routes.settings)}
         showCafePageAction={shouldShowCafePageAction}
+        showReviewerDashboardAction={shouldShowReviewerDashboardAction}
         userName={userName}
       />
 
       <ScrollView
         contentContainerStyle={styles.content}
+        onScroll={handleProfileScroll}
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
         }
+        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       >
         {error ? (
@@ -905,6 +1028,7 @@ export function ProfileScreen() {
         profile={activeProfile}
         visible={isLocationModalVisible}
       />
+
     </Screen>
   );
 }
@@ -1131,4 +1255,5 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 2,
   },
+
 });

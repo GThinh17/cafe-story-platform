@@ -1,5 +1,9 @@
 import type { BlogFeedResponse, BlogResponse, UserPostPreview } from "../../types";
 
+export function isUserAuthoredBlog(blog: BlogResponse) {
+  return blog.displayAuthorType !== "CAFE_PAGE" && !blog.pageId;
+}
+
 export function blogResponseToPostPreview(blog: BlogResponse): UserPostPreview {
   return {
     caption: blog.content,

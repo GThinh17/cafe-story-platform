@@ -50,8 +50,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers("/api/reviewers/payouts/**", "/api/reviewers/badges/**").hasRole("ADMIN")
-                        .requestMatchers("/api/reviewers/*/payouts", "/api/reviewers/*/badges").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/reviewers/payouts/**", "/api/reviewers/badges/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();

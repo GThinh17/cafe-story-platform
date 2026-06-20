@@ -144,9 +144,9 @@ function mapCommentResponse(
     id: comment.id,
     author: authorUsername,
     authorUsername,
-    authorAvatar: isCurrentUser
-      ? context.currentUser?.userAvatar ?? undefined
-      : undefined,
+    authorAvatar:
+      comment.authorUserAvatar ??
+      (isCurrentUser ? context.currentUser?.userAvatar ?? undefined : undefined),
     body: comment.content,
     isLiked: false,
     likeCount: 0,

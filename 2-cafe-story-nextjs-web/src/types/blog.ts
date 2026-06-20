@@ -89,6 +89,7 @@ export type CommentResponse = {
   userId: string;
   username?: string | null;
   userName?: string | null;
+  authorUserAvatar?: string | null;
   authorUsername?: string | null;
   authorUserName?: string | null;
   replyToUsername?: string | null;

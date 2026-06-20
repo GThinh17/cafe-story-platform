@@ -22,6 +22,7 @@ class CommentMapperTest {
     void toCommentResponseDTO_mapsCommentAuthorUserNameFromCommentUser() {
         Blog blog = blog();
         User commentAuthor = user("comment-author");
+        commentAuthor.setUserAvatar("https://example.com/comment-author.png");
         Comment parentComment = comment(blog, user("parent-author"), null);
         Comment reply = comment(blog, commentAuthor, parentComment);
 
@@ -31,6 +32,7 @@ class CommentMapperTest {
         assertThat(result.getBlogId()).isEqualTo(blog.getId());
         assertThat(result.getUserId()).isEqualTo(commentAuthor.getUserId());
         assertThat(result.getAuthorUserName()).isEqualTo("comment-author");
+        assertThat(result.getAuthorUserAvatar()).isEqualTo("https://example.com/comment-author.png");
         assertThat(result.getParentCommentId()).isEqualTo(parentComment.getId());
         assertThat(result.getContent()).isEqualTo("Comment content");
         assertThat(result.getImageUrls()).containsExactly("https://example.com/comment.png");

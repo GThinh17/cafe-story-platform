@@ -13,10 +13,12 @@ export const routes = {
   newChat: "NewChat",
   notifications: "Notifications",
   otherUserProfile: "OtherUserProfile",
+  paymentOptions: "PaymentOptions",
   profile: "Profile",
   profileFollows: "ProfileFollows",
   region: "Region",
   register: "Register",
+  reviewerDashboard: "ReviewerDashboard",
   settings: "Settings",
   userPosts: "UserPosts",
 } as const;

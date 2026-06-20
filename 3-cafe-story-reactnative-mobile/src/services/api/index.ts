@@ -1,3 +1,4 @@
+export * from "./ad-fees";
 export * from "./auth";
 export * from "./api-cache";
 export * from "./blog-mappers";
@@ -8,6 +9,8 @@ export * from "./client";
 export * from "./cloudinary";
 export * from "./comments";
 export * from "./endpoints";
+export * from "./extra-fees";
+export * from "./payments";
 export * from "./recommendations";
 export * from "./reports";
 export * from "./reviewers";

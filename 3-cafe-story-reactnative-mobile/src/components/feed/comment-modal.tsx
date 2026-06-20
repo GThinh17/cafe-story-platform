@@ -137,7 +137,11 @@ function CommentItem({
         onPress={() => onOpenProfile(comment.userId, comment.authorUserName)}
         style={({ pressed }) => pressed && styles.pressed}
       >
-        <Avatar initials={getInitials(authorName)} size={isReply ? 30 : 38} uri={null} />
+        <Avatar
+          initials={getInitials(authorName)}
+          size={isReply ? 30 : 38}
+          uri={comment.authorUserAvatar}
+        />
       </Pressable>
       <View style={styles.commentBody}>
         <View style={styles.commentContentRow}>
@@ -395,6 +399,7 @@ export function CommentModal({
     const currentReplyTarget = replyTarget;
     const pendingCommentId = `pending-${Date.now()}`;
     const pendingComment: CommentListItem = {
+      authorUserAvatar: user?.userAvatar ?? null,
       authorUserName: user?.userName || "You",
       blogId,
       content,

@@ -23,6 +23,7 @@ import {
   getSavedBlogsByUser,
   getSharedBlogsByUser,
   getTaggedBlogsByUser,
+  isUserAuthoredBlog,
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type { BlogFeedResponse, BlogResponse, ProfileContentTab } from "../../types";
@@ -137,7 +138,7 @@ export function UserPostsScreen() {
 
       const nextBlogs = pageId
         ? (await getCafePageBlogs(pageId, { size: 50 })).items ?? []
-        : await loadBlogsForTab(contentTab, userId as string);
+        : (await loadBlogsForTab(contentTab, userId as string)).filter(isUserAuthoredBlog);
       setPosts(nextBlogs.map(blogResponseToFeedBlog));
       setError(null);
     } catch (nextError) {
