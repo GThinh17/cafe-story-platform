@@ -1,4 +1,6 @@
 export type ChatMessageType = "TEXT" | "IMAGE" | "STICKER" | "MIXED";
+export type ChatSenderContextType = "USER" | "CAFE_PAGE" | string;
+export type ChatTargetType = "USER" | "CAFE_PAGE" | "GROUP" | string;
 
 export type ChatMemberResponse = {
   id: string;
@@ -12,12 +14,17 @@ export type ChatMemberResponse = {
 
 export type ConversationResponse = {
   id: string;
-  type: "DIRECT" | "GROUP" | string;
+  type: "DIRECT" | "CAFE_PAGE" | "GROUP" | string;
   groupName: string | null;
   groupAvatar: string | null;
   chatName: string | null;
   userName: string | null;
   chatAvatar: string | null;
+  targetType: ChatTargetType | null;
+  targetId: string | null;
+  targetUserId: string | null;
+  targetCafePageId: string | null;
+  canReplyAsCafePage: boolean;
   latestMessageId: string | null;
   latestMessagePreview: string | null;
   lastMessage: string | null;
@@ -33,6 +40,10 @@ export type ChatMessageResponse = {
   id: string;
   conversationId: string;
   senderId: string;
+  senderContextType: ChatSenderContextType | null;
+  senderCafePageId: string | null;
+  senderDisplayName: string | null;
+  senderAvatar: string | null;
   type: ChatMessageType;
   text: string | null;
   imageUrls: string[] | null;
@@ -77,6 +88,9 @@ export type ConversationListItem = {
   isOnline?: boolean;
   lastMessage: string;
   name: string;
+  canReplyAsCafePage?: boolean;
+  targetCafePageId?: string | null;
+  targetType?: ChatTargetType | null;
   targetUserId?: string | null;
   time: string;
   userName: string;
@@ -87,6 +101,9 @@ export type ChatIdentity = {
   id: string;
   isOnline?: boolean;
   name: string;
+  canReplyAsCafePage?: boolean;
+  targetCafePageId?: string | null;
+  targetType?: ChatTargetType | null;
   targetUserId?: string | null;
   userName: string;
 };

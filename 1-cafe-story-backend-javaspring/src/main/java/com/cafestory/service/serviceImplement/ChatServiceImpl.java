@@ -12,11 +12,14 @@ import com.cafestory.entity.ChatMember;
 import com.cafestory.entity.ChatMessage;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.Conversation;
+import com.cafestory.entity.PageMember;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.ConversationType;
+import com.cafestory.entity.enums.ChatSenderContextType;
 import com.cafestory.entity.enums.MemberRole;
 import com.cafestory.entity.enums.MessageStatus;
 import com.cafestory.entity.enums.MessageType;
+import com.cafestory.entity.enums.PageMemberStatus;
 import com.cafestory.mapper.ChatMapper;
 import com.cafestory.repository.ChatMemberRepository;
 import com.cafestory.repository.ChatMessageRepository;
@@ -25,6 +28,7 @@ import com.cafestory.repository.ConversationRepository;
 import com.cafestory.service.serviceInterface.ChatService;
 import com.cafestory.service.serviceInterface.FirebaseChatService;
 import com.cafestory.service.serviceInterface.NotificationService;
+import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.UserValidator;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -49,6 +53,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatMemberRepository chatMemberRepository;
     private final ChatMessageRepository chatMessageRepository;
     private final CafePageRepository cafePageRepository;
+    private final CafePageValidator cafePageValidator;
     private final UserValidator userValidator;
     private final ChatMapper chatMapper;
     private final FirebaseChatService firebaseChatService;
@@ -60,6 +65,7 @@ public class ChatServiceImpl implements ChatService {
             ChatMemberRepository chatMemberRepository,
             ChatMessageRepository chatMessageRepository,
             CafePageRepository cafePageRepository,
+            CafePageValidator cafePageValidator,
             UserValidator userValidator,
             ChatMapper chatMapper,
             FirebaseChatService firebaseChatService,
@@ -69,6 +75,7 @@ public class ChatServiceImpl implements ChatService {
         this.chatMemberRepository = chatMemberRepository;
         this.chatMessageRepository = chatMessageRepository;
         this.cafePageRepository = cafePageRepository;
+        this.cafePageValidator = cafePageValidator;
         this.userValidator = userValidator;
         this.chatMapper = chatMapper;
         this.firebaseChatService = firebaseChatService;
@@ -101,15 +108,10 @@ public class ChatServiceImpl implements ChatService {
         }
         validateDifferentUsers(user.getUserId(), owner.getUserId());
 
-        ConversationResponseDTO response = conversationRepository
-                .findDirectConversation(user.getUserId(), owner.getUserId())
+        return conversationRepository
+                .findCafePageConversation(user.getUserId(), cafePage.getId())
                 .map(conversation -> toConversationResponse(conversation, user.getUserId()))
-                .orElseGet(() -> createDirectConversation(user, owner));
-
-        response.setChatName(cafePage.getName());
-        response.setUserName(cafePage.getName());
-        response.setChatAvatar(cafePage.getAvatarUrl());
-        return response;
+                .orElseGet(() -> createCafePageConversation(user, cafePage, owner));
     }
 
     @Override
@@ -138,7 +140,10 @@ public class ChatServiceImpl implements ChatService {
     @Transactional(readOnly = true)
     public List<ConversationResponseDTO> getUserConversations(UUID userId) {
         userValidator.validateUserExists(userId);
-        return conversationRepository.findUserConversationsOrderByLatestActivity(userId)
+        return conversationRepository.findUserConversationsOrderByLatestActivity(
+                        userId,
+                        PageMemberStatus.ACTIVE,
+                        List.of(PageMember.ROLE_OWNER, PageMember.ROLE_CO_OWNER))
                 .stream()
                 .map(conversation -> toConversationResponse(conversation, userId))
                 .toList();
@@ -147,8 +152,8 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional(readOnly = true)
     public List<ChatMessageResponseDTO> getMessagesByConversationId(UUID conversationId, UUID userId, int page, int size) {
-        validateConversationExists(conversationId);
-        validateSenderIsMember(conversationId, userId);
+        Conversation conversation = validateConversationExists(conversationId);
+        validateUserCanAccessConversation(conversation, userId);
         int sanitizedPage = Math.max(page, 0);
         int sanitizedSize = Math.max(1, Math.min(size, MAX_PAGE_SIZE));
         PageRequest pageRequest = PageRequest.of(
@@ -165,12 +170,22 @@ public class ChatServiceImpl implements ChatService {
     public ChatMessageResponseDTO sendMessage(UUID conversationId, SendMessageRequestDTO request) {
         Conversation conversation = validateConversationExists(conversationId);
         User sender = userValidator.validateUserExists(request.getSenderId());
-        validateSenderIsMember(conversationId, sender.getUserId());
+        boolean senderIsMember = isConversationMember(conversationId, sender.getUserId());
+        ChatSenderContextType requestedSenderContext = resolveRequestedSenderContext(request);
+        if (!senderIsMember) {
+            if (requestedSenderContext != ChatSenderContextType.CAFE_PAGE) {
+                validateCafePageManagerAccess(conversation, sender.getUserId());
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Page managers must send as cafe page");
+            }
+        }
         validateMessagePayload(request);
+        SenderContext senderContext = resolveSenderContext(conversation, sender, request);
 
         ChatMessage message = new ChatMessage();
         message.setConversation(conversation);
         message.setSender(sender);
+        message.setSenderContextType(senderContext.type());
+        message.setSenderCafePage(senderContext.cafePage());
         message.setType(request.getType());
         message.setText(blankToNull(request.getText()));
         message.setImageUrls(request.getImageUrls() == null ? List.of() : request.getImageUrls());
@@ -273,6 +288,44 @@ public class ChatServiceImpl implements ChatService {
         return response;
     }
 
+    private SenderContext resolveSenderContext(Conversation conversation, User sender, SendMessageRequestDTO request) {
+        ChatSenderContextType requestedType = resolveRequestedSenderContext(request);
+
+        if (requestedType == ChatSenderContextType.USER) {
+            return new SenderContext(ChatSenderContextType.USER, null);
+        }
+
+        if (conversation.getType() != ConversationType.CAFE_PAGE || conversation.getCafePage() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cafe page sender is only valid in cafe page conversations");
+        }
+
+        CafePage conversationPage = conversation.getCafePage();
+        if (request.getSenderCafePageId() != null && !request.getSenderCafePageId().equals(conversationPage.getId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Sender cafe page does not match conversation");
+        }
+
+        cafePageValidator.validateUserCanManagePage(conversationPage.getId(), sender.getUserId());
+        return new SenderContext(ChatSenderContextType.CAFE_PAGE, conversationPage);
+    }
+
+    private ChatSenderContextType resolveRequestedSenderContext(SendMessageRequestDTO request) {
+        return request.getSenderContextType() == null
+                ? ChatSenderContextType.USER
+                : request.getSenderContextType();
+    }
+
+    private ConversationResponseDTO createCafePageConversation(User user, CafePage cafePage, User owner) {
+        Conversation conversation = new Conversation();
+        conversation.setType(ConversationType.CAFE_PAGE);
+        conversation.setCafePage(cafePage);
+        Conversation savedConversation = conversationRepository.save(conversation);
+        addMemberEntity(savedConversation, user, MemberRole.MEMBER);
+        addMemberEntity(savedConversation, owner, MemberRole.OWNER);
+        ConversationResponseDTO response = toConversationResponse(savedConversation, user.getUserId());
+        firebaseChatService.saveConversation(response);
+        return response;
+    }
+
     private ChatMember addMemberEntity(Conversation conversation, User user, MemberRole role) {
         ChatMember member = new ChatMember();
         member.setConversation(conversation);
@@ -307,6 +360,27 @@ public class ChatServiceImpl implements ChatService {
 
     private void validateSenderIsMember(UUID conversationId, UUID senderId) {
         validateMember(conversationId, senderId);
+    }
+
+    private void validateUserCanAccessConversation(Conversation conversation, UUID userId) {
+        if (isConversationMember(conversation.getId(), userId)) {
+            return;
+        }
+        validateCafePageManagerAccess(conversation, userId);
+    }
+
+    private boolean isConversationMember(UUID conversationId, UUID userId) {
+        if (userId == null) {
+            return false;
+        }
+        return chatMemberRepository.existsByConversationIdAndUserUserId(conversationId, userId);
+    }
+
+    private void validateCafePageManagerAccess(Conversation conversation, UUID userId) {
+        if (conversation.getType() != ConversationType.CAFE_PAGE || conversation.getCafePage() == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User not in conversation");
+        }
+        cafePageValidator.validateUserCanManagePage(conversation.getCafePage().getId(), userId);
     }
 
     private void validateManagePermission(UUID conversationId, UUID actorUserId) {
@@ -381,12 +455,28 @@ public class ChatServiceImpl implements ChatService {
                 && !latestMessage.isRead()
                 ? 1
                 : 0;
-        return chatMapper.toConversationResponseDTO(
+        ConversationResponseDTO response = chatMapper.toConversationResponseDTO(
                 conversation,
                 chatMemberRepository.findByConversationId(conversation.getId()),
                 viewerUserId,
                 latestMessage,
                 unreadCount);
+        response.setCanReplyAsCafePage(canReplyAsCafePage(conversation, viewerUserId));
+        return response;
+    }
+
+    private boolean canReplyAsCafePage(Conversation conversation, UUID viewerUserId) {
+        if (viewerUserId == null
+                || conversation.getType() != ConversationType.CAFE_PAGE
+                || conversation.getCafePage() == null) {
+            return false;
+        }
+        try {
+            cafePageValidator.validateUserCanManagePage(conversation.getCafePage().getId(), viewerUserId);
+            return true;
+        } catch (ResponseStatusException ignored) {
+            return false;
+        }
     }
 
     private Set<UUID> distinctMemberIds(List<UUID> memberIds) {
@@ -412,5 +502,8 @@ public class ChatServiceImpl implements ChatService {
                         // Message delivery should not fail if notification delivery fails.
                     }
                 });
+    }
+
+    private record SenderContext(ChatSenderContextType type, CafePage cafePage) {
     }
 }

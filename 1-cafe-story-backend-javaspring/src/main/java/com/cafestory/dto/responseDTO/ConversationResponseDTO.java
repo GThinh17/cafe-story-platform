@@ -1,6 +1,7 @@
 package com.cafestory.dto.responseDTO;
 
 import com.cafestory.entity.enums.ConversationType;
+import com.cafestory.entity.enums.ChatTargetType;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -23,6 +24,16 @@ public class ConversationResponseDTO {
     private String userName;
 
     private String chatAvatar;
+
+    private ChatTargetType targetType;
+
+    private UUID targetId;
+
+    private UUID targetUserId;
+
+    private UUID targetCafePageId;
+
+    private boolean canReplyAsCafePage;
 
     private UUID latestMessageId;
 

@@ -1,4 +1,5 @@
 import type {
+  ChatSenderContextType,
   ChatMessageResponse,
   ConversationResponse,
   ChatMessageType,
@@ -14,6 +15,8 @@ type MessagePageOptions = {
 
 export type SendChatMessageRequest = {
   imageUrls?: string[];
+  senderCafePageId?: string;
+  senderContextType?: ChatSenderContextType;
   stickerId?: string;
   stickerUrl?: string;
   text?: string;

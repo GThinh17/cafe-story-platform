@@ -8,6 +8,10 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -19,7 +23,12 @@ import java.util.UUID;
 
 @Data
 @Entity
-@Table(name = "conversations")
+@Table(
+        name = "conversations",
+        indexes = {
+                @Index(name = "idx_conversations_type_page", columnList = "type, cafe_page_id"),
+                @Index(name = "idx_conversations_updated_at", columnList = "updated_at")
+        })
 public class Conversation {
 
     @Id
@@ -37,6 +46,10 @@ public class Conversation {
 
     @Column(name = "group_avatar")
     private String groupAvatar;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cafe_page_id")
+    private CafePage cafePage;
 
     @Column(name = "latest_message_id")
     private UUID latestMessageId;

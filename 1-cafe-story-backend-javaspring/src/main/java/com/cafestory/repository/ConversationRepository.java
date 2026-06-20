@@ -1,6 +1,7 @@
 package com.cafestory.repository;
 
 import com.cafestory.entity.Conversation;
+import com.cafestory.entity.enums.PageMemberStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -33,11 +34,43 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
 
     @Query("""
             select c from Conversation c
+            left join fetch c.cafePage page
+            where c.type = com.cafestory.entity.enums.ConversationType.CAFE_PAGE
+            and page.id = :cafePageId
+            and exists (
+                select m.id from ChatMember m
+                where m.conversation = c and m.user.userId = :userId
+            )
+            """)
+    Optional<Conversation> findCafePageConversation(
+            @Param("userId") UUID userId,
+            @Param("cafePageId") UUID cafePageId);
+
+    @Query("""
+            select distinct c from Conversation c
+            left join fetch c.cafePage
             where exists (
                 select m.id from ChatMember m
                 where m.conversation = c and m.user.userId = :userId
             )
+            or (
+                c.type = com.cafestory.entity.enums.ConversationType.CAFE_PAGE
+                and c.cafePage.owner.userId = :userId
+            )
+            or (
+                c.type = com.cafestory.entity.enums.ConversationType.CAFE_PAGE
+                and exists (
+                    select pm.id from PageMember pm
+                    where pm.cafePage = c.cafePage
+                    and pm.user.userId = :userId
+                    and pm.status = :status
+                    and pm.roleName in :managerRoles
+                )
+            )
             order by coalesce(c.updatedAt, c.createdAt) desc, c.createdAt desc
             """)
-    List<Conversation> findUserConversationsOrderByLatestActivity(@Param("userId") UUID userId);
+    List<Conversation> findUserConversationsOrderByLatestActivity(
+            @Param("userId") UUID userId,
+            @Param("status") PageMemberStatus status,
+            @Param("managerRoles") List<String> managerRoles);
 }

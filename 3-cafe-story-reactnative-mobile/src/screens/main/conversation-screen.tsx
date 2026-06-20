@@ -17,7 +17,7 @@ import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
 import { getConversations } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
-import type { ConversationListItem, ConversationResponse } from "../../types";
+import type { ChatTargetType, ConversationListItem, ConversationResponse } from "../../types";
 
 function formatConversationTime(value: string | null) {
   if (!value) {
@@ -50,12 +50,34 @@ function mapConversationToListItem(
   conversation: ConversationResponse,
   currentUserId?: string,
 ): ConversationListItem {
+  const targetType: ChatTargetType =
+    conversation.targetType ??
+    (conversation.type === "CAFE_PAGE"
+      ? "CAFE_PAGE"
+      : conversation.type === "GROUP"
+        ? "GROUP"
+        : "USER");
   const targetMember = conversation.members?.find(
     (member) => member.userId !== currentUserId,
   );
+  const targetUserId =
+    targetType === "USER"
+      ? conversation.targetUserId ?? targetMember?.userId ?? null
+      : null;
+  const targetCafePageId =
+    targetType === "CAFE_PAGE"
+      ? conversation.targetCafePageId ?? conversation.targetId ?? null
+      : null;
+  const fallbackName =
+    targetType === "CAFE_PAGE"
+      ? "Cafe page"
+      : targetType === "GROUP"
+        ? "Group chat"
+        : "CafeStory user";
 
   return {
     avatarUri: conversation.chatAvatar || targetMember?.userAvatar || null,
+    canReplyAsCafePage: conversation.canReplyAsCafePage,
     id: conversation.id,
     lastMessage:
       conversation.lastMessage ||
@@ -66,12 +88,17 @@ function mapConversationToListItem(
       targetMember?.userFullName ||
       targetMember?.userName ||
       conversation.userName ||
-      "CafeStory user",
-    targetUserId: targetMember?.userId ?? null,
+      fallbackName,
+    targetCafePageId,
+    targetType,
+    targetUserId,
     time: formatConversationTime(
       conversation.lastMessageAt || conversation.updatedAt || conversation.createdAt,
     ),
-    userName: conversation.userName || targetMember?.userName || "",
+    userName:
+      targetType === "CAFE_PAGE"
+        ? conversation.userName || "Cafe page"
+        : conversation.userName || targetMember?.userName || "",
   };
 }
 
@@ -140,7 +167,10 @@ export function ConversationScreen() {
     navigation.navigate(routes.chatDetail, {
       chatAvatar: conversation.avatarUri,
       chatName: conversation.name,
+      canReplyAsCafePage: conversation.canReplyAsCafePage,
       conversationId: conversation.id,
+      targetCafePageId: conversation.targetCafePageId,
+      targetType: conversation.targetType,
       targetUserId: conversation.targetUserId,
       userName: conversation.userName,
     });

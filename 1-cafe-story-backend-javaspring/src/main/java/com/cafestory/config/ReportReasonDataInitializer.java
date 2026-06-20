@@ -4,9 +4,11 @@ import com.cafestory.entity.ReportReason;
 import com.cafestory.entity.enums.ReportTargetType;
 import com.cafestory.repository.ReportReasonRepository;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnProperty(name = "app.data-initializer.enabled", havingValue = "true", matchIfMissing = true)
 public class ReportReasonDataInitializer implements CommandLineRunner {
 
     private final ReportReasonRepository reportReasonRepository;

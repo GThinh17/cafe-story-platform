@@ -379,6 +379,8 @@ export function CafePageScreen() {
         chatAvatar: conversation.chatAvatar || cafePage.avatarUrl,
         chatName: conversation.chatName || cafePage.name || "Cafe Page",
         conversationId: conversation.id,
+        targetCafePageId: conversation.targetCafePageId ?? cafePage.id,
+        targetType: conversation.targetType ?? "CAFE_PAGE",
         targetUserId: null,
         userName: conversation.userName || cafePage.name || "",
       });

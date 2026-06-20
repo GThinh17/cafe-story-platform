@@ -1,6 +1,6 @@
 import type { NavigatorScreenParams } from "@react-navigation/native";
 import type { routes } from "./routes";
-import type { PaymentPlanTab, ProfileContentTab } from "../types";
+import type { ChatTargetType, PaymentPlanTab, ProfileContentTab } from "../types";
 
 export type AuthStackParamList = {
   [routes.login]: undefined;
@@ -34,6 +34,9 @@ export type RootStackParamList = {
     chatAvatar?: string | null;
     chatName?: string | null;
     conversationId: string;
+    canReplyAsCafePage?: boolean;
+    targetCafePageId?: string | null;
+    targetType?: ChatTargetType | null;
     targetUserId?: string | null;
     userName?: string | null;
   };

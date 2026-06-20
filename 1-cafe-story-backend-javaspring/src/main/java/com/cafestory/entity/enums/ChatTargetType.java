@@ -1,7 +1,7 @@
 package com.cafestory.entity.enums;
 
-public enum ConversationType {
-    DIRECT,
+public enum ChatTargetType {
+    USER,
     CAFE_PAGE,
     GROUP
 }

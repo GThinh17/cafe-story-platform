@@ -2,6 +2,7 @@ package com.cafestory.entity;
 
 import com.cafestory.entity.enums.MessageStatus;
 import com.cafestory.entity.enums.MessageType;
+import com.cafestory.entity.enums.ChatSenderContextType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -47,6 +48,15 @@ public class ChatMessage {
 
     @NotNull
     @Enumerated(EnumType.STRING)
+    @Column(name = "sender_context_type", nullable = false, length = 40)
+    private ChatSenderContextType senderContextType = ChatSenderContextType.USER;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sender_cafe_page_id")
+    private CafePage senderCafePage;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
     private MessageType type;
 
@@ -89,6 +99,9 @@ public class ChatMessage {
         updatedAt = createdAt;
         if (status == null) {
             status = MessageStatus.SENT;
+        }
+        if (senderContextType == null) {
+            senderContextType = ChatSenderContextType.USER;
         }
     }
 
