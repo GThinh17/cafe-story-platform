@@ -2,6 +2,7 @@ package com.cafestory.repository;
 
 import com.cafestory.entity.PageFollow;
 import com.cafestory.entity.enums.PageMemberStatus;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -25,8 +26,12 @@ public interface PageFollowRepository extends JpaRepository<PageFollow, UUID> {
 
     Optional<PageFollow> findByUserUserIdAndCafePageId(UUID userId, UUID cafePageId);
 
+    long countByUserUserId(UUID userId);
+
+    @EntityGraph(attributePaths = {"user", "user.region", "cafePage"})
     List<PageFollow> findByCafePageId(UUID cafePageId);
 
+    @EntityGraph(attributePaths = {"user", "cafePage", "cafePage.region", "cafePage.owner"})
     List<PageFollow> findByUserUserId(UUID userId);
 
     @Query("""

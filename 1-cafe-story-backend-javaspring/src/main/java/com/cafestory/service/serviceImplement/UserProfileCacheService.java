@@ -1,6 +1,7 @@
 package com.cafestory.service.serviceImplement;
 
 import com.cafestory.config.CacheConfig;
+import com.cafestory.repository.PageFollowRepository;
 import com.cafestory.repository.UserFollowRepository;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -12,9 +13,13 @@ import java.util.UUID;
 public class UserProfileCacheService {
 
     private final UserFollowRepository userFollowRepository;
+    private final PageFollowRepository pageFollowRepository;
 
-    public UserProfileCacheService(UserFollowRepository userFollowRepository) {
+    public UserProfileCacheService(
+            UserFollowRepository userFollowRepository,
+            PageFollowRepository pageFollowRepository) {
         this.userFollowRepository = userFollowRepository;
+        this.pageFollowRepository = pageFollowRepository;
     }
 
     @Transactional(readOnly = true)
@@ -24,7 +29,8 @@ public class UserProfileCacheService {
             return 0;
         }
 
-        long followingCount = userFollowRepository.countByFollowerUserId(userId);
+        long followingCount = userFollowRepository.countByFollowerUserId(userId)
+                + pageFollowRepository.countByUserUserId(userId);
         return followingCount > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) followingCount;
     }
 }

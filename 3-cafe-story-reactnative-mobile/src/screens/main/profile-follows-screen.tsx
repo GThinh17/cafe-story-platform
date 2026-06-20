@@ -1,6 +1,6 @@
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { ChevronLeft, Search, UserPlus } from "lucide-react-native";
+import { ChevronLeft, Search, Store, UserPlus } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FlatList,
@@ -16,6 +16,7 @@ import {
   ListRowSkeletonList,
   ProfileFollowUserRow,
   Screen,
+  Avatar,
 } from "../../components";
 import { useAuth } from "../../features/auth";
 import { routes } from "../../navigation";
@@ -24,11 +25,11 @@ import {
   createDirectConversation,
   followUser,
   getFollowersByUserId,
-  getFollowingByUserId,
+  getFollowingTargetsByUserId,
   getUserProfile,
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
-import type { UserFollowResponse, UserResponse } from "../../types";
+import type { FollowTargetResponse, UserFollowResponse, UserResponse } from "../../types";
 
 type ProfileFollowsRouteProp = RouteProp<
   RootStackParamList,
@@ -36,6 +37,17 @@ type ProfileFollowsRouteProp = RouteProp<
 >;
 
 type FollowTab = "followers" | "following";
+type FollowListItem =
+  | {
+      key: string;
+      kind: "USER";
+      user: UserResponse;
+    }
+  | {
+      key: string;
+      kind: "CAFE_PAGE";
+      target: FollowTargetResponse;
+    };
 
 function getFollowUserId(item: UserFollowResponse, tab: FollowTab) {
   return tab === "followers" ? item.followerUserId : item.followingUserId;
@@ -54,12 +66,86 @@ function matchesSearch(user: UserResponse, query: string) {
   );
 }
 
+function matchesFollowItem(item: FollowListItem, query: string) {
+  const normalizedQuery = query.trim().toLowerCase();
+
+  if (!normalizedQuery) {
+    return true;
+  }
+
+  if (item.kind === "USER") {
+    return matchesSearch(item.user, query);
+  }
+
+  return [
+    item.target.displayName,
+    item.target.pageName,
+    item.target.username,
+    item.target.city,
+  ].some((value) => (value ?? "").toLowerCase().includes(normalizedQuery));
+}
+
 async function hydrateFollowUsers(items: UserFollowResponse[], tab: FollowTab) {
   const uniqueUserIds = Array.from(
     new Set(items.map((item) => getFollowUserId(item, tab))),
   );
 
   return Promise.all(uniqueUserIds.map((userId) => getUserProfile(userId)));
+}
+
+function userToFollowItem(user: UserResponse): FollowListItem {
+  return {
+    key: `user:${user.userId}`,
+    kind: "USER",
+    user,
+  };
+}
+
+function followingTargetToItem(target: FollowTargetResponse): FollowListItem | null {
+  if (target.targetType === "CAFE_PAGE") {
+    const cafePageId = target.cafePageId ?? target.targetId;
+
+    if (!cafePageId) {
+      return null;
+    }
+
+    return {
+      key: `cafe-page:${cafePageId}`,
+      kind: "CAFE_PAGE",
+      target: {
+        ...target,
+        cafePageId,
+        targetId: cafePageId,
+      },
+    };
+  }
+
+  const userId = target.userId ?? target.targetId;
+
+  if (!userId) {
+    return null;
+  }
+
+  return userToFollowItem({
+    accountStatus: null,
+    followingCount: null,
+    isFollowing: true,
+    regionArea: null,
+    regionCity: target.city,
+    regionId: null,
+    regionProvince: null,
+    regionStreet: null,
+    regionWard: null,
+    userAvatar: target.avatar,
+    userDescription: null,
+    userEmail: null,
+    userFollower: null,
+    userFullName: target.userFullName ?? target.displayName,
+    userId,
+    userLike: null,
+    userName: target.username ?? target.displayName ?? "user",
+    userPhone: null,
+  });
 }
 
 export function ProfileFollowsScreen() {
@@ -70,8 +156,8 @@ export function ProfileFollowsScreen() {
   const [activeTab, setActiveTab] = useState<FollowTab>(
     route.params.initialTab ?? "followers",
   );
-  const [followers, setFollowers] = useState<UserResponse[]>([]);
-  const [following, setFollowing] = useState<UserResponse[]>([]);
+  const [followers, setFollowers] = useState<FollowListItem[]>([]);
+  const [following, setFollowing] = useState<FollowListItem[]>([]);
   const [query, setQuery] = useState("");
   const [error, setError] = useState("");
   const [pendingUserId, setPendingUserId] = useState<string | null>(null);
@@ -91,16 +177,16 @@ export function ProfileFollowsScreen() {
     setError("");
 
     try {
-      const [followerLinks, followingLinks] = await Promise.all([
+      const [followerLinks, followingTargets] = await Promise.all([
         getFollowersByUserId(profileUserId),
-        getFollowingByUserId(profileUserId),
+        getFollowingTargetsByUserId(profileUserId),
       ]);
-      const [nextFollowers, nextFollowing] = await Promise.all([
-        hydrateFollowUsers(followerLinks, "followers"),
-        hydrateFollowUsers(followingLinks, "following"),
-      ]);
+      const nextFollowers = await hydrateFollowUsers(followerLinks, "followers");
+      const nextFollowing = followingTargets
+        .map(followingTargetToItem)
+        .filter((item): item is FollowListItem => Boolean(item));
 
-      setFollowers(nextFollowers);
+      setFollowers(nextFollowers.map(userToFollowItem));
       setFollowing(nextFollowing);
     } catch (nextError) {
       setError(
@@ -118,10 +204,10 @@ export function ProfileFollowsScreen() {
     void loadFollows();
   }, [loadFollows]);
 
-  const activeUsers = activeTab === "followers" ? followers : following;
-  const filteredUsers = useMemo(
-    () => activeUsers.filter((item) => matchesSearch(item, query)),
-    [activeUsers, query],
+  const activeItems = activeTab === "followers" ? followers : following;
+  const filteredItems = useMemo(
+    () => activeItems.filter((item) => matchesFollowItem(item, query)),
+    [activeItems, query],
   );
 
   const handleOpenProfile = useCallback((selectedUser: UserResponse) => {
@@ -190,8 +276,16 @@ export function ProfileFollowsScreen() {
             }
           : item;
 
-      setFollowers((currentFollowers) => currentFollowers.map(updateUser));
-      setFollowing((currentFollowing) => currentFollowing.map(updateUser));
+      const updateItem = (item: FollowListItem): FollowListItem =>
+        item.kind === "USER"
+          ? {
+              ...item,
+              user: updateUser(item.user),
+            }
+          : item;
+
+      setFollowers((currentFollowers) => currentFollowers.map(updateItem));
+      setFollowing((currentFollowing) => currentFollowing.map(updateItem));
     } catch (nextError) {
       setError(
         nextError instanceof Error
@@ -297,26 +391,33 @@ export function ProfileFollowsScreen() {
         }
         contentContainerStyle={[
           styles.content,
-          filteredUsers.length === 0 && styles.emptyContent,
+          filteredItems.length === 0 && styles.emptyContent,
         ]}
-        data={filteredUsers}
-        keyExtractor={(item) => item.userId}
+        data={filteredItems}
+        keyExtractor={(item) => item.key}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={() => void loadFollows(true)}
           />
         }
-        renderItem={({ item }) => (
-          <ProfileFollowUserRow
-            disabled={pendingUserId === item.userId}
-            isCurrentUser={item.userId === user?.userId}
-            onFollowPress={handleFollow}
-            onMessagePress={handleMessage}
-            onProfilePress={handleOpenProfile}
-            user={item}
-          />
-        )}
+        renderItem={({ item }) =>
+          item.kind === "USER" ? (
+            <ProfileFollowUserRow
+              disabled={pendingUserId === item.user.userId}
+              isCurrentUser={item.user.userId === user?.userId}
+              onFollowPress={handleFollow}
+              onMessagePress={handleMessage}
+              onProfilePress={handleOpenProfile}
+              user={item.user}
+            />
+          ) : (
+            <FollowingCafePageRow
+              onPress={(cafePageId) => navigation.navigate(routes.cafeDetail, { cafeId: cafePageId })}
+              target={item.target}
+            />
+          )
+        }
         ListEmptyComponent={
           isLoading ? (
             <ListRowSkeletonList />
@@ -327,7 +428,7 @@ export function ProfileFollowsScreen() {
                   ? "Try another name or username."
                   : activeTab === "followers"
                     ? "Followers will appear here."
-                    : "People this profile follows will appear here."
+                    : "People and cafe pages this profile follows will appear here."
               }
               title={
                 query.trim()
@@ -342,6 +443,46 @@ export function ProfileFollowsScreen() {
         showsVerticalScrollIndicator={false}
       />
     </Screen>
+  );
+}
+
+type FollowingCafePageRowProps = {
+  onPress: (cafePageId: string) => void;
+  target: FollowTargetResponse;
+};
+
+function FollowingCafePageRow({ onPress, target }: FollowingCafePageRowProps) {
+  const cafePageId = target.cafePageId ?? target.targetId;
+  const displayName = target.displayName ?? target.pageName ?? "Cafe page";
+
+  return (
+    <View style={styles.container}>
+      <Pressable
+        accessibilityLabel={`Open ${displayName}`}
+        accessibilityRole="button"
+        disabled={!cafePageId}
+        onPress={() => cafePageId && onPress(cafePageId)}
+        style={({ pressed }) => [
+          styles.identityAction,
+          pressed && styles.pressed,
+        ]}
+      >
+        <Avatar size={58} uri={target.avatar} />
+        <View style={styles.identity}>
+          <Text numberOfLines={1} style={styles.username}>
+            {displayName}
+          </Text>
+          <Text numberOfLines={1} style={styles.name}>
+            {target.city ?? "Cafe page"}
+          </Text>
+        </View>
+      </Pressable>
+
+      <View style={styles.pageBadge}>
+        <Store color={colors.primaryStrong} size={16} strokeWidth={2.4} />
+        <Text style={styles.pageBadgeText}>Page</Text>
+      </View>
+    </View>
   );
 }
 
@@ -375,6 +516,46 @@ const styles = StyleSheet.create({
     height: 48,
     justifyContent: "center",
     width: 48,
+  },
+  container: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+    minHeight: 78,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  identity: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  identityAction: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+  },
+  name: {
+    color: colors.muted,
+    fontSize: typography.label,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  pageBadge: {
+    alignItems: "center",
+    backgroundColor: colors.primarySoft,
+    borderRadius: 12,
+    flexDirection: "row",
+    gap: spacing.xs,
+    minHeight: 38,
+    minWidth: 86,
+    justifyContent: "center",
+    paddingHorizontal: spacing.md,
+  },
+  pageBadgeText: {
+    color: colors.primaryStrong,
+    fontSize: typography.label,
+    fontWeight: "900",
   },
   pressed: {
     opacity: 0.72,
@@ -419,6 +600,11 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: typography.title,
     fontWeight: "800",
+  },
+  username: {
+    color: colors.foreground,
+    fontSize: typography.body,
+    fontWeight: "900",
   },
   topBar: {
     alignItems: "center",

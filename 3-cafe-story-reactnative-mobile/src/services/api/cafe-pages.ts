@@ -100,6 +100,7 @@ function invalidateCafePageCache(cafePageId: string) {
   invalidateApiCache(`cafe-pages:detail:${cafePageId}`);
   invalidateApiCache(`cafe-pages:blogs:${cafePageId}`);
   invalidateApiCache("cafe-pages:owner:");
+  invalidateApiCache("users:following-targets:");
   invalidateApiCache("recommendations:");
   invalidateApiCache("feed:");
 }
