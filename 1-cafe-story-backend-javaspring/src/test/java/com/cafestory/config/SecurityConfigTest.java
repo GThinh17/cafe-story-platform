@@ -3,8 +3,8 @@ package com.cafestory.config;
 import com.cafestory.dto.responseDTO.VnpayIpnResponseDTO;
 import com.cafestory.dto.responseDTO.VnpayReturnResponseDTO;
 import com.cafestory.dto.responseDTO.UsernameSuggestionResponse;
-import com.cafestory.dto.responseDTO.reviewer.ReviewerBadgeResponseDTO;
-import com.cafestory.dto.responseDTO.reviewer.ReviewerPayoutResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerBadgeResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerPayoutResponseDTO;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.PaymentStatus;
 import com.cafestory.service.serviceInterface.AuthService;
@@ -67,7 +67,7 @@ class SecurityConfigTest {
         String accessToken = jwtService.createAccessToken(user(), List.of("USER"));
 
         mockMvc.perform(get("/api/admin/test")
-                        .cookie(new Cookie(JwtAuthenticationFilter.ACCESS_TOKEN_COOKIE, accessToken)))
+                .cookie(new Cookie(JwtAuthenticationFilter.ACCESS_TOKEN_COOKIE, accessToken)))
                 .andExpect(status().isForbidden());
     }
 
@@ -76,7 +76,7 @@ class SecurityConfigTest {
         String accessToken = jwtService.createAccessToken(user(), List.of("USER"));
 
         mockMvc.perform(get("/api/admin/users")
-                        .cookie(new Cookie(JwtAuthenticationFilter.ACCESS_TOKEN_COOKIE, accessToken)))
+                .cookie(new Cookie(JwtAuthenticationFilter.ACCESS_TOKEN_COOKIE, accessToken)))
                 .andExpect(status().isForbidden());
     }
 
@@ -93,15 +93,15 @@ class SecurityConfigTest {
         String accessToken = jwtService.createAccessToken(user(), List.of("USER"));
 
         mockMvc.perform(get("/api/admin/users")
-                        .header("Authorization", "Bearer " + accessToken))
+                .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     void stripeWebhook_success_noAuthorizationDoesNotReturn401_TC003() throws Exception {
         mockMvc.perform(post("/api/payments/stripe/webhook")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
                 .andExpect(status().isOk());
     }
 
@@ -112,7 +112,7 @@ class SecurityConfigTest {
         when(authService.suggestUserNames("Phạm Thanh Vũ")).thenReturn(response);
 
         mockMvc.perform(get("/api/auth/usernames/suggestions")
-                        .param("fullName", "Phạm Thanh Vũ"))
+                .param("fullName", "Phạm Thanh Vũ"))
                 .andExpect(status().isOk());
     }
 
@@ -125,8 +125,8 @@ class SecurityConfigTest {
         when(paymentService.handleVnpayReturn(anyMap())).thenReturn(response);
 
         mockMvc.perform(get("/api/payments/vnpay/return")
-                        .param("vnp_TxnRef", UUID.randomUUID().toString())
-                        .param("vnp_SecureHash", "invalid"))
+                .param("vnp_TxnRef", UUID.randomUUID().toString())
+                .param("vnp_SecureHash", "invalid"))
                 .andExpect(status().isOk());
     }
 
@@ -136,8 +136,8 @@ class SecurityConfigTest {
                 .thenReturn(new VnpayIpnResponseDTO("97", "Invalid signature"));
 
         mockMvc.perform(get("/api/payments/vnpay/ipn")
-                        .param("vnp_TxnRef", UUID.randomUUID().toString())
-                        .param("vnp_SecureHash", "invalid"))
+                .param("vnp_TxnRef", UUID.randomUUID().toString())
+                .param("vnp_SecureHash", "invalid"))
                 .andExpect(status().isOk());
     }
 
@@ -147,8 +147,8 @@ class SecurityConfigTest {
                 .when(paymentService).handleStripeWebhook(anyString(), isNull());
 
         mockMvc.perform(post("/api/payments/stripe/webhook")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
                 .andExpect(status().isBadRequest());
     }
 
@@ -157,10 +157,11 @@ class SecurityConfigTest {
         UUID userId = UUID.randomUUID();
         UUID reviewerId = UUID.randomUUID();
         String accessToken = jwtService.createAccessToken(user(userId), List.of("REVIEWER"));
-        when(reviewerService.getReviewerPayoutHistory(userId, reviewerId)).thenReturn(List.of(new ReviewerPayoutResponseDTO()));
+        when(reviewerService.getReviewerPayoutHistory(userId, reviewerId))
+                .thenReturn(List.of(new ReviewerPayoutResponseDTO()));
 
         mockMvc.perform(get("/api/reviewers/{reviewerId}/payouts", reviewerId)
-                        .header("Authorization", "Bearer " + accessToken))
+                .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk());
     }
 
@@ -169,10 +170,11 @@ class SecurityConfigTest {
         UUID userId = UUID.randomUUID();
         UUID reviewerId = UUID.randomUUID();
         String accessToken = jwtService.createAccessToken(user(userId), List.of("REVIEWER"));
-        when(reviewerService.getReviewerBadgeHistory(userId, reviewerId)).thenReturn(List.of(new ReviewerBadgeResponseDTO()));
+        when(reviewerService.getReviewerBadgeHistory(userId, reviewerId))
+                .thenReturn(List.of(new ReviewerBadgeResponseDTO()));
 
         mockMvc.perform(get("/api/reviewers/{reviewerId}/badges", reviewerId)
-                        .header("Authorization", "Bearer " + accessToken))
+                .header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk());
     }
 
@@ -181,8 +183,8 @@ class SecurityConfigTest {
         String accessToken = jwtService.createAccessToken(user(), List.of("REVIEWER"));
 
         mockMvc.perform(post("/api/reviewers/payouts/generate")
-                        .header("Authorization", "Bearer " + accessToken)
-                        .param("month", "2026-06"))
+                .header("Authorization", "Bearer " + accessToken)
+                .param("month", "2026-06"))
                 .andExpect(status().isForbidden());
     }
 
