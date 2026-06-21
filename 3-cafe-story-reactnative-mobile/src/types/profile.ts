@@ -71,6 +71,7 @@ export type UserRegionUpdateRequest = {
 export type UserPostPreview = {
   caption: string;
   commentCount: number;
+  createdAt?: string | null;
   id: string;
   image?: ImageSourcePropType;
   imageUri?: string | null;

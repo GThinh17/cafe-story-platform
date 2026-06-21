@@ -13,6 +13,7 @@ export function blogResponseToPostPreview(blog: BlogResponse): UserPostPreview {
   return {
     caption: blog.content,
     commentCount: blog.commentCount ?? 0,
+    createdAt: blog.createdAt,
     id: blog.id,
     imageUri: blog.imageUrls?.[0] ?? null,
     isPinned: blog.isPinned,

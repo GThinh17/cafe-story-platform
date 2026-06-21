@@ -150,6 +150,28 @@ function loadBlogsForProfileTab(tab: ProfileContentTab, userId: string): Promise
   }
 }
 
+function timestampForPost(post: UserPostPreview) {
+  const timestamp = post.createdAt ? Date.parse(post.createdAt) : 0;
+
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function sortProfileTabPosts(tab: ProfileContentTab, posts: UserPostPreview[]) {
+  if (tab !== "posts") {
+    return posts;
+  }
+
+  return [...posts].sort((leftPost, rightPost) => {
+    const pinnedDelta = Number(Boolean(rightPost.isPinned)) - Number(Boolean(leftPost.isPinned));
+
+    if (pinnedDelta !== 0) {
+      return pinnedDelta;
+    }
+
+    return timestampForPost(rightPost) - timestampForPost(leftPost);
+  });
+}
+
 function isOwnedActiveCafePage(page: CafePageResponse) {
   return page.status === "ACTIVE" && page.pageActive === true;
 }
@@ -297,10 +319,14 @@ export function ProfileScreen() {
     try {
       const blogs = await loadBlogsForProfileTab(tab, userId);
       const userBlogs = blogs.filter(isUserAuthoredBlog);
+      const nextPosts = sortProfileTabPosts(
+        tab,
+        userBlogs.map(blogResponseToPostPreview),
+      );
 
       setTabPosts((currentPosts) => ({
         ...currentPosts,
-        [tab]: userBlogs.map(blogResponseToPostPreview),
+        [tab]: nextPosts,
       }));
       setVisiblePostCounts((currentCounts) => ({
         ...currentCounts,
@@ -987,7 +1013,11 @@ export function ProfileScreen() {
               />
             </View>
           ) : visiblePosts.length > 0 ? (
-            <UserPostGrid onPostPress={openUserPosts} posts={visiblePosts} />
+            <UserPostGrid
+              onPostPress={openUserPosts}
+              posts={visiblePosts}
+              showPinBadges={activeContentTab === "posts"}
+            />
           ) : (
             <View style={styles.emptyPosts}>
               <EmptyState
