@@ -365,7 +365,10 @@ export function CafePageScreen() {
     }
 
     if (isOwner) {
-      navigation.navigate(routes.conversations);
+      navigation.navigate(routes.conversations, {
+        cafePageId: cafePage.id,
+        cafePageName: cafePage.name,
+      });
       return;
     }
 

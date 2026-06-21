@@ -1,11 +1,13 @@
 package com.cafestory.service.serviceImplement;
 
 import com.cafestory.config.CacheConfig;
+import com.cafestory.dto.responseDTO.BlogDisplayAuthorType;
 import com.cafestory.dto.responseDTO.BlogTrendingResponse;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogDailyMetric;
 import com.cafestory.entity.BlogTrendingScore;
 import com.cafestory.entity.CafePage;
+import com.cafestory.entity.User;
 import com.cafestory.entity.enums.BlogEventType;
 import com.cafestory.entity.enums.ModerationDecision;
 import com.cafestory.entity.enums.PostStatus;
@@ -15,6 +17,7 @@ import com.cafestory.repository.BlogDailyMetricRepository;
 import com.cafestory.repository.BlogEventRepository;
 import com.cafestory.repository.BlogLikeRepository;
 import com.cafestory.repository.BlogRepository;
+import com.cafestory.repository.BlogSaveRepository;
 import com.cafestory.repository.BlogShareRepository;
 import com.cafestory.repository.BlogTrendingScoreRepository;
 import com.cafestory.repository.CafePageRepository;
@@ -30,8 +33,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class BlogTrendingServiceImpl implements BlogTrendingService {
@@ -39,6 +46,7 @@ public class BlogTrendingServiceImpl implements BlogTrendingService {
     private final BlogRepository blogRepository;
     private final BlogEventRepository blogEventRepository;
     private final BlogLikeRepository blogLikeRepository;
+    private final BlogSaveRepository blogSaveRepository;
     private final CommentRepository commentRepository;
     private final BlogShareRepository blogShareRepository;
     private final BlogDailyMetricRepository blogDailyMetricRepository;
@@ -51,6 +59,7 @@ public class BlogTrendingServiceImpl implements BlogTrendingService {
             BlogRepository blogRepository,
             BlogEventRepository blogEventRepository,
             BlogLikeRepository blogLikeRepository,
+            BlogSaveRepository blogSaveRepository,
             CommentRepository commentRepository,
             BlogShareRepository blogShareRepository,
             BlogDailyMetricRepository blogDailyMetricRepository,
@@ -61,6 +70,7 @@ public class BlogTrendingServiceImpl implements BlogTrendingService {
         this.blogRepository = blogRepository;
         this.blogEventRepository = blogEventRepository;
         this.blogLikeRepository = blogLikeRepository;
+        this.blogSaveRepository = blogSaveRepository;
         this.commentRepository = commentRepository;
         this.blogShareRepository = blogShareRepository;
         this.blogDailyMetricRepository = blogDailyMetricRepository;
@@ -72,19 +82,18 @@ public class BlogTrendingServiceImpl implements BlogTrendingService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = CacheConfig.TRENDING_BLOGS_CACHE, key = "#p0.name() + ':' + #p1 + ':' + #p2")
-    public List<BlogTrendingResponse> getTrendingBlogs(TrendWindowType windowType, int page, int size) {
+    @Cacheable(cacheNames = CacheConfig.TRENDING_BLOGS_CACHE,
+            key = "#p1.name() + ':' + #p2 + ':' + #p3 + ':' + (#p0 == null ? 'anon' : #p0)")
+    public List<BlogTrendingResponse> getTrendingBlogs(UUID viewerUserId, TrendWindowType windowType, int page, int size) {
         LocalDateTime latestComputedAt = blogTrendingScoreRepository.findLatestComputedAt(windowType);
         if (latestComputedAt == null) {
             return List.of();
         }
-        return blogTrendingScoreRepository.findByWindowTypeAndComputedAtOrderByRankPositionAsc(
+        List<BlogTrendingScore> scores = blogTrendingScoreRepository.findByWindowTypeAndComputedAtOrderByRankPositionAsc(
                         windowType,
                         latestComputedAt,
-                        PageRequest.of(Math.max(0, page), Math.max(1, size)))
-                .stream()
-                .map(this::toTrendingResponse)
-                .toList();
+                        PageRequest.of(Math.max(0, page), Math.max(1, size)));
+        return toTrendingResponses(scores, viewerUserId);
     }
 
     @Override
@@ -205,15 +214,64 @@ public class BlogTrendingServiceImpl implements BlogTrendingService {
         };
     }
 
-    private BlogTrendingResponse toTrendingResponse(BlogTrendingScore score) {
+    private List<BlogTrendingResponse> toTrendingResponses(List<BlogTrendingScore> scores, UUID viewerUserId) {
+        if (scores.isEmpty()) {
+            return List.of();
+        }
+
+        List<UUID> blogIds = scores.stream()
+                .map(score -> score.getBlog().getId())
+                .toList();
+        Map<UUID, List<String>> imageUrlsByBlogId = blogRepository.findImageUrlsByBlogIds(blogIds)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        BlogRepository.BlogImageUrlRow::getBlogId,
+                        Collectors.mapping(BlogRepository.BlogImageUrlRow::getImageUrl, Collectors.toList())));
+        Set<UUID> likedBlogIds = viewerUserId == null
+                ? Set.of()
+                : new HashSet<>(blogLikeRepository.findLikedBlogIdsByUserIdAndBlogIds(viewerUserId, blogIds));
+        Set<UUID> savedBlogIds = viewerUserId == null
+                ? Set.of()
+                : new HashSet<>(blogSaveRepository.findSavedBlogIdsByUserIdAndBlogIds(viewerUserId, blogIds));
+
+        return scores.stream()
+                .map(score -> toTrendingResponse(
+                        score,
+                        imageUrlsByBlogId.getOrDefault(score.getBlog().getId(), List.of()),
+                        likedBlogIds,
+                        savedBlogIds))
+                .toList();
+    }
+
+    private BlogTrendingResponse toTrendingResponse(
+            BlogTrendingScore score,
+            List<String> imageUrls,
+            Set<UUID> likedBlogIds,
+            Set<UUID> savedBlogIds) {
         Blog blog = score.getBlog();
+        User author = blog.getAuthor();
+        CafePage page = blog.getPage();
+        boolean isPagePost = page != null;
         BlogTrendingResponse response = new BlogTrendingResponse();
         response.setBlogId(blog.getId());
         response.setContentPreview(toPreview(blog.getContent()));
-        response.setAuthorUserId(blog.getAuthor().getUserId());
-        response.setAuthorUserName(blog.getAuthor().getUserName());
+        response.setImageUrls(imageUrls);
+        response.setLikeCount(blog.getLikeCount());
+        response.setCommentCount(blog.getCommentCount());
+        response.setShareCount(blog.getShareCount());
+        response.setAuthorUserId(author.getUserId());
+        response.setAuthorUserName(author.getUserName());
+        response.setAuthorUserFullName(author.getUserFullName());
+        response.setAuthorUserAvatar(author.getUserAvatar());
         response.setPageId(blog.getPageId());
-        response.setPageName(findPageName(blog));
+        response.setPageName(page == null ? null : page.getName());
+        response.setPageAvatarUrl(page == null ? null : page.getAvatarUrl());
+        response.setPageCoverUrl(page == null ? null : page.getCoverUrl());
+        response.setDisplayAuthorType(isPagePost ? BlogDisplayAuthorType.CAFE_PAGE : BlogDisplayAuthorType.USER);
+        response.setDisplayName(isPagePost ? page.getName() : displayUserName(author));
+        response.setDisplayAvatarUrl(isPagePost ? page.getAvatarUrl() : author.getUserAvatar());
+        response.setIsLike(likedBlogIds.contains(blog.getId()));
+        response.setIsSave(savedBlogIds.contains(blog.getId()));
         response.setWindowType(score.getWindowType());
         response.setTrendScore(score.getTrendScore());
         response.setRankPosition(score.getRankPosition());
@@ -224,12 +282,10 @@ public class BlogTrendingServiceImpl implements BlogTrendingService {
         return response;
     }
 
-    private String findPageName(Blog blog) {
-        if (blog.getPageId() == null) {
-            return null;
-        }
-        Optional<CafePage> cafePage = cafePageRepository.findById(blog.getPageId());
-        return cafePage.map(CafePage::getName).orElse(null);
+    private String displayUserName(User author) {
+        return author.getUserFullName() == null || author.getUserFullName().isBlank()
+                ? author.getUserName()
+                : author.getUserFullName();
     }
 
     private String toPreview(String content) {

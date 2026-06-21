@@ -39,14 +39,15 @@ class BlogTrendingControllerTest {
         TrendWindowType windowType = TrendWindowType.HOUR_24;
         int page = 0;
         int size = 10;
+        UUID userId = UUID.randomUUID();
         List<BlogTrendingResponse> response = List.of(trendingResponse());
 
-        when(blogTrendingService.getTrendingBlogs(windowType, page, size)).thenReturn(response);
+        when(blogTrendingService.getTrendingBlogs(userId, windowType, page, size)).thenReturn(response);
 
-        List<BlogTrendingResponse> result = blogTrendingController.getTrendingBlogs(windowType, page, size);
+        List<BlogTrendingResponse> result = blogTrendingController.getTrendingBlogs(principal(userId), windowType, page, size);
 
         assertThat(result).isEqualTo(response);
-        verify(blogTrendingService).getTrendingBlogs(windowType, page, size);
+        verify(blogTrendingService).getTrendingBlogs(userId, windowType, page, size);
     }
 
     @Test

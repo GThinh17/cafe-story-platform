@@ -5,6 +5,7 @@ import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 
 import {
+  CreatePostBottomBar,
   CreatePostComposeStep,
   CreatePostHeader,
   CreatePostLocationPickerModal,
@@ -302,12 +303,9 @@ export function CreateScreen() {
   return (
     <Screen padded={false}>
       <CreatePostHeader
-        actionDisabled={isSettingsStep ? isSubmitting : !canContinue}
-        actionLabel={isSettingsStep ? "Post" : "Next"}
         isBack={isSettingsStep}
-        isSubmitting={isSubmitting}
-        onAction={isSettingsStep ? handlePost : handleNext}
         onLeftPress={isSettingsStep ? handleBack : handleCancel}
+        showAction={false}
         title={isSettingsStep ? "Post Settings" : "New Post"}
       />
 
@@ -351,6 +349,15 @@ export function CreateScreen() {
         onApply={handleApplyLocation}
         onClose={() => setIsLocationPickerVisible(false)}
         visible={isLocationPickerVisible}
+      />
+
+      <CreatePostBottomBar
+        actionDisabled={isSettingsStep ? isSubmitting : !canContinue}
+        actionLabel={isSettingsStep ? "Post" : "Next"}
+        isSubmitting={isSubmitting}
+        onAction={isSettingsStep ? handlePost : handleNext}
+        onAddMedia={handleAddMedia}
+        showMediaAction={!isSettingsStep}
       />
     </Screen>
   );

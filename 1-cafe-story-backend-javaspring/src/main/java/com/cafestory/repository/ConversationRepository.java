@@ -73,4 +73,14 @@ public interface ConversationRepository extends JpaRepository<Conversation, UUID
             @Param("userId") UUID userId,
             @Param("status") PageMemberStatus status,
             @Param("managerRoles") List<String> managerRoles);
+
+    @Query("""
+            select c from Conversation c
+            left join fetch c.cafePage
+            where c.type = com.cafestory.entity.enums.ConversationType.CAFE_PAGE
+            and c.cafePage.id = :cafePageId
+            order by coalesce(c.updatedAt, c.createdAt) desc, c.createdAt desc
+            """)
+    List<Conversation> findCafePageConversationsOrderByLatestActivity(
+            @Param("cafePageId") UUID cafePageId);
 }

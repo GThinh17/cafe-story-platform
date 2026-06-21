@@ -282,20 +282,6 @@ export function CreatePostComposeStep({
           </View>
         </View>
       </ScrollView>
-
-      <View style={styles.footer}>
-        <Pressable
-          accessibilityLabel="Add photos"
-          accessibilityRole="button"
-          onPress={onAddMedia}
-          style={({ pressed }) => [
-            styles.footerPhotoButton,
-            pressed && styles.pressed,
-          ]}
-        >
-          <ImageIcon color={colors.foreground} size={28} strokeWidth={2.4} />
-        </Pressable>
-      </View>
     </View>
   );
 }
@@ -378,28 +364,6 @@ const styles = StyleSheet.create({
     color: colors.foreground,
     fontSize: typography.title,
     fontWeight: "900",
-  },
-  footer: {
-    alignItems: "center",
-    backgroundColor: colors.surface,
-    borderTopColor: colors.border,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    bottom: 0,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    left: 0,
-    minHeight: 78,
-    paddingHorizontal: spacing.xl,
-    position: "absolute",
-    right: 0,
-  },
-  footerPhotoButton: {
-    alignItems: "center",
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: 28,
-    height: 56,
-    justifyContent: "center",
-    width: 56,
   },
   identityCopy: {
     flex: 1,

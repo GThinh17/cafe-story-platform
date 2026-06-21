@@ -74,6 +74,7 @@ export type UserPostPreview = {
   id: string;
   image?: ImageSourcePropType;
   imageUri?: string | null;
+  isPinned?: boolean | null;
   likeCount: number;
 };
 

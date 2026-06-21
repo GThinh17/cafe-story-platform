@@ -202,8 +202,25 @@ public class BlogServiceImpl implements BlogService {
             cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE,
             key = "'shared:' + #p0 + ':' + (#p1 == null ? 'anon' : #p1)")
     public List<BlogResponseDTO> getSharedBlogsByUserId(UUID userId, UUID viewerUserId) {
+        return getSharedBlogsByUserId(userId, viewerUserId, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE,
+            key = "'shared:' + #p0 + ':' + (#p1 == null ? 'anon' : #p1) + ':' + (#p2 == null ? 'recent' : #p2)")
+    public List<BlogResponseDTO> getSharedBlogsByUserId(UUID userId, UUID viewerUserId, String sort) {
         userValidator.validateUserExists(userId);
-        return toBlogResponseDTOs(distinctByBlogId(blogRepository.findSharedBlogsByUserId(userId)), viewerUserId);
+        List<Blog> blogs = isShareCountSort(sort)
+                ? blogRepository.findSharedBlogsByUserIdOrderByShareCount(userId)
+                : blogRepository.findSharedBlogsByUserId(userId);
+        return toBlogResponseDTOs(distinctByBlogId(blogs), viewerUserId);
+    }
+
+    private boolean isShareCountSort(String sort) {
+        return sort != null
+                && List.of("shareCount", "share_count", "shares").contains(sort.trim());
     }
 
     @Override

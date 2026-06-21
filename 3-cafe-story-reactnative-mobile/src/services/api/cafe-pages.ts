@@ -32,6 +32,14 @@ export function getCafePagesByOwner(ownerUserId: string) {
   );
 }
 
+export function getCafePages() {
+  return cachedApiCall("cafe-pages:list", apiCacheTtl.dynamic, () =>
+    apiFetch<CafePageResponse[]>(apiEndpoints.cafePages.list, {
+      method: "GET",
+    }),
+  );
+}
+
 export function getCafePageById(cafePageId: string) {
   return cachedApiCall(`cafe-pages:detail:${cafePageId}`, apiCacheTtl.dynamic, () =>
     apiFetch<CafePageResponse>(apiEndpoints.cafePages.byId(cafePageId), {

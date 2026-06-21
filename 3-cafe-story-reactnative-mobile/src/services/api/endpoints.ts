@@ -6,14 +6,23 @@ export const apiEndpoints = {
   adFees: {
     list: "/api/ad-fees",
   },
+  adCampaigns: {
+    byId: (adCampaignId: string) => `/api/ad-campaigns/${pathId(adCampaignId)}`,
+    clicks: (adCampaignId: string) => `/api/ad-campaigns/${pathId(adCampaignId)}/clicks`,
+    list: "/api/ad-campaigns",
+  },
   auth: {
     login: "/api/auth/login",
     register: "/api/auth/register",
     me: "/api/auth/me",
     logout: "/api/auth/logout",
     refresh: "/api/auth/refresh",
+    usernameSuggestions: (fullName: string) =>
+      `/api/auth/usernames/suggestions?fullName=${pathId(fullName)}`,
   },
   chat: {
+    cafePageConversations: (cafePageId: string) =>
+      `/api/chat/cafe-pages/${pathId(cafePageId)}/conversations`,
     conversations: "/api/chat/conversations",
     directConversation: "/api/chat/conversations/direct",
     cafePageConversation: "/api/chat/conversations/cafe-page",
@@ -50,6 +59,17 @@ export const apiEndpoints = {
   },
   extraFees: {
     list: "/api/extra-fees",
+  },
+  feed: {
+    list: "/api/feed",
+    organic: "/api/feed/organic",
+  },
+  notifications: {
+    byId: (notificationId: string) => `/notifications/${pathId(notificationId)}`,
+    list: "/notifications",
+    markAllRead: "/notifications/read-all",
+    markRead: (notificationId: string) => `/notifications/${pathId(notificationId)}/read`,
+    unreadCount: "/notifications/unread-count",
   },
   payments: {
     byId: (paymentId: string) => `/api/payments/${pathId(paymentId)}`,
@@ -113,6 +133,7 @@ export const apiEndpoints = {
     following: (userId: string) => `/api/users/${pathId(userId)}/following`,
     followingTargets: (userId: string, type = "ALL") =>
       `/api/users/${pathId(userId)}/following-targets?type=${pathId(type)}`,
+    list: "/api/users",
     me: "/api/users/me",
     meAvatar: "/api/users/me/avatar",
     meRegion: "/api/users/me/region",

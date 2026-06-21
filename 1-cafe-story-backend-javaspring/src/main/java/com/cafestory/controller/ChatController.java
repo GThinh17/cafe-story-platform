@@ -70,6 +70,13 @@ public class ChatController {
         return chatService.getUserConversations(requireUserId(principal));
     }
 
+    @GetMapping("/cafe-pages/{cafePageId}/conversations")
+    public List<ConversationResponseDTO> getCafePageConversations(
+            @PathVariable UUID cafePageId,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return chatService.getCafePageConversations(cafePageId, requireUserId(principal));
+    }
+
     @GetMapping("/conversations/{conversationId}/messages")
     public List<ChatMessageResponseDTO> getMessagesByConversationId(
             @PathVariable UUID conversationId,

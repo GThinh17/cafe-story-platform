@@ -1,3 +1,4 @@
+export * from "./main/blog-detail-screen";
 export * from "./main/cafe-page-screen";
 export * from "./auth/login-screen";
 export * from "./auth/region-screen";

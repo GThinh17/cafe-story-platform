@@ -31,6 +31,14 @@ export function getConversations() {
   );
 }
 
+export function getCafePageConversations(cafePageId: string) {
+  return cachedApiCall(`chat:cafe-page-conversations:${cafePageId}`, apiCacheTtl.chatActive, () =>
+    apiFetch<ConversationResponse[]>(apiEndpoints.chat.cafePageConversations(cafePageId), {
+      method: "GET",
+    }),
+  );
+}
+
 export async function createDirectConversation(secondUserId: string) {
   const response = await apiFetch<ConversationResponse>(apiEndpoints.chat.directConversation, {
     body: { secondUserId },
@@ -46,6 +54,7 @@ export async function createCafePageConversation(cafePageId: string) {
     method: "POST",
   });
   invalidateApiCache("chat:conversations");
+  invalidateApiCache(`chat:cafe-page-conversations:${cafePageId}`);
   return response;
 }
 
@@ -80,6 +89,7 @@ export async function sendChatMessage(
     },
   );
   invalidateApiCache("chat:conversations");
+  invalidateApiCache("chat:cafe-page-conversations:");
   invalidateApiCache(`chat:messages:${conversationId}:`);
   return response;
 }

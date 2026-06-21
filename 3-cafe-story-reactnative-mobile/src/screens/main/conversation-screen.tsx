@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { RouteProp } from "@react-navigation/native";
 import {
   ConversationRow,
   ConversationTopBar,
@@ -15,7 +16,7 @@ import { useAuth } from "../../features/auth";
 import { mockOnlineUsers } from "../../mocks";
 import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
-import { getConversations } from "../../services/api";
+import { getCafePageConversations, getConversations } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type { ChatTargetType, ConversationListItem, ConversationResponse } from "../../types";
 
@@ -105,7 +106,11 @@ function mapConversationToListItem(
 export function ConversationScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route =
+    useRoute<RouteProp<RootStackParamList, typeof routes.conversations>>();
   const { user } = useAuth();
+  const cafePageId = route.params?.cafePageId;
+  const cafePageName = route.params?.cafePageName;
   const [conversationItems, setConversationItems] = useState<
     ConversationListItem[]
   >([]);
@@ -124,7 +129,9 @@ export function ConversationScreen() {
     setError("");
 
     try {
-      const response = await getConversations();
+      const response = cafePageId
+        ? await getCafePageConversations(cafePageId)
+        : await getConversations();
       setConversationItems(
         response.map((conversation) =>
           mapConversationToListItem(conversation, user?.userId),
@@ -140,7 +147,7 @@ export function ConversationScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [user?.userId]);
+  }, [cafePageId, user?.userId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -180,16 +187,18 @@ export function ConversationScreen() {
     <Screen padded={false}>
       <ConversationTopBar
         onBackPress={() => navigation.goBack()}
-        onEditPress={() => navigation.navigate(routes.newChat)}
-        title="Messages"
+        onEditPress={cafePageId ? undefined : () => navigation.navigate(routes.newChat)}
+        title={cafePageId ? `${cafePageName || "Cafe Page"} messages` : "Messages"}
       />
 
       <FlatList
         ListHeaderComponent={
           <View style={styles.headerContent}>
             <MessageSearch onChangeText={setQuery} value={query} />
-            <OnlineUserRail users={mockOnlineUsers} />
-            <Text style={styles.sectionTitle}>Conversations</Text>
+            {cafePageId ? null : <OnlineUserRail users={mockOnlineUsers} />}
+            <Text style={styles.sectionTitle}>
+              {cafePageId ? "Cafe page conversations" : "Conversations"}
+            </Text>
           </View>
         }
         contentContainerStyle={styles.content}
@@ -219,7 +228,9 @@ export function ConversationScreen() {
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>No conversations yet</Text>
               <Text style={styles.emptyDescription}>
-                Start a new chat from the message button above.
+                {cafePageId
+                  ? "Customer conversations for this cafe page will appear here."
+                  : "Start a new chat from the message button above."}
               </Text>
             </View>
           )

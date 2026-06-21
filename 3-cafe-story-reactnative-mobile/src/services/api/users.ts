@@ -39,6 +39,14 @@ export function getUserProfileByUsername(username: string) {
   );
 }
 
+export function getUsers() {
+  return cachedApiCall("users:list", apiCacheTtl.dynamic, () =>
+    apiFetch<UserResponse[]>(apiEndpoints.users.list, {
+      method: "GET",
+    }),
+  );
+}
+
 export async function updateMyProfile(request: UserUpdateRequest) {
   const response = await apiFetch<UserResponse>(apiEndpoints.users.me, {
     body: request,

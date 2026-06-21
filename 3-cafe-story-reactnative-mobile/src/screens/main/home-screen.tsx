@@ -12,28 +12,32 @@ import {
   type NativeSyntheticEvent,
 } from "react-native";
 import {
-  BlogFeedList,
+  BlogFeedCard,
   EmptyState,
   FeedCardSkeletonList,
   Screen,
   ShareTopBar,
+  SponsoredCafeCard,
   StoryRail,
 } from "../../components";
 import { useAuth } from "../../features/auth";
-import { mockHomeFeedStories } from "../../mocks";
 import {
-  getBlogFeed,
   getBlogLikesByUser,
   getBlogSavesByUser,
   getFollowingByUserId,
+  getFollowingTargetsByUserId,
+  getMixedFeed,
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import { routes } from "../../navigation";
 import type { MainTabParamList, RootStackParamList } from "../../navigation";
 import type {
   BlogFeedResponse,
+  FeedItemResponse,
+  FeedResponse,
   BlogLikeResponse,
   BlogSaveResponse,
+  FollowTargetResponse,
   StoryItem,
   UserFollowResponse,
 } from "../../types";
@@ -66,21 +70,65 @@ function applyViewerState(
   }));
 }
 
-function mergeUniqueBlogs(
-  currentBlogs: BlogFeedResponse[],
-  nextBlogs: BlogFeedResponse[],
+function getFeedItemKey(item: FeedItemResponse) {
+  if (item.blog?.blogId) {
+    return `blog:${item.blog.blogId}`;
+  }
+
+  if (item.ad?.campaignId) {
+    return `ad:${item.ad.campaignId}:${item.position ?? "unknown"}`;
+  }
+
+  return `${item.itemType}:${item.position ?? "unknown"}:${item.trackingToken ?? "item"}`;
+}
+
+function mergeUniqueFeedItems(
+  currentItems: FeedItemResponse[],
+  nextItems: FeedItemResponse[],
 ) {
-  const seenBlogIds = new Set(currentBlogs.map((blog) => blog.blogId));
-  const uniqueNextBlogs = nextBlogs.filter((blog) => {
-    if (seenBlogIds.has(blog.blogId)) {
+  const seenKeys = new Set(currentItems.map(getFeedItemKey));
+  const uniqueNextItems = nextItems.filter((item) => {
+    const key = getFeedItemKey(item);
+    if (seenKeys.has(key)) {
       return false;
     }
 
-    seenBlogIds.add(blog.blogId);
+    seenKeys.add(key);
     return true;
   });
 
-  return [...currentBlogs, ...uniqueNextBlogs];
+  return [...currentItems, ...uniqueNextItems];
+}
+
+function getInitials(value: string | null | undefined) {
+  return (value || "CS")
+    .split(/\s|_/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "CS";
+}
+
+function followingTargetToStory(target: FollowTargetResponse): StoryItem | null {
+  const targetId = target.cafePageId ?? target.userId ?? target.targetId;
+
+  if (!targetId) {
+    return null;
+  }
+
+  const label =
+    target.targetType === "CAFE_PAGE"
+      ? target.pageName || target.displayName || "Cafe page"
+      : target.username || target.userFullName || target.displayName || "CafeStory";
+
+  return {
+    avatarUri: target.avatar,
+    id: `${target.targetType}:${targetId}`,
+    initials: getInitials(label),
+    label,
+    targetId,
+    targetType: target.targetType,
+  };
 }
 
 export function HomeScreen() {
@@ -94,25 +142,41 @@ export function HomeScreen() {
   const isFetchingRef = useRef(false);
   const isPrefetchingRef = useRef(false);
   const prefetchGenerationRef = useRef(0);
-  const [blogs, setBlogs] = useState<BlogFeedResponse[]>([]);
+  const [feedItems, setFeedItems] = useState<FeedItemResponse[]>([]);
   const [error, setError] = useState("");
   const [loadMoreError, setLoadMoreError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [nextLoadPage, setNextLoadPage] = useState(0);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [isPrefetching, setIsPrefetching] = useState(false);
-  const [prefetchedBlogs, setPrefetchedBlogs] = useState<BlogFeedResponse[]>([]);
-  const [prefetchedPage, setPrefetchedPage] = useState<number | null>(null);
-  const [prefetchFailedPage, setPrefetchFailedPage] = useState<number | null>(null);
+  const [prefetchedFeedItems, setPrefetchedFeedItems] = useState<FeedItemResponse[]>([]);
+  const [prefetchedCursor, setPrefetchedCursor] = useState<string | null>(null);
+  const [prefetchedNextCursor, setPrefetchedNextCursor] = useState<string | null>(null);
+  const [prefetchFailedCursor, setPrefetchFailedCursor] = useState<string | null>(null);
   const [shouldAppendPrefetch, setShouldAppendPrefetch] = useState(false);
+  const [followingTargets, setFollowingTargets] = useState<FollowTargetResponse[]>([]);
 
-  const enrichFeedWithViewerState = useCallback(async (
-    response: BlogFeedResponse[],
+  const loadFollowingTargets = useCallback(async () => {
+    if (!user?.userId) {
+      setFollowingTargets([]);
+      return;
+    }
+
+    try {
+      const response = await getFollowingTargetsByUserId(user.userId, "ALL");
+      setFollowingTargets(response.slice(0, 14));
+    } catch {
+      setFollowingTargets([]);
+    }
+  }, [user?.userId]);
+
+  const enrichBlogsWithViewerState = useCallback(async (
+    blogs: BlogFeedResponse[],
   ) => {
     if (!user?.userId) {
-      return response;
+      return blogs;
     }
 
     const [following, likes, saves] = await Promise.all([
@@ -121,31 +185,61 @@ export function HomeScreen() {
       getBlogSavesByUser(user.userId).catch(() => []),
     ]);
 
-    return applyViewerState(response, following, likes, saves, user.userId);
+    return applyViewerState(blogs, following, likes, saves, user.userId);
   }, [user?.userId]);
 
-  const fetchFeedPage = useCallback(async (pageToLoad: number, pageSize: number) => {
-    const response = await getBlogFeed({
-      page: pageToLoad,
+  const enrichFeedResponse = useCallback(async (
+    response: FeedResponse,
+  ): Promise<FeedResponse> => {
+    const items = response.items ?? [];
+    const blogItems = items.filter((item) => item.blog);
+    const enrichedBlogs = await enrichBlogsWithViewerState(
+      blogItems.map((item) => item.blog as BlogFeedResponse),
+    );
+    const enrichedBlogsById = new Map(
+      enrichedBlogs.map((blog) => [blog.blogId, blog]),
+    );
+
+    return {
+      ...response,
+      items: items.map((item) => {
+        if (!item.blog) {
+          return item;
+        }
+
+        return {
+          ...item,
+          blog: enrichedBlogsById.get(item.blog.blogId) ?? item.blog,
+        };
+      }),
+    };
+  }, [enrichBlogsWithViewerState]);
+
+  const fetchFeedPage = useCallback(async (
+    cursorToLoad: string | null,
+    pageSize: number,
+  ) => {
+    const response = await getMixedFeed({
+      cursor: cursorToLoad,
       size: pageSize,
     });
 
-    return enrichFeedWithViewerState(response);
-  }, [enrichFeedWithViewerState]);
+    return enrichFeedResponse(response);
+  }, [enrichFeedResponse]);
 
-  const prefetchFeedPage = useCallback(async (pageToPrefetch: number) => {
-    if (isPrefetchingRef.current) {
+  const prefetchFeedPage = useCallback(async (cursorToPrefetch: string | null) => {
+    if (isPrefetchingRef.current || !cursorToPrefetch) {
       return;
     }
 
     const generation = prefetchGenerationRef.current;
     isPrefetchingRef.current = true;
     setIsPrefetching(true);
-    setPrefetchFailedPage(null);
+    setPrefetchFailedCursor(null);
 
     try {
       const response = await fetchFeedPage(
-        pageToPrefetch,
+        cursorToPrefetch,
         LOAD_MORE_FEED_PAGE_SIZE,
       );
 
@@ -153,11 +247,12 @@ export function HomeScreen() {
         return;
       }
 
-      setPrefetchedBlogs(response);
-      setPrefetchedPage(pageToPrefetch);
+      setPrefetchedFeedItems(response.items ?? []);
+      setPrefetchedCursor(cursorToPrefetch);
+      setPrefetchedNextCursor(response.nextCursor ?? null);
     } catch {
       if (prefetchGenerationRef.current === generation) {
-        setPrefetchFailedPage(pageToPrefetch);
+        setPrefetchFailedCursor(cursorToPrefetch);
       }
     } finally {
       isPrefetchingRef.current = false;
@@ -167,11 +262,11 @@ export function HomeScreen() {
 
   const loadFeed = useCallback(async ({
     append = false,
-    pageToLoad = 0,
+    cursorToLoad = null,
     refreshing = false,
   }: {
     append?: boolean;
-    pageToLoad?: number;
+    cursorToLoad?: string | null;
     refreshing?: boolean;
   } = {}) => {
     if (isFetchingRef.current) {
@@ -185,9 +280,10 @@ export function HomeScreen() {
 
     if (!append) {
       prefetchGenerationRef.current = requestGeneration;
-      setPrefetchedBlogs([]);
-      setPrefetchedPage(null);
-      setPrefetchFailedPage(null);
+      setPrefetchedFeedItems([]);
+      setPrefetchedCursor(null);
+      setPrefetchedNextCursor(null);
+      setPrefetchFailedCursor(null);
       setShouldAppendPrefetch(false);
     }
 
@@ -206,25 +302,22 @@ export function HomeScreen() {
 
     try {
       const pageSize = append ? LOAD_MORE_FEED_PAGE_SIZE : INITIAL_FEED_PAGE_SIZE;
-      const response = await fetchFeedPage(pageToLoad, pageSize);
+      const response = await fetchFeedPage(cursorToLoad, pageSize);
+      const responseItems = response.items ?? [];
 
-      setBlogs((currentBlogs) =>
+      setFeedItems((currentItems) =>
         append
-          ? mergeUniqueBlogs(currentBlogs, response)
-          : response,
+          ? mergeUniqueFeedItems(currentItems, responseItems)
+          : responseItems,
       );
-      const nextPage = append
-        ? pageToLoad + 1
-        : Math.ceil(response.length / LOAD_MORE_FEED_PAGE_SIZE);
-      const canLoadMore = response.length === pageSize;
+      const nextCursorFromResponse = response.nextCursor ?? null;
+      const canLoadMore = Boolean(response.hasMore && nextCursorFromResponse);
 
-      setNextLoadPage(
-        nextPage,
-      );
+      setNextCursor(nextCursorFromResponse);
       setHasMore(canLoadMore);
 
       if (canLoadMore) {
-        void prefetchFeedPage(nextPage);
+        void prefetchFeedPage(nextCursorFromResponse);
       }
     } catch (requestError) {
       if (append) {
@@ -244,56 +337,67 @@ export function HomeScreen() {
     }
   }, [fetchFeedPage, prefetchFeedPage]);
 
-  const appendPrefetchedBlogs = useCallback(() => {
-    if (prefetchedPage !== nextLoadPage) {
+  const appendPrefetchedFeedItems = useCallback(() => {
+    if (!nextCursor || prefetchedCursor !== nextCursor) {
       return false;
     }
 
-    const bufferedBlogs = prefetchedBlogs;
-    const nextPage = nextLoadPage + 1;
-    const canLoadMore = bufferedBlogs.length === LOAD_MORE_FEED_PAGE_SIZE;
+    const bufferedItems = prefetchedFeedItems;
+    const nextCursorFromPrefetch = prefetchedNextCursor;
+    const canLoadMore = Boolean(nextCursorFromPrefetch);
 
-    setBlogs((currentBlogs) => mergeUniqueBlogs(currentBlogs, bufferedBlogs));
-    setNextLoadPage(nextPage);
+    setFeedItems((currentItems) => mergeUniqueFeedItems(currentItems, bufferedItems));
+    setNextCursor(nextCursorFromPrefetch);
     setHasMore(canLoadMore);
-    setPrefetchedBlogs([]);
-    setPrefetchedPage(null);
-    setPrefetchFailedPage(null);
+    setPrefetchedFeedItems([]);
+    setPrefetchedCursor(null);
+    setPrefetchedNextCursor(null);
+    setPrefetchFailedCursor(null);
     setShouldAppendPrefetch(false);
     setIsLoadingMore(false);
     setLoadMoreError("");
 
     if (canLoadMore) {
-      void prefetchFeedPage(nextPage);
+      void prefetchFeedPage(nextCursorFromPrefetch);
     }
 
     return true;
-  }, [nextLoadPage, prefetchedBlogs, prefetchedPage, prefetchFeedPage]);
+  }, [
+    nextCursor,
+    prefetchedCursor,
+    prefetchedFeedItems,
+    prefetchedNextCursor,
+    prefetchFeedPage,
+  ]);
 
   useEffect(() => {
     if (!shouldAppendPrefetch) {
       return;
     }
 
-    if (appendPrefetchedBlogs()) {
+    if (appendPrefetchedFeedItems()) {
       return;
     }
 
-    if (prefetchFailedPage === nextLoadPage) {
+    if (nextCursor && prefetchFailedCursor === nextCursor) {
       setShouldAppendPrefetch(false);
       setIsLoadingMore(false);
       setLoadMoreError("Unable to load more posts.");
     }
   }, [
-    appendPrefetchedBlogs,
-    nextLoadPage,
-    prefetchFailedPage,
+    appendPrefetchedFeedItems,
+    nextCursor,
+    prefetchFailedCursor,
     shouldAppendPrefetch,
   ]);
 
   useEffect(() => {
     void loadFeed();
   }, [loadFeed]);
+
+  useEffect(() => {
+    void loadFollowingTargets();
+  }, [loadFollowingTargets]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("tabPress", () => {
@@ -308,7 +412,7 @@ export function HomeScreen() {
       return;
     }
 
-    if (appendPrefetchedBlogs()) {
+    if (appendPrefetchedFeedItems()) {
       return;
     }
 
@@ -320,17 +424,17 @@ export function HomeScreen() {
 
     void loadFeed({
       append: true,
-      pageToLoad: nextLoadPage,
+      cursorToLoad: nextCursor,
     });
   }, [
-    appendPrefetchedBlogs,
+    appendPrefetchedFeedItems,
     hasMore,
     isLoading,
     isLoadingMore,
     isPrefetching,
     isRefreshing,
     loadFeed,
-    nextLoadPage,
+    nextCursor,
   ]);
 
   const handleFeedScroll = useCallback((
@@ -351,10 +455,56 @@ export function HomeScreen() {
       id: "story-me",
       initials: user?.userName?.slice(0, 2).toUpperCase() ?? "ME",
       isSelf: true,
-      label: "Your story",
+      label: "Your posts",
+      targetType: "CREATE_POST",
     },
-    ...mockHomeFeedStories,
+    ...followingTargets
+      .map(followingTargetToStory)
+      .filter((story): story is StoryItem => Boolean(story)),
   ];
+
+  const handleStoryPress = useCallback((story: StoryItem) => {
+    if (story.targetType === "CREATE_POST") {
+      navigation.navigate(routes.create);
+      return;
+    }
+
+    if (story.targetType === "CAFE_PAGE" && story.targetId) {
+      navigation.navigate(routes.cafeDetail, {
+        cafeId: story.targetId,
+      });
+      return;
+    }
+
+    if (story.targetId) {
+      navigation.navigate(routes.otherUserProfile, {
+        userId: story.targetId,
+        userName: story.label,
+      });
+    }
+  }, [navigation]);
+
+  const renderFeedItem = useCallback((item: FeedItemResponse) => {
+    if (item.itemType === "SPONSORED_CAFE" && item.ad) {
+      return (
+        <SponsoredCafeCard
+          ad={item.ad}
+          key={getFeedItemKey(item)}
+          onOpenCafePage={(cafePageId) =>
+            navigation.navigate(routes.cafeDetail, {
+              cafeId: cafePageId,
+            })
+          }
+        />
+      );
+    }
+
+    if (item.blog) {
+      return <BlogFeedCard blog={item.blog} key={getFeedItemKey(item)} />;
+    }
+
+    return null;
+  }, [navigation]);
 
   return (
     <Screen padded={false}>
@@ -370,20 +520,23 @@ export function HomeScreen() {
         contentContainerStyle={styles.feedContent}
         refreshControl={
           <RefreshControl
-            onRefresh={() => void loadFeed({ refreshing: true })}
+            onRefresh={() => {
+              void loadFeed({ refreshing: true });
+              void loadFollowingTargets();
+            }}
             refreshing={isRefreshing}
           />
         }
         showsVerticalScrollIndicator={false}
       >
-        <StoryRail stories={stories} />
+        <StoryRail onStoryPress={handleStoryPress} stories={stories} />
         {isLoading ? (
           <FeedCardSkeletonList />
         ) : error ? (
           <EmptyState description={error} title="Feed unavailable" />
-        ) : blogs.length ? (
+        ) : feedItems.length ? (
           <>
-            <BlogFeedList blogs={blogs} />
+            {feedItems.map(renderFeedItem)}
             {isLoadingMore ? (
               <FeedCardSkeletonList count={2} />
             ) : loadMoreError ? (

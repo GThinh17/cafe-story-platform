@@ -1,4 +1,5 @@
-import { Image, Pressable, StyleSheet, Text, useWindowDimensions } from "react-native";
+import { Pin } from "lucide-react-native";
+import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import type { UserPostPreview } from "../../types";
 import { colors, spacing, typography } from "../../theme";
 
@@ -58,6 +59,11 @@ function PostGridItem({ itemSize, onPress, post }: PostGridItemProps) {
           {post.caption || "CafeStory post"}
         </Text>
       )}
+      {post.isPinned ? (
+        <View style={styles.pinBadge}>
+          <Pin color={colors.white} fill={colors.white} size={14} strokeWidth={2.6} />
+        </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -83,5 +89,17 @@ const styles = StyleSheet.create({
 
   itemPressed: {
     opacity: 0.86,
+  },
+
+  pinBadge: {
+    alignItems: "center",
+    backgroundColor: colors.primary,
+    borderRadius: 14,
+    height: 28,
+    justifyContent: "center",
+    position: "absolute",
+    right: spacing.xs,
+    top: spacing.xs,
+    width: 28,
   },
 });

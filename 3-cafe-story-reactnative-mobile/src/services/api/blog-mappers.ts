@@ -1,4 +1,9 @@
-import type { BlogFeedResponse, BlogResponse, UserPostPreview } from "../../types";
+import type {
+  BlogFeedResponse,
+  BlogResponse,
+  BlogTrendingResponse,
+  UserPostPreview,
+} from "../../types";
 
 export function isUserAuthoredBlog(blog: BlogResponse) {
   return blog.displayAuthorType !== "CAFE_PAGE" && !blog.pageId;
@@ -10,7 +15,34 @@ export function blogResponseToPostPreview(blog: BlogResponse): UserPostPreview {
     commentCount: blog.commentCount ?? 0,
     id: blog.id,
     imageUri: blog.imageUrls?.[0] ?? null,
+    isPinned: blog.isPinned,
     likeCount: blog.likeCount ?? 0,
+  };
+}
+
+export function blogTrendingToFeedBlog(blog: BlogTrendingResponse): BlogFeedResponse {
+  return {
+    authorUserAvatar: blog.authorUserAvatar,
+    authorUserFullName: blog.authorUserFullName,
+    authorUserId: blog.authorUserId,
+    authorUserName: blog.authorUserName,
+    blogId: blog.blogId,
+    commentCount: blog.commentCount ?? 0,
+    contentPreview: blog.contentPreview,
+    createdAt: blog.createdAt,
+    displayAuthorType: blog.displayAuthorType,
+    displayAvatarUrl: blog.displayAvatarUrl,
+    displayName: blog.displayName,
+    imageUrls: blog.imageUrls ?? [],
+    isLike: blog.isLike,
+    isSave: blog.isSave,
+    likeCount: blog.likeCount ?? 0,
+    pageAvatarUrl: blog.pageAvatarUrl,
+    pageCoverUrl: blog.pageCoverUrl,
+    pageId: blog.pageId,
+    pageName: blog.pageName,
+    rankPosition: blog.rankPosition,
+    shareCount: blog.shareCount ?? 0,
   };
 }
 

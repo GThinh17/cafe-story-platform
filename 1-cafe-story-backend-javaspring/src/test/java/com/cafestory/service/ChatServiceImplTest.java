@@ -630,7 +630,31 @@ class ChatServiceImplTest {
     }
 
     @Test
-    void sendMessage_success_usesCafePageSenderContext_TC004() {
+    void getCafePageConversations_success_returnsPageMailboxOnly_TC004() {
+        User owner = user(UUID.randomUUID(), "owner");
+        User visitor = user(UUID.randomUUID(), "visitor");
+        CafePage cafePage = cafePage(UUID.randomUUID(), owner);
+        Conversation conversation = conversation(ConversationType.CAFE_PAGE);
+        conversation.setCafePage(cafePage);
+
+        when(userValidator.validateUserExists(owner.getUserId())).thenReturn(owner);
+        when(conversationRepository.findCafePageConversationsOrderByLatestActivity(cafePage.getId()))
+                .thenReturn(List.of(conversation));
+        when(chatMemberRepository.findByConversationId(conversation.getId()))
+                .thenReturn(List.of(member(visitor, MemberRole.MEMBER), member(owner, MemberRole.OWNER)));
+
+        var result = chatService.getCafePageConversations(cafePage.getId(), owner.getUserId());
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getType()).isEqualTo(ConversationType.CAFE_PAGE);
+        assertThat(result.getFirst().getTargetType()).isEqualTo(ChatTargetType.CAFE_PAGE);
+        assertThat(result.getFirst().getTargetCafePageId()).isEqualTo(cafePage.getId());
+        assertThat(result.getFirst().isCanReplyAsCafePage()).isTrue();
+        verify(cafePageValidator, atLeastOnce()).validateUserCanManagePage(cafePage.getId(), owner.getUserId());
+    }
+
+    @Test
+    void sendMessage_success_usesCafePageSenderContext_TC005() {
         User visitor = user(UUID.randomUUID(), "visitor");
         User owner = user(UUID.randomUUID(), "owner");
         CafePage cafePage = cafePage(UUID.randomUUID(), owner);
@@ -661,7 +685,7 @@ class ChatServiceImplTest {
     }
 
     @Test
-    void sendMessage_error_rejectsCafePageSenderInDirectConversation_TC005() {
+    void sendMessage_error_rejectsCafePageSenderInDirectConversation_TC006() {
         User firstUser = user(UUID.randomUUID(), "first");
         Conversation conversation = conversation(ConversationType.DIRECT);
         SendMessageRequestDTO request = sendTextRequest(firstUser.getUserId(), "Hello");

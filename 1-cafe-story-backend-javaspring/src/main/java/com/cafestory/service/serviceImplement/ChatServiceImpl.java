@@ -151,6 +151,17 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<ConversationResponseDTO> getCafePageConversations(UUID cafePageId, UUID viewerUserId) {
+        userValidator.validateUserExists(viewerUserId);
+        cafePageValidator.validateUserCanManagePage(cafePageId, viewerUserId);
+        return conversationRepository.findCafePageConversationsOrderByLatestActivity(cafePageId)
+                .stream()
+                .map(conversation -> toConversationResponse(conversation, viewerUserId))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<ChatMessageResponseDTO> getMessagesByConversationId(UUID conversationId, UUID userId, int page, int size) {
         Conversation conversation = validateConversationExists(conversationId);
         validateUserCanAccessConversation(conversation, userId);
