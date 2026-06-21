@@ -50,6 +50,9 @@ type CommentListItem = CommentResponse & {
 
 const reactions = ["❤️", "🙌", "🔥", "👏", "🥲", "😍", "😮", "😂"];
 
+const COLLAPSED_COMMENT_LINES = 3;
+const LONG_COMMENT_THRESHOLD = 160;
+
 function formatCommentTime(value: string | null) {
   if (!value) {
     return "now";
@@ -121,6 +124,8 @@ function CommentItem({
   const authorName = getCommentAuthor(comment);
   const isReply = level > 0;
   const isPending = Boolean(comment.isPending);
+  const isLongComment = comment.content.length > LONG_COMMENT_THRESHOLD;
+  const [isExpanded, setIsExpanded] = useState(!isLongComment);
 
   return (
     <View
@@ -146,10 +151,27 @@ function CommentItem({
       <View style={styles.commentBody}>
         <View style={styles.commentContentRow}>
           <View style={styles.commentTextBlock}>
-            <Text style={styles.commentLine}>
+            <Text
+              numberOfLines={isExpanded ? undefined : COLLAPSED_COMMENT_LINES}
+              style={styles.commentLine}
+            >
               <Text style={styles.commentAuthor}>{authorName} </Text>
               {renderCommentContent(comment.content)}
             </Text>
+            {isLongComment ? (
+              <Pressable
+                accessibilityLabel={isExpanded ? "Collapse comment" : "Expand comment"}
+                accessibilityRole="button"
+                disabled={isPending}
+                onPress={() => setIsExpanded((currentValue) => !currentValue)}
+                style={({ pressed }) => [
+                  styles.moreTextButton,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={styles.moreText}>{isExpanded ? "Less" : "More"}</Text>
+              </Pressable>
+            ) : null}
             <View style={styles.commentMetaRow}>
               <Text style={styles.commentMeta}>{formatCommentTime(comment.createdAt)}</Text>
               {isPending ? (
@@ -812,6 +834,15 @@ const styles = StyleSheet.create({
   },
   mention: {
     color: colors.link,
+  },
+  moreText: {
+    color: colors.primary,
+    fontSize: typography.caption,
+    fontWeight: "900",
+  },
+  moreTextButton: {
+    alignSelf: "flex-start",
+    marginTop: spacing.xs,
   },
   overlay: {
     flex: 1,

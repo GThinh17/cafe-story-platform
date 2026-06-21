@@ -4,9 +4,11 @@ import com.cafestory.entity.Role;
 import com.cafestory.entity.enums.UserRole;
 import com.cafestory.repository.RoleRepository;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 @Component
+@ConditionalOnProperty(name = "app.data-initializer.enabled", havingValue = "true", matchIfMissing = true)
 public class RoleDataInitializer implements CommandLineRunner {
 
     private final RoleRepository roleRepository;

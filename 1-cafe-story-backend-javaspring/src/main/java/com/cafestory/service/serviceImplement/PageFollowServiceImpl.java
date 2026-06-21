@@ -44,7 +44,11 @@ public class PageFollowServiceImpl implements PageFollowService {
     @Caching(evict = {
             @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, allEntries = true),
             @CacheEvict(cacheNames = CacheConfig.RECOMMENDATION_CARDS_CACHE, allEntries = true),
-            @CacheEvict(cacheNames = CacheConfig.PERSONALIZED_FEED_RANKING_CACHE, allEntries = true)
+            @CacheEvict(cacheNames = CacheConfig.PERSONALIZED_FEED_RANKING_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_FOLLOW_LIST_CACHE, key = "'following-targets:' + #p1 + ':ALL'"),
+            @CacheEvict(cacheNames = CacheConfig.USER_FOLLOW_LIST_CACHE, key = "'following-targets:' + #p1 + ':USER'"),
+            @CacheEvict(cacheNames = CacheConfig.USER_FOLLOW_LIST_CACHE, key = "'following-targets:' + #p1 + ':CAFE_PAGE'"),
+            @CacheEvict(cacheNames = CacheConfig.USER_FOLLOWING_COUNT_CACHE, key = "#p1")
     })
     public PageFollowResponseDTO followPage(UUID cafePageId, UUID userId) {
         CafePage cafePage = cafePageValidator.validateCafePageExists(cafePageId);
@@ -69,7 +73,11 @@ public class PageFollowServiceImpl implements PageFollowService {
     @Caching(evict = {
             @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, allEntries = true),
             @CacheEvict(cacheNames = CacheConfig.RECOMMENDATION_CARDS_CACHE, allEntries = true),
-            @CacheEvict(cacheNames = CacheConfig.PERSONALIZED_FEED_RANKING_CACHE, allEntries = true)
+            @CacheEvict(cacheNames = CacheConfig.PERSONALIZED_FEED_RANKING_CACHE, allEntries = true),
+            @CacheEvict(cacheNames = CacheConfig.USER_FOLLOW_LIST_CACHE, key = "'following-targets:' + #p1 + ':ALL'"),
+            @CacheEvict(cacheNames = CacheConfig.USER_FOLLOW_LIST_CACHE, key = "'following-targets:' + #p1 + ':USER'"),
+            @CacheEvict(cacheNames = CacheConfig.USER_FOLLOW_LIST_CACHE, key = "'following-targets:' + #p1 + ':CAFE_PAGE'"),
+            @CacheEvict(cacheNames = CacheConfig.USER_FOLLOWING_COUNT_CACHE, key = "#p1")
     })
     public void unfollowPage(UUID cafePageId, UUID userId) {
         cafePageValidator.validateCafePageExists(cafePageId);

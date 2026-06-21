@@ -1,6 +1,9 @@
 package com.cafestory.controller;
 
+import com.cafestory.dto.responseDTO.FollowTargetResponseDTO;
 import com.cafestory.dto.responseDTO.UserFollowResponseDTO;
+import com.cafestory.entity.enums.FollowTargetFilter;
+import com.cafestory.entity.enums.FollowTargetType;
 import com.cafestory.service.serviceInterface.UserFollowService;
 import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.junit.jupiter.api.Test;
@@ -75,11 +78,36 @@ class UserFollowControllerTest {
         verify(userFollowService).getFollowingByUserId(userId);
     }
 
+    @Test
+    void getFollowingTargetsByUserId_success_TC005() {
+        UUID userId = UUID.randomUUID();
+        List<FollowTargetResponseDTO> response = List.of(followTargetResponse());
+
+        when(userFollowService.getFollowingTargetsByUserId(userId, FollowTargetFilter.ALL)).thenReturn(response);
+
+        List<FollowTargetResponseDTO> result = userFollowController.getFollowingTargetsByUserId(
+                userId,
+                FollowTargetFilter.ALL);
+
+        assertThat(result).isEqualTo(response);
+        verify(userFollowService).getFollowingTargetsByUserId(userId, FollowTargetFilter.ALL);
+    }
+
     private UserFollowResponseDTO response() {
         UserFollowResponseDTO response = new UserFollowResponseDTO();
         response.setId(UUID.randomUUID());
         response.setFollowerUserId(UUID.randomUUID());
         response.setFollowingUserId(UUID.randomUUID());
+        return response;
+    }
+
+    private FollowTargetResponseDTO followTargetResponse() {
+        FollowTargetResponseDTO response = new FollowTargetResponseDTO();
+        response.setFollowId(UUID.randomUUID());
+        response.setTargetId(UUID.randomUUID());
+        response.setTargetType(FollowTargetType.CAFE_PAGE);
+        response.setCafePageId(response.getTargetId());
+        response.setDisplayName("Cafe Story");
         return response;
     }
 

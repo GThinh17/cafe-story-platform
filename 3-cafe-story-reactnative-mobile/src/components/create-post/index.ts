@@ -1,3 +1,4 @@
+export * from "./create-post-bottom-bar";
 export * from "./create-post-compose-step";
 export * from "./create-post-header";
 export * from "./create-post-location-picker-modal";

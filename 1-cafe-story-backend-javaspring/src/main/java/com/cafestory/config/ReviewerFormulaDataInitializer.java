@@ -6,6 +6,7 @@ import com.cafestory.entity.enums.ReviewerBadge;
 import com.cafestory.repository.ReviewerBadgeThresholdRepository;
 import com.cafestory.repository.ReviewerFormulaRepository;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -13,6 +14,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Component
+@ConditionalOnProperty(name = "app.data-initializer.enabled", havingValue = "true", matchIfMissing = true)
 public class ReviewerFormulaDataInitializer implements CommandLineRunner {
 
     private final ReviewerFormulaRepository formulaRepository;

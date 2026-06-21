@@ -1,4 +1,5 @@
-import { Image, Pressable, StyleSheet, Text, useWindowDimensions } from "react-native";
+import { Pin } from "lucide-react-native";
+import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import type { UserPostPreview } from "../../types";
 import { colors, spacing, typography } from "../../theme";
 
@@ -8,9 +9,14 @@ const COLUMN_COUNT = 3;
 type UserPostGridProps = {
   onPostPress?: (post: UserPostPreview) => void;
   posts: UserPostPreview[];
+  showPinBadges?: boolean;
 };
 
-export function UserPostGrid({ onPostPress, posts }: UserPostGridProps) {
+export function UserPostGrid({
+  onPostPress,
+  posts,
+  showPinBadges = true,
+}: UserPostGridProps) {
   const { width } = useWindowDimensions();
   const itemSize = (width - GRID_GAP * (COLUMN_COUNT - 1)) / COLUMN_COUNT;
 
@@ -22,6 +28,7 @@ export function UserPostGrid({ onPostPress, posts }: UserPostGridProps) {
           key={post.id}
           onPress={onPostPress}
           post={post}
+          showPinBadge={showPinBadges}
         />
       ))}
     </>
@@ -32,9 +39,15 @@ type PostGridItemProps = {
   itemSize: number;
   onPress?: (post: UserPostPreview) => void;
   post: UserPostPreview;
+  showPinBadge: boolean;
 };
 
-function PostGridItem({ itemSize, onPress, post }: PostGridItemProps) {
+function PostGridItem({
+  itemSize,
+  onPress,
+  post,
+  showPinBadge,
+}: PostGridItemProps) {
   const imageSource = post.image ?? (post.imageUri ? { uri: post.imageUri } : null);
 
   return (
@@ -58,6 +71,11 @@ function PostGridItem({ itemSize, onPress, post }: PostGridItemProps) {
           {post.caption || "CafeStory post"}
         </Text>
       )}
+      {showPinBadge && post.isPinned ? (
+        <View style={styles.pinBadge}>
+          <Pin color={colors.white} fill={colors.white} size={14} strokeWidth={2.6} />
+        </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -83,5 +101,17 @@ const styles = StyleSheet.create({
 
   itemPressed: {
     opacity: 0.86,
+  },
+
+  pinBadge: {
+    alignItems: "center",
+    backgroundColor: colors.primary,
+    borderRadius: 14,
+    height: 28,
+    justifyContent: "center",
+    position: "absolute",
+    right: spacing.xs,
+    top: spacing.xs,
+    width: 28,
   },
 });

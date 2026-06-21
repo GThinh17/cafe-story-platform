@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
-import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { RouteProp } from "@react-navigation/native";
 import {
   ConversationRow,
   ConversationTopBar,
@@ -15,9 +16,9 @@ import { useAuth } from "../../features/auth";
 import { mockOnlineUsers } from "../../mocks";
 import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
-import { getConversations } from "../../services/api";
+import { getCafePageConversations, getConversations } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
-import type { ConversationListItem, ConversationResponse } from "../../types";
+import type { ChatTargetType, ConversationListItem, ConversationResponse } from "../../types";
 
 function formatConversationTime(value: string | null) {
   if (!value) {
@@ -49,36 +50,93 @@ function formatConversationTime(value: string | null) {
 function mapConversationToListItem(
   conversation: ConversationResponse,
   currentUserId?: string,
+  isCafePageInbox = false,
 ): ConversationListItem {
+  const targetType: ChatTargetType =
+    conversation.targetType ??
+    (conversation.type === "CAFE_PAGE"
+      ? "CAFE_PAGE"
+      : conversation.type === "GROUP"
+        ? "GROUP"
+        : "USER");
   const targetMember = conversation.members?.find(
     (member) => member.userId !== currentUserId,
   );
+  const customerMember =
+    conversation.members?.find((member) => member.role === "MEMBER") ??
+    targetMember;
+  const displayMember = isCafePageInbox && targetType === "CAFE_PAGE"
+    ? customerMember
+    : targetMember;
+  const targetUserId =
+    targetType === "USER" || isCafePageInbox
+      ? conversation.targetUserId ?? displayMember?.userId ?? null
+      : null;
+  const targetCafePageId =
+    targetType === "CAFE_PAGE"
+      ? conversation.targetCafePageId ?? conversation.targetId ?? null
+      : null;
+  const fallbackName =
+    targetType === "CAFE_PAGE"
+      ? "Cafe page"
+      : targetType === "GROUP"
+        ? "Group chat"
+        : "CafeStory user";
+  const pageDisplayName = conversation.chatName || conversation.userName || fallbackName;
+  const memberDisplayName =
+    displayMember?.userFullName ||
+    displayMember?.userName ||
+    conversation.userName ||
+    fallbackName;
+  const displayName =
+    isCafePageInbox && targetType === "CAFE_PAGE"
+      ? memberDisplayName
+      : pageDisplayName;
 
   return {
-    avatarUri: conversation.chatAvatar || targetMember?.userAvatar || null,
+    avatarUri:
+      targetType === "CAFE_PAGE"
+        ? isCafePageInbox
+          ? displayMember?.userAvatar || null
+          : conversation.chatAvatar || null
+        : conversation.chatAvatar || displayMember?.userAvatar || null,
+    canReplyAsCafePage: conversation.canReplyAsCafePage,
     id: conversation.id,
     lastMessage:
       conversation.lastMessage ||
       conversation.latestMessagePreview ||
       "No messages yet",
     name:
-      conversation.chatName ||
-      targetMember?.userFullName ||
-      targetMember?.userName ||
-      conversation.userName ||
-      "CafeStory user",
-    targetUserId: targetMember?.userId ?? null,
+      targetType === "CAFE_PAGE"
+        ? displayName
+        : conversation.chatName ||
+          displayMember?.userFullName ||
+          displayMember?.userName ||
+          conversation.userName ||
+          fallbackName,
+    targetCafePageId,
+    targetType,
+    targetUserId,
     time: formatConversationTime(
       conversation.lastMessageAt || conversation.updatedAt || conversation.createdAt,
     ),
-    userName: conversation.userName || targetMember?.userName || "",
+    userName:
+      targetType === "CAFE_PAGE"
+        ? isCafePageInbox
+          ? displayMember?.userName || ""
+          : pageDisplayName
+        : conversation.userName || displayMember?.userName || "",
   };
 }
 
 export function ConversationScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route =
+    useRoute<RouteProp<RootStackParamList, typeof routes.conversations>>();
   const { user } = useAuth();
+  const cafePageId = route.params?.cafePageId;
+  const cafePageName = route.params?.cafePageName;
   const [conversationItems, setConversationItems] = useState<
     ConversationListItem[]
   >([]);
@@ -97,10 +155,12 @@ export function ConversationScreen() {
     setError("");
 
     try {
-      const response = await getConversations();
+      const response = cafePageId
+        ? await getCafePageConversations(cafePageId)
+        : await getConversations();
       setConversationItems(
         response.map((conversation) =>
-          mapConversationToListItem(conversation, user?.userId),
+          mapConversationToListItem(conversation, user?.userId, Boolean(cafePageId)),
         ),
       );
     } catch (requestError) {
@@ -113,7 +173,7 @@ export function ConversationScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [user?.userId]);
+  }, [cafePageId, user?.userId]);
 
   useFocusEffect(
     useCallback(() => {
@@ -140,7 +200,10 @@ export function ConversationScreen() {
     navigation.navigate(routes.chatDetail, {
       chatAvatar: conversation.avatarUri,
       chatName: conversation.name,
+      canReplyAsCafePage: conversation.canReplyAsCafePage,
       conversationId: conversation.id,
+      targetCafePageId: conversation.targetCafePageId,
+      targetType: conversation.targetType,
       targetUserId: conversation.targetUserId,
       userName: conversation.userName,
     });
@@ -150,16 +213,18 @@ export function ConversationScreen() {
     <Screen padded={false}>
       <ConversationTopBar
         onBackPress={() => navigation.goBack()}
-        onEditPress={() => navigation.navigate(routes.newChat)}
-        title="Messages"
+        onEditPress={cafePageId ? undefined : () => navigation.navigate(routes.newChat)}
+        title={cafePageId ? `${cafePageName || "Cafe Page"} messages` : "Messages"}
       />
 
       <FlatList
         ListHeaderComponent={
           <View style={styles.headerContent}>
             <MessageSearch onChangeText={setQuery} value={query} />
-            <OnlineUserRail users={mockOnlineUsers} />
-            <Text style={styles.sectionTitle}>Conversations</Text>
+            {cafePageId ? null : <OnlineUserRail users={mockOnlineUsers} />}
+            <Text style={styles.sectionTitle}>
+              {cafePageId ? "Cafe page conversations" : "Conversations"}
+            </Text>
           </View>
         }
         contentContainerStyle={styles.content}
@@ -189,7 +254,9 @@ export function ConversationScreen() {
             <View style={styles.emptyState}>
               <Text style={styles.emptyTitle}>No conversations yet</Text>
               <Text style={styles.emptyDescription}>
-                Start a new chat from the message button above.
+                {cafePageId
+                  ? "Customer conversations for this cafe page will appear here."
+                  : "Start a new chat from the message button above."}
               </Text>
             </View>
           )

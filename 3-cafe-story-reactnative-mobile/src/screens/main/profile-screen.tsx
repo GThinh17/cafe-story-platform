@@ -1,5 +1,6 @@
 import {
   AtSign,
+  Award,
   Pencil,
   Plus,
   UserPlus,
@@ -150,6 +151,28 @@ function loadBlogsForProfileTab(tab: ProfileContentTab, userId: string): Promise
   }
 }
 
+function timestampForPost(post: UserPostPreview) {
+  const timestamp = post.createdAt ? Date.parse(post.createdAt) : 0;
+
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function sortProfileTabPosts(tab: ProfileContentTab, posts: UserPostPreview[]) {
+  if (tab !== "posts") {
+    return posts;
+  }
+
+  return [...posts].sort((leftPost, rightPost) => {
+    const pinnedDelta = Number(Boolean(rightPost.isPinned)) - Number(Boolean(leftPost.isPinned));
+
+    if (pinnedDelta !== 0) {
+      return pinnedDelta;
+    }
+
+    return timestampForPost(rightPost) - timestampForPost(leftPost);
+  });
+}
+
 function isOwnedActiveCafePage(page: CafePageResponse) {
   return page.status === "ACTIVE" && page.pageActive === true;
 }
@@ -297,10 +320,14 @@ export function ProfileScreen() {
     try {
       const blogs = await loadBlogsForProfileTab(tab, userId);
       const userBlogs = blogs.filter(isUserAuthoredBlog);
+      const nextPosts = sortProfileTabPosts(
+        tab,
+        userBlogs.map(blogResponseToPostPreview),
+      );
 
       setTabPosts((currentPosts) => ({
         ...currentPosts,
-        [tab]: userBlogs.map(blogResponseToPostPreview),
+        [tab]: nextPosts,
       }));
       setVisiblePostCounts((currentCounts) => ({
         ...currentCounts,
@@ -905,6 +932,24 @@ export function ProfileScreen() {
             </Text>
           </View>
 
+          {shouldShowReviewerDashboardAction ? (
+            <Pressable
+              accessibilityLabel="Open reviewer dashboard"
+              accessibilityRole="button"
+              onPress={openReviewerDashboard}
+              style={({ pressed }) => [
+                styles.profileChip,
+                styles.reviewerChip,
+                pressed && styles.actionPressed,
+              ]}
+            >
+              <Award color={colors.tertiaryStrong} size={16} strokeWidth={2.5} />
+              <Text numberOfLines={1} style={styles.reviewerChipText}>
+                Reviewer
+              </Text>
+            </Pressable>
+          ) : null}
+
           <Pressable
             accessibilityLabel="Open profile suggestions"
             accessibilityRole="button"
@@ -987,7 +1032,11 @@ export function ProfileScreen() {
               />
             </View>
           ) : visiblePosts.length > 0 ? (
-            <UserPostGrid onPostPress={openUserPosts} posts={visiblePosts} />
+            <UserPostGrid
+              onPostPress={openUserPosts}
+              posts={visiblePosts}
+              showPinBadges={activeContentTab === "posts"}
+            />
           ) : (
             <View style={styles.emptyPosts}>
               <EmptyState
@@ -1226,6 +1275,17 @@ const styles = StyleSheet.create({
 
   profileChipText: {
     color: colors.foreground,
+    fontSize: typography.label,
+    fontWeight: "900",
+  },
+
+  reviewerChip: {
+    backgroundColor: colors.tertiarySoft,
+    borderColor: colors.tertiary,
+  },
+
+  reviewerChipText: {
+    color: colors.tertiaryStrong,
     fontSize: typography.label,
     fontWeight: "900",
   },

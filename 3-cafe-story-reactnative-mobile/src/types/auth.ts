@@ -26,6 +26,10 @@ export type AuthResponse = {
   user: AuthUser;
 };
 
+export type UsernameSuggestionResponse = {
+  suggestions: string[];
+};
+
 export type LoginRequest = {
   identifier: string;
   password: string;

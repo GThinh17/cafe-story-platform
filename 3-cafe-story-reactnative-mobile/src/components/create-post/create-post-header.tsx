@@ -5,11 +5,12 @@ import { colors, spacing, typography } from "../../theme";
 
 type CreatePostHeaderProps = {
   actionDisabled?: boolean;
-  actionLabel: string;
+  actionLabel?: string;
   isBack?: boolean;
   isSubmitting?: boolean;
-  onAction: () => void;
+  onAction?: () => void;
   onLeftPress: () => void;
+  showAction?: boolean;
   title: string;
 };
 
@@ -20,6 +21,7 @@ export function CreatePostHeader({
   isSubmitting = false,
   onAction,
   onLeftPress,
+  showAction = true,
   title,
 }: CreatePostHeaderProps) {
   const LeftIcon = isBack ? ChevronLeft : X;
@@ -40,21 +42,25 @@ export function CreatePostHeader({
         {title}
       </Text>
 
-      <Pressable
-        accessibilityLabel={actionLabel}
-        accessibilityRole="button"
-        disabled={disabled}
-        onPress={onAction}
-        style={({ pressed }) => [
-          styles.actionButton,
-          pressed && !disabled && styles.pressed,
-          disabled && styles.disabled,
-        ]}
-      >
-        <Text style={styles.actionText}>
-          {isSubmitting ? "Posting" : actionLabel}
-        </Text>
-      </Pressable>
+      {showAction ? (
+        <Pressable
+          accessibilityLabel={actionLabel}
+          accessibilityRole="button"
+          disabled={disabled}
+          onPress={onAction}
+          style={({ pressed }) => [
+            styles.actionButton,
+            pressed && !disabled && styles.pressed,
+            disabled && styles.disabled,
+          ]}
+        >
+          <Text style={styles.actionText}>
+            {isSubmitting ? "Posting" : actionLabel}
+          </Text>
+        </Pressable>
+      ) : (
+        <View style={styles.actionSpacer} />
+      )}
     </View>
   );
 }
@@ -66,6 +72,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minWidth: 72,
     paddingHorizontal: spacing.sm,
+  },
+  actionSpacer: {
+    minWidth: 72,
   },
   actionText: {
     color: colors.link,

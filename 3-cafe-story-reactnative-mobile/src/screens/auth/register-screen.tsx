@@ -1,12 +1,34 @@
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Button, Screen, TextField } from "../../components";
 import { useAuth } from "../../features/auth";
 import { routes } from "../../navigation";
+import { getUsernameSuggestions } from "../../services/api";
 import type { AuthStackParamList } from "../../navigation";
 import { colors, spacing, typography } from "../../theme";
+
+function localUsernameFallback(value: string) {
+  const base = value
+    .trim()
+    .toLowerCase()
+    .replace(/@.*$/, "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, ".")
+    .replace(/^\.+|\.+$/g, "");
+
+  if (!base) {
+    return [];
+  }
+
+  return [
+    base,
+    `${base}.${Math.floor(100 + Math.random() * 900)}`,
+    `${base}_${Math.floor(1000 + Math.random() * 9000)}`,
+  ];
+}
 
 export function RegisterScreen() {
   const { register } = useAuth();
@@ -15,9 +37,62 @@ export function RegisterScreen() {
   const [userFullName, setUserFullName] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [userName, setUserName] = useState("");
+  const [usernameSuggestions, setUsernameSuggestions] = useState<string[]>([]);
+  const [didEditUsername, setDidEditUsername] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const suggestionSource = useMemo(
+    () => userFullName.trim() || userEmail.trim().replace(/@.*$/, ""),
+    [userEmail, userFullName],
+  );
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function loadSuggestions() {
+      if (suggestionSource.length < 2) {
+        setUsernameSuggestions([]);
+        return;
+      }
+
+      try {
+        const response = await getUsernameSuggestions(suggestionSource);
+        const suggestions = response.suggestions?.length
+          ? response.suggestions
+          : localUsernameFallback(suggestionSource);
+
+        if (!isActive) {
+          return;
+        }
+
+        setUsernameSuggestions(suggestions.slice(0, 3));
+        if (!didEditUsername && !userName.trim() && suggestions[0]) {
+          setUserName(suggestions[0]);
+        }
+      } catch {
+        const suggestions = localUsernameFallback(suggestionSource);
+
+        if (!isActive) {
+          return;
+        }
+
+        setUsernameSuggestions(suggestions);
+        if (!didEditUsername && !userName.trim() && suggestions[0]) {
+          setUserName(suggestions[0]);
+        }
+      }
+    }
+
+    const timeoutId = setTimeout(() => {
+      void loadSuggestions();
+    }, 320);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timeoutId);
+    };
+  }, [didEditUsername, suggestionSource, userName]);
 
   async function handleRegister() {
     setError("");
@@ -76,10 +151,42 @@ export function RegisterScreen() {
         <TextField
           autoCapitalize="none"
           label="Username"
-          onChangeText={setUserName}
+          onChangeText={(nextUserName) => {
+            setDidEditUsername(true);
+            setUserName(nextUserName);
+          }}
           placeholder="cafestory_user"
           value={userName}
         />
+        {usernameSuggestions.length ? (
+          <View style={styles.suggestionRow}>
+            {usernameSuggestions.map((suggestion) => (
+              <Pressable
+                accessibilityLabel={`Use username ${suggestion}`}
+                accessibilityRole="button"
+                key={suggestion}
+                onPress={() => {
+                  setDidEditUsername(true);
+                  setUserName(suggestion);
+                }}
+                style={({ pressed }) => [
+                  styles.suggestionChip,
+                  userName === suggestion && styles.suggestionChipActive,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.suggestionText,
+                    userName === suggestion && styles.suggestionTextActive,
+                  ]}
+                >
+                  {suggestion}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
         <TextField
           label="Password"
           onChangeText={setPassword}
@@ -141,6 +248,35 @@ const styles = StyleSheet.create({
   switch: {
     alignItems: "center",
     paddingVertical: spacing.sm,
+  },
+  pressed: {
+    opacity: 0.72,
+  },
+  suggestionChip: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  suggestionChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  suggestionRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginTop: -spacing.sm,
+  },
+  suggestionText: {
+    color: colors.primary,
+    fontSize: typography.caption,
+    fontWeight: "900",
+  },
+  suggestionTextActive: {
+    color: colors.white,
   },
   switchText: {
     color: colors.primary,

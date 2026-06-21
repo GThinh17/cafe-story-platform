@@ -53,6 +53,14 @@ export async function createBlog(request: BlogCreateRequest) {
   return response;
 }
 
+export function getBlogs() {
+  return cachedApiCall("blogs:list", apiCacheTtl.dynamic, () =>
+    apiFetch<BlogResponse[]>(apiEndpoints.blogs.list, {
+      method: "GET",
+    }),
+  );
+}
+
 export function getBlogById(blogId: string) {
   return cachedApiCall(`blogs:detail:${blogId}`, apiCacheTtl.dynamic, () =>
     apiFetch<BlogResponse>(apiEndpoints.blogs.byId(blogId), {
@@ -90,9 +98,15 @@ export function getSavedBlogsByUser(userId: string) {
   );
 }
 
-export function getSharedBlogsByUser(userId: string) {
-  return cachedApiCall(`blogs:user:${userId}:shared`, apiCacheTtl.dynamic, () =>
-    apiFetch<BlogResponse[]>(apiEndpoints.blogs.sharedByUser(userId), {
+export function getSharedBlogsByUser(
+  userId: string,
+  params: { sort?: "recent" | "shareCount" } = {},
+) {
+  const path = withQuery(apiEndpoints.blogs.sharedByUser(userId), {
+      sort: params.sort === "shareCount" ? "shareCount" : undefined,
+    });
+  return cachedApiCall(`blogs:user:${userId}:shared:${params.sort ?? "recent"}`, apiCacheTtl.dynamic, () =>
+    apiFetch<BlogResponse[]>(path, {
       method: "GET",
     }),
   );

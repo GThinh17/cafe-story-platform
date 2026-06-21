@@ -1,5 +1,6 @@
 package com.cafestory.dto.responseDTO;
 
+import com.cafestory.entity.enums.ChatSenderContextType;
 import com.cafestory.entity.enums.MessageStatus;
 import com.cafestory.entity.enums.MessageType;
 import lombok.Data;
@@ -16,6 +17,14 @@ public class ChatMessageResponseDTO {
     private UUID conversationId;
 
     private UUID senderId;
+
+    private ChatSenderContextType senderContextType;
+
+    private UUID senderCafePageId;
+
+    private String senderDisplayName;
+
+    private String senderAvatar;
 
     private MessageType type;
 

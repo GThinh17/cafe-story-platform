@@ -451,3 +451,335 @@
 // return request;
 // }
 // }
+
+package com.cafestory.service;
+
+import com.cafestory.dto.requestDTO.CreateCafePageConversationRequestDTO;
+import com.cafestory.dto.requestDTO.CreateDirectConversationRequestDTO;
+import com.cafestory.dto.requestDTO.SendMessageRequestDTO;
+import com.cafestory.entity.CafePage;
+import com.cafestory.entity.ChatMember;
+import com.cafestory.entity.ChatMessage;
+import com.cafestory.entity.Conversation;
+import com.cafestory.entity.User;
+import com.cafestory.entity.enums.ChatSenderContextType;
+import com.cafestory.entity.enums.ChatTargetType;
+import com.cafestory.entity.enums.ConversationType;
+import com.cafestory.entity.enums.MemberRole;
+import com.cafestory.entity.enums.MessageType;
+import com.cafestory.mapper.ChatMapper;
+import com.cafestory.repository.CafePageRepository;
+import com.cafestory.repository.ChatMemberRepository;
+import com.cafestory.repository.ChatMessageRepository;
+import com.cafestory.repository.ConversationRepository;
+import com.cafestory.service.serviceImplement.ChatServiceImpl;
+import com.cafestory.service.serviceInterface.FirebaseChatService;
+import com.cafestory.service.serviceInterface.NotificationService;
+import com.cafestory.validation.CafePageValidator;
+import com.cafestory.validation.UserValidator;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class ChatServiceImplTest {
+
+    @Mock
+    private ConversationRepository conversationRepository;
+
+    @Mock
+    private ChatMemberRepository chatMemberRepository;
+
+    @Mock
+    private ChatMessageRepository chatMessageRepository;
+
+    @Mock
+    private CafePageRepository cafePageRepository;
+
+    @Mock
+    private CafePageValidator cafePageValidator;
+
+    @Mock
+    private UserValidator userValidator;
+
+    @Mock
+    private FirebaseChatService firebaseChatService;
+
+    @Mock
+    private NotificationService notificationService;
+
+    @Mock
+    private SimpMessagingTemplate messagingTemplate;
+
+    private ChatServiceImpl chatService;
+
+    @BeforeEach
+    void setUp() {
+        chatService = new ChatServiceImpl(
+                conversationRepository,
+                chatMemberRepository,
+                chatMessageRepository,
+                cafePageRepository,
+                cafePageValidator,
+                userValidator,
+                new ChatMapper(),
+                firebaseChatService,
+                notificationService,
+                messagingTemplate);
+    }
+
+    @Test
+    void createOrGetCafePageConversation_success_createsPageTargetConversation_TC001() {
+        User visitor = user(UUID.randomUUID(), "visitor");
+        User owner = user(UUID.randomUUID(), "owner");
+        CafePage cafePage = cafePage(UUID.randomUUID(), owner);
+        CreateCafePageConversationRequestDTO request = new CreateCafePageConversationRequestDTO();
+        request.setUserId(visitor.getUserId());
+        request.setCafePageId(cafePage.getId());
+
+        mockConversationSave();
+        mockMemberSave();
+        when(cafePageRepository.findById(cafePage.getId())).thenReturn(Optional.of(cafePage));
+        when(userValidator.validateUserExists(visitor.getUserId())).thenReturn(visitor);
+        when(conversationRepository.findCafePageConversation(visitor.getUserId(), cafePage.getId()))
+                .thenReturn(Optional.empty());
+        when(chatMemberRepository.findByConversationId(any(UUID.class)))
+                .thenReturn(List.of(member(visitor, MemberRole.MEMBER), member(owner, MemberRole.OWNER)));
+
+        var result = chatService.createOrGetCafePageConversation(request);
+
+        assertThat(result.getType()).isEqualTo(ConversationType.CAFE_PAGE);
+        assertThat(result.getTargetType()).isEqualTo(ChatTargetType.CAFE_PAGE);
+        assertThat(result.getTargetId()).isEqualTo(cafePage.getId());
+        assertThat(result.getTargetCafePageId()).isEqualTo(cafePage.getId());
+        assertThat(result.getTargetUserId()).isNull();
+        assertThat(result.getChatName()).isEqualTo(cafePage.getName());
+        assertThat(result.getChatAvatar()).isEqualTo(cafePage.getAvatarUrl());
+        verify(conversationRepository, never()).findDirectConversation(visitor.getUserId(), owner.getUserId());
+        verify(firebaseChatService).saveConversation(result);
+    }
+
+    @Test
+    void createOrGetCafePageConversation_success_reusesPageTargetConversation_TC002() {
+        User visitor = user(UUID.randomUUID(), "visitor");
+        User owner = user(UUID.randomUUID(), "owner");
+        CafePage cafePage = cafePage(UUID.randomUUID(), owner);
+        Conversation conversation = conversation(ConversationType.CAFE_PAGE);
+        conversation.setCafePage(cafePage);
+        CreateCafePageConversationRequestDTO request = new CreateCafePageConversationRequestDTO();
+        request.setUserId(visitor.getUserId());
+        request.setCafePageId(cafePage.getId());
+
+        when(cafePageRepository.findById(cafePage.getId())).thenReturn(Optional.of(cafePage));
+        when(userValidator.validateUserExists(visitor.getUserId())).thenReturn(visitor);
+        when(conversationRepository.findCafePageConversation(visitor.getUserId(), cafePage.getId()))
+                .thenReturn(Optional.of(conversation));
+        when(chatMemberRepository.findByConversationId(conversation.getId()))
+                .thenReturn(List.of(member(visitor, MemberRole.MEMBER), member(owner, MemberRole.OWNER)));
+
+        var result = chatService.createOrGetCafePageConversation(request);
+
+        assertThat(result.getId()).isEqualTo(conversation.getId());
+        assertThat(result.getType()).isEqualTo(ConversationType.CAFE_PAGE);
+        assertThat(result.getTargetCafePageId()).isEqualTo(cafePage.getId());
+        verify(conversationRepository, never()).save(any(Conversation.class));
+        verify(conversationRepository, never()).findDirectConversation(visitor.getUserId(), owner.getUserId());
+    }
+
+    @Test
+    void createOrGetDirectConversation_success_returnsUserTargetConversation_TC003() {
+        User firstUser = user(UUID.randomUUID(), "first");
+        User secondUser = user(UUID.randomUUID(), "second");
+        CreateDirectConversationRequestDTO request = new CreateDirectConversationRequestDTO();
+        request.setFirstUserId(firstUser.getUserId());
+        request.setSecondUserId(secondUser.getUserId());
+
+        mockConversationSave();
+        mockMemberSave();
+        when(userValidator.validateUserExists(firstUser.getUserId())).thenReturn(firstUser);
+        when(userValidator.validateUserExists(secondUser.getUserId())).thenReturn(secondUser);
+        when(conversationRepository.findDirectConversation(firstUser.getUserId(), secondUser.getUserId()))
+                .thenReturn(Optional.empty());
+        when(chatMemberRepository.findByConversationId(any(UUID.class)))
+                .thenReturn(List.of(member(firstUser, MemberRole.MEMBER), member(secondUser, MemberRole.MEMBER)));
+
+        var result = chatService.createOrGetDirectConversation(request);
+
+        assertThat(result.getType()).isEqualTo(ConversationType.DIRECT);
+        assertThat(result.getTargetType()).isEqualTo(ChatTargetType.USER);
+        assertThat(result.getTargetId()).isEqualTo(secondUser.getUserId());
+        assertThat(result.getTargetUserId()).isEqualTo(secondUser.getUserId());
+        assertThat(result.getTargetCafePageId()).isNull();
+    }
+
+    @Test
+    void getCafePageConversations_success_returnsPageMailboxOnly_TC004() {
+        User owner = user(UUID.randomUUID(), "owner");
+        User visitor = user(UUID.randomUUID(), "visitor");
+        CafePage cafePage = cafePage(UUID.randomUUID(), owner);
+        Conversation conversation = conversation(ConversationType.CAFE_PAGE);
+        conversation.setCafePage(cafePage);
+
+        when(userValidator.validateUserExists(owner.getUserId())).thenReturn(owner);
+        when(conversationRepository.findCafePageConversationsOrderByLatestActivity(cafePage.getId()))
+                .thenReturn(List.of(conversation));
+        when(chatMemberRepository.findByConversationId(conversation.getId()))
+                .thenReturn(List.of(member(visitor, MemberRole.MEMBER), member(owner, MemberRole.OWNER)));
+
+        var result = chatService.getCafePageConversations(cafePage.getId(), owner.getUserId());
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getType()).isEqualTo(ConversationType.CAFE_PAGE);
+        assertThat(result.getFirst().getTargetType()).isEqualTo(ChatTargetType.CAFE_PAGE);
+        assertThat(result.getFirst().getTargetCafePageId()).isEqualTo(cafePage.getId());
+        assertThat(result.getFirst().isCanReplyAsCafePage()).isTrue();
+        verify(cafePageValidator, atLeastOnce()).validateUserCanManagePage(cafePage.getId(), owner.getUserId());
+    }
+
+    @Test
+    void sendMessage_success_usesCafePageSenderContext_TC005() {
+        User visitor = user(UUID.randomUUID(), "visitor");
+        User owner = user(UUID.randomUUID(), "owner");
+        CafePage cafePage = cafePage(UUID.randomUUID(), owner);
+        Conversation conversation = conversation(ConversationType.CAFE_PAGE);
+        conversation.setCafePage(cafePage);
+        SendMessageRequestDTO request = sendTextRequest(owner.getUserId(), "Hello from page");
+        request.setSenderContextType(ChatSenderContextType.CAFE_PAGE);
+        request.setSenderCafePageId(cafePage.getId());
+
+        mockMessageSave();
+        when(conversationRepository.findById(conversation.getId())).thenReturn(Optional.of(conversation));
+        when(userValidator.validateUserExists(owner.getUserId())).thenReturn(owner);
+        when(chatMemberRepository.existsByConversationIdAndUserUserId(conversation.getId(), owner.getUserId()))
+                .thenReturn(true);
+        when(conversationRepository.save(conversation)).thenReturn(conversation);
+        when(chatMemberRepository.findByConversationId(conversation.getId()))
+                .thenReturn(List.of(member(visitor, MemberRole.MEMBER), member(owner, MemberRole.OWNER)));
+
+        var result = chatService.sendMessage(conversation.getId(), request);
+
+        assertThat(result.getSenderId()).isEqualTo(owner.getUserId());
+        assertThat(result.getSenderContextType()).isEqualTo(ChatSenderContextType.CAFE_PAGE);
+        assertThat(result.getSenderCafePageId()).isEqualTo(cafePage.getId());
+        assertThat(result.getSenderDisplayName()).isEqualTo(cafePage.getName());
+        assertThat(result.getSenderAvatar()).isEqualTo(cafePage.getAvatarUrl());
+        verify(cafePageValidator, atLeastOnce()).validateUserCanManagePage(cafePage.getId(), owner.getUserId());
+        verify(firebaseChatService).saveMessage(result);
+    }
+
+    @Test
+    void sendMessage_error_rejectsCafePageSenderInDirectConversation_TC006() {
+        User firstUser = user(UUID.randomUUID(), "first");
+        Conversation conversation = conversation(ConversationType.DIRECT);
+        SendMessageRequestDTO request = sendTextRequest(firstUser.getUserId(), "Hello");
+        request.setSenderContextType(ChatSenderContextType.CAFE_PAGE);
+        request.setSenderCafePageId(UUID.randomUUID());
+
+        when(conversationRepository.findById(conversation.getId())).thenReturn(Optional.of(conversation));
+        when(userValidator.validateUserExists(firstUser.getUserId())).thenReturn(firstUser);
+        when(chatMemberRepository.existsByConversationIdAndUserUserId(conversation.getId(), firstUser.getUserId()))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> chatService.sendMessage(conversation.getId(), request))
+                .hasMessageContaining("Cafe page sender is only valid in cafe page conversations");
+
+        verify(chatMessageRepository, never()).save(any(ChatMessage.class));
+        verify(cafePageValidator, never()).validateUserCanManagePage(any(UUID.class), any(UUID.class));
+        verify(firebaseChatService, never()).saveMessage(any());
+        verify(conversationRepository, never()).save(conversation);
+    }
+
+    private void mockConversationSave() {
+        doAnswer(invocation -> {
+            Conversation conversation = invocation.getArgument(0);
+            conversation.setId(UUID.randomUUID());
+            conversation.setCreatedAt(LocalDateTime.now());
+            conversation.setUpdatedAt(conversation.getCreatedAt());
+            return conversation;
+        }).when(conversationRepository).save(any(Conversation.class));
+    }
+
+    private void mockMemberSave() {
+        doAnswer(invocation -> {
+            ChatMember member = invocation.getArgument(0);
+            member.setId(UUID.randomUUID());
+            member.setJoinedAt(LocalDateTime.now());
+            return member;
+        }).when(chatMemberRepository).save(any(ChatMember.class));
+    }
+
+    private void mockMessageSave() {
+        doAnswer(invocation -> {
+            ChatMessage message = invocation.getArgument(0);
+            message.setId(UUID.randomUUID());
+            message.setCreatedAt(LocalDateTime.now());
+            message.setUpdatedAt(message.getCreatedAt());
+            return message;
+        }).when(chatMessageRepository).save(any(ChatMessage.class));
+    }
+
+    private SendMessageRequestDTO sendTextRequest(UUID senderId, String text) {
+        SendMessageRequestDTO request = new SendMessageRequestDTO();
+        request.setSenderId(senderId);
+        request.setType(MessageType.TEXT);
+        request.setText(text);
+        return request;
+    }
+
+    private User user(UUID userId, String username) {
+        User user = new User();
+        user.setUserId(userId);
+        user.setUserName(username);
+        user.setUserFullName(username + " full");
+        user.setUserAvatar("https://cdn.example.com/" + username + ".png");
+        user.setUserEmail(username + "@example.com");
+        user.setUserPassword("secret");
+        user.setAccountStatus(true);
+        return user;
+    }
+
+    private CafePage cafePage(UUID cafePageId, User owner) {
+        CafePage cafePage = new CafePage();
+        cafePage.setId(cafePageId);
+        cafePage.setOwner(owner);
+        cafePage.setName("Cafe Story Nguyen Hue");
+        cafePage.setAddress("Nguyen Hue");
+        cafePage.setAvatarUrl("https://cdn.example.com/cafe-page.png");
+        return cafePage;
+    }
+
+    private Conversation conversation(ConversationType type) {
+        Conversation conversation = new Conversation();
+        conversation.setId(UUID.randomUUID());
+        conversation.setType(type);
+        conversation.setCreatedAt(LocalDateTime.now());
+        conversation.setUpdatedAt(conversation.getCreatedAt());
+        return conversation;
+    }
+
+    private ChatMember member(User user, MemberRole role) {
+        ChatMember member = new ChatMember();
+        member.setId(UUID.randomUUID());
+        member.setUser(user);
+        member.setRole(role);
+        member.setJoinedAt(LocalDateTime.now());
+        return member;
+    }
+}

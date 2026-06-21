@@ -17,21 +17,26 @@ public interface ReviewerRepository extends JpaRepository<Reviewer, UUID> {
     long countByReviewerActive(Boolean reviewerActive);
 
     @Query("""
-            select distinct r
+            select r
             from Reviewer r
             left join fetch r.user u
             left join fetch u.region region
             where r.reviewerActive = true
             and u.accountStatus = true
             and u.userId <> :currentUserId
-            and not exists (
-                select uf
-                from UserFollow uf
-                where uf.follower.userId = :currentUserId
-                and uf.following.userId = u.userId
-            )
+            order by
+                case
+                    when region.regionId = :currentRegionId then 0
+                    when lower(region.city) = :currentCity then 1
+                    else 2
+                end,
+                coalesce(u.userFollower, 0) desc,
+                coalesce(u.userLike, 0) desc,
+                r.createdAt desc
             """)
     List<Reviewer> findRecommendationCandidates(
             @Param("currentUserId") UUID currentUserId,
+            @Param("currentRegionId") UUID currentRegionId,
+            @Param("currentCity") String currentCity,
             Pageable pageable);
 }

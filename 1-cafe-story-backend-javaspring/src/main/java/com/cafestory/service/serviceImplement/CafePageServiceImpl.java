@@ -419,6 +419,7 @@ public class CafePageServiceImpl implements CafePageService {
     private CafePageResponseDTO toCafePageResponseDTO(CafePage cafePage, UUID viewerUserId) {
         CafePageResponseDTO response = cafePageMapper.toCafePageResponseDTO(cafePage);
         UUID cafePageId = cafePage.getId();
+        response.setCanManage(canManageCafePage(cafePage, viewerUserId));
         response.setIsFollowing(viewerUserId != null
                 && cafePageId != null
                 && pageFollowRepository.existsByUserUserIdAndCafePageId(viewerUserId, cafePageId));
@@ -449,5 +450,19 @@ public class CafePageServiceImpl implements CafePageService {
     private double resolveRatingScore(UUID cafePageId) {
         Double ratingScore = cafePageRatingRepository.findAverageRatingByCafePageId(cafePageId);
         return ratingScore == null ? 0.0 : ratingScore;
+    }
+
+    private boolean canManageCafePage(CafePage cafePage, UUID viewerUserId) {
+        if (viewerUserId == null || cafePage == null || cafePage.getId() == null) {
+            return false;
+        }
+        if (cafePage.getOwner() != null && viewerUserId.equals(cafePage.getOwner().getUserId())) {
+            return true;
+        }
+        return pageMemberRepository.existsByCafePageIdAndUserUserIdAndStatusAndRoleNameIn(
+                cafePage.getId(),
+                viewerUserId,
+                PageMemberStatus.ACTIVE,
+                List.of(PageMember.ROLE_OWNER, PageMember.ROLE_CO_OWNER));
     }
 }

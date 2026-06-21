@@ -26,6 +26,7 @@ import type { RootStackParamList } from "../../navigation";
 import { getConversationMessages, sendChatMessage } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type { ChatIdentity, ChatMessageListItem, ChatMessageResponse } from "../../types";
+import type { AuthUser } from "../../types";
 
 function formatMessageTime(value: string | null) {
   if (!value) {
@@ -47,16 +48,26 @@ function formatMessageTime(value: string | null) {
 function mapMessageToListItem(
   message: ChatMessageResponse,
   currentUserId?: string,
+  managedCafePageId?: string | null,
 ): ChatMessageListItem {
+  const isCafePageSender =
+    message.senderContextType === "CAFE_PAGE" &&
+    Boolean(managedCafePageId) &&
+    message.senderCafePageId === managedCafePageId;
+
   return {
     id: message.id,
-    isMine: message.senderId === currentUserId,
+    isMine: message.senderId === currentUserId || isCafePageSender,
     text:
       message.text ||
       (message.imageUrls?.length ? "[image]" : null) ||
       (message.stickerId || message.stickerUrl ? "[sticker]" : "[message]"),
     time: formatMessageTime(message.createdAt),
   };
+}
+
+function getManagedCafePageId(user: AuthUser | null | undefined) {
+  return user?.cafePageId || user?.pageId || null;
 }
 
 export function ChatDetailScreen() {
@@ -70,23 +81,40 @@ export function ChatDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [messages, setMessages] = useState<ChatMessageListItem[]>([]);
+  const managedCafePageId = getManagedCafePageId(user);
 
   const conversation = useMemo<ChatIdentity>(
     () => ({
       avatarUri: route.params.chatAvatar ?? null,
+      canReplyAsCafePage: Boolean(route.params.canReplyAsCafePage),
       id: route.params.conversationId,
       name: route.params.chatName || "CafeStory user",
+      targetCafePageId: route.params.targetCafePageId ?? null,
+      targetType: route.params.targetType ?? "USER",
       targetUserId: route.params.targetUserId ?? null,
       userName: route.params.userName || "",
     }),
     [
       route.params.chatAvatar,
+      route.params.canReplyAsCafePage,
       route.params.chatName,
       route.params.conversationId,
+      route.params.targetCafePageId,
+      route.params.targetType,
       route.params.targetUserId,
       route.params.userName,
     ],
   );
+
+  const shouldSendAsCafePage =
+    conversation.targetType === "CAFE_PAGE" &&
+    conversation.canReplyAsCafePage &&
+    Boolean(conversation.targetCafePageId);
+  const isCafePageInboxConversation =
+    shouldSendAsCafePage && Boolean(conversation.targetUserId);
+  const senderCafePageId = shouldSendAsCafePage
+    ? conversation.targetCafePageId
+    : managedCafePageId;
 
   const loadMessages = useCallback(async () => {
     setError("");
@@ -98,7 +126,7 @@ export function ChatDetailScreen() {
         response
           .slice()
           .reverse()
-          .map((message) => mapMessageToListItem(message, user?.userId)),
+          .map((message) => mapMessageToListItem(message, user?.userId, senderCafePageId)),
       );
     } catch (requestError) {
       setError(
@@ -109,7 +137,7 @@ export function ChatDetailScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [route.params.conversationId, user?.userId]);
+  }, [route.params.conversationId, senderCafePageId, user?.userId]);
 
   useEffect(() => {
     void loadMessages();
@@ -127,13 +155,19 @@ export function ChatDetailScreen() {
 
     try {
       const response = await sendChatMessage(route.params.conversationId, {
+        ...(shouldSendAsCafePage && conversation.targetCafePageId
+          ? {
+              senderCafePageId: conversation.targetCafePageId,
+              senderContextType: "CAFE_PAGE",
+            }
+          : {}),
         text,
         type: "TEXT",
       });
 
       setMessages((currentMessages) => [
         ...currentMessages,
-        mapMessageToListItem(response, user?.userId),
+        mapMessageToListItem(response, user?.userId, senderCafePageId),
       ]);
       setDraft("");
       Keyboard.dismiss();
@@ -149,7 +183,22 @@ export function ChatDetailScreen() {
   }
 
   function handleOpenProfile() {
-    if (!conversation.targetUserId) {
+    if (isCafePageInboxConversation && conversation.targetUserId) {
+      navigation.navigate(routes.otherUserProfile, {
+        userId: conversation.targetUserId,
+        userName: conversation.userName,
+      });
+      return;
+    }
+
+    if (conversation.targetType === "CAFE_PAGE" && conversation.targetCafePageId) {
+      navigation.navigate(routes.cafeDetail, {
+        cafeId: conversation.targetCafePageId,
+      });
+      return;
+    }
+
+    if (conversation.targetType !== "USER" || !conversation.targetUserId) {
       return;
     }
 
@@ -168,7 +217,11 @@ export function ChatDetailScreen() {
         <ChatDetailHeader
           conversation={conversation}
           onBackPress={() => navigation.goBack()}
-          onProfilePress={conversation.targetUserId ? handleOpenProfile : undefined}
+          onProfilePress={
+            conversation.targetUserId || conversation.targetCafePageId
+              ? handleOpenProfile
+              : undefined
+          }
         />
 
         <FlatList
@@ -183,19 +236,29 @@ export function ChatDetailScreen() {
                   </Text>
                 ) : null}
                 <Text style={styles.profileMeta}>
-                  Start the conversation here.
+                  {conversation.targetType === "CAFE_PAGE"
+                    ? shouldSendAsCafePage
+                      ? "Replying as this cafe page to this customer."
+                      : "Message this cafe page here."
+                    : "Start the conversation here."}
                 </Text>
                 <Pressable
                   accessibilityLabel="View chat profile"
                   accessibilityRole="button"
-                  disabled={!conversation.targetUserId}
+                  disabled={!conversation.targetUserId && !conversation.targetCafePageId}
                   onPress={handleOpenProfile}
                   style={({ pressed }) => [
                     styles.profileButton,
-                    pressed && conversation.targetUserId && styles.pressed,
+                    pressed &&
+                      (conversation.targetUserId || conversation.targetCafePageId) &&
+                      styles.pressed,
                   ]}
                 >
-                  <Text style={styles.profileButtonText}>View profile</Text>
+                  <Text style={styles.profileButtonText}>
+                    {conversation.targetType === "CAFE_PAGE" && !isCafePageInboxConversation
+                      ? "View cafe page"
+                      : "View profile"}
+                  </Text>
                 </Pressable>
               </View>
               {isLoading ? <LoadingState label="Loading messages..." /> : null}

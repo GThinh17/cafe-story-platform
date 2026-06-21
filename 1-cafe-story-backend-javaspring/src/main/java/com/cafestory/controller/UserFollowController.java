@@ -1,6 +1,8 @@
 package com.cafestory.controller;
 
+import com.cafestory.dto.responseDTO.FollowTargetResponseDTO;
 import com.cafestory.dto.responseDTO.UserFollowResponseDTO;
+import com.cafestory.entity.enums.FollowTargetFilter;
 import com.cafestory.service.serviceInterface.UserFollowService;
 import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.springframework.http.HttpStatus;
@@ -10,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -52,5 +55,12 @@ public class UserFollowController {
     @GetMapping("/{userId}/following")
     public List<UserFollowResponseDTO> getFollowingByUserId(@PathVariable UUID userId) {
         return userFollowService.getFollowingByUserId(userId);
+    }
+
+    @GetMapping("/{userId}/following-targets")
+    public List<FollowTargetResponseDTO> getFollowingTargetsByUserId(
+            @PathVariable UUID userId,
+            @RequestParam(defaultValue = "ALL") FollowTargetFilter type) {
+        return userFollowService.getFollowingTargetsByUserId(userId, type);
     }
 }

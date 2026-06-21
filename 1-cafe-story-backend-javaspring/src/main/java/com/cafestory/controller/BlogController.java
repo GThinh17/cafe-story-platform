@@ -78,8 +78,9 @@ public class BlogController {
     @GetMapping("/users/{userId}/shared")
     public List<BlogResponseDTO> getSharedBlogsByUserId(
             @PathVariable UUID userId,
+            @RequestParam(required = false) String sort,
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
-        return blogService.getSharedBlogsByUserId(userId, optionalUserId(principal));
+        return blogService.getSharedBlogsByUserId(userId, optionalUserId(principal), sort);
     }
 
     @GetMapping("/users/{userId}/tagged")

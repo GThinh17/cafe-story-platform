@@ -2,6 +2,7 @@ package com.cafestory.until.schedule;
 
 import com.cafestory.service.serviceInterface.AdminPayoutService;
 import com.cafestory.service.serviceInterface.ReviewerIncomeService;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -9,6 +10,7 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 
 @Component
+@ConditionalOnProperty(name = "app.scheduling.enabled", havingValue = "true", matchIfMissing = true)
 public class ReviewerPayoutJob {
 
     private final ReviewerIncomeService incomeService;

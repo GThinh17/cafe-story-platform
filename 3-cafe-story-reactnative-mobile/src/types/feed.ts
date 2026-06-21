@@ -4,6 +4,8 @@ export type StoryItem = {
   initials: string;
   isSelf?: boolean;
   label: string;
+  targetId?: string | null;
+  targetType?: "USER" | "REVIEWER" | "CAFE_PAGE" | "CREATE_POST" | string;
 };
 
 export type BlogDisplayAuthorType = "USER" | "CAFE_PAGE";
@@ -43,6 +45,40 @@ export type BlogFeedResponse = {
   shareCount: number | null;
 };
 
+export type FeedItemType = "USER_BLOG" | "CAFE_PAGE_BLOG" | "SPONSORED_CAFE" | string;
+
+export type SponsoredCafeResponse = {
+  campaignId: string;
+  cafeAvatarUrl: string | null;
+  cafeCoverUrl: string | null;
+  cafeName: string | null;
+  cafePageId: string;
+  ctaLabel: string | null;
+  description: string | null;
+  headline: string | null;
+  targetUrl: string | null;
+  trackingToken: string | null;
+};
+
+export type FeedItemResponse = {
+  ad: SponsoredCafeResponse | null;
+  blog: BlogFeedResponse | null;
+  itemType: FeedItemType;
+  position: number | null;
+  trackingToken: string | null;
+};
+
+export type FeedResponse = {
+  hasMore: boolean | null;
+  items: FeedItemResponse[] | null;
+  nextCursor: string | null;
+};
+
+export type FeedParams = {
+  cursor?: string | null;
+  size?: number;
+};
+
 export type BlogPostStatus = "PUBLISHED" | "DRAFT" | "ARCHIVED" | string;
 
 export type BlogResponse = {
@@ -80,16 +116,29 @@ export type BlogResponse = {
 
 export type BlogTrendingResponse = {
   authorUserId: string;
+  authorUserAvatar?: string | null;
+  authorUserFullName?: string | null;
   authorUserName: string | null;
   blogId: string;
+  commentCount?: number | null;
   computedAt: string | null;
   contentPreview: string | null;
   createdAt: string | null;
+  displayAuthorType?: BlogDisplayAuthorType | null;
+  displayAvatarUrl?: string | null;
+  displayName?: string | null;
+  imageUrls?: string[] | null;
+  isLike?: boolean | null;
+  isSave?: boolean | null;
+  likeCount?: number | null;
   pageId: string | null;
+  pageAvatarUrl?: string | null;
+  pageCoverUrl?: string | null;
   pageName: string | null;
   pinned: boolean | null;
   rankPosition: number | null;
   reason: string | null;
+  shareCount?: number | null;
   trendScore: number | null;
   windowType: TrendWindowType;
 };
