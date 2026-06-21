@@ -80,6 +80,12 @@ public class AdminPayout {
     @Column(name = "note")
     private String note;
 
+    @Column(name = "stripe_transfer_id", length = 100)
+    private String stripeTransferId;
+
+    @Column(name = "stripe_idempotency_key", length = 200)
+    private String stripeIdempotencyKey;
+
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "formula_id", nullable = false)

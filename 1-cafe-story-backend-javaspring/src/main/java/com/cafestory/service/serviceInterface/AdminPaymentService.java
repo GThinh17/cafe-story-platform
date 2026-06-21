@@ -16,4 +16,6 @@ public interface AdminPaymentService {
     PaymentResponseDTO markBankTransferPaid(UUID paymentId);
 
     PaymentResponseDTO refundPayment(UUID paymentId);
+
+    int expireStalePayments();
 }

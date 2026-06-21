@@ -26,6 +26,7 @@ public class AdminPayoutResponseDTO {
     private LocalDateTime paidAt;
     private String note;
     private UUID formulaId;
+    private String stripeTransferId;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -37,6 +37,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.net.Webhook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -54,6 +56,7 @@ import java.util.UUID;
 @Service
 public class PaymentServiceImpl implements PaymentService {
 
+    private static final Logger log = LoggerFactory.getLogger(PaymentServiceImpl.class);
     private static final String REVIEWER_ROLE = "REVIEWER";
     private static final String CAFE_PAGE_ROLE = "CAFE_PAGE";
     private static final String ADMIN_ROLE = "ADMIN";
@@ -121,7 +124,7 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setAmount(productPurchase.amount());
         payment.setCurrency(productPurchase.currency());
         payment.setPaymentStatus(PaymentStatus.PENDING);
-        payment.setExpiredAt(LocalDateTime.now().plusMinutes(30));
+        payment.setExpiredAt(LocalDateTime.now().plusMinutes(5));
         Payment savedPayment = paymentRepository.save(payment);
 
         PaymentDetail detail = new PaymentDetail();
@@ -264,6 +267,42 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
+    @Override
+    @Transactional
+    public PaymentResponseDTO syncStripePayment(UUID requesterUserId, UUID paymentId) {
+        Payment payment = paymentRepository.findByIdWithLock(paymentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
+
+        validatePaymentAccess(requesterUserId, payment);
+
+        if (payment.getPaymentMethod() != PaymentMethod.STRIPE_CARD) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Sync is only supported for Stripe payments");
+        }
+        if (payment.getPaymentStatus() != PaymentStatus.PENDING) {
+            return toResponse(payment, paymentDetailRepository.findByPaymentPaymentId(paymentId).orElse(null));
+        }
+        if (payment.getExpiredAt() != null && LocalDateTime.now().isAfter(payment.getExpiredAt())) {
+            throw new ResponseStatusException(HttpStatus.GONE, "Payment session expired. Cannot sync after expiry.");
+        }
+
+        PaymentDetail detail = paymentDetailRepository.findByPaymentPaymentId(paymentId).orElse(null);
+        String sessionId = detail != null ? detail.getProviderOrderId() : null;
+        if (sessionId == null) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "No Stripe session found for this payment");
+        }
+
+        String sessionStatus = stripeCheckoutClient.getSessionStatus(sessionId);
+        if ("complete".equals(sessionStatus)) {
+            String paymentIntentId = stripeCheckoutClient.getPaymentIntentId(sessionId);
+            markPaymentPaid(payment, paymentIntentId);
+        } else if ("expired".equals(sessionStatus)) {
+            payment.setPaymentStatus(PaymentStatus.EXPIRED);
+            paymentRepository.save(payment);
+        }
+
+        return toResponse(payment, paymentDetailRepository.findByPaymentPaymentId(paymentId).orElse(null));
+    }
+
     private Payment validatePaymentExists(UUID paymentId) {
         return paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
@@ -297,7 +336,23 @@ public class PaymentServiceImpl implements PaymentService {
                 paymentDetailRepository.save(detail);
             });
         }
-        activatePurchasedProduct(payment);
+        try {
+            activatePurchasedProduct(payment);
+        } catch (Exception ex) {
+            log.error("Activation failed for payment {} — initiating refund. Error: {}",
+                    payment.getPaymentId(), ex.getMessage());
+            if (payment.getPaymentMethod() == com.cafestory.entity.enums.PaymentMethod.STRIPE_CARD
+                    && providerTransactionId != null) {
+                try {
+                    stripeCheckoutClient.refundPaymentIntent(providerTransactionId);
+                } catch (Exception refundEx) {
+                    log.error("Stripe refund also failed for payment {}: {}",
+                            payment.getPaymentId(), refundEx.getMessage());
+                }
+            }
+            payment.setPaymentStatus(PaymentStatus.REFUNDED);
+            paymentRepository.save(payment);
+        }
     }
 
     private ProductPurchase resolveProductPurchase(CreatePaymentRequestDTO request) {

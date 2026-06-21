@@ -25,4 +25,6 @@ public interface PaymentService {
     VnpayReturnResponseDTO handleVnpayReturn(Map<String, String> params);
 
     VnpayIpnResponseDTO handleVnpayIpn(Map<String, String> params);
+
+    PaymentResponseDTO syncStripePayment(UUID requesterUserId, UUID paymentId);
 }
