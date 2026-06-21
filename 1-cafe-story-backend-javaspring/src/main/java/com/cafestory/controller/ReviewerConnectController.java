@@ -39,4 +39,10 @@ public class ReviewerConnectController {
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         return connectService.getStatus(requireUserId(principal));
     }
+
+    @PostMapping("/sync")
+    public ReviewerStripeAccountResponseDTO sync(
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return connectService.sync(requireUserId(principal));
+    }
 }

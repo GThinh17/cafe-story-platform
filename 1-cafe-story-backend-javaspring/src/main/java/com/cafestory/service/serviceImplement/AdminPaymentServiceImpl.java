@@ -92,7 +92,7 @@ public class AdminPaymentServiceImpl implements AdminPaymentService {
     @Transactional
     public int expireStalePayments() {
         List<Payment> stale = paymentRepository
-                .findByPaymentStatusAndExpiredAtBefore(PaymentStatus.PENDING, LocalDateTime.now());
+                .findByPaymentStatusAndExpiredAtBefore(PaymentStatus.PENDING, LocalDateTime.now().minusMinutes(1));
         int count = 0;
         for (Payment payment : stale) {
             try {

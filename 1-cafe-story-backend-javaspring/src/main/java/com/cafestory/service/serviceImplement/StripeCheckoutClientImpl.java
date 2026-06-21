@@ -122,6 +122,19 @@ public class StripeCheckoutClientImpl implements StripeCheckoutClient {
         }
     }
 
+    @Override
+    public String getPaymentIntentId(String sessionId) {
+        Stripe.apiKey = secretKey;
+        try {
+            Session session = Session.retrieve(sessionId);
+            return session.getPaymentIntent();
+        } catch (StripeException ex) {
+            log.error("Failed to retrieve paymentIntentId for session {}: {}", sessionId, ex.getMessage());
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Failed to retrieve Stripe session: " + safeStripeMessage(ex));
+        }
+    }
+
     private void validateStripeConfig(Payment payment) {
         if (secretKey == null || secretKey.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stripe secret key is not configured");

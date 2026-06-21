@@ -12,6 +12,8 @@ public interface StripeCheckoutClient {
 
     void refundPaymentIntent(String paymentIntentId);
 
+    String getPaymentIntentId(String sessionId);
+
     record StripeCheckoutSession(String sessionId, String paymentUrl, String rawResponse) {
     }
 }

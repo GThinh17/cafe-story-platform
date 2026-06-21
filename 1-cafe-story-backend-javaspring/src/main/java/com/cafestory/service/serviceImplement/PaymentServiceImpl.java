@@ -124,7 +124,7 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setAmount(productPurchase.amount());
         payment.setCurrency(productPurchase.currency());
         payment.setPaymentStatus(PaymentStatus.PENDING);
-        payment.setExpiredAt(LocalDateTime.now().plusMinutes(30));
+        payment.setExpiredAt(LocalDateTime.now().plusMinutes(5));
         Payment savedPayment = paymentRepository.save(payment);
 
         PaymentDetail detail = new PaymentDetail();
@@ -265,6 +265,42 @@ public class PaymentServiceImpl implements PaymentService {
         } catch (Exception ex) {
             return new VnpayIpnResponseDTO("99", "Unknown error");
         }
+    }
+
+    @Override
+    @Transactional
+    public PaymentResponseDTO syncStripePayment(UUID requesterUserId, UUID paymentId) {
+        Payment payment = paymentRepository.findByIdWithLock(paymentId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
+
+        validatePaymentAccess(requesterUserId, payment);
+
+        if (payment.getPaymentMethod() != PaymentMethod.STRIPE_CARD) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Sync is only supported for Stripe payments");
+        }
+        if (payment.getPaymentStatus() != PaymentStatus.PENDING) {
+            return toResponse(payment, paymentDetailRepository.findByPaymentPaymentId(paymentId).orElse(null));
+        }
+        if (payment.getExpiredAt() != null && LocalDateTime.now().isAfter(payment.getExpiredAt())) {
+            throw new ResponseStatusException(HttpStatus.GONE, "Payment session expired. Cannot sync after expiry.");
+        }
+
+        PaymentDetail detail = paymentDetailRepository.findByPaymentPaymentId(paymentId).orElse(null);
+        String sessionId = detail != null ? detail.getProviderOrderId() : null;
+        if (sessionId == null) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "No Stripe session found for this payment");
+        }
+
+        String sessionStatus = stripeCheckoutClient.getSessionStatus(sessionId);
+        if ("complete".equals(sessionStatus)) {
+            String paymentIntentId = stripeCheckoutClient.getPaymentIntentId(sessionId);
+            markPaymentPaid(payment, paymentIntentId);
+        } else if ("expired".equals(sessionStatus)) {
+            payment.setPaymentStatus(PaymentStatus.EXPIRED);
+            paymentRepository.save(payment);
+        }
+
+        return toResponse(payment, paymentDetailRepository.findByPaymentPaymentId(paymentId).orElse(null));
     }
 
     private Payment validatePaymentExists(UUID paymentId) {

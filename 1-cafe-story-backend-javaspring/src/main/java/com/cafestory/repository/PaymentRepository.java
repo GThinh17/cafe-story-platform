@@ -5,8 +5,12 @@ import com.cafestory.entity.enums.PaymentStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
+import java.util.Optional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,4 +36,8 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
             Pageable pageable);
 
     List<Payment> findByPaymentStatusAndExpiredAtBefore(PaymentStatus paymentStatus, LocalDateTime now);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Payment p where p.paymentId = :id")
+    Optional<Payment> findByIdWithLock(@Param("id") UUID id);
 }

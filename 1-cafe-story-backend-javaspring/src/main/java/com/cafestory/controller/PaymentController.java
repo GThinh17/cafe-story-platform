@@ -62,6 +62,13 @@ public class PaymentController {
         return paymentService.markBankTransferPaid(requireUserId(principal), paymentId);
     }
 
+    @PostMapping("/{paymentId}/stripe/sync")
+    public PaymentResponseDTO syncStripePayment(
+            @PathVariable UUID paymentId,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return paymentService.syncStripePayment(requireUserId(principal), paymentId);
+    }
+
     @PostMapping("/stripe/webhook")
     public void handleStripeWebhook(
             @RequestBody String payload,

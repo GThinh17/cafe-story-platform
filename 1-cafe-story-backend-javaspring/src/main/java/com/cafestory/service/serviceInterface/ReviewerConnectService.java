@@ -14,4 +14,6 @@ public interface ReviewerConnectService {
     void handleAccountUpdated(String stripeAccountId, boolean chargesEnabled, boolean payoutsEnabled);
 
     ReviewerStripeAccountResponseDTO getStatus(UUID userId);
+
+    ReviewerStripeAccountResponseDTO sync(UUID userId);
 }
