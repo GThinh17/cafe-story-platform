@@ -43,7 +43,7 @@ function mapAuthUserToProfile(user: AuthUser | null): UserProfile {
   return {
     avatarImage: getUserAvatarImage(user),
     avatarInitials: getUserInitials(user),
-    bio: email ? `Email: ${email}` : "",
+    bio: "",
     displayName,
     email,
     location: "",
@@ -73,7 +73,7 @@ function mapUserResponseToProfile(user: UserResponse): UserProfile {
   return {
     avatarImage: getProfileAvatarImage(user),
     avatarInitials: getInitials(displayName),
-    bio: user.userEmail ? `Email: ${user.userEmail}` : "",
+    bio: user.userDescription?.trim() ?? "",
     displayName,
     email: user.userEmail ?? "",
     location,

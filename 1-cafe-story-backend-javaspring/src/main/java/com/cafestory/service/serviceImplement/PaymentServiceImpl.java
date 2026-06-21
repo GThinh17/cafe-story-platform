@@ -522,6 +522,7 @@ public class PaymentServiceImpl implements PaymentService {
         response.setPaymentId(payment.getPaymentId());
         response.setBuyerId(payment.getBuyer().getUserId());
         response.setExtraFeeId(payment.getExtraFee() == null ? null : payment.getExtraFee().getExtraFeeId());
+        response.setExtraFeeType(payment.getExtraFee() == null ? null : payment.getExtraFee().getFeeType());
         response.setAdFeeId(payment.getAdFee() == null ? null : payment.getAdFee().getAdFeeId());
         response.setPaymentMethod(payment.getPaymentMethod());
         response.setAmount(payment.getAmount());

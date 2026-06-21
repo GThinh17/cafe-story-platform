@@ -145,7 +145,9 @@ export function ProfileHeader({
 
             <div className="min-w-0 space-y-1 text-sm leading-6">
               <p className="font-black">{profile.displayName}</p>
-              <p className="max-w-full break-words">{profile.bio}</p>
+              {profile.bio ? (
+                <p className="max-w-full break-words">{profile.bio}</p>
+              ) : null}
               <p className="text-muted">{profile.location}</p>
             </div>
           </div>

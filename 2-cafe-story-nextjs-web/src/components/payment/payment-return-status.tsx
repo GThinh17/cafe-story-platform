@@ -13,9 +13,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { ApiError } from "@/lib/api/client";
-import { getPayment, handleVnpayReturn } from "@/lib/api/payments";
-import type { PaymentStatus, VnpayReturnResponse } from "@/types/payment";
+import { getCafePagesByOwnerId } from "@/lib/api/cafes";
+import { getPayment, handleVnpayReturn, syncStripePayment } from "@/lib/api/payments";
+import type { PaymentResponse, PaymentStatus, VnpayReturnResponse } from "@/types/payment";
 
 type SearchParamsValue = string | string[] | undefined;
 
@@ -73,8 +75,27 @@ function toUrlSearchParams(params: Record<string, SearchParamsValue>) {
   return searchParams;
 }
 
+async function resolveRedirectPath(payment: PaymentResponse, userId: string): Promise<string> {
+  if (payment.extraFeeType === "REVIEWER_REGISTRATION") {
+    return "/reviewer-dashboard";
+  }
+
+  if (payment.extraFeeType === "CAFE_PAGE_OPENING") {
+    try {
+      const cafes = await getCafePagesByOwnerId(userId);
+      const active = cafes.find((c) => c.pageActive === true || c.status === "ACTIVE");
+      return active ? `/cafes/${active.id}` : "/cafes/edit";
+    } catch {
+      return "/cafes/edit";
+    }
+  }
+
+  return "/";
+}
+
 export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
   const router = useRouter();
+  const { user } = useCurrentUser();
   const flow = props.flow;
   const paymentId = props.flow === "stripe" ? props.paymentId : undefined;
   const rawVnpayParams = props.flow === "vnpay" ? props.searchParams : null;
@@ -119,7 +140,8 @@ export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
             message: "Payment verified. Redirecting...",
             status: "paid",
           });
-          router.replace("/cafes/edit");
+          const redirectPath = await resolveRedirectPath(payment, user?.userId ?? "");
+          router.replace(redirectPath);
           return;
         }
 
@@ -151,7 +173,18 @@ export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
           message: "Payment verified. Redirecting...",
           status: "paid",
         });
-        router.replace("/cafes/edit");
+        const vnpayPaymentId = response.paymentId;
+        if (vnpayPaymentId) {
+          try {
+            const payment = await getPayment(vnpayPaymentId);
+            const redirectPath = await resolveRedirectPath(payment, user?.userId ?? "");
+            router.replace(redirectPath);
+            return;
+          } catch {
+            // fallback
+          }
+        }
+        router.replace("/");
         return;
       }
 
@@ -172,13 +205,55 @@ export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
         status: "failed",
       });
     }
-  }, [flow, paymentId, router, vnpaySearchParams]);
+  }, [flow, paymentId, router, user?.userId, vnpaySearchParams]);
+
+  const syncAndVerify = useCallback(async () => {
+    if (!paymentId) return;
+
+    setState({
+      error: null,
+      isChecking: true,
+      message: "Syncing with Stripe...",
+      status: "checking",
+    });
+
+    try {
+      const payment = await syncStripePayment(paymentId);
+
+      if (isPaidStatus(payment.paymentStatus)) {
+        setState({
+          error: null,
+          isChecking: false,
+          message: "Payment verified. Redirecting...",
+          status: "paid",
+        });
+        const redirectPath = await resolveRedirectPath(payment, user?.userId ?? "");
+        router.replace(redirectPath);
+        return;
+      }
+
+      setState({
+        error: null,
+        isChecking: false,
+        message: `Current payment status: ${payment.paymentStatus}`,
+        status: "pending",
+      });
+    } catch (error) {
+      setState({
+        error: getErrorMessage(error, "Failed to sync payment status."),
+        isChecking: false,
+        message: "Sync failed.",
+        status: "failed",
+      });
+    }
+  }, [paymentId, router, user?.userId]);
 
   useEffect(() => {
     void verifyPayment();
   }, [verifyPayment]);
 
   const isPaid = state.status === "paid";
+  const isStripePending = flow === "stripe" && state.status === "pending";
 
   return (
     <Card>
@@ -201,8 +276,10 @@ export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
           <AlertDescription>
             {state.error ??
               (isPaid
-                ? "You will be redirected to edit your cafe page."
-                : "You can check again after the payment provider finishes processing.")}
+                ? "You will be redirected shortly."
+                : isStripePending
+                  ? "Stripe may still be processing. Click 'Check again' to sync."
+                  : "You can check again after the payment provider finishes processing.")}
           </AlertDescription>
         </Alert>
       </CardContent>
@@ -210,7 +287,7 @@ export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
         <CardFooter>
           <Button
             disabled={state.isChecking}
-            onClick={() => void verifyPayment()}
+            onClick={() => void (isStripePending ? syncAndVerify() : verifyPayment())}
             type="button"
           >
             <RefreshCw data-icon="inline-start" />

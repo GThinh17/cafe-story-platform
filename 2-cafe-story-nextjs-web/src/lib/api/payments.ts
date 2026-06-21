@@ -25,6 +25,12 @@ export function getPayment(paymentId: string) {
   });
 }
 
+export function syncStripePayment(paymentId: string) {
+  return apiFetch<PaymentResponse>(apiEndpoints.payments.stripeSync(paymentId), {
+    method: "POST",
+  });
+}
+
 export function handleVnpayReturn(params: URLSearchParams) {
   return apiFetch<VnpayReturnResponse>(
     withSearchParams(apiEndpoints.payments.vnpayReturn, params),

@@ -33,6 +33,13 @@ function withQuery(path: string, params: Record<string, string | number | undefi
   return query ? `${path}?${query}` : path;
 }
 
+export function getAllCafePages(options: ApiRequestOptions = {}) {
+  return apiFetch<CafePageResponse[]>(apiEndpoints.cafes.list, {
+    headers: options.headers,
+    method: "GET",
+  });
+}
+
 export function getTopCafePages(
   params: CafeTopParams = {},
   options: ApiRequestOptions = {},

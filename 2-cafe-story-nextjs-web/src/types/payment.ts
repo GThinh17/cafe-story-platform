@@ -20,6 +20,7 @@ export type PaymentResponse = {
   paymentId: string;
   buyerId?: string | null;
   extraFeeId?: string | null;
+  extraFeeType?: "REVIEWER_REGISTRATION" | "CAFE_PAGE_OPENING" | string | null;
   adFeeId?: string | null;
   paymentMethod: PaymentMethod | string;
   amount?: number | string | null;

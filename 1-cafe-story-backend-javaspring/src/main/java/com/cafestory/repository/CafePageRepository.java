@@ -37,7 +37,7 @@ public interface CafePageRepository extends JpaRepository<CafePage, UUID> {
             where p.status = com.cafestory.entity.enums.PageStatus.ACTIVE
             and p.pageActive = true
             and (:regionId is null or r.regionId = :regionId)
-            and (:city is null or lower(r.city) = lower(:city))
+            and (cast(:city as string) is null or lower(r.city) = lower(cast(:city as string)))
             """)
     List<CafePage> findActiveCafePagesForRegionalRanking(
             @Param("regionId") UUID regionId,
