@@ -7,6 +7,7 @@ export * from "./layout/share-top-bar";
 export * from "./message";
 export * from "./profile";
 export * from "./ui/avatar";
+export * from "./ui/brand-icon";
 export * from "./ui/button";
 export * from "./ui/empty-state";
 export * from "./ui/loading-state";

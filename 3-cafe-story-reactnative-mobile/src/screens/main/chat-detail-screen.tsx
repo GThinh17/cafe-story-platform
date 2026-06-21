@@ -110,6 +110,11 @@ export function ChatDetailScreen() {
     conversation.targetType === "CAFE_PAGE" &&
     conversation.canReplyAsCafePage &&
     Boolean(conversation.targetCafePageId);
+  const isCafePageInboxConversation =
+    shouldSendAsCafePage && Boolean(conversation.targetUserId);
+  const senderCafePageId = shouldSendAsCafePage
+    ? conversation.targetCafePageId
+    : managedCafePageId;
 
   const loadMessages = useCallback(async () => {
     setError("");
@@ -121,7 +126,7 @@ export function ChatDetailScreen() {
         response
           .slice()
           .reverse()
-          .map((message) => mapMessageToListItem(message, user?.userId, managedCafePageId)),
+          .map((message) => mapMessageToListItem(message, user?.userId, senderCafePageId)),
       );
     } catch (requestError) {
       setError(
@@ -132,7 +137,7 @@ export function ChatDetailScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, [managedCafePageId, route.params.conversationId, user?.userId]);
+  }, [route.params.conversationId, senderCafePageId, user?.userId]);
 
   useEffect(() => {
     void loadMessages();
@@ -162,7 +167,7 @@ export function ChatDetailScreen() {
 
       setMessages((currentMessages) => [
         ...currentMessages,
-        mapMessageToListItem(response, user?.userId, managedCafePageId),
+        mapMessageToListItem(response, user?.userId, senderCafePageId),
       ]);
       setDraft("");
       Keyboard.dismiss();
@@ -178,6 +183,14 @@ export function ChatDetailScreen() {
   }
 
   function handleOpenProfile() {
+    if (isCafePageInboxConversation && conversation.targetUserId) {
+      navigation.navigate(routes.otherUserProfile, {
+        userId: conversation.targetUserId,
+        userName: conversation.userName,
+      });
+      return;
+    }
+
     if (conversation.targetType === "CAFE_PAGE" && conversation.targetCafePageId) {
       navigation.navigate(routes.cafeDetail, {
         cafeId: conversation.targetCafePageId,
@@ -225,7 +238,7 @@ export function ChatDetailScreen() {
                 <Text style={styles.profileMeta}>
                   {conversation.targetType === "CAFE_PAGE"
                     ? shouldSendAsCafePage
-                      ? "Replying as this cafe page."
+                      ? "Replying as this cafe page to this customer."
                       : "Message this cafe page here."
                     : "Start the conversation here."}
                 </Text>
@@ -242,7 +255,9 @@ export function ChatDetailScreen() {
                   ]}
                 >
                   <Text style={styles.profileButtonText}>
-                    {conversation.targetType === "CAFE_PAGE" ? "View cafe page" : "View profile"}
+                    {conversation.targetType === "CAFE_PAGE" && !isCafePageInboxConversation
+                      ? "View cafe page"
+                      : "View profile"}
                   </Text>
                 </Pressable>
               </View>

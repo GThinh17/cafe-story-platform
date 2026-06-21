@@ -1,5 +1,6 @@
 import {
   AtSign,
+  Award,
   Pencil,
   Plus,
   UserPlus,
@@ -931,6 +932,24 @@ export function ProfileScreen() {
             </Text>
           </View>
 
+          {shouldShowReviewerDashboardAction ? (
+            <Pressable
+              accessibilityLabel="Open reviewer dashboard"
+              accessibilityRole="button"
+              onPress={openReviewerDashboard}
+              style={({ pressed }) => [
+                styles.profileChip,
+                styles.reviewerChip,
+                pressed && styles.actionPressed,
+              ]}
+            >
+              <Award color={colors.tertiaryStrong} size={16} strokeWidth={2.5} />
+              <Text numberOfLines={1} style={styles.reviewerChipText}>
+                Reviewer
+              </Text>
+            </Pressable>
+          ) : null}
+
           <Pressable
             accessibilityLabel="Open profile suggestions"
             accessibilityRole="button"
@@ -1256,6 +1275,17 @@ const styles = StyleSheet.create({
 
   profileChipText: {
     color: colors.foreground,
+    fontSize: typography.label,
+    fontWeight: "900",
+  },
+
+  reviewerChip: {
+    backgroundColor: colors.tertiarySoft,
+    borderColor: colors.tertiary,
+  },
+
+  reviewerChipText: {
+    color: colors.tertiaryStrong,
     fontSize: typography.label,
     fontWeight: "900",
   },

@@ -16,6 +16,7 @@ import type { CafePageResponse } from "../../types";
 
 type CafePageHeaderProps = {
   cafePage: CafePageResponse;
+  canManage?: boolean;
   isFollowPending?: boolean;
   isLikePending?: boolean;
   isOwner: boolean;
@@ -71,6 +72,7 @@ function regionLabel(cafePage: CafePageResponse) {
 
 export function CafePageHeader({
   cafePage,
+  canManage = false,
   isFollowPending = false,
   isLikePending = false,
   isOwner,
@@ -85,6 +87,7 @@ export function CafePageHeader({
   const expiresAt = formatDate(cafePage.pageExpiresAt);
   const isFollowing = Boolean(cafePage.isFollowing);
   const isLiked = Boolean(cafePage.isLiked);
+  const managerBadge = isOwner ? "Owner" : canManage ? "Manager" : null;
 
   return (
     <View style={styles.container}>
@@ -109,7 +112,7 @@ export function CafePageHeader({
               <Text numberOfLines={1} style={styles.name}>
                 {cafePage.name || "Cafe Page"}
               </Text>
-              {isOwner ? <Text style={styles.ownerBadge}>Owner</Text> : null}
+              {managerBadge ? <Text style={styles.ownerBadge}>{managerBadge}</Text> : null}
             </View>
 
             <View style={styles.stats}>
@@ -135,12 +138,12 @@ export function CafePageHeader({
         <View style={styles.metaList}>
           {location ? <Meta icon={MapPin} text={location} /> : null}
           {cafePage.address ? <Meta icon={Store} text={cafePage.address} /> : null}
-          {isOwner && expiresAt ? <Meta icon={CalendarDays} text={`Active until ${expiresAt}`} /> : null}
+          {canManage && expiresAt ? <Meta icon={CalendarDays} text={`Active until ${expiresAt}`} /> : null}
         </View>
       </View>
 
       <View style={styles.actions}>
-        {isOwner ? (
+        {canManage ? (
           <>
             <Pressable
               accessibilityLabel="Edit cafe page"

@@ -50,6 +50,7 @@ function formatConversationTime(value: string | null) {
 function mapConversationToListItem(
   conversation: ConversationResponse,
   currentUserId?: string,
+  isCafePageInbox = false,
 ): ConversationListItem {
   const targetType: ChatTargetType =
     conversation.targetType ??
@@ -61,9 +62,15 @@ function mapConversationToListItem(
   const targetMember = conversation.members?.find(
     (member) => member.userId !== currentUserId,
   );
+  const customerMember =
+    conversation.members?.find((member) => member.role === "MEMBER") ??
+    targetMember;
+  const displayMember = isCafePageInbox && targetType === "CAFE_PAGE"
+    ? customerMember
+    : targetMember;
   const targetUserId =
-    targetType === "USER"
-      ? conversation.targetUserId ?? targetMember?.userId ?? null
+    targetType === "USER" || isCafePageInbox
+      ? conversation.targetUserId ?? displayMember?.userId ?? null
       : null;
   const targetCafePageId =
     targetType === "CAFE_PAGE"
@@ -75,9 +82,24 @@ function mapConversationToListItem(
       : targetType === "GROUP"
         ? "Group chat"
         : "CafeStory user";
+  const pageDisplayName = conversation.chatName || conversation.userName || fallbackName;
+  const memberDisplayName =
+    displayMember?.userFullName ||
+    displayMember?.userName ||
+    conversation.userName ||
+    fallbackName;
+  const displayName =
+    isCafePageInbox && targetType === "CAFE_PAGE"
+      ? memberDisplayName
+      : pageDisplayName;
 
   return {
-    avatarUri: conversation.chatAvatar || targetMember?.userAvatar || null,
+    avatarUri:
+      targetType === "CAFE_PAGE"
+        ? isCafePageInbox
+          ? displayMember?.userAvatar || null
+          : conversation.chatAvatar || null
+        : conversation.chatAvatar || displayMember?.userAvatar || null,
     canReplyAsCafePage: conversation.canReplyAsCafePage,
     id: conversation.id,
     lastMessage:
@@ -85,11 +107,13 @@ function mapConversationToListItem(
       conversation.latestMessagePreview ||
       "No messages yet",
     name:
-      conversation.chatName ||
-      targetMember?.userFullName ||
-      targetMember?.userName ||
-      conversation.userName ||
-      fallbackName,
+      targetType === "CAFE_PAGE"
+        ? displayName
+        : conversation.chatName ||
+          displayMember?.userFullName ||
+          displayMember?.userName ||
+          conversation.userName ||
+          fallbackName,
     targetCafePageId,
     targetType,
     targetUserId,
@@ -98,8 +122,10 @@ function mapConversationToListItem(
     ),
     userName:
       targetType === "CAFE_PAGE"
-        ? conversation.userName || "Cafe page"
-        : conversation.userName || targetMember?.userName || "",
+        ? isCafePageInbox
+          ? displayMember?.userName || ""
+          : pageDisplayName
+        : conversation.userName || displayMember?.userName || "",
   };
 }
 
@@ -134,7 +160,7 @@ export function ConversationScreen() {
         : await getConversations();
       setConversationItems(
         response.map((conversation) =>
-          mapConversationToListItem(conversation, user?.userId),
+          mapConversationToListItem(conversation, user?.userId, Boolean(cafePageId)),
         ),
       );
     } catch (requestError) {
