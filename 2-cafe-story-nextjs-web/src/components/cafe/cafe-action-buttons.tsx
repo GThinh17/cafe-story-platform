@@ -3,6 +3,7 @@
 import { BookOpenIcon, HeartIcon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { FollowButton } from "@/components/ui/follow-button";
 import { CafeMenuModal } from "@/components/cafe/cafe-menu-modal";
 import { useCafeMenuModal } from "@/hooks/use-cafe-menu-modal";
 import { likeCafePage, unlikeCafePage } from "@/lib/api/cafes";
@@ -13,6 +14,7 @@ type CafeActionButtonsProps = {
   cafeId: string;
   cafeName: string;
   isLiked?: boolean;
+  isFollowing?: boolean;
   likeCount?: number;
   menu: CafeMenu;
   onLikeStateChange?: (nextState: {
@@ -32,6 +34,7 @@ export function CafeActionButtons({
   cafeId,
   cafeName,
   isLiked = false,
+  isFollowing = false,
   likeCount = 0,
   menu,
   onLikeStateChange,
@@ -90,6 +93,12 @@ export function CafeActionButtons({
           />
            {formatCount(likeCount)}
         </Button>
+        <FollowButton
+          className="h-12 rounded-sm px-8"
+          isFollowing={isFollowing}
+          targetId={cafeId}
+          targetType="cafe"
+        />
         <Button
           className="flex h-12 cursor-pointer items-center justify-center gap-2 rounded-sm px-8 text-sm font-black transition hover:text-espresso/80"
           onClick={openMenu}

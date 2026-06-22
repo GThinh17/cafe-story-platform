@@ -7,6 +7,8 @@ import {
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { FollowButton } from "@/components/ui/follow-button";
+import { ReviewerBadgeChip } from "@/components/ui/reviewer-badge-chip";
 import {
   Card,
   CardContent,
@@ -101,12 +103,23 @@ export function PostCard({ currentUserId, onCommentClick, onLikeClick, onShareCl
               src={identity.primaryAvatar}
             />
           </Link>
-          <div className="min-w-0">
-            <CardTitle className="truncate text-base font-bold">
-              <Link className="cursor-pointer" href={identity.primaryHref}>
-                {identity.primaryName}
-              </Link>
-            </CardTitle>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <CardTitle className="truncate text-base font-bold">
+                <Link className="cursor-pointer" href={identity.primaryHref}>
+                  {identity.primaryName}
+                </Link>
+              </CardTitle>
+              <ReviewerBadgeChip badge={post.authorBadge} />
+              {!isOwnPost && (post.pageId ?? post.authorUserId) ? (
+                <FollowButton
+                  className="ml-auto !h-[24px] shrink-0 !px-2 !text-[12px]"
+                  isFollowing={post.pageId ? post.isPageFollowing : post.isAuthorFollowing}
+                  targetId={(post.pageId ?? post.authorUserId)!}
+                  targetType={post.pageId ? "cafe" : "user"}
+                />
+              ) : null}
+            </div>
             {identity.isPagePost && identity.secondaryHref ? (
               <Link
                 className="block cursor-pointer truncate text-xs font-bold text-coffee-muted"
@@ -117,7 +130,6 @@ export function PostCard({ currentUserId, onCommentClick, onLikeClick, onShareCl
             ) : null}
           </div>
         </div>
-       
       </CardHeader>
 
       {media.length > 0 ? (

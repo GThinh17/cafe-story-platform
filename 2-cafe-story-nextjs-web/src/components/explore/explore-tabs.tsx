@@ -1,6 +1,6 @@
 "use client";
 
-export type ExploreTab = "all" | "cafes" | "reviewers" | "trending";
+export type ExploreTab = "cafes" | "reviewers" | "trending";
 
 type ExploreTabsProps = {
   activeTab: ExploreTab;
@@ -8,7 +8,6 @@ type ExploreTabsProps = {
 };
 
 const tabs: Array<{ label: string; value: ExploreTab }> = [
-  { label: "All", value: "all" },
   { label: "Cafes", value: "cafes" },
   { label: "Reviewers", value: "reviewers" },
   { label: "Trending", value: "trending" },

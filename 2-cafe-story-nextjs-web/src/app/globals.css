@@ -39,6 +39,14 @@
   --chart-4: var(--primary-strong);
   --chart-5: var(--coffee-muted);
   --radius: 0.625rem;
+
+  /* Reviewer badge gradients */
+  --badge-iron: linear-gradient(135deg, #71717a 0%, #9ca3af 50%, #52525b 100%);
+  --badge-bronze: linear-gradient(135deg, #92400e 0%, #d97706 50%, #78350f 100%);
+  --badge-silver: linear-gradient(135deg, #475569 0%, #94a3b8 50%, #334155 100%);
+  --badge-gold: linear-gradient(135deg, #b45309 0%, #fbbf24 50%, #92400e 100%);
+  --badge-diamond: linear-gradient(135deg, #1e40af 0%, #818cf8 50%, #0891b2 100%);
+
   --sidebar: var(--surface);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);

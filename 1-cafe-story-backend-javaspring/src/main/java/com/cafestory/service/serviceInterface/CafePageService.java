@@ -21,13 +21,19 @@ public interface CafePageService {
 
     List<CafePageResponseDTO> getCafePagesByOwnerId(UUID ownerUserId, UUID viewerUserId);
 
-    List<CafePageRankingResponseDTO> getTopCafePages(UUID regionId, String city, int size);
+    List<CafePageRankingResponseDTO> getTopCafePages(UUID regionId, String city, String area, String province, int size, UUID viewerUserId);
+
+    List<CafePageResponseDTO> searchCafePages(String query, UUID viewerUserId);
+
+    List<CafePageResponseDTO> getActiveCafePages(UUID viewerUserId);
 
     CafePageResponseDTO getCafePageById(UUID cafePageId);
 
     CafePageResponseDTO getCafePageById(UUID cafePageId, UUID viewerUserId);
 
     BlogCursorPageResponseDTO getBlogsByCafePageId(UUID cafePageId, String cursor, int size);
+
+    BlogCursorPageResponseDTO getBlogsByCafePageId(UUID cafePageId, String cursor, int size, UUID viewerUserId);
 
     CafePageResponseDTO updateCafePage(UUID cafePageId, UUID actorUserId, CafePageUpdateDTO cafePageUpdateDTO);
 

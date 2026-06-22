@@ -39,6 +39,8 @@ public class BlogResponseDTO {
     private BlogDisplayAuthorType displayAuthorType;
     private String displayName;
     private String displayAvatarUrl;
+    private Boolean isAuthorFollowing;
+    private Boolean isPageFollowing;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

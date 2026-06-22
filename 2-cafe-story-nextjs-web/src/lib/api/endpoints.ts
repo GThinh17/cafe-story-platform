@@ -50,6 +50,8 @@ export const apiEndpoints = {
     vnpayReturn: "/api/payments/vnpay/return",
   },
   reviewers: {
+    list: "/api/reviewers",
+    region: "/api/reviewers/region",
     byUserId: (userId: string) => `/api/reviewers/${pathId(userId)}`,
     payouts: (reviewerId: string) => `/api/reviewers/${pathId(reviewerId)}/payouts`,
     top: "/api/reviewers/top",

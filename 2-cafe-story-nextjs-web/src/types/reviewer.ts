@@ -1,5 +1,23 @@
 export type ReviewerBadge = "IRON" | "BRONZE" | "SILVER" | "GOLD" | "DIAMOND";
 
+export type ReviewerDiscoveryResponse = {
+  rank: number;
+  reviewerId: string;
+  userId: string;
+  userName: string | null;
+  userFullName: string | null;
+  avatar: string | null;
+  city: string | null;
+  province: string | null;
+  area: string | null;
+  reviewCount: number;
+  followerCount: number;
+  badge: ReviewerBadge | string | null;
+  rankingScore: number;
+  isFollowing: boolean;
+  isMe: boolean;
+};
+
 export type ReviewerResponse = {
   reviewerId: string;
   userId: string;
@@ -12,6 +30,7 @@ export type ReviewerResponse = {
   badge: ReviewerBadge | string | null;
   score: number;
   expireDate: string | null;
+  isFollowing: boolean | null;
 };
 
 export type ReviewerPayoutResponse = {

@@ -19,6 +19,8 @@ import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.BlogSaveRepository;
 import com.cafestory.repository.BlogTaggedUserRepository;
 import com.cafestory.repository.RegionRepository;
+import com.cafestory.repository.PageFollowRepository;
+import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.service.serviceInterface.AiBlogModerationService;
 import com.cafestory.service.serviceInterface.BlogService;
 import com.cafestory.service.serviceInterface.BlogTagService;
@@ -62,6 +64,8 @@ public class BlogServiceImpl implements BlogService {
     private final CafePageValidator cafePageValidator;
     private final UserValidator userValidator;
     private final BlogTagService blogTagService;
+    private final UserFollowRepository userFollowRepository;
+    private final PageFollowRepository pageFollowRepository;
 
     public BlogServiceImpl(
             BlogRepository blogRepository,
@@ -76,7 +80,9 @@ public class BlogServiceImpl implements BlogService {
             BlogValidator blogValidator,
             CafePageValidator cafePageValidator,
             UserValidator userValidator,
-            BlogTagService blogTagService) {
+            BlogTagService blogTagService,
+            UserFollowRepository userFollowRepository,
+            PageFollowRepository pageFollowRepository) {
         this.blogRepository = blogRepository;
         this.blogLikeRepository = blogLikeRepository;
         this.blogSaveRepository = blogSaveRepository;
@@ -90,6 +96,8 @@ public class BlogServiceImpl implements BlogService {
         this.cafePageValidator = cafePageValidator;
         this.userValidator = userValidator;
         this.blogTagService = blogTagService;
+        this.userFollowRepository = userFollowRepository;
+        this.pageFollowRepository = pageFollowRepository;
     }
 
     @Override
@@ -318,6 +326,12 @@ public class BlogServiceImpl implements BlogService {
         }
         response.setIsLike(viewerUserId != null && blogLikeRepository.existsByUserUserIdAndBlogId(viewerUserId, blogId));
         response.setIsSave(viewerUserId != null && blogSaveRepository.findByUserUserIdAndBlogId(viewerUserId, blogId).isPresent());
+        UUID authorId = blog.getAuthor() != null ? blog.getAuthor().getUserId() : null;
+        response.setIsAuthorFollowing(viewerUserId != null && authorId != null
+                && userFollowRepository.existsByFollowerUserIdAndFollowingUserId(viewerUserId, authorId));
+        UUID blogPageId = blog.getPageId();
+        response.setIsPageFollowing(viewerUserId != null && blogPageId != null
+                && pageFollowRepository.existsByUserUserIdAndCafePageId(viewerUserId, blogPageId));
         response.setSaveCount(blogSaveRepository.countByBlogId(blogId));
 
         response.setRatingScore(resolveRatingScore(blogId));

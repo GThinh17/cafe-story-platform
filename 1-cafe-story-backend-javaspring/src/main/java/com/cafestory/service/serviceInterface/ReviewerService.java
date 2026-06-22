@@ -19,7 +19,11 @@ public interface ReviewerService {
 
     ReviewerResponseDTO getReviewer(UUID userId);
 
-    List<ReviewerResponseDTO> getAllReviewer();
+    List<ReviewerResponseDTO> getAllReviewer(UUID viewerUserId);
+
+    List<ReviewerResponseDTO> getAllActiveReviewers(UUID viewerUserId);
+
+    List<ReviewerResponseDTO> searchReviewers(String query, UUID viewerUserId);
 
     ReviewerStatsResponseDTO countReviewerStats(UUID requesterId, UUID reviewerId, String period);
 

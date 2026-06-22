@@ -188,14 +188,18 @@ public class CafePageServiceImpl implements CafePageService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, key = "'top:' + (#p0 == null ? 'none' : #p0) + ':' + (#p1 == null ? 'none' : #p1) + ':' + #p2")
-    public List<CafePageRankingResponseDTO> getTopCafePages(UUID regionId, String city, int size) {
-        String normalizedCity = normalizeCity(city);
+    @Cacheable(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, key = "'top:' + (#p0 == null ? 'none' : #p0) + ':' + (#p1 == null ? 'none' : #p1) + ':' + (#p2 == null ? 'none' : #p2) + ':' + (#p3 == null ? 'none' : #p3) + ':' + #p4")
+    public List<CafePageRankingResponseDTO> getTopCafePages(UUID regionId, String city, String area, String province, int size, UUID viewerUserId) {
+        String normalizedCity = normalizeString(city);
+        String normalizedArea = normalizeString(area);
+        String normalizedProvince = normalizeString(province);
         int safeSize = Math.min(Math.max(1, size), 50);
         LocalDateTime now = LocalDateTime.now();
         List<CafePageRankingCandidate> candidates = cafePageRepository.findActiveCafePagesForRegionalRanking(
                 regionId,
-                normalizedCity)
+                normalizedCity,
+                normalizedArea,
+                normalizedProvince)
                 .stream()
                 .map(cafePage -> new CafePageRankingCandidate(cafePage, calculateRankingScore(cafePage, now)))
                 .sorted(Comparator.comparing(CafePageRankingCandidate::score).reversed()
@@ -211,7 +215,7 @@ public class CafePageServiceImpl implements CafePageService {
         List<CafePageRankingResponseDTO> responses = new ArrayList<>();
         for (int index = 0; index < candidates.size(); index++) {
             CafePageRankingCandidate candidate = candidates.get(index);
-            responses.add(toRankingResponse(candidate.cafePage(), candidate.score(), index + 1));
+            responses.add(toRankingResponse(candidate.cafePage(), candidate.score(), index + 1, viewerUserId));
         }
         return responses;
     }
@@ -233,15 +237,28 @@ public class CafePageServiceImpl implements CafePageService {
     @Transactional(readOnly = true)
     @Cacheable(cacheNames = CacheConfig.CAFE_PAGE_BLOGS_CACHE, key = "#p0 + ':' + (#p1 == null ? 'first' : #p1) + ':' + #p2")
     public BlogCursorPageResponseDTO getBlogsByCafePageId(UUID cafePageId, String cursor, int size) {
+        return getBlogsByCafePageId(cafePageId, cursor, size, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BlogCursorPageResponseDTO getBlogsByCafePageId(UUID cafePageId, String cursor, int size, UUID viewerUserId) {
         cafePageValidator.validateCafePageExists(cafePageId);
         int safeSize = normalizeBlogPageSize(size);
         CafePageBlogCursor pageCursor = decodeCursor(cursor);
         List<Blog> blogs = findCafePageBlogs(cafePageId, pageCursor, safeSize + 1);
         boolean hasMore = blogs.size() > safeSize;
         List<Blog> pageItems = hasMore ? blogs.subList(0, safeSize) : blogs;
+        // All blogs in this list belong to cafePageId — check page follow once
+        boolean isPageFollowing = viewerUserId != null
+                && pageFollowRepository.existsByUserUserIdAndCafePageId(viewerUserId, cafePageId);
         List<BlogResponseDTO> items = pageItems
                 .stream()
-                .map(blogMapper::toBlogResponseDTO)
+                .map(blog -> {
+                    BlogResponseDTO dto = blogMapper.toBlogResponseDTO(blog);
+                    dto.setIsPageFollowing(isPageFollowing);
+                    return dto;
+                })
                 .toList();
 
         BlogCursorPageResponseDTO response = new BlogCursorPageResponseDTO();
@@ -382,14 +399,35 @@ public class CafePageServiceImpl implements CafePageService {
         return value == null ? 0 : value;
     }
 
-    private String normalizeCity(String city) {
-        if (city == null || city.isBlank()) {
-            return null;
+    @Override
+    @Transactional(readOnly = true)
+    public List<CafePageResponseDTO> searchCafePages(String query, UUID viewerUserId) {
+        if (query == null || query.isBlank()) {
+            return List.of();
         }
-        return city.trim();
+        return cafePageRepository.searchActiveCafePagesByName(query.trim())
+                .stream()
+                .map(cafePage -> toCafePageResponseDTO(cafePage, viewerUserId))
+                .toList();
     }
 
-    private CafePageRankingResponseDTO toRankingResponse(CafePage cafePage, double rankingScore, int rankPosition) {
+    @Override
+    @Transactional(readOnly = true)
+    public List<CafePageResponseDTO> getActiveCafePages(UUID viewerUserId) {
+        return cafePageRepository.findAllActiveCafePages()
+                .stream()
+                .map(cafePage -> toCafePageResponseDTO(cafePage, viewerUserId))
+                .toList();
+    }
+
+    private String normalizeString(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    private CafePageRankingResponseDTO toRankingResponse(CafePage cafePage, double rankingScore, int rankPosition, UUID viewerUserId) {
         Region region = cafePage.getRegion();
         CafePageRankingResponseDTO response = new CafePageRankingResponseDTO();
         response.setId(cafePage.getId());
@@ -409,6 +447,8 @@ public class CafePageServiceImpl implements CafePageService {
         response.setPageActive(cafePage.getPageActive());
         response.setRankingScore(rankingScore);
         response.setRankPosition(rankPosition);
+        response.setIsFollowing(viewerUserId != null && cafePage.getId() != null
+                && pageFollowRepository.existsByUserUserIdAndCafePageId(viewerUserId, cafePage.getId()));
         response.setCreatedAt(cafePage.getCreatedAt());
         return response;
     }

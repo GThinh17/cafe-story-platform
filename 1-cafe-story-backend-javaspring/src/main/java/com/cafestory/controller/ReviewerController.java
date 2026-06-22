@@ -83,8 +83,18 @@ public class ReviewerController {
     }
 
     @GetMapping
-    public List<ReviewerResponseDTO> getAllReviewer() {
-        return reviewerService.getAllReviewer();
+    public List<ReviewerResponseDTO> getAllReviewer(
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) Boolean activeOnly,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        UUID viewerUserId = optionalUserId(principal);
+        if (query != null && !query.isBlank()) {
+            return reviewerService.searchReviewers(query, viewerUserId);
+        }
+        if (Boolean.TRUE.equals(activeOnly)) {
+            return reviewerService.getAllActiveReviewers(viewerUserId);
+        }
+        return reviewerService.getAllReviewer(viewerUserId);
     }
 
     @GetMapping("/{reviewerId}/stats")

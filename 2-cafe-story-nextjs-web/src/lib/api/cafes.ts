@@ -33,11 +33,20 @@ function withQuery(path: string, params: Record<string, string | number | undefi
   return query ? `${path}?${query}` : path;
 }
 
-export function getAllCafePages(options: ApiRequestOptions = {}) {
-  return apiFetch<CafePageResponse[]>(apiEndpoints.cafes.list, {
-    headers: options.headers,
-    method: "GET",
-  });
+export function getAllCafePages(
+  params: { query?: string; status?: string } = {},
+  options: ApiRequestOptions = {},
+) {
+  return apiFetch<CafePageResponse[]>(
+    withQuery(apiEndpoints.cafes.list, {
+      query: params.query,
+      status: params.status,
+    }),
+    {
+      headers: options.headers,
+      method: "GET",
+    },
+  );
 }
 
 export function getTopCafePages(
@@ -47,6 +56,8 @@ export function getTopCafePages(
   return apiFetch<CafePageRankingResponse[]>(
     withQuery(apiEndpoints.cafes.top, {
       city: params.city,
+      area: params.area,
+      province: params.province,
       regionId: params.regionId,
       size: params.size,
     }),
@@ -55,6 +66,18 @@ export function getTopCafePages(
       method: "GET",
     },
   );
+}
+
+export function followCafePage(cafePageId: string) {
+  return apiFetch<void>(apiEndpoints.cafes.follows(cafePageId), {
+    method: "POST",
+  });
+}
+
+export function unfollowCafePage(cafePageId: string) {
+  return apiFetch<void>(apiEndpoints.cafes.follows(cafePageId), {
+    method: "DELETE",
+  });
 }
 
 export function getCafePageById(

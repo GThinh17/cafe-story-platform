@@ -112,6 +112,7 @@ function mapCafePageResponseToCafeSummary(cafe: CafePageResponse): CafeSummary {
     photoCount: `${formatCount(cafe.likeCount)} likes`,
     likeCount: cafe.likeCount ?? 0,
     isLiked: cafe.isLiked ?? false,
+    isFollowing: cafe.isFollowing ?? false,
     pageActive: cafe.pageActive,
     image: avatarImage,
     avatarImage,

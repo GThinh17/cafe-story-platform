@@ -142,10 +142,31 @@ public class ReviewerServiceImpl implements ReviewerService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ReviewerResponseDTO> getAllReviewer() {
+    public List<ReviewerResponseDTO> getAllReviewer(UUID viewerUserId) {
         return reviewerRepository.findAll()
                 .stream()
-                .map(this::toReviewerResponse)
+                .map(r -> toReviewerResponse(r, viewerUserId))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ReviewerResponseDTO> getAllActiveReviewers(UUID viewerUserId) {
+        return reviewerRepository.findAllActiveReviewers()
+                .stream()
+                .map(r -> toReviewerResponse(r, viewerUserId))
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ReviewerResponseDTO> searchReviewers(String query, UUID viewerUserId) {
+        if (query == null || query.isBlank()) {
+            return List.of();
+        }
+        return reviewerRepository.searchActiveReviewers(query.trim())
+                .stream()
+                .map(r -> toReviewerResponse(r, viewerUserId))
                 .toList();
     }
 
@@ -543,7 +564,7 @@ public class ReviewerServiceImpl implements ReviewerService {
         return response;
     }
 
-    private ReviewerResponseDTO toReviewerResponse(Reviewer reviewer) {
+    private ReviewerResponseDTO toReviewerResponse(Reviewer reviewer, UUID viewerUserId) {
         ReviewerResponseDTO response = new ReviewerResponseDTO();
         User user = reviewer.getUser();
         response.setReviewerId(reviewer.getReviewerId());
@@ -561,6 +582,8 @@ public class ReviewerServiceImpl implements ReviewerService {
         response.setBadge(latestBadge == null ? ReviewerBadge.IRON : latestBadge.getBadge());
         response.setScore(latestBadge == null ? 0 : latestBadge.getScore());
         response.setExpireDate(reviewer.getReviewerExpiresAt());
+        response.setIsFollowing(viewerUserId != null && user.getUserId() != null
+                && userFollowRepository.existsByFollowerUserIdAndFollowingUserId(viewerUserId, user.getUserId()));
         return response;
     }
 

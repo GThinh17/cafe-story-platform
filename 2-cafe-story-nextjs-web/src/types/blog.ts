@@ -30,6 +30,8 @@ export type BlogFeedResponse = {
   regionProvince: string | null;
   regionArea: string | null;
   rankPosition: number | null;
+  isAuthorFollowing: boolean | null;
+  isPageFollowing: boolean | null;
   createdAt: string | null;
 };
 
@@ -61,6 +63,8 @@ export type BlogResponse = {
   displayAuthorType?: BlogDisplayAuthorType | null;
   displayName?: string | null;
   displayAvatarUrl?: string | null;
+  isAuthorFollowing?: boolean | null;
+  isPageFollowing?: boolean | null;
   createdAt: string | null;
   updatedAt: string | null;
 };

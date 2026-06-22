@@ -39,14 +39,12 @@ export function ExploreSearchHeader() {
   const hasValue = inputValue.length > 0;
 
   return (
-    <header className="mx-auto flex w-full max-w-3xl flex-col items-center gap-5 text-center">
-      <div className="space-y-3">
-        <h1 className="font-sans text-3xl font-black leading-tight tracking-tight text-espresso sm:text-4xl">
-          Find your next coffee story.
-        </h1>
-      </div>
-
-      <form className="relative w-full" role="search" onSubmit={(e) => e.preventDefault()}>
+    <div className="mx-auto w-full max-w-[690px] max-h-[42px]">
+      <form
+        className="relative w-full"
+        role="search"
+        onSubmit={(e) => e.preventDefault()}
+      >
         <label className="sr-only" htmlFor="explore-cafe-search">
           Search cafes and stories
         </label>
@@ -55,7 +53,7 @@ export function ExploreSearchHeader() {
         </span>
         <Input
           autoComplete="off"
-          className="h-[52px] rounded-md border-transparent bg-surface-muted pl-11 pr-10 text-sm font-medium shadow-sm focus:border-primary focus:bg-surface"
+          className="h-[42px] rounded-3xl border-transparent bg-surface-muted pl-11 pr-10 text-sm font-medium border-none focus:border-transparent focus:outline-none"
           id="explore-cafe-search"
           onChange={(e) => setInputValue(e.target.value)}
           placeholder="Find your next story..."
@@ -73,6 +71,6 @@ export function ExploreSearchHeader() {
           </button>
         )}
       </form>
-    </header>
+    </div>
   );
 }

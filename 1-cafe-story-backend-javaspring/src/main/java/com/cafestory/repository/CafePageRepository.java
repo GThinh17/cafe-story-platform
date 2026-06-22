@@ -38,10 +38,20 @@ public interface CafePageRepository extends JpaRepository<CafePage, UUID> {
             and p.pageActive = true
             and (:regionId is null or r.regionId = :regionId)
             and (cast(:city as string) is null or lower(r.city) = lower(cast(:city as string)))
+            and (cast(:area as string) is null or lower(r.area) = lower(cast(:area as string)))
+            and (cast(:province as string) is null or lower(r.province) = lower(cast(:province as string)))
             """)
     List<CafePage> findActiveCafePagesForRegionalRanking(
             @Param("regionId") UUID regionId,
-            @Param("city") String city);
+            @Param("city") String city,
+            @Param("area") String area,
+            @Param("province") String province);
+
+    @Query("select p from CafePage p where p.status = com.cafestory.entity.enums.PageStatus.ACTIVE and lower(p.name) like lower(concat('%', :query, '%'))")
+    List<CafePage> searchActiveCafePagesByName(@Param("query") String query);
+
+    @Query("select p from CafePage p where p.status = com.cafestory.entity.enums.PageStatus.ACTIVE")
+    List<CafePage> findAllActiveCafePages();
 
     @Query("""
             select distinct p
