@@ -1,5 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.requestDTO.AdminCafePageStatusUpdateRequestDTO;
 import com.cafestory.dto.responseDTO.CafePageResponseDTO;
 import com.cafestory.entity.CafePage;
@@ -8,6 +9,7 @@ import com.cafestory.mapper.CafePageMapper;
 import com.cafestory.repository.CafePageRepository;
 import com.cafestory.repository.CafePageRatingRepository;
 import com.cafestory.service.serviceInterface.AdminCafePageService;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -47,6 +49,7 @@ public class AdminCafePageServiceImpl implements AdminCafePageService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, allEntries = true)
     public CafePageResponseDTO updateCafePageStatus(UUID pageId, AdminCafePageStatusUpdateRequestDTO request) {
         CafePage cafePage = findCafePage(pageId);
         cafePage.setStatus(request.getStatus());

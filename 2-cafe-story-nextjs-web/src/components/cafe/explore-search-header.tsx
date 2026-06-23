@@ -11,6 +11,8 @@ export function ExploreSearchHeader() {
   const searchParams = useSearchParams();
   const [inputValue, setInputValue] = useState(searchParams.get("query") ?? "");
   const isFirstRender = useRef(true);
+  const searchParamsRef = useRef(searchParams);
+  searchParamsRef.current = searchParams;
 
   useEffect(() => {
     if (isFirstRender.current) {
@@ -20,7 +22,7 @@ export function ExploreSearchHeader() {
 
     const timer = setTimeout(() => {
       const query = inputValue.trim();
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(searchParamsRef.current.toString());
       if (query) {
         params.set("query", query);
       } else {
@@ -30,7 +32,7 @@ export function ExploreSearchHeader() {
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [inputValue, router, searchParams]);
+  }, [inputValue, router]);
 
   function handleClear() {
     setInputValue("");

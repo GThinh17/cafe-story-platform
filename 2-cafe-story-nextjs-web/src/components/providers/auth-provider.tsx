@@ -12,6 +12,7 @@ import {
 } from "react";
 import { ApiError } from "@/lib/api/client";
 import { getMe } from "@/lib/api/auth";
+import { followRegistry } from "@/lib/follow-registry";
 import type { AuthState, AuthUser } from "@/types/auth";
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -30,6 +31,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const requestIdRef = useRef(0);
 
   const applyUser = useCallback((nextUser: AuthUser | null) => {
+    if (nextUser?.userId !== userRef.current?.userId) {
+      followRegistry.clear();
+    }
     userRef.current = nextUser;
     setUser(nextUser);
   }, []);

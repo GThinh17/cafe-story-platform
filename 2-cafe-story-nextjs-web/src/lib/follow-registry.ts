@@ -25,4 +25,8 @@ export const followRegistry = {
     _listeners.get(k)!.add(fn);
     return () => { _listeners.get(k)?.delete(fn); };
   },
+
+  clear() {
+    _state.clear();
+  },
 };

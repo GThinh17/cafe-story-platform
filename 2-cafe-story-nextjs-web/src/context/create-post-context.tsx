@@ -35,6 +35,7 @@ export function CreatePostProvider({ children }: { children: React.ReactNode }) 
     let active = true;
 
     if (!userId) {
+      setIsOpen(false);
       setOwnedCafePage(null);
       return () => { active = false; };
     }
