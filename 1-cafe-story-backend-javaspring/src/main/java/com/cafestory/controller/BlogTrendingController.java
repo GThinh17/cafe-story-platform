@@ -40,10 +40,15 @@ public class BlogTrendingController {
 
     @GetMapping("/trending")
     public List<BlogTrendingResponse> getTrendingBlogs(
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal,
             @RequestParam(defaultValue = "HOUR_24") TrendWindowType windowType,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return blogTrendingService.getTrendingBlogs(windowType, page, size);
+        return blogTrendingService.getTrendingBlogs(
+                principal == null ? null : principal.userId(),
+                windowType,
+                page,
+                size);
     }
 
     @PostMapping("/{blogId}/events")

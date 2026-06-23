@@ -5,9 +5,10 @@ import com.cafestory.entity.enums.TrendWindowType;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 public interface BlogTrendingService {
-    List<BlogTrendingResponse> getTrendingBlogs(TrendWindowType windowType, int page, int size);
+    List<BlogTrendingResponse> getTrendingBlogs(UUID viewerUserId, TrendWindowType windowType, int page, int size);
 
     void aggregateDailyMetrics(LocalDate metricDate);
 

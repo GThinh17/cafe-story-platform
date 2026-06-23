@@ -1,4 +1,5 @@
 import type {
+  ChatSenderContextType,
   ChatMessageResponse,
   ConversationResponse,
   ChatMessageType,
@@ -14,6 +15,8 @@ type MessagePageOptions = {
 
 export type SendChatMessageRequest = {
   imageUrls?: string[];
+  senderCafePageId?: string;
+  senderContextType?: ChatSenderContextType;
   stickerId?: string;
   stickerUrl?: string;
   text?: string;
@@ -23,6 +26,14 @@ export type SendChatMessageRequest = {
 export function getConversations() {
   return cachedApiCall("chat:conversations", apiCacheTtl.chatActive, () =>
     apiFetch<ConversationResponse[]>(apiEndpoints.chat.conversations, {
+      method: "GET",
+    }),
+  );
+}
+
+export function getCafePageConversations(cafePageId: string) {
+  return cachedApiCall(`chat:cafe-page-conversations:${cafePageId}`, apiCacheTtl.chatActive, () =>
+    apiFetch<ConversationResponse[]>(apiEndpoints.chat.cafePageConversations(cafePageId), {
       method: "GET",
     }),
   );
@@ -43,6 +54,7 @@ export async function createCafePageConversation(cafePageId: string) {
     method: "POST",
   });
   invalidateApiCache("chat:conversations");
+  invalidateApiCache(`chat:cafe-page-conversations:${cafePageId}`);
   return response;
 }
 
@@ -77,6 +89,7 @@ export async function sendChatMessage(
     },
   );
   invalidateApiCache("chat:conversations");
+  invalidateApiCache("chat:cafe-page-conversations:");
   invalidateApiCache(`chat:messages:${conversationId}:`);
   return response;
 }

@@ -30,6 +30,7 @@ public class CafePageResponseDTO {
     private Boolean isFollowing;
     private Boolean isLiked;
     private Boolean isRating;
+    private Boolean canManage;
     private Integer myRating;
     private Double ratingScore;
     private Long ratingCount;

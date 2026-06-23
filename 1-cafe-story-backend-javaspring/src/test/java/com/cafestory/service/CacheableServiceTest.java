@@ -20,6 +20,7 @@ import com.cafestory.repository.BlogRatingRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.BlogSaveRepository;
 import com.cafestory.repository.BlogTaggedUserRepository;
+import com.cafestory.repository.PageFollowRepository;
 import com.cafestory.repository.RegionCityRepository;
 import com.cafestory.repository.RegionProvinceRepository;
 import com.cafestory.repository.RegionRepository;
@@ -128,6 +129,9 @@ class CacheableServiceTest {
     private UserFollowRepository userFollowRepository;
 
     @jakarta.annotation.Resource
+    private PageFollowRepository pageFollowRepository;
+
+    @jakarta.annotation.Resource
     private CacheManager cacheManager;
 
     @BeforeEach
@@ -148,7 +152,8 @@ class CacheableServiceTest {
                 userValidator,
                 userMapper,
                 userRepository,
-                userFollowRepository);
+                userFollowRepository,
+                pageFollowRepository);
         clearCache(CacheConfig.REGION_PROVINCES_CACHE);
         clearCache(CacheConfig.REGION_CITIES_CACHE);
         clearCache(CacheConfig.REGION_WARDS_CACHE);
@@ -342,11 +347,13 @@ class CacheableServiceTest {
         when(userValidator.validateUserExists(userId)).thenReturn(user);
         when(userMapper.toUserResponseDTO(user)).thenAnswer(invocation -> userResponse(userId));
         when(userFollowRepository.countByFollowerUserId(userId)).thenReturn(5L);
+        when(pageFollowRepository.countByUserUserId(userId)).thenReturn(2L);
 
-        assertThat(userService.getUserById(userId, firstViewerId).getFollowingCount()).isEqualTo(5);
-        assertThat(userService.getUserById(userId, secondViewerId).getFollowingCount()).isEqualTo(5);
+        assertThat(userService.getUserById(userId, firstViewerId).getFollowingCount()).isEqualTo(7);
+        assertThat(userService.getUserById(userId, secondViewerId).getFollowingCount()).isEqualTo(7);
 
         verify(userFollowRepository, times(1)).countByFollowerUserId(userId);
+        verify(pageFollowRepository, times(1)).countByUserUserId(userId);
     }
 
     private void clearCache(String cacheName) {
@@ -519,8 +526,10 @@ class CacheableServiceTest {
         }
 
         @Bean
-        UserProfileCacheService userProfileCacheService(UserFollowRepository userFollowRepository) {
-            return new UserProfileCacheService(userFollowRepository);
+        UserProfileCacheService userProfileCacheService(
+                UserFollowRepository userFollowRepository,
+                PageFollowRepository pageFollowRepository) {
+            return new UserProfileCacheService(userFollowRepository, pageFollowRepository);
         }
 
         @Bean
@@ -601,6 +610,11 @@ class CacheableServiceTest {
         @Bean
         UserFollowRepository userFollowRepository() {
             return Mockito.mock(UserFollowRepository.class);
+        }
+
+        @Bean
+        PageFollowRepository pageFollowRepository() {
+            return Mockito.mock(PageFollowRepository.class);
         }
 
         @Bean

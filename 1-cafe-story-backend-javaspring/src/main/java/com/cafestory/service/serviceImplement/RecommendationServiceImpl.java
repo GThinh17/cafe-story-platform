@@ -23,6 +23,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.UUID;
 
 @Service
@@ -56,11 +59,17 @@ public class RecommendationServiceImpl implements RecommendationService {
     @Cacheable(cacheNames = CacheConfig.RECOMMENDATION_CARDS_CACHE, key = "'users:' + #p0 + ':' + #p1 + ':' + #p2")
     public List<RecommendationCardResponseDTO> getUserRecommendations(UUID currentUserId, int page, int size) {
         User currentUser = validateCurrentUser(currentUserId);
-        List<ScoredRecommendation> scored = userRepository.findRecommendationCandidates(
+        List<User> candidates = userRepository.findRecommendationCandidates(
                         currentUserId,
-                        candidatePageable(page, size))
+                        regionId(currentUser.getRegion()),
+                        normalizedCity(currentUser.getRegion()),
+                        candidatePageable(page, size));
+        Map<UUID, Long> activeReportCounts = activeUserReportCounts(candidates.stream()
+                .map(User::getUserId)
+                .toList());
+        List<ScoredRecommendation> scored = candidates
                 .stream()
-                .map(user -> scoreUser(currentUser, user))
+                .map(user -> scoreUser(currentUser, user, activeReportCounts.getOrDefault(user.getUserId(), 0L)))
                 .sorted(Comparator.comparing(ScoredRecommendation::score).reversed())
                 .toList();
         return paginate(scored, page, size).stream()
@@ -73,11 +82,21 @@ public class RecommendationServiceImpl implements RecommendationService {
     @Cacheable(cacheNames = CacheConfig.RECOMMENDATION_CARDS_CACHE, key = "'reviewers:' + #p0 + ':' + #p1 + ':' + #p2")
     public List<RecommendationCardResponseDTO> getReviewerRecommendations(UUID currentUserId, int page, int size) {
         User currentUser = validateCurrentUser(currentUserId);
-        List<ScoredRecommendation> scored = reviewerRepository.findRecommendationCandidates(
+        List<Reviewer> candidates = reviewerRepository.findRecommendationCandidates(
                         currentUserId,
-                        candidatePageable(page, size))
+                        regionId(currentUser.getRegion()),
+                        normalizedCity(currentUser.getRegion()),
+                        candidatePageable(page, size));
+        Map<UUID, Long> activeReportCounts = activeUserReportCounts(candidates.stream()
+                .map(Reviewer::getUser)
+                .map(User::getUserId)
+                .toList());
+        List<ScoredRecommendation> scored = candidates
                 .stream()
-                .map(reviewer -> scoreReviewer(currentUser, reviewer))
+                .map(reviewer -> scoreReviewer(
+                        currentUser,
+                        reviewer,
+                        activeReportCounts.getOrDefault(reviewer.getUser().getUserId(), 0L)))
                 .sorted(Comparator.comparing(ScoredRecommendation::score).reversed())
                 .toList();
         return paginate(scored, page, size).stream()
@@ -90,11 +109,20 @@ public class RecommendationServiceImpl implements RecommendationService {
     @Cacheable(cacheNames = CacheConfig.RECOMMENDATION_CARDS_CACHE, key = "'cafe-pages:' + #p0 + ':' + #p1 + ':' + #p2")
     public List<RecommendationCardResponseDTO> getCafePageRecommendations(UUID currentUserId, int page, int size) {
         User currentUser = validateCurrentUser(currentUserId);
-        List<ScoredRecommendation> scored = cafePageRepository.findRecommendationCandidates(
+        List<CafePage> candidates = cafePageRepository.findRecommendationCandidates(
                         currentUserId,
-                        candidatePageable(page, size))
+                        regionId(currentUser.getRegion()),
+                        normalizedCity(currentUser.getRegion()),
+                        candidatePageable(page, size));
+        Map<UUID, Long> activeReportCounts = activeCafePageReportCounts(candidates.stream()
+                .map(CafePage::getId)
+                .toList());
+        List<ScoredRecommendation> scored = candidates
                 .stream()
-                .map(cafePage -> scoreCafePage(currentUser, cafePage))
+                .map(cafePage -> scoreCafePage(
+                        currentUser,
+                        cafePage,
+                        activeReportCounts.getOrDefault(cafePage.getId(), 0L)))
                 .sorted(Comparator.comparing(ScoredRecommendation::score).reversed())
                 .toList();
         return paginate(scored, page, size).stream()
@@ -129,10 +157,10 @@ public class RecommendationServiceImpl implements RecommendationService {
         return currentUser;
     }
 
-    private ScoredRecommendation scoreUser(User currentUser, User candidate) {
+    private ScoredRecommendation scoreUser(User currentUser, User candidate, long activeReportCount) {
         double locationScore = locationScore(currentUser.getRegion(), candidate.getRegion(), 40.0, 30.0);
         double popularityScore = Math.min(safe(candidate.getUserFollower()) * 0.5 + safe(candidate.getUserLike()) * 0.2, 30.0);
-        double reportPenalty = activeUserReportCount(candidate.getUserId()) * 10.0;
+        double reportPenalty = activeReportCount * 10.0;
         double score = locationScore + popularityScore - reportPenalty;
 
         RecommendationCardResponseDTO response = baseResponse(
@@ -147,12 +175,12 @@ public class RecommendationServiceImpl implements RecommendationService {
         return new ScoredRecommendation(response, score);
     }
 
-    private ScoredRecommendation scoreReviewer(User currentUser, Reviewer reviewer) {
+    private ScoredRecommendation scoreReviewer(User currentUser, Reviewer reviewer, long activeReportCount) {
         User reviewerUser = reviewer.getUser();
         double locationScore = locationScore(currentUser.getRegion(), reviewerUser.getRegion(), 0.0, 25.0);
         double activeScore = Boolean.TRUE.equals(reviewer.getReviewerActive()) ? 20.0 : 0.0;
         double popularityScore = Math.min(safe(reviewerUser.getUserFollower()) * 0.5 + safe(reviewerUser.getUserLike()) * 0.2, 30.0);
-        double reportPenalty = activeUserReportCount(reviewerUser.getUserId()) * 10.0;
+        double reportPenalty = activeReportCount * 10.0;
         double score = locationScore + activeScore + popularityScore - reportPenalty;
 
         RecommendationCardResponseDTO response = baseResponse(
@@ -167,13 +195,11 @@ public class RecommendationServiceImpl implements RecommendationService {
         return new ScoredRecommendation(response, score);
     }
 
-    private ScoredRecommendation scoreCafePage(User currentUser, CafePage cafePage) {
+    private ScoredRecommendation scoreCafePage(User currentUser, CafePage cafePage, long activeReportCount) {
         double locationScore = locationScore(currentUser.getRegion(), cafePage.getRegion(), 40.0, 30.0);
         double popularityScore = Math.min(safe(cafePage.getFollowerCount()) * 0.3 + safe(cafePage.getLikeCount()) * 0.2, 30.0);
         double activeScore = Boolean.TRUE.equals(cafePage.getPageActive()) ? 10.0 : 0.0;
-        double reportPenalty = contentReportRepository.countByCafePageIdAndStatusIn(
-                cafePage.getId(),
-                ACTIVE_REPORT_STATUSES) * 10.0;
+        double reportPenalty = activeReportCount * 10.0;
         double score = locationScore + popularityScore + activeScore - reportPenalty;
 
         RecommendationCardResponseDTO response = baseResponse(
@@ -220,8 +246,33 @@ public class RecommendationServiceImpl implements RecommendationService {
         return 0.0;
     }
 
-    private long activeUserReportCount(UUID userId) {
-        return contentReportRepository.countByReportedUserUserIdAndStatusIn(userId, ACTIVE_REPORT_STATUSES);
+    private Map<UUID, Long> activeUserReportCounts(List<UUID> userIds) {
+        return reportCountMap(userIds, ids -> contentReportRepository.countByReportedUserIdsAndStatusIn(
+                ids,
+                ACTIVE_REPORT_STATUSES));
+    }
+
+    private Map<UUID, Long> activeCafePageReportCounts(List<UUID> cafePageIds) {
+        return reportCountMap(cafePageIds, ids -> contentReportRepository.countByCafePageIdsAndStatusIn(
+                ids,
+                ACTIVE_REPORT_STATUSES));
+    }
+
+    private Map<UUID, Long> reportCountMap(
+            List<UUID> targetIds,
+            Function<List<UUID>, List<ContentReportRepository.ReportCountRow>> loader) {
+        List<UUID> safeTargetIds = targetIds.stream()
+                .filter(id -> id != null)
+                .distinct()
+                .toList();
+        if (safeTargetIds.isEmpty()) {
+            return Map.of();
+        }
+        return loader.apply(safeTargetIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        ContentReportRepository.ReportCountRow::getTargetId,
+                        ContentReportRepository.ReportCountRow::getReportCount));
     }
 
     private String buildUserReason(double locationScore, double popularityScore) {
@@ -366,6 +417,15 @@ public class RecommendationServiceImpl implements RecommendationService {
 
     private String city(Region region) {
         return region == null ? null : region.getCity();
+    }
+
+    private String normalizedCity(Region region) {
+        String city = city(region);
+        return city == null || city.isBlank() ? null : city.trim().toLowerCase();
+    }
+
+    private UUID regionId(Region region) {
+        return region == null ? null : region.getRegionId();
     }
 
     private String displayName(User user) {

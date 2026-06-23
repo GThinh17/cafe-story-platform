@@ -1,12 +1,14 @@
 package com.cafestory.until.schedule;
 
 import com.cafestory.service.serviceInterface.BlogTrendingService;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 
 @Component
+@ConditionalOnProperty(name = "app.scheduling.enabled", havingValue = "true", matchIfMissing = true)
 public class TrendCalculationJob {
 
     private final BlogTrendingService blogTrendingService;

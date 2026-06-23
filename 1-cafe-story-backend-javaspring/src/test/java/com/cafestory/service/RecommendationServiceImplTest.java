@@ -69,10 +69,10 @@ class RecommendationServiceImplTest {
         otherCity.setUserFollower(50);
 
         when(userValidator.validateUserExists(currentUserId)).thenReturn(currentUser);
-        when(userRepository.findRecommendationCandidates(eq(currentUserId), any(Pageable.class)))
+        when(userRepository.findRecommendationCandidates(eq(currentUserId), any(UUID.class), eq("ho chi minh"), any(Pageable.class)))
                 .thenReturn(List.of(otherCity, sameCity));
-        when(contentReportRepository.countByReportedUserUserIdAndStatusIn(any(UUID.class), eq(activeStatuses())))
-                .thenReturn(0L);
+        when(contentReportRepository.countByReportedUserIdsAndStatusIn(any(), eq(activeStatuses())))
+                .thenReturn(List.of());
 
         List<RecommendationCardResponseDTO> result =
                 recommendationService.getUserRecommendations(currentUserId, 0, 10);
@@ -95,10 +95,10 @@ class RecommendationServiceImplTest {
         Reviewer reviewer = reviewer(UUID.randomUUID(), reviewerUser);
 
         when(userValidator.validateUserExists(currentUserId)).thenReturn(currentUser);
-        when(reviewerRepository.findRecommendationCandidates(eq(currentUserId), any(Pageable.class)))
+        when(reviewerRepository.findRecommendationCandidates(eq(currentUserId), any(UUID.class), eq("ho chi minh"), any(Pageable.class)))
                 .thenReturn(List.of(reviewer));
-        when(contentReportRepository.countByReportedUserUserIdAndStatusIn(reviewerUser.getUserId(), activeStatuses()))
-                .thenReturn(0L);
+        when(contentReportRepository.countByReportedUserIdsAndStatusIn(any(), eq(activeStatuses())))
+                .thenReturn(List.of());
 
         List<RecommendationCardResponseDTO> result =
                 recommendationService.getReviewerRecommendations(currentUserId, 0, 10);
@@ -120,10 +120,10 @@ class RecommendationServiceImplTest {
         cafePage.setLikeCount(50);
 
         when(userValidator.validateUserExists(currentUserId)).thenReturn(currentUser);
-        when(cafePageRepository.findRecommendationCandidates(eq(currentUserId), any(Pageable.class)))
+        when(cafePageRepository.findRecommendationCandidates(eq(currentUserId), any(UUID.class), eq("ho chi minh"), any(Pageable.class)))
                 .thenReturn(List.of(cafePage));
-        when(contentReportRepository.countByCafePageIdAndStatusIn(cafePage.getId(), activeStatuses()))
-                .thenReturn(0L);
+        when(contentReportRepository.countByCafePageIdsAndStatusIn(any(), eq(activeStatuses())))
+                .thenReturn(List.of());
 
         List<RecommendationCardResponseDTO> result =
                 recommendationService.getCafePageRecommendations(currentUserId, 0, 10);
@@ -146,16 +146,16 @@ class RecommendationServiceImplTest {
         CafePage cafePage = cafePage(UUID.randomUUID(), "Cafe Story", "Ho Chi Minh");
 
         when(userValidator.validateUserExists(currentUserId)).thenReturn(currentUser);
-        when(userRepository.findRecommendationCandidates(eq(currentUserId), any(Pageable.class)))
+        when(userRepository.findRecommendationCandidates(eq(currentUserId), any(UUID.class), eq("ho chi minh"), any(Pageable.class)))
                 .thenReturn(List.of(suggestedUser));
-        when(reviewerRepository.findRecommendationCandidates(eq(currentUserId), any(Pageable.class)))
+        when(reviewerRepository.findRecommendationCandidates(eq(currentUserId), any(UUID.class), eq("ho chi minh"), any(Pageable.class)))
                 .thenReturn(List.of(reviewer));
-        when(cafePageRepository.findRecommendationCandidates(eq(currentUserId), any(Pageable.class)))
+        when(cafePageRepository.findRecommendationCandidates(eq(currentUserId), any(UUID.class), eq("ho chi minh"), any(Pageable.class)))
                 .thenReturn(List.of(cafePage));
-        when(contentReportRepository.countByReportedUserUserIdAndStatusIn(any(UUID.class), eq(activeStatuses())))
-                .thenReturn(0L);
-        when(contentReportRepository.countByCafePageIdAndStatusIn(any(UUID.class), eq(activeStatuses())))
-                .thenReturn(0L);
+        when(contentReportRepository.countByReportedUserIdsAndStatusIn(any(), eq(activeStatuses())))
+                .thenReturn(List.of());
+        when(contentReportRepository.countByCafePageIdsAndStatusIn(any(), eq(activeStatuses())))
+                .thenReturn(List.of());
 
         List<RecommendationCardResponseDTO> result =
                 recommendationService.getMixedRecommendations(currentUserId, 0, 10);
@@ -164,11 +164,96 @@ class RecommendationServiceImplTest {
                 .containsExactly(
                         RecommendationTargetType.CAFE_PAGE,
                         RecommendationTargetType.USER,
-                        RecommendationTargetType.REVIEWER);
+                RecommendationTargetType.REVIEWER);
+    }
+
+    @Test
+    void getReviewerRecommendations_success_appliesBatchReportPenalty_TC005() {
+        UUID currentUserId = UUID.randomUUID();
+        User currentUser = user(currentUserId, "current", "Current User", "Ho Chi Minh");
+        User cleanReviewerUser = user(UUID.randomUUID(), "cleanreviewer", "Clean Reviewer", "Da Nang");
+        cleanReviewerUser.setUserFollower(5);
+        User reportedReviewerUser = user(UUID.randomUUID(), "reportedreviewer", "Reported Reviewer", "Da Nang");
+        reportedReviewerUser.setUserFollower(50);
+        Reviewer cleanReviewer = reviewer(UUID.randomUUID(), cleanReviewerUser);
+        Reviewer reportedReviewer = reviewer(UUID.randomUUID(), reportedReviewerUser);
+
+        when(userValidator.validateUserExists(currentUserId)).thenReturn(currentUser);
+        when(reviewerRepository.findRecommendationCandidates(eq(currentUserId), any(UUID.class), eq("ho chi minh"), any(Pageable.class)))
+                .thenReturn(List.of(reportedReviewer, cleanReviewer));
+        when(contentReportRepository.countByReportedUserIdsAndStatusIn(any(), eq(activeStatuses())))
+                .thenReturn(List.of(reportCount(reportedReviewerUser.getUserId(), 5)));
+
+        List<RecommendationCardResponseDTO> result =
+                recommendationService.getReviewerRecommendations(currentUserId, 0, 10);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getTargetId()).isEqualTo(cleanReviewer.getReviewerId());
+        assertThat(result.get(1).getTargetId()).isEqualTo(reportedReviewer.getReviewerId());
+    }
+
+    @Test
+    void getCafePageRecommendations_success_appliesBatchReportPenalty_TC006() {
+        UUID currentUserId = UUID.randomUUID();
+        User currentUser = user(currentUserId, "current", "Current User", "Ho Chi Minh");
+        CafePage cleanPage = cafePage(UUID.randomUUID(), "Clean Cafe", "Da Nang");
+        cleanPage.setFollowerCount(20);
+        CafePage reportedPage = cafePage(UUID.randomUUID(), "Reported Cafe", "Da Nang");
+        reportedPage.setFollowerCount(100);
+
+        when(userValidator.validateUserExists(currentUserId)).thenReturn(currentUser);
+        when(cafePageRepository.findRecommendationCandidates(eq(currentUserId), any(UUID.class), eq("ho chi minh"), any(Pageable.class)))
+                .thenReturn(List.of(reportedPage, cleanPage));
+        when(contentReportRepository.countByCafePageIdsAndStatusIn(any(), eq(activeStatuses())))
+                .thenReturn(List.of(reportCount(reportedPage.getId(), 5)));
+
+        List<RecommendationCardResponseDTO> result =
+                recommendationService.getCafePageRecommendations(currentUserId, 0, 10);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getTargetId()).isEqualTo(cleanPage.getId());
+        assertThat(result.get(1).getTargetId()).isEqualTo(reportedPage.getId());
+    }
+
+    @Test
+    void getCafePageRecommendations_success_includesActiveDraftPageForExplore_TC007() {
+        UUID currentUserId = UUID.randomUUID();
+        User currentUser = user(currentUserId, "current", "Current User", "Ho Chi Minh");
+        CafePage draftPage = cafePage(UUID.randomUUID(), "Draft Paid Cafe", "Ho Chi Minh");
+        draftPage.setStatus(PageStatus.DRAFT);
+        draftPage.setPageActive(true);
+
+        when(userValidator.validateUserExists(currentUserId)).thenReturn(currentUser);
+        when(cafePageRepository.findRecommendationCandidates(eq(currentUserId), any(UUID.class), eq("ho chi minh"), any(Pageable.class)))
+                .thenReturn(List.of(draftPage));
+        when(contentReportRepository.countByCafePageIdsAndStatusIn(any(), eq(activeStatuses())))
+                .thenReturn(List.of());
+
+        List<RecommendationCardResponseDTO> result =
+                recommendationService.getCafePageRecommendations(currentUserId, 0, 10);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getTargetType()).isEqualTo(RecommendationTargetType.CAFE_PAGE);
+        assertThat(result.get(0).getTargetId()).isEqualTo(draftPage.getId());
+        assertThat(result.get(0).getUsername()).isEqualTo("Draft Paid Cafe");
     }
 
     private List<ReportStatus> activeStatuses() {
         return List.of(ReportStatus.OPEN, ReportStatus.REVIEWING);
+    }
+
+    private ContentReportRepository.ReportCountRow reportCount(UUID targetId, long reportCount) {
+        return new ContentReportRepository.ReportCountRow() {
+            @Override
+            public UUID getTargetId() {
+                return targetId;
+            }
+
+            @Override
+            public long getReportCount() {
+                return reportCount;
+            }
+        };
     }
 
     private User user(UUID userId, String username, String fullName, String city) {

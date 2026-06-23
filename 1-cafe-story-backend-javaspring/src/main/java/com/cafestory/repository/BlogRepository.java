@@ -40,6 +40,15 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
     List<Blog> findSharedBlogsByUserId(@Param("userId") UUID userId);
 
     @Query("""
+            select share.blog
+            from BlogShare share
+            where share.user.userId = :userId
+            order by share.blog.shareCount desc, share.blog.createdAt desc
+            """)
+    @EntityGraph(attributePaths = {"author", "page"})
+    List<Blog> findSharedBlogsByUserIdOrderByShareCount(@Param("userId") UUID userId);
+
+    @Query("""
             select tag.blog
             from BlogTaggedUser tag
             where tag.taggedUser.userId = :userId

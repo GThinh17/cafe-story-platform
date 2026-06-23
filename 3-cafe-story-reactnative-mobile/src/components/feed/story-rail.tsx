@@ -6,10 +6,11 @@ import { colors, spacing, typography } from "../../theme";
 import type { StoryItem } from "../../types";
 
 type StoryRailProps = {
+  onStoryPress?: (story: StoryItem) => void;
   stories: StoryItem[];
 };
 
-export function StoryRail({ stories }: StoryRailProps) {
+export function StoryRail({ onStoryPress, stories }: StoryRailProps) {
   return (
     <View style={styles.wrapper}>
       <ScrollView
@@ -22,6 +23,7 @@ export function StoryRail({ stories }: StoryRailProps) {
             accessibilityLabel={`${story.label} story`}
             accessibilityRole="button"
             key={story.id}
+            onPress={() => onStoryPress?.(story)}
             style={({ pressed }) => [
               styles.item,
               pressed ? styles.itemPressed : null,

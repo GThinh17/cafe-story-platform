@@ -1,6 +1,7 @@
 package com.cafestory.repository;
 
 import com.cafestory.entity.UserFollow;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,8 +25,10 @@ public interface UserFollowRepository extends JpaRepository<UserFollow, UUID> {
 
     Optional<UserFollow> findByFollowerUserIdAndFollowingUserId(UUID followerUserId, UUID followingUserId);
 
+    @EntityGraph(attributePaths = {"follower", "follower.region", "following"})
     List<UserFollow> findByFollowingUserId(UUID followingUserId);
 
+    @EntityGraph(attributePaths = {"follower", "following", "following.region"})
     List<UserFollow> findByFollowerUserId(UUID followerUserId);
 
     long countByFollowerUserId(UUID followerUserId);

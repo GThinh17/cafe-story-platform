@@ -2,43 +2,47 @@ import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Search, Send } from "lucide-react-native";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
+  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   View,
 } from "react-native";
 
 import {
-  BlogFeedList,
+  Avatar,
+  BlogFeedCard,
   EmptyState,
   ExploreRecommendationList,
   ExploreTabs,
   FeedCardSkeletonList,
+  ListRowSkeletonList,
   Screen,
   ShareTopBar,
 } from "../../components";
-import { useAuth } from "../../features/auth";
 import { routes } from "../../navigation";
 import type { MainTabParamList, RootStackParamList } from "../../navigation";
 import {
-  getBlogById,
-  getBlogLikesByUser,
-  getBlogSavesByUser,
   getCafePageRecommendations,
-  getFollowingByUserId,
   getMixedRecommendations,
   getReviewerRecommendations,
   getTrendingBlogs,
+  blogTrendingToFeedBlog,
+  searchExplore,
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type {
-  BlogFeedResponse,
   BlogResponse,
+  BlogTrendingResponse,
+  CafePageResponse,
+  ExploreSearchResults,
   RecommendationCardResponse,
-  UserFollowResponse,
+  UserResponse,
 } from "../../types";
 import type { ExploreTab } from "../../components";
 
@@ -52,55 +56,61 @@ const initialRecommendations: ExploreRecommendationState = {
   reviewers: [],
 };
 
-function blogResponseToFeedResponse(blog: BlogResponse): BlogFeedResponse {
-  return {
-    authorUserAvatar: blog.authorUserAvatar,
-    authorUserFullName: blog.authorUserFullName,
-    authorUserId: blog.authorUserId,
-    authorUserName: blog.authorUserName,
-    blogId: blog.id,
-    commentCount: blog.commentCount ?? 0,
-    contentPreview: blog.content,
-    createdAt: blog.createdAt,
-    displayAuthorType: blog.displayAuthorType,
-    displayAvatarUrl: blog.displayAvatarUrl,
-    displayName: blog.displayName,
-    imageUrls: blog.imageUrls,
-    isLike: blog.isLike,
-    isSave: blog.isSave,
-    likeCount: blog.likeCount,
-    pageAvatarUrl: blog.pageAvatarUrl,
-    pageId: blog.pageId,
-    pageName: blog.pageName,
-    regionId: blog.regionId,
-    shareCount: blog.shareCount,
-  };
-}
-
-function applyViewerState(
-  blogs: BlogFeedResponse[],
-  following: UserFollowResponse[],
-  likedBlogIds: Set<string>,
-  savedBlogIds: Set<string>,
-  currentUserId?: string,
-) {
-  const followingUserIds = new Set(
-    following.map((item) => item.followingUserId),
-  );
-
-  return blogs.map((blog) => ({
-    ...blog,
-    isFollow:
-      blog.authorUserId === currentUserId
-        ? false
-        : followingUserIds.has(blog.authorUserId),
-    isLike: likedBlogIds.has(blog.blogId) || Boolean(blog.isLike),
-    isSave: savedBlogIds.has(blog.blogId) || Boolean(blog.isSave),
-  }));
-}
-
 function isCafeOrReviewer(item: RecommendationCardResponse) {
   return item.targetType === "CAFE_PAGE" || item.targetType === "REVIEWER";
+}
+
+function hasSearchResults(results: ExploreSearchResults) {
+  return results.users.length > 0 || results.cafePages.length > 0 || results.blogs.length > 0;
+}
+
+function blogSearchTitle(blog: BlogResponse) {
+  return blog.content?.trim() || blog.displayName || blog.authorUserName || "Blog post";
+}
+
+function blogSearchSubtitle(blog: BlogResponse) {
+  return blog.displayName || blog.pageName || blog.authorUserName || "CafeStory post";
+}
+
+type SearchResultRowProps = {
+  avatar?: string | null;
+  label: string;
+  onPress: () => void;
+  subtitle: string;
+  title: string;
+};
+
+function SearchResultRow({
+  avatar,
+  label,
+  onPress,
+  subtitle,
+  title,
+}: SearchResultRowProps) {
+  return (
+    <Pressable
+      accessibilityLabel={`Open ${title}`}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.searchResultRow,
+        pressed && styles.pressed,
+      ]}
+    >
+      <Avatar size={48} uri={avatar} />
+      <View style={styles.searchResultCopy}>
+        <View style={styles.searchResultTitleRow}>
+          <Text numberOfLines={1} style={styles.searchResultTitle}>
+            {title}
+          </Text>
+          <Text style={styles.searchResultLabel}>{label}</Text>
+        </View>
+        <Text numberOfLines={1} style={styles.searchResultSubtitle}>
+          {subtitle}
+        </Text>
+      </View>
+    </Pressable>
+  );
 }
 
 export function ExploreScreen() {
@@ -109,15 +119,22 @@ export function ExploreScreen() {
       BottomTabNavigationProp<MainTabParamList, typeof routes.explore> &
         NativeStackNavigationProp<RootStackParamList>
     >();
-  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<ExploreTab>("all");
   const [recommendations, setRecommendations] =
     useState<ExploreRecommendationState>(initialRecommendations);
-  const [trendingBlogs, setTrendingBlogs] = useState<BlogFeedResponse[]>([]);
+  const [trendingBlogs, setTrendingBlogs] = useState<BlogTrendingResponse[]>([]);
   const [loadedTabs, setLoadedTabs] = useState<Partial<Record<ExploreTab, boolean>>>({});
   const [errors, setErrors] = useState<ExploreErrorState>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<ExploreSearchResults>({
+    blogs: [],
+    cafePages: [],
+    users: [],
+  });
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
 
   const loadRecommendations = useCallback(async (
     tab: Exclude<ExploreTab, "trending">,
@@ -170,34 +187,7 @@ export function ExploreScreen() {
         size: 12,
         windowType: "HOUR_24",
       });
-      const blogResults = await Promise.allSettled(
-        trending.map((item) => getBlogById(item.blogId)),
-      );
-      const blogs = blogResults
-        .filter((result): result is PromiseFulfilledResult<BlogResponse> =>
-          result.status === "fulfilled")
-        .map((result) => blogResponseToFeedResponse(result.value));
-
-      if (!user?.userId) {
-        setTrendingBlogs(blogs);
-      } else {
-        const [following, likes, saves] = await Promise.all([
-          getFollowingByUserId(user.userId).catch(() => []),
-          getBlogLikesByUser(user.userId).catch(() => []),
-          getBlogSavesByUser(user.userId).catch(() => []),
-        ]);
-
-        setTrendingBlogs(
-          applyViewerState(
-            blogs,
-            following,
-            new Set(likes.map((item) => item.blogId)),
-            new Set(saves.map((item) => item.blogId)),
-            user.userId,
-          ),
-        );
-      }
-
+      setTrendingBlogs(trending);
       setLoadedTabs((currentTabs) => ({ ...currentTabs, trending: true }));
       setErrors((currentErrors) => ({ ...currentErrors, trending: undefined }));
     } catch (requestError) {
@@ -212,7 +202,7 @@ export function ExploreScreen() {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [user?.userId]);
+  }, []);
 
   const loadActiveTab = useCallback((refreshing = false) => {
     if (activeTab === "trending") {
@@ -241,6 +231,72 @@ export function ExploreScreen() {
     });
   }, [navigation]);
 
+  const handleUserSearchPress = useCallback((user: UserResponse) => {
+    navigation.navigate(routes.otherUserProfile, {
+      userId: user.userId,
+      userName: user.userName,
+    });
+  }, [navigation]);
+
+  const handleCafeSearchPress = useCallback((page: CafePageResponse) => {
+    navigation.navigate(routes.cafeDetail, {
+      cafeId: page.id,
+    });
+  }, [navigation]);
+
+  const handleBlogSearchPress = useCallback((blog: BlogResponse) => {
+    navigation.navigate(routes.blogDetail, {
+      blogId: blog.id,
+    });
+  }, [navigation]);
+
+  useEffect(() => {
+    const normalizedQuery = searchQuery.trim();
+
+    if (normalizedQuery.length < 2) {
+      setSearchResults({
+        blogs: [],
+        cafePages: [],
+        users: [],
+      });
+      setSearchError(null);
+      setIsSearching(false);
+      return;
+    }
+
+    let isActive = true;
+    setIsSearching(true);
+    setSearchError(null);
+
+    const timeoutId = setTimeout(() => {
+      void searchExplore(normalizedQuery)
+        .then((results) => {
+          if (isActive) {
+            setSearchResults(results);
+          }
+        })
+        .catch((requestError) => {
+          if (isActive) {
+            setSearchError(
+              requestError instanceof Error
+                ? requestError.message
+                : "Unable to search right now.",
+            );
+          }
+        })
+        .finally(() => {
+          if (isActive) {
+            setIsSearching(false);
+          }
+        });
+    }, 320);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timeoutId);
+    };
+  }, [searchQuery]);
+
   useFocusEffect(
     useCallback(() => {
       if (loadedTabs[activeTab]) {
@@ -264,13 +320,94 @@ export function ExploreScreen() {
     }
   }, [activeTab]);
 
-  const content = activeTab === "trending" ? (
+  const normalizedSearchQuery = searchQuery.trim();
+  const isSearchMode = normalizedSearchQuery.length > 0;
+
+  const searchContent = normalizedSearchQuery.length < 2 ? (
+    <EmptyState
+      description="Type at least 2 characters to search users, cafe pages, and posts."
+      title="Keep typing"
+    />
+  ) : isSearching && !hasSearchResults(searchResults) ? (
+    <View style={styles.searchSection}>
+      <View style={styles.searchingTitleRow}>
+        <Text style={styles.title}>Searching</Text>
+        <ActivityIndicator color={colors.primary} />
+      </View>
+      <ListRowSkeletonList padded={false} />
+    </View>
+  ) : searchError ? (
+    <EmptyState description="Pull down or edit the query to try again." title={searchError} />
+  ) : hasSearchResults(searchResults) ? (
+    <View style={styles.searchSection}>
+      <Text style={styles.title}>Search results</Text>
+      {searchResults.users.length > 0 ? (
+        <View style={styles.searchGroup}>
+          <Text style={styles.searchGroupTitle}>Users and reviewers</Text>
+          {searchResults.users.map((user) => (
+            <SearchResultRow
+              avatar={user.userAvatar}
+              key={user.userId}
+              label="User"
+              onPress={() => handleUserSearchPress(user)}
+              subtitle={user.userName ? `@${user.userName}` : user.regionCity ?? "CafeStory user"}
+              title={user.userFullName || user.userName || "CafeStory user"}
+            />
+          ))}
+        </View>
+      ) : null}
+      {searchResults.cafePages.length > 0 ? (
+        <View style={styles.searchGroup}>
+          <Text style={styles.searchGroupTitle}>Cafe pages</Text>
+          {searchResults.cafePages.map((page) => (
+            <SearchResultRow
+              avatar={page.avatarUrl}
+              key={page.id}
+              label="Cafe"
+              onPress={() => handleCafeSearchPress(page)}
+              subtitle={page.regionCity || page.address || "Cafe page"}
+              title={page.name || "Cafe page"}
+            />
+          ))}
+        </View>
+      ) : null}
+      {searchResults.blogs.length > 0 ? (
+        <View style={styles.searchGroup}>
+          <Text style={styles.searchGroupTitle}>Posts</Text>
+          {searchResults.blogs.map((blog) => (
+            <SearchResultRow
+              avatar={blog.displayAvatarUrl || blog.pageAvatarUrl || blog.authorUserAvatar}
+              key={blog.id}
+              label="Post"
+              onPress={() => handleBlogSearchPress(blog)}
+              subtitle={blogSearchSubtitle(blog)}
+              title={blogSearchTitle(blog)}
+            />
+          ))}
+        </View>
+      ) : null}
+    </View>
+  ) : (
+    <EmptyState
+      description="Try another cafe name, reviewer, location, or post keyword."
+      title="No results found"
+    />
+  );
+
+  const content = isSearchMode ? searchContent : activeTab === "trending" ? (
     isLoading && !trendingBlogs.length ? (
       <FeedCardSkeletonList />
     ) : errors.trending ? (
       <EmptyState description="Pull down to try again." title={errors.trending} />
     ) : trendingBlogs.length ? (
-      <BlogFeedList blogs={trendingBlogs} />
+      <View style={styles.trendingList}>
+        {trendingBlogs.map((item) => (
+          <BlogFeedCard
+            blog={blogTrendingToFeedBlog(item)}
+            key={item.blogId}
+          />
+        ))}
+      </View>
     ) : (
       <EmptyState
         description="Trending cafe stories will appear here soon."
@@ -310,14 +447,17 @@ export function ExploreScreen() {
         <View style={styles.searchBox}>
           <Search color={colors.muted} size={20} strokeWidth={2.3} />
           <TextInput
-            editable={false}
+            autoCorrect={false}
+            onChangeText={setSearchQuery}
             placeholder="Search cafes, reviewers, or posts"
             placeholderTextColor={colors.muted}
+            returnKeyType="search"
             style={styles.searchInput}
+            value={searchQuery}
           />
         </View>
 
-        <ExploreTabs activeTab={activeTab} onChange={setActiveTab} />
+        {isSearchMode ? null : <ExploreTabs activeTab={activeTab} onChange={setActiveTab} />}
 
         {content}
       </ScrollView>
@@ -329,6 +469,9 @@ const styles = StyleSheet.create({
   content: {
     gap: spacing.md,
     paddingBottom: 112,
+  },
+  pressed: {
+    opacity: 0.72,
   },
   searchBox: {
     alignItems: "center",
@@ -349,5 +492,66 @@ const styles = StyleSheet.create({
     fontSize: typography.label,
     fontWeight: "700",
     paddingVertical: spacing.sm,
+  },
+  searchGroup: {
+    gap: spacing.sm,
+  },
+  searchGroupTitle: {
+    color: colors.muted,
+    fontSize: typography.caption,
+    fontWeight: "900",
+    textTransform: "uppercase",
+  },
+  searchResultCopy: {
+    flex: 1,
+    gap: 3,
+  },
+  searchResultLabel: {
+    color: colors.primary,
+    fontSize: typography.caption,
+    fontWeight: "900",
+  },
+  searchResultRow: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    padding: spacing.md,
+  },
+  searchResultSubtitle: {
+    color: colors.muted,
+    fontSize: typography.caption,
+    fontWeight: "700",
+  },
+  searchResultTitle: {
+    color: colors.foreground,
+    flex: 1,
+    fontSize: typography.label,
+    fontWeight: "900",
+  },
+  searchResultTitleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  searchingTitleRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  searchSection: {
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  title: {
+    color: colors.foreground,
+    fontSize: typography.body,
+    fontWeight: "900",
+  },
+  trendingList: {
+    gap: spacing.md,
   },
 });

@@ -4,4 +4,5 @@ export * from "./comment-modal";
 export * from "./mobile-post-carousel";
 export * from "./post-options-modal";
 export * from "./report-post-modal";
+export * from "./sponsored-cafe-card";
 export * from "./story-rail";

@@ -90,6 +90,7 @@ export function CafePageScreen() {
     () => Boolean(cafePage?.ownerUserId && cafePage.ownerUserId === user?.userId),
     [cafePage?.ownerUserId, user?.userId],
   );
+  const canManageCafePage = Boolean(isOwner || cafePage?.canManage);
 
   const loadCafePage = useCallback(async (refreshing = false) => {
     if (refreshing) {
@@ -364,8 +365,11 @@ export function CafePageScreen() {
       return;
     }
 
-    if (isOwner) {
-      navigation.navigate(routes.conversations);
+    if (canManageCafePage) {
+      navigation.navigate(routes.conversations, {
+        cafePageId: cafePage.id,
+        cafePageName: cafePage.name,
+      });
       return;
     }
 
@@ -379,6 +383,8 @@ export function CafePageScreen() {
         chatAvatar: conversation.chatAvatar || cafePage.avatarUrl,
         chatName: conversation.chatName || cafePage.name || "Cafe Page",
         conversationId: conversation.id,
+        targetCafePageId: conversation.targetCafePageId ?? cafePage.id,
+        targetType: conversation.targetType ?? "CAFE_PAGE",
         targetUserId: null,
         userName: conversation.userName || cafePage.name || "",
       });
@@ -391,10 +397,10 @@ export function CafePageScreen() {
     } finally {
       setIsMessagePending(false);
     }
-  }, [cafePage, isMessagePending, isOwner, navigation]);
+  }, [cafePage, canManageCafePage, isMessagePending, navigation]);
 
   const openCafePagePostComposer = useCallback(() => {
-    if (!cafePage || !isOwner) {
+    if (!cafePage || !canManageCafePage) {
       return;
     }
 
@@ -408,7 +414,7 @@ export function CafePageScreen() {
       },
       screen: routes.create,
     });
-  }, [cafeLocationName, cafePage, isOwner, navigation]);
+  }, [cafeLocationName, cafePage, canManageCafePage, navigation]);
 
   const renderTabContent = () => {
     if (activeTab === "posts") {
@@ -477,7 +483,7 @@ export function CafePageScreen() {
           Cafe Page
         </Text>
 
-        {isOwner ? (
+        {canManageCafePage ? (
           <View style={styles.topBarActions}>
             <Pressable
               accessibilityLabel="Create cafe page post"
@@ -525,6 +531,7 @@ export function CafePageScreen() {
           {cafePage ? (
             <CafePageHeader
               cafePage={cafePage}
+              canManage={canManageCafePage}
               isFollowPending={isFollowPending}
               isLikePending={isLikePending}
               isOwner={isOwner}

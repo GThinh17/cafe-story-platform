@@ -12,6 +12,7 @@ import com.cafestory.repository.BlogDailyMetricRepository;
 import com.cafestory.repository.BlogEventRepository;
 import com.cafestory.repository.BlogLikeRepository;
 import com.cafestory.repository.BlogRepository;
+import com.cafestory.repository.BlogSaveRepository;
 import com.cafestory.repository.BlogShareRepository;
 import com.cafestory.repository.BlogTrendingScoreRepository;
 import com.cafestory.repository.CafePageRepository;
@@ -49,6 +50,9 @@ class BlogTrendingServiceImplTest {
 
     @Mock
     private BlogLikeRepository blogLikeRepository;
+
+    @Mock
+    private BlogSaveRepository blogSaveRepository;
 
     @Mock
     private CommentRepository commentRepository;
@@ -176,6 +180,7 @@ class BlogTrendingServiceImplTest {
                 blogRepository,
                 blogEventRepository,
                 blogLikeRepository,
+                blogSaveRepository,
                 commentRepository,
                 blogShareRepository,
                 blogDailyMetricRepository,

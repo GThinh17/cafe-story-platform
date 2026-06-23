@@ -21,6 +21,8 @@ public interface ChatService {
 
     List<ConversationResponseDTO> getUserConversations(UUID userId);
 
+    List<ConversationResponseDTO> getCafePageConversations(UUID cafePageId, UUID viewerUserId);
+
     List<ChatMessageResponseDTO> getMessagesByConversationId(UUID conversationId, UUID userId, int page, int size);
 
     ChatMessageResponseDTO sendMessage(UUID conversationId, SendMessageRequestDTO request);

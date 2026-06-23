@@ -27,6 +27,8 @@ public interface BlogService {
 
     List<BlogResponseDTO> getSharedBlogsByUserId(UUID userId, UUID viewerUserId);
 
+    List<BlogResponseDTO> getSharedBlogsByUserId(UUID userId, UUID viewerUserId, String sort);
+
     List<BlogResponseDTO> getTaggedBlogsByUserId(UUID userId, UUID viewerUserId);
 
     BlogResponseDTO getBlogById(UUID blogId);

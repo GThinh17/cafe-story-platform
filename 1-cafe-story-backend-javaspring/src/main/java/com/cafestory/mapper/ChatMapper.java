@@ -3,9 +3,13 @@ package com.cafestory.mapper;
 import com.cafestory.dto.responseDTO.ChatMemberResponseDTO;
 import com.cafestory.dto.responseDTO.ChatMessageResponseDTO;
 import com.cafestory.dto.responseDTO.ConversationResponseDTO;
+import com.cafestory.entity.CafePage;
 import com.cafestory.entity.ChatMember;
 import com.cafestory.entity.ChatMessage;
 import com.cafestory.entity.Conversation;
+import com.cafestory.entity.User;
+import com.cafestory.entity.enums.ChatSenderContextType;
+import com.cafestory.entity.enums.ChatTargetType;
 import com.cafestory.entity.enums.ConversationType;
 import org.springframework.stereotype.Component;
 
@@ -29,6 +33,10 @@ public class ChatMapper {
         response.setChatName(resolveChatName(conversation, members, viewerUserId));
         response.setUserName(resolveUserName(conversation, members, viewerUserId));
         response.setChatAvatar(resolveChatAvatar(conversation, members, viewerUserId));
+        response.setTargetType(resolveTargetType(conversation));
+        response.setTargetId(resolveTargetId(conversation, members, viewerUserId));
+        response.setTargetUserId(resolveTargetUserId(conversation, members, viewerUserId));
+        response.setTargetCafePageId(resolveTargetCafePageId(conversation));
         response.setLatestMessageId(conversation.getLatestMessageId());
         response.setLatestMessagePreview(conversation.getLatestMessagePreview());
         response.setLastMessage(conversation.getLatestMessagePreview());
@@ -58,6 +66,10 @@ public class ChatMapper {
         response.setId(message.getId());
         response.setConversationId(message.getConversation().getId());
         response.setSenderId(message.getSender().getUserId());
+        response.setSenderContextType(message.getSenderContextType());
+        response.setSenderCafePageId(resolveSenderCafePageId(message));
+        response.setSenderDisplayName(resolveSenderDisplayName(message));
+        response.setSenderAvatar(resolveSenderAvatar(message));
         response.setType(message.getType());
         response.setText(message.getText());
         response.setImageUrls(message.getImageUrls());
@@ -75,6 +87,10 @@ public class ChatMapper {
         if (conversation.getType() == ConversationType.GROUP) {
             return conversation.getGroupName();
         }
+        if (conversation.getType() == ConversationType.CAFE_PAGE) {
+            CafePage cafePage = conversation.getCafePage();
+            return cafePage == null ? null : cafePage.getName();
+        }
 
         return otherMember(members, viewerUserId)
                 .map(member -> displayName(member.getUser().getUserFullName(), member.getUser().getUserName()))
@@ -84,6 +100,10 @@ public class ChatMapper {
     private String resolveUserName(Conversation conversation, List<ChatMember> members, UUID viewerUserId) {
         if (conversation.getType() == ConversationType.GROUP) {
             return conversation.getGroupName();
+        }
+        if (conversation.getType() == ConversationType.CAFE_PAGE) {
+            CafePage cafePage = conversation.getCafePage();
+            return cafePage == null ? null : cafePage.getName();
         }
 
         return otherMember(members, viewerUserId)
@@ -95,10 +115,68 @@ public class ChatMapper {
         if (conversation.getType() == ConversationType.GROUP) {
             return conversation.getGroupAvatar();
         }
+        if (conversation.getType() == ConversationType.CAFE_PAGE) {
+            CafePage cafePage = conversation.getCafePage();
+            return cafePage == null ? null : cafePage.getAvatarUrl();
+        }
 
         return otherMember(members, viewerUserId)
                 .map(member -> member.getUser().getUserAvatar())
                 .orElse(null);
+    }
+
+    private UUID resolveSenderCafePageId(ChatMessage message) {
+        CafePage cafePage = message.getSenderCafePage();
+        return cafePage == null ? null : cafePage.getId();
+    }
+
+    private String resolveSenderDisplayName(ChatMessage message) {
+        if (message.getSenderContextType() == ChatSenderContextType.CAFE_PAGE && message.getSenderCafePage() != null) {
+            return message.getSenderCafePage().getName();
+        }
+        User sender = message.getSender();
+        return displayName(sender.getUserFullName(), sender.getUserName());
+    }
+
+    private String resolveSenderAvatar(ChatMessage message) {
+        if (message.getSenderContextType() == ChatSenderContextType.CAFE_PAGE && message.getSenderCafePage() != null) {
+            return message.getSenderCafePage().getAvatarUrl();
+        }
+        return message.getSender().getUserAvatar();
+    }
+
+    private ChatTargetType resolveTargetType(Conversation conversation) {
+        if (conversation.getType() == ConversationType.GROUP) {
+            return ChatTargetType.GROUP;
+        }
+        if (conversation.getType() == ConversationType.CAFE_PAGE) {
+            return ChatTargetType.CAFE_PAGE;
+        }
+        return ChatTargetType.USER;
+    }
+
+    private UUID resolveTargetId(Conversation conversation, List<ChatMember> members, UUID viewerUserId) {
+        if (conversation.getType() == ConversationType.GROUP) {
+            return conversation.getId();
+        }
+        if (conversation.getType() == ConversationType.CAFE_PAGE) {
+            return resolveTargetCafePageId(conversation);
+        }
+        return resolveTargetUserId(conversation, members, viewerUserId);
+    }
+
+    private UUID resolveTargetUserId(Conversation conversation, List<ChatMember> members, UUID viewerUserId) {
+        if (conversation.getType() != ConversationType.DIRECT) {
+            return null;
+        }
+        return otherMember(members, viewerUserId)
+                .map(member -> member.getUser().getUserId())
+                .orElse(null);
+    }
+
+    private UUID resolveTargetCafePageId(Conversation conversation) {
+        CafePage cafePage = conversation.getCafePage();
+        return cafePage == null ? null : cafePage.getId();
     }
 
     private java.util.Optional<ChatMember> otherMember(List<ChatMember> members, UUID viewerUserId) {

@@ -2,12 +2,14 @@ package com.cafestory.until.schedule;
 
 import com.cafestory.entity.enums.RankingPeriodType;
 import com.cafestory.service.serviceInterface.ReviewerRankingSnapshotService;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 
 @Component
+@ConditionalOnProperty(name = "app.scheduling.enabled", havingValue = "true", matchIfMissing = true)
 public class ReviewerRankingSnapshotJob {
 
     private final ReviewerRankingSnapshotService snapshotService;

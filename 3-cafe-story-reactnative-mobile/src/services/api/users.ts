@@ -1,4 +1,5 @@
 import type {
+  FollowTargetResponse,
   UserFollowResponse,
   UserRegionUpdateRequest,
   UserResponse,
@@ -33,6 +34,14 @@ export function getUserProfile(userId: string) {
 export function getUserProfileByUsername(username: string) {
   return cachedApiCall(`users:username:${username}`, apiCacheTtl.dynamic, () =>
     apiFetch<UserResponse>(apiEndpoints.users.byUsername(username), {
+      method: "GET",
+    }),
+  );
+}
+
+export function getUsers() {
+  return cachedApiCall("users:list", apiCacheTtl.dynamic, () =>
+    apiFetch<UserResponse[]>(apiEndpoints.users.list, {
       method: "GET",
     }),
   );
@@ -96,6 +105,17 @@ export function getFollowingByUserId(userId: string) {
   );
 }
 
+export function getFollowingTargetsByUserId(userId: string, type = "ALL") {
+  return cachedApiCall(
+    `users:following-targets:${userId}:${type}`,
+    apiCacheTtl.dynamic,
+    () =>
+      apiFetch<FollowTargetResponse[]>(apiEndpoints.users.followingTargets(userId, type), {
+        method: "GET",
+      }),
+  );
+}
+
 export function getFollowersByUserId(userId: string) {
   return cachedApiCall(`users:followers:${userId}`, apiCacheTtl.dynamic, () =>
     apiFetch<UserFollowResponse[]>(apiEndpoints.users.followers(userId), {
@@ -108,6 +128,7 @@ function invalidateFollowCache(userId: string) {
   invalidateApiCache(`users:detail:${userId}`);
   invalidateApiCache("users:me");
   invalidateApiCache("users:following:");
+  invalidateApiCache("users:following-targets:");
   invalidateApiCache("users:followers:");
   invalidateApiCache("recommendations:");
   invalidateApiCache("feed:");

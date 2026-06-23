@@ -230,6 +230,26 @@ class CafePageServiceImplTest {
     }
 
     @Test
+    void getCafePageById_success_marksCoOwnerCanManage_TC012() {
+        UUID viewerUserId = UUID.randomUUID();
+        CafePage cafePage = cafePage(UUID.randomUUID(), user(UUID.randomUUID()));
+        CafePageResponseDTO response = response(cafePage.getId(), cafePage.getOwner().getUserId());
+
+        when(cafePageValidator.validateCafePageExists(cafePage.getId())).thenReturn(cafePage);
+        when(cafePageMapper.toCafePageResponseDTO(cafePage)).thenReturn(response);
+        when(pageMemberRepository.existsByCafePageIdAndUserUserIdAndStatusAndRoleNameIn(
+                eq(cafePage.getId()),
+                eq(viewerUserId),
+                eq(com.cafestory.entity.enums.PageMemberStatus.ACTIVE),
+                eq(List.of(com.cafestory.entity.PageMember.ROLE_OWNER, com.cafestory.entity.PageMember.ROLE_CO_OWNER))))
+                .thenReturn(true);
+
+        CafePageResponseDTO result = cafePageService.getCafePageById(cafePage.getId(), viewerUserId);
+
+        assertThat(result.getCanManage()).isTrue();
+    }
+
+    @Test
     void getBlogsByCafePageId_success_TC008() {
         UUID cafePageId = UUID.randomUUID();
         Blog firstBlog = blog(UUID.randomUUID(), cafePageId, LocalDateTime.of(2026, 5, 28, 10, 0));

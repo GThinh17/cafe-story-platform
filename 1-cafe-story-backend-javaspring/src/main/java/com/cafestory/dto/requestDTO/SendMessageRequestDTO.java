@@ -1,5 +1,6 @@
 package com.cafestory.dto.requestDTO;
 
+import com.cafestory.entity.enums.ChatSenderContextType;
 import com.cafestory.entity.enums.MessageType;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -11,6 +12,10 @@ import java.util.UUID;
 public class SendMessageRequestDTO {
 
     private UUID senderId;
+
+    private ChatSenderContextType senderContextType;
+
+    private UUID senderCafePageId;
 
     @NotNull(message = "Message type is mandatory")
     private MessageType type;

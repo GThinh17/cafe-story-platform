@@ -5,6 +5,7 @@ export type CafePageStatus = "DRAFT" | "ACTIVE" | "SUSPENDED" | string;
 export type CafePageResponse = {
   address: string | null;
   avatarUrl: string | null;
+  canManage?: boolean | null;
   coverUrl: string | null;
   createdAt: string | null;
   description: string | null;

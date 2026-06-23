@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import { Image, Pressable, StyleSheet, View } from "react-native";
 
 import { colors, spacing } from "../../theme";
+import { BrandIcon } from "../ui/brand-icon";
 
 type OptionIconProps = {
   color?: string;
@@ -26,12 +27,19 @@ export function ShareTopBar({
 }: ShareTopBarProps) {
   return (
     <View style={styles.container}>
-      <Image
-        accessibilityIgnoresInvertColors
-        resizeMode="contain"
-        source={cafeStoryWordmark}
-        style={styles.wordmark}
-      />
+      <View
+        accessibilityLabel="Cafe Story"
+        accessibilityRole="image"
+        style={styles.brandGroup}
+      >
+        <BrandIcon size={31} />
+        <Image
+          accessibilityIgnoresInvertColors
+          resizeMode="contain"
+          source={cafeStoryWordmark}
+          style={styles.wordmark}
+        />
+      </View>
 
       <Pressable
         accessibilityLabel={rightAccessibilityLabel}
@@ -72,6 +80,11 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     width: "100%",
   },
+  brandGroup: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
   iconButton: {
     alignItems: "center",
     borderRadius: 22,
@@ -85,7 +98,7 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   wordmark: {
-    height: 38,
-    width: 154,
+    height: 34,
+    width: 138,
   },
 });

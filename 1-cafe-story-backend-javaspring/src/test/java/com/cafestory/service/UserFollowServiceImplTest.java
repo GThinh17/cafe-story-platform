@@ -1,9 +1,17 @@
 package com.cafestory.service;
 
+import com.cafestory.dto.responseDTO.FollowTargetResponseDTO;
 import com.cafestory.dto.responseDTO.UserFollowResponseDTO;
+import com.cafestory.entity.CafePage;
+import com.cafestory.entity.PageFollow;
+import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
 import com.cafestory.entity.UserFollow;
+import com.cafestory.entity.enums.FollowTargetFilter;
+import com.cafestory.entity.enums.FollowTargetType;
+import com.cafestory.entity.enums.PageStatus;
 import com.cafestory.mapper.UserFollowMapper;
+import com.cafestory.repository.PageFollowRepository;
 import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.service.serviceImplement.UserFollowServiceImpl;
 import com.cafestory.validation.UserValidator;
@@ -15,6 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -31,6 +40,9 @@ class UserFollowServiceImplTest {
 
     @Mock
     private UserFollowRepository userFollowRepository;
+
+    @Mock
+    private PageFollowRepository pageFollowRepository;
 
     @Mock
     private UserFollowMapper userFollowMapper;
@@ -169,6 +181,71 @@ class UserFollowServiceImplTest {
         verify(userValidator).validateUserExists(followerUserId);
     }
 
+    @Test
+    void getFollowingTargetsByUserId_success_returnsUserAndCafePageSeparately_TC008() {
+        UUID followerUserId = UUID.randomUUID();
+        User follower = user(followerUserId);
+        User followingUser = user(UUID.randomUUID());
+        followingUser.setUserName("friend");
+        followingUser.setUserFullName("Friend User");
+        followingUser.setUserAvatar("https://cdn.example.com/friend.png");
+        followingUser.setRegion(region("Ho Chi Minh"));
+        UserFollow userFollow = userFollow(UUID.randomUUID(), follower, followingUser);
+        userFollow.setCreatedAt(LocalDateTime.parse("2026-06-20T09:00:00"));
+
+        CafePage cafePage = cafePage(UUID.randomUUID(), "Cafe Story Nguyen Hue");
+        cafePage.setAvatarUrl("https://cdn.example.com/page.png");
+        cafePage.setRegion(region("Da Nang"));
+        cafePage.setOwner(user(UUID.randomUUID()));
+        PageFollow pageFollow = pageFollow(UUID.randomUUID(), cafePage, follower);
+        pageFollow.setCreatedAt(LocalDateTime.parse("2026-06-20T10:00:00"));
+
+        when(userFollowRepository.findByFollowerUserId(followerUserId)).thenReturn(List.of(userFollow));
+        when(pageFollowRepository.findByUserUserId(followerUserId)).thenReturn(List.of(pageFollow));
+
+        List<FollowTargetResponseDTO> result = userFollowService.getFollowingTargetsByUserId(
+                followerUserId,
+                FollowTargetFilter.ALL);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getTargetType()).isEqualTo(FollowTargetType.CAFE_PAGE);
+        assertThat(result.get(0).getTargetId()).isEqualTo(cafePage.getId());
+        assertThat(result.get(0).getCafePageId()).isEqualTo(cafePage.getId());
+        assertThat(result.get(0).getUserId()).isNull();
+        assertThat(result.get(0).getDisplayName()).isEqualTo("Cafe Story Nguyen Hue");
+        assertThat(result.get(0).getCity()).isEqualTo("Da Nang");
+        assertThat(result.get(0).getOwnerUserId()).isEqualTo(cafePage.getOwner().getUserId());
+
+        assertThat(result.get(1).getTargetType()).isEqualTo(FollowTargetType.USER);
+        assertThat(result.get(1).getTargetId()).isEqualTo(followingUser.getUserId());
+        assertThat(result.get(1).getUserId()).isEqualTo(followingUser.getUserId());
+        assertThat(result.get(1).getCafePageId()).isNull();
+        assertThat(result.get(1).getDisplayName()).isEqualTo("Friend User");
+        assertThat(result.get(1).getCity()).isEqualTo("Ho Chi Minh");
+        verify(userValidator).validateUserExists(followerUserId);
+    }
+
+    @Test
+    void getFollowingTargetsByUserId_success_filterCafePageOnly_TC009() {
+        UUID followerUserId = UUID.randomUUID();
+        CafePage cafePage = cafePage(UUID.randomUUID(), "Cafe Story");
+        PageFollow pageFollow = pageFollow(UUID.randomUUID(), cafePage, user(followerUserId));
+
+        when(pageFollowRepository.findByUserUserId(followerUserId)).thenReturn(List.of(pageFollow));
+
+        List<FollowTargetResponseDTO> result = userFollowService.getFollowingTargetsByUserId(
+                followerUserId,
+                FollowTargetFilter.CAFE_PAGE);
+
+        assertThat(result)
+                .singleElement()
+                .satisfies(target -> {
+                    assertThat(target.getTargetType()).isEqualTo(FollowTargetType.CAFE_PAGE);
+                    assertThat(target.getCafePageId()).isEqualTo(cafePage.getId());
+                });
+        verify(userFollowRepository, never()).findByFollowerUserId(followerUserId);
+    }
+
     private User user(UUID userId) {
         User user = new User();
         user.setUserId(userId);
@@ -186,6 +263,32 @@ class UserFollowServiceImplTest {
         userFollow.setFollower(follower);
         userFollow.setFollowing(following);
         return userFollow;
+    }
+
+    private PageFollow pageFollow(UUID id, CafePage cafePage, User user) {
+        PageFollow pageFollow = new PageFollow();
+        pageFollow.setId(id);
+        pageFollow.setCafePage(cafePage);
+        pageFollow.setUser(user);
+        return pageFollow;
+    }
+
+    private CafePage cafePage(UUID cafePageId, String name) {
+        CafePage cafePage = new CafePage();
+        cafePage.setId(cafePageId);
+        cafePage.setName(name);
+        cafePage.setStatus(PageStatus.ACTIVE);
+        cafePage.setPageActive(true);
+        cafePage.setFollowerCount(0);
+        cafePage.setLikeCount(0);
+        return cafePage;
+    }
+
+    private Region region(String city) {
+        Region region = new Region();
+        region.setRegionId(UUID.randomUUID());
+        region.setCity(city);
+        return region;
     }
 
     private UserFollowResponseDTO response(UUID id, UUID followerUserId, UUID followingUserId) {

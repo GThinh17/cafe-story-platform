@@ -2,6 +2,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { LoadingState, Screen } from "../components";
 import { useAuth } from "../features/auth";
 import {
+  BlogDetailScreen,
   ChatDetailScreen,
   CafePageScreen,
   ConversationScreen,
@@ -62,6 +63,7 @@ export function RootNavigator() {
             name={routes.reviewerDashboard}
           />
           <Stack.Screen component={SettingsScreen} name={routes.settings} />
+          <Stack.Screen component={BlogDetailScreen} name={routes.blogDetail} />
           <Stack.Screen component={ChatDetailScreen} name={routes.chatDetail} />
           <Stack.Screen component={CafePageScreen} name={routes.cafeDetail} />
           <Stack.Screen component={UserPostsScreen} name={routes.userPosts} />
