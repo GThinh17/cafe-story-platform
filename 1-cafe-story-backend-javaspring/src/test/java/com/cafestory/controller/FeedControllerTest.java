@@ -1,7 +1,11 @@
 package com.cafestory.controller;
 
+import com.cafestory.dto.requestDTO.FeedImpressionBatchRequestDTO;
+import com.cafestory.dto.requestDTO.FeedImpressionItemRequestDTO;
+import com.cafestory.dto.responseDTO.FeedImpressionResponseDTO;
 import com.cafestory.dto.responseDTO.FeedResponseDTO;
 import com.cafestory.service.serviceInterface.BlogFeedRankingService;
+import com.cafestory.service.serviceInterface.FeedImpressionService;
 import com.cafestory.service.serviceInterface.FeedService;
 import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.junit.jupiter.api.Test;
@@ -25,6 +29,9 @@ class FeedControllerTest {
 
     @Mock
     private FeedService feedService;
+
+    @Mock
+    private FeedImpressionService feedImpressionService;
 
     @InjectMocks
     private FeedController feedController;
@@ -55,5 +62,25 @@ class FeedControllerTest {
 
         assertThat(result).isEqualTo(response);
         verify(blogFeedRankingService).getOrganicFeed("cursor-token", 10);
+    }
+
+    @Test
+    void recordImpressions_success_usesPrincipalUserId_TC003() {
+        UUID userId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(userId, "reader", List.of("USER"));
+        FeedImpressionBatchRequestDTO request = new FeedImpressionBatchRequestDTO();
+        FeedImpressionItemRequestDTO item = new FeedImpressionItemRequestDTO();
+        item.setBlogId(UUID.randomUUID());
+        item.setPosition(1);
+        request.setItems(List.of(item));
+        FeedImpressionResponseDTO response = new FeedImpressionResponseDTO();
+        response.setRecordedCount(1);
+
+        when(feedImpressionService.recordImpressions(userId, request)).thenReturn(response);
+
+        FeedImpressionResponseDTO result = feedController.recordImpressions(principal, request);
+
+        assertThat(result).isEqualTo(response);
+        verify(feedImpressionService).recordImpressions(userId, request);
     }
 }

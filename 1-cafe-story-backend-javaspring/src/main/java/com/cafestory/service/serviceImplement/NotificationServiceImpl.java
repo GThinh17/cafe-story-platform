@@ -4,11 +4,15 @@ import com.cafestory.dto.requestDTO.CreateNotificationRequestDTO;
 import com.cafestory.dto.responseDTO.NotificationResponseDTO;
 import com.cafestory.entity.Notification;
 import com.cafestory.entity.User;
+import com.cafestory.entity.enums.ActorContextType;
+import com.cafestory.entity.enums.FollowTargetType;
 import com.cafestory.entity.enums.NotificationType;
 import com.cafestory.mapper.NotificationMapper;
 import com.cafestory.repository.NotificationRepository;
+import com.cafestory.service.model.ActorContext;
 import com.cafestory.service.serviceInterface.NotificationRealtimeService;
 import com.cafestory.service.serviceInterface.NotificationService;
+import com.cafestory.validation.ActorContextResolver;
 import com.cafestory.validation.UserValidator;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -28,16 +32,19 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final UserValidator userValidator;
+    private final ActorContextResolver actorContextResolver;
     private final NotificationMapper notificationMapper;
     private final NotificationRealtimeService notificationRealtimeService;
 
     public NotificationServiceImpl(
             NotificationRepository notificationRepository,
             UserValidator userValidator,
+            ActorContextResolver actorContextResolver,
             NotificationMapper notificationMapper,
             NotificationRealtimeService notificationRealtimeService) {
         this.notificationRepository = notificationRepository;
         this.userValidator = userValidator;
+        this.actorContextResolver = actorContextResolver;
         this.notificationMapper = notificationMapper;
         this.notificationRealtimeService = notificationRealtimeService;
     }
@@ -46,20 +53,28 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public NotificationResponseDTO createNotification(CreateNotificationRequestDTO request) {
         validateCreateRequest(request);
-        if (request.getActorId().equals(request.getRecipientId())) {
+        ActorContext actorContext = actorContextResolver.resolve(
+                request.getActorId(),
+                request.getActorContextType(),
+                request.getActorCafePageId());
+        if (request.getActorId().equals(request.getRecipientId())
+                && actorContext.actorContextType() == ActorContextType.USER) {
             return null;
         }
 
         User recipient = userValidator.validateUserExists(request.getRecipientId());
-        User actor = userValidator.validateUserExists(request.getActorId());
 
         Notification notification = new Notification();
         notification.setRecipient(recipient);
-        notification.setActor(actor);
+        notification.setActor(actorContext.actorUser());
+        notification.setActorContextType(actorContext.actorContextType());
+        notification.setActorCafePage(actorContext.actorCafePage());
         notification.setType(request.getType());
         notification.setBlogId(request.getBlogId());
         notification.setConversationId(request.getConversationId());
         notification.setTargetUserId(request.getUserId());
+        notification.setTargetType(request.getTargetType());
+        notification.setTargetCafePageId(request.getCafePageId());
         notification.setCommentId(request.getCommentId());
         notification.setMessageId(request.getMessageId());
         notification.setIsRead(false);
@@ -73,23 +88,60 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public NotificationResponseDTO createLikeNotification(UUID recipientId, UUID actorId, UUID blogId) {
+        return createLikeNotification(recipientId, actorId, blogId, ActorContextType.USER, null);
+    }
+
+    @Override
+    public NotificationResponseDTO createLikeNotification(
+            UUID recipientId,
+            UUID actorId,
+            UUID blogId,
+            ActorContextType actorContextType,
+            UUID actorCafePageId) {
         CreateNotificationRequestDTO request = baseRequest(recipientId, actorId, NotificationType.LIKE);
         request.setBlogId(blogId);
+        request.setActorContextType(actorContextType);
+        request.setActorCafePageId(actorCafePageId);
         return createNotification(request);
     }
 
     @Override
     public NotificationResponseDTO createShareNotification(UUID recipientId, UUID actorId, UUID blogId) {
+        return createShareNotification(recipientId, actorId, blogId, ActorContextType.USER, null);
+    }
+
+    @Override
+    public NotificationResponseDTO createShareNotification(
+            UUID recipientId,
+            UUID actorId,
+            UUID blogId,
+            ActorContextType actorContextType,
+            UUID actorCafePageId) {
         CreateNotificationRequestDTO request = baseRequest(recipientId, actorId, NotificationType.SHARE);
         request.setBlogId(blogId);
+        request.setActorContextType(actorContextType);
+        request.setActorCafePageId(actorCafePageId);
         return createNotification(request);
     }
 
     @Override
     public NotificationResponseDTO createCommentNotification(UUID recipientId, UUID actorId, UUID blogId, UUID commentId) {
+        return createCommentNotification(recipientId, actorId, blogId, commentId, ActorContextType.USER, null);
+    }
+
+    @Override
+    public NotificationResponseDTO createCommentNotification(
+            UUID recipientId,
+            UUID actorId,
+            UUID blogId,
+            UUID commentId,
+            ActorContextType actorContextType,
+            UUID actorCafePageId) {
         CreateNotificationRequestDTO request = baseRequest(recipientId, actorId, NotificationType.COMMENT);
         request.setBlogId(blogId);
         request.setCommentId(commentId);
+        request.setActorContextType(actorContextType);
+        request.setActorCafePageId(actorCafePageId);
         return createNotification(request);
     }
 
@@ -104,7 +156,16 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public NotificationResponseDTO createFollowNotification(UUID recipientId, UUID actorId, UUID userId) {
         CreateNotificationRequestDTO request = baseRequest(recipientId, actorId, NotificationType.FOLLOW);
+        request.setTargetType(FollowTargetType.USER);
         request.setUserId(userId);
+        return createNotification(request);
+    }
+
+    @Override
+    public NotificationResponseDTO createFollowPageNotification(UUID recipientId, UUID actorId, UUID cafePageId) {
+        CreateNotificationRequestDTO request = baseRequest(recipientId, actorId, NotificationType.FOLLOW);
+        request.setTargetType(FollowTargetType.CAFE_PAGE);
+        request.setCafePageId(cafePageId);
         return createNotification(request);
     }
 
@@ -206,7 +267,7 @@ public class NotificationServiceImpl implements NotificationService {
         if (request.getBlogId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "blogId is required");
         }
-        if (request.getConversationId() != null || request.getUserId() != null) {
+        if (request.getConversationId() != null || request.getUserId() != null || request.getCafePageId() != null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mismatched target data");
         }
     }
@@ -215,16 +276,27 @@ public class NotificationServiceImpl implements NotificationService {
         if (request.getConversationId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "conversationId is required");
         }
-        if (request.getBlogId() != null || request.getUserId() != null) {
+        if (request.getBlogId() != null || request.getUserId() != null || request.getCafePageId() != null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mismatched target data");
         }
     }
 
     private void validateFollowTarget(CreateNotificationRequestDTO request) {
-        if (request.getUserId() == null) {
+        FollowTargetType targetType = request.getTargetType() == null ? FollowTargetType.USER : request.getTargetType();
+        request.setTargetType(targetType);
+        if (targetType == FollowTargetType.USER && request.getUserId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "userId is required");
         }
+        if (targetType == FollowTargetType.CAFE_PAGE && request.getCafePageId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "cafePageId is required");
+        }
         if (request.getBlogId() != null || request.getConversationId() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mismatched target data");
+        }
+        if (targetType == FollowTargetType.USER && request.getCafePageId() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mismatched target data");
+        }
+        if (targetType == FollowTargetType.CAFE_PAGE && request.getUserId() != null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Mismatched target data");
         }
     }

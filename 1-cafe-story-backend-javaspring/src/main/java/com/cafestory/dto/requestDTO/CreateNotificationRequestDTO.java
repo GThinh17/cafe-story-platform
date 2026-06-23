@@ -1,5 +1,7 @@
 package com.cafestory.dto.requestDTO;
 
+import com.cafestory.entity.enums.ActorContextType;
+import com.cafestory.entity.enums.FollowTargetType;
 import com.cafestory.entity.enums.NotificationType;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -15,6 +17,10 @@ public class CreateNotificationRequestDTO {
     @NotNull(message = "Actor id is mandatory")
     private UUID actorId;
 
+    private ActorContextType actorContextType;
+
+    private UUID actorCafePageId;
+
     @NotNull(message = "Notification type is mandatory")
     private NotificationType type;
 
@@ -23,6 +29,10 @@ public class CreateNotificationRequestDTO {
     private UUID conversationId;
 
     private UUID userId;
+
+    private FollowTargetType targetType;
+
+    private UUID cafePageId;
 
     private UUID commentId;
 

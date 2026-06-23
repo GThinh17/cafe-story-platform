@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Collection;
 
 public interface ReviewerRepository extends JpaRepository<Reviewer, UUID> {
 
@@ -39,4 +40,12 @@ public interface ReviewerRepository extends JpaRepository<Reviewer, UUID> {
             @Param("currentRegionId") UUID currentRegionId,
             @Param("currentCity") String currentCity,
             Pageable pageable);
+
+    @Query("""
+            select r.user.userId
+            from Reviewer r
+            where r.user.userId in :userIds
+            and r.reviewerActive = true
+            """)
+    List<UUID> findActiveReviewerUserIdsByUserIds(@Param("userIds") Collection<UUID> userIds);
 }

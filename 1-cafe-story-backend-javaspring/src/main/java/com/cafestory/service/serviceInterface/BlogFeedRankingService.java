@@ -10,6 +10,13 @@ import java.util.UUID;
 public interface BlogFeedRankingService {
     FeedResponseDTO getOrganicFeed(String cursor, int size);
 
+    FeedResponseDTO getPersonalizedFeedPage(
+            UUID userId,
+            TrendWindowType windowType,
+            UUID regionId,
+            String cursor,
+            int size);
+
     List<BlogFeedResponse> getPersonalizedFeed(
             UUID userId,
             TrendWindowType windowType,

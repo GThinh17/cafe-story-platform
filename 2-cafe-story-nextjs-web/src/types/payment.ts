@@ -13,6 +13,7 @@ export type CreatePaymentRequest = {
   buyerId?: string;
   extraFeeId?: string;
   adFeeId?: string;
+  cafePageId?: string;
   paymentMethod: PaymentMethod;
 };
 
@@ -21,6 +22,7 @@ export type PaymentResponse = {
   buyerId?: string | null;
   extraFeeId?: string | null;
   adFeeId?: string | null;
+  activatedCafePageId?: string | null;
   paymentMethod: PaymentMethod | string;
   amount?: number | string | null;
   currency?: string | null;

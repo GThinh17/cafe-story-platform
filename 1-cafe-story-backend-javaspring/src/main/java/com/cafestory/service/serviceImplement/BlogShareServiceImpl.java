@@ -4,11 +4,13 @@ import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.responseDTO.BlogShareResponseDTO;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogShare;
-import com.cafestory.entity.User;
+import com.cafestory.entity.enums.ActorContextType;
 import com.cafestory.entity.enums.ShareType;
 import com.cafestory.mapper.BlogInteractionMapper;
 import com.cafestory.repository.BlogShareRepository;
+import com.cafestory.service.model.ActorContext;
 import com.cafestory.service.serviceInterface.BlogShareService;
+import com.cafestory.validation.ActorContextResolver;
 import com.cafestory.validation.BlogValidator;
 import com.cafestory.validation.UserValidator;
 import org.springframework.cache.annotation.CacheEvict;
@@ -27,16 +29,19 @@ public class BlogShareServiceImpl implements BlogShareService {
     private final BlogShareRepository blogShareRepository;
     private final BlogInteractionMapper blogInteractionMapper;
     private final BlogValidator blogValidator;
+    private final ActorContextResolver actorContextResolver;
     private final UserValidator userValidator;
 
     public BlogShareServiceImpl(
             BlogShareRepository blogShareRepository,
             BlogInteractionMapper blogInteractionMapper,
             BlogValidator blogValidator,
+            ActorContextResolver actorContextResolver,
             UserValidator userValidator) {
         this.blogShareRepository = blogShareRepository;
         this.blogInteractionMapper = blogInteractionMapper;
         this.blogValidator = blogValidator;
+        this.actorContextResolver = actorContextResolver;
         this.userValidator = userValidator;
     }
 
@@ -47,15 +52,31 @@ public class BlogShareServiceImpl implements BlogShareService {
             @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })
     public BlogShareResponseDTO shareBlog(UUID blogId, UUID userId, ShareType shareType) {
+        return shareBlog(blogId, userId, shareType, ActorContextType.USER, null);
+    }
+
+    @Override
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0"),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
+    })
+    public BlogShareResponseDTO shareBlog(
+            UUID blogId,
+            UUID userId,
+            ShareType shareType,
+            ActorContextType actorContextType,
+            UUID actorCafePageId) {
         Blog blog = blogValidator.validateBlogExists(blogId);
-        User user = userValidator.validateUserExists(userId);
-        userValidator.validateUserActive(user);
+        ActorContext actorContext = actorContextResolver.resolve(userId, actorContextType, actorCafePageId);
         ShareType resolvedShareType = resolveShareType(shareType);
         validateShareTypeAllowed(blog, resolvedShareType);
 
         BlogShare blogShare = new BlogShare();
         blogShare.setBlog(blog);
-        blogShare.setUser(user);
+        blogShare.setUser(actorContext.actorUser());
+        blogShare.setActorContextType(actorContext.actorContextType());
+        blogShare.setActorCafePage(actorContext.actorCafePage());
         blogShare.setShareType(resolvedShareType);
 
         BlogShare savedBlogShare = blogShareRepository.save(blogShare);

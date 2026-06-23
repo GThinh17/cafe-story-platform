@@ -34,12 +34,23 @@ class BlogShareControllerTest {
         BlogShareRequestDTO request = request();
         BlogShareResponseDTO response = response();
 
-        when(blogShareService.shareBlog(blogId, userId, request.getShareType())).thenReturn(response);
+        when(blogShareService.shareBlog(
+                blogId,
+                userId,
+                request.getShareType(),
+                request.getActorContextType(),
+                request.getActorCafePageId()))
+                .thenReturn(response);
 
         BlogShareResponseDTO result = blogShareController.shareBlog(blogId, request, principal(userId));
 
         assertThat(result).isEqualTo(response);
-        verify(blogShareService).shareBlog(blogId, userId, request.getShareType());
+        verify(blogShareService).shareBlog(
+                blogId,
+                userId,
+                request.getShareType(),
+                request.getActorContextType(),
+                request.getActorCafePageId());
     }
 
     @Test

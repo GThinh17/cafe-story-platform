@@ -61,6 +61,7 @@ export const apiEndpoints = {
     list: "/api/extra-fees",
   },
   feed: {
+    impressions: "/api/feed/impressions",
     list: "/api/feed",
     organic: "/api/feed/organic",
   },

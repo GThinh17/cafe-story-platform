@@ -13,6 +13,11 @@ type ApiRequestOptions = {
   headers?: HeadersInit;
 };
 
+type ActorContextOptions = ApiRequestOptions & {
+  actorCafePageId?: string;
+  actorContextType?: "USER" | "CAFE_PAGE";
+};
+
 function withQuery(path: string, params: Record<string, string | number | undefined>) {
   const searchParams = new URLSearchParams();
 
@@ -105,15 +110,24 @@ export function getTrendingBlogs(
   );
 }
 
-export function likeBlog(blogId: string, options: ApiRequestOptions = {}) {
-  return apiFetch<BlogLikeResponse>(apiEndpoints.blogs.likes(blogId), {
+export function likeBlog(blogId: string, options: ActorContextOptions = {}) {
+  return apiFetch<BlogLikeResponse>(
+    withQuery(apiEndpoints.blogs.likes(blogId), {
+      actorCafePageId: options.actorCafePageId,
+      actorContextType: options.actorContextType,
+    }),
+    {
     headers: options.headers,
     method: "POST",
-  });
+    },
+  );
 }
 
-export function unlikeBlog(blogId: string, options: ApiRequestOptions = {}) {
-  return apiFetch<void>(apiEndpoints.blogs.likes(blogId), {
+export function unlikeBlog(blogId: string, options: ActorContextOptions = {}) {
+  return apiFetch<void>(withQuery(apiEndpoints.blogs.likes(blogId), {
+    actorCafePageId: options.actorCafePageId,
+    actorContextType: options.actorContextType,
+  }), {
     headers: options.headers,
     method: "DELETE",
   });
@@ -133,6 +147,8 @@ export function getSharedBlogsByUser(userId: string, options: ApiRequestOptions 
 }
 
 export type BlogShareRequest = {
+  actorCafePageId?: string;
+  actorContextType?: "USER" | "CAFE_PAGE";
   shareType: "PUBLIC" | "PRIVATE" | "PAGE_ONLY";
 };
 
@@ -140,6 +156,10 @@ export type BlogShareResponse = {
   id: string;
   blogId: string;
   userId: string;
+  actorContextType?: "USER" | "CAFE_PAGE" | string | null;
+  actorCafePageId?: string | null;
+  actorDisplayName?: string | null;
+  actorAvatarUrl?: string | null;
   shareType: string;
   createdAt: string | null;
 };

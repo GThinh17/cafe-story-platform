@@ -36,7 +36,12 @@ public class BlogShareController {
             @PathVariable UUID blogId,
             @Valid @RequestBody BlogShareRequestDTO request,
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
-        return blogShareService.shareBlog(blogId, requireUserId(principal), request.getShareType());
+        return blogShareService.shareBlog(
+                blogId,
+                requireUserId(principal),
+                request.getShareType(),
+                request.getActorContextType(),
+                request.getActorCafePageId());
     }
 
     @GetMapping("/{blogId}/shares")

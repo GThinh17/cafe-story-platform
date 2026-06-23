@@ -1,5 +1,6 @@
 package com.cafestory.dto.requestDTO;
 
+import com.cafestory.entity.enums.ActorContextType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -16,6 +17,10 @@ public class CommentCreateDTO {
     private UUID userId;
 
     private UUID parentCommentId;
+
+    private ActorContextType actorContextType;
+
+    private UUID actorCafePageId;
 
     @NotBlank(message = "Content is mandatory")
     private String content;

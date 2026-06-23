@@ -4,9 +4,12 @@ import com.cafestory.dto.responseDTO.BlogLikeResponseDTO;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogLike;
 import com.cafestory.entity.User;
+import com.cafestory.entity.enums.ActorContextType;
 import com.cafestory.mapper.BlogInteractionMapper;
 import com.cafestory.repository.BlogLikeRepository;
+import com.cafestory.service.model.ActorContext;
 import com.cafestory.service.serviceImplement.BlogLikeServiceImpl;
+import com.cafestory.validation.ActorContextResolver;
 import com.cafestory.validation.BlogValidator;
 import com.cafestory.validation.UserValidator;
 import org.junit.jupiter.api.Test;
@@ -41,6 +44,9 @@ class BlogLikeServiceImplTest {
     private BlogValidator blogValidator;
 
     @Mock
+    private ActorContextResolver actorContextResolver;
+
+    @Mock
     private UserValidator userValidator;
 
     @InjectMocks
@@ -57,8 +63,9 @@ class BlogLikeServiceImplTest {
         BlogLikeResponseDTO response = response(savedLike.getId(), blogId, userId);
 
         when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
-        when(userValidator.validateUserExists(userId)).thenReturn(user);
-        when(blogLikeRepository.existsByUserUserIdAndBlogId(userId, blogId)).thenReturn(false);
+        when(actorContextResolver.resolve(userId, ActorContextType.USER, null))
+                .thenReturn(new ActorContext(user, ActorContextType.USER, null));
+        when(blogLikeRepository.existsByActor(userId, blogId, ActorContextType.USER, null)).thenReturn(false);
         when(blogLikeRepository.save(any(BlogLike.class))).thenReturn(savedLike);
         when(blogInteractionMapper.toBlogLikeResponseDTO(savedLike)).thenReturn(response);
 
@@ -75,15 +82,16 @@ class BlogLikeServiceImplTest {
         UUID userId = UUID.randomUUID();
 
         when(blogValidator.validateBlogExists(blogId)).thenReturn(blog(blogId));
-        when(userValidator.validateUserExists(userId)).thenReturn(user(userId));
-        when(blogLikeRepository.existsByUserUserIdAndBlogId(userId, blogId)).thenReturn(true);
+        when(actorContextResolver.resolve(userId, ActorContextType.USER, null))
+                .thenReturn(new ActorContext(user(userId), ActorContextType.USER, null));
+        when(blogLikeRepository.existsByActor(userId, blogId, ActorContextType.USER, null)).thenReturn(true);
 
         assertThatThrownBy(() -> blogLikeService.likeBlog(blogId, userId))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
-                        .isEqualTo(HttpStatus.CONFLICT))
+                .isEqualTo(HttpStatus.CONFLICT))
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getReason())
-                        .isEqualTo("Blog already liked by user"));
+                        .isEqualTo("Blog already liked by actor"));
 
         verify(blogLikeRepository, never()).save(any(BlogLike.class));
     }
@@ -95,16 +103,19 @@ class BlogLikeServiceImplTest {
         Blog blog = blog(blogId);
         blog.setLikeCount(2);
         blog.getAuthor().setUserLike(4);
-        BlogLike blogLike = blogLike(UUID.randomUUID(), blog, user(userId));
+        User user = user(userId);
+        BlogLike blogLike = blogLike(UUID.randomUUID(), blog, user);
 
-        when(blogLikeRepository.findByUserUserIdAndBlogId(userId, blogId)).thenReturn(Optional.of(blogLike));
+        when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
+        when(actorContextResolver.resolve(userId, ActorContextType.USER, null))
+                .thenReturn(new ActorContext(user, ActorContextType.USER, null));
+        when(blogLikeRepository.findByActor(userId, blogId, ActorContextType.USER, null)).thenReturn(Optional.of(blogLike));
 
         blogLikeService.unlikeBlog(blogId, userId);
 
         assertThat(blog.getLikeCount()).isEqualTo(1);
         assertThat(blog.getAuthor().getUserLike()).isEqualTo(3);
         verify(blogValidator).validateBlogExists(blogId);
-        verify(userValidator).validateUserExists(userId);
         verify(blogLikeRepository).delete(blogLike);
     }
 
@@ -113,7 +124,10 @@ class BlogLikeServiceImplTest {
         UUID blogId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
-        when(blogLikeRepository.findByUserUserIdAndBlogId(userId, blogId)).thenReturn(Optional.empty());
+        when(blogValidator.validateBlogExists(blogId)).thenReturn(blog(blogId));
+        when(actorContextResolver.resolve(userId, ActorContextType.USER, null))
+                .thenReturn(new ActorContext(user(userId), ActorContextType.USER, null));
+        when(blogLikeRepository.findByActor(userId, blogId, ActorContextType.USER, null)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> blogLikeService.unlikeBlog(blogId, userId))
                 .isInstanceOf(ResponseStatusException.class)

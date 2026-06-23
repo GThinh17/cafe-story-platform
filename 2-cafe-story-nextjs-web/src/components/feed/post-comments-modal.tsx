@@ -84,6 +84,7 @@ function getCommentUsername(
 
   return (
     firstNonEmpty([
+      comment.actorDisplayName,
       comment.authorUserName,
       comment.username,
       comment.userName,
@@ -145,6 +146,7 @@ function mapCommentResponse(
     author: authorUsername,
     authorUsername,
     authorAvatar:
+      comment.actorAvatarUrl ??
       comment.authorUserAvatar ??
       (isCurrentUser ? context.currentUser?.userAvatar ?? undefined : undefined),
     body: comment.content,

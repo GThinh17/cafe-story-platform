@@ -4,12 +4,15 @@ import com.cafestory.dto.responseDTO.FeedItemResponseDTO;
 import com.cafestory.dto.responseDTO.FeedResponseDTO;
 import com.cafestory.dto.responseDTO.SponsoredCafeResponseDTO;
 import com.cafestory.entity.enums.FeedItemType;
+import com.cafestory.entity.enums.TrendWindowType;
 import com.cafestory.service.serviceInterface.BlogFeedRankingService;
 import com.cafestory.service.serviceInterface.FeedService;
 import com.cafestory.service.serviceInterface.SponsoredCafeCandidateService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -25,6 +28,7 @@ import java.util.UUID;
 @Service
 public class FeedServiceImpl implements FeedService {
 
+    private static final Logger log = LoggerFactory.getLogger(FeedServiceImpl.class);
     private static final int DEFAULT_FEED_SIZE = 20;
     private static final int MAX_FEED_SIZE = 50;
     private static final int FEED_CURSOR_VERSION = 1;
@@ -49,7 +53,7 @@ public class FeedServiceImpl implements FeedService {
         int maxAds = maxAdsForSize(safeSize);
         int organicLimit = safeSize - maxAds;
 
-        FeedResponseDTO organicPage = blogFeedRankingService.getOrganicFeed(feedCursor.organicCursor(), organicLimit);
+        FeedResponseDTO organicPage = getOrganicOrPersonalizedPage(userId, feedCursor.organicCursor(), organicLimit);
         List<FeedItemResponseDTO> organicItems = dedupeOrganicItems(organicPage.getItems());
         List<SponsoredCafeResponseDTO> sponsoredCafes = maxAds == 0
                 ? List.of()
@@ -63,6 +67,24 @@ public class FeedServiceImpl implements FeedService {
                 ? encodeFeedCursor(organicPage.getNextCursor(), feedCursor.adOffset() + countAds(mixedItems), seed(userId))
                 : null);
         return response;
+    }
+
+    private FeedResponseDTO getOrganicOrPersonalizedPage(UUID userId, String cursor, int organicLimit) {
+        if (userId == null) {
+            return blogFeedRankingService.getOrganicFeed(cursor, organicLimit);
+        }
+
+        try {
+            return blogFeedRankingService.getPersonalizedFeedPage(
+                    userId,
+                    TrendWindowType.HOUR_24,
+                    null,
+                    cursor,
+                    organicLimit);
+        } catch (RuntimeException error) {
+            log.warn("Personalized mixed feed failed; falling back to organic feed. userId={}", userId, error);
+            return blogFeedRankingService.getOrganicFeed(cursor, organicLimit);
+        }
     }
 
     private int normalizeFeedSize(int size) {

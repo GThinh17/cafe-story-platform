@@ -45,6 +45,7 @@ import {
   getSharedBlogsByUser,
   getTaggedBlogsByUser,
   blogResponseToPostPreview,
+  followCafePage,
   followUser,
   getMyProfile,
   getMixedRecommendations,
@@ -414,14 +415,18 @@ export function ProfileScreen() {
   }, []);
 
   const followSuggestion = useCallback(async (suggestion: RecommendationCardResponse) => {
-    if (pendingSuggestionId || suggestion.targetType !== "USER") {
+    if (pendingSuggestionId || !["USER", "REVIEWER", "CAFE_PAGE"].includes(suggestion.targetType)) {
       return;
     }
 
     setPendingSuggestionId(suggestion.targetId);
 
     try {
-      await followUser(suggestion.targetId);
+      if (suggestion.targetType === "CAFE_PAGE") {
+        await followCafePage(suggestion.targetId);
+      } else {
+        await followUser(suggestion.userId ?? suggestion.targetId);
+      }
       setFollowedSuggestionIds((currentIds) =>
         currentIds.includes(suggestion.targetId)
           ? currentIds

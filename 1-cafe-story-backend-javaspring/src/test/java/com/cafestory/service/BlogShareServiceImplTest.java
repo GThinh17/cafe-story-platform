@@ -4,10 +4,13 @@ import com.cafestory.dto.responseDTO.BlogShareResponseDTO;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogShare;
 import com.cafestory.entity.User;
+import com.cafestory.entity.enums.ActorContextType;
 import com.cafestory.entity.enums.ShareType;
 import com.cafestory.mapper.BlogInteractionMapper;
 import com.cafestory.repository.BlogShareRepository;
+import com.cafestory.service.model.ActorContext;
 import com.cafestory.service.serviceImplement.BlogShareServiceImpl;
+import com.cafestory.validation.ActorContextResolver;
 import com.cafestory.validation.BlogValidator;
 import com.cafestory.validation.UserValidator;
 import org.junit.jupiter.api.Test;
@@ -39,6 +42,9 @@ class BlogShareServiceImplTest {
     private BlogValidator blogValidator;
 
     @Mock
+    private ActorContextResolver actorContextResolver;
+
+    @Mock
     private UserValidator userValidator;
 
     @InjectMocks
@@ -54,7 +60,8 @@ class BlogShareServiceImplTest {
         BlogShareResponseDTO response = response(savedShare.getId(), blogId, userId);
 
         when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
-        when(userValidator.validateUserExists(userId)).thenReturn(user);
+        when(actorContextResolver.resolve(userId, ActorContextType.USER, null))
+                .thenReturn(new ActorContext(user, ActorContextType.USER, null));
         when(blogShareRepository.save(any(BlogShare.class))).thenReturn(savedShare);
         when(blogInteractionMapper.toBlogShareResponseDTO(savedShare)).thenReturn(response);
 
@@ -72,7 +79,8 @@ class BlogShareServiceImplTest {
         User user = user(userId);
 
         when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
-        when(userValidator.validateUserExists(userId)).thenReturn(user);
+        when(actorContextResolver.resolve(userId, ActorContextType.USER, null))
+                .thenReturn(new ActorContext(user, ActorContextType.USER, null));
 
         assertThatThrownBy(() -> blogShareService.shareBlog(blogId, userId, ShareType.PAGE_ONLY))
                 .hasMessageContaining("Page only share requires a blog that belongs to a page");

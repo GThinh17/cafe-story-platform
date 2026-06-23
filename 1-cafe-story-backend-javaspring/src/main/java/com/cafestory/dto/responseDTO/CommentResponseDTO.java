@@ -1,5 +1,6 @@
 package com.cafestory.dto.responseDTO;
 
+import com.cafestory.entity.enums.ActorContextType;
 import com.cafestory.entity.enums.PostStatus;
 import lombok.Data;
 
@@ -14,6 +15,10 @@ public class CommentResponseDTO {
     private UUID userId;
     private String authorUserName;
     private String authorUserAvatar;
+    private ActorContextType actorContextType;
+    private UUID actorCafePageId;
+    private String actorDisplayName;
+    private String actorAvatarUrl;
     private UUID parentCommentId;
     private String content;
     private List<String> imageUrls;

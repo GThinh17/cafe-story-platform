@@ -1,6 +1,7 @@
 package com.cafestory.controller;
 
 import com.cafestory.dto.responseDTO.BlogLikeResponseDTO;
+import com.cafestory.entity.enums.ActorContextType;
 import com.cafestory.service.serviceInterface.BlogLikeService;
 import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.junit.jupiter.api.Test;
@@ -31,12 +32,12 @@ class BlogLikeControllerTest {
         UUID userId = UUID.randomUUID();
         BlogLikeResponseDTO response = response();
 
-        when(blogLikeService.likeBlog(blogId, userId)).thenReturn(response);
+        when(blogLikeService.likeBlog(blogId, userId, ActorContextType.USER, null)).thenReturn(response);
 
-        BlogLikeResponseDTO result = blogLikeController.likeBlog(blogId, principal(userId));
+        BlogLikeResponseDTO result = blogLikeController.likeBlog(blogId, ActorContextType.USER, null, principal(userId));
 
         assertThat(result).isEqualTo(response);
-        verify(blogLikeService).likeBlog(blogId, userId);
+        verify(blogLikeService).likeBlog(blogId, userId, ActorContextType.USER, null);
     }
 
     @Test
@@ -44,9 +45,9 @@ class BlogLikeControllerTest {
         UUID blogId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
 
-        blogLikeController.unlikeBlog(blogId, principal(userId));
+        blogLikeController.unlikeBlog(blogId, ActorContextType.USER, null, principal(userId));
 
-        verify(blogLikeService).unlikeBlog(blogId, userId);
+        verify(blogLikeService).unlikeBlog(blogId, userId, ActorContextType.USER, null);
     }
 
     @Test

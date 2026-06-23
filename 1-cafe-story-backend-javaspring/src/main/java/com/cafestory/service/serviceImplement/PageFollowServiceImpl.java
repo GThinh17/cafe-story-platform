@@ -3,11 +3,15 @@ package com.cafestory.service.serviceImplement;
 import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.responseDTO.PageFollowResponseDTO;
 import com.cafestory.entity.CafePage;
+import com.cafestory.entity.PageMember;
 import com.cafestory.entity.PageFollow;
 import com.cafestory.entity.User;
+import com.cafestory.entity.enums.PageMemberStatus;
 import com.cafestory.mapper.CafePageInteractionMapper;
 import com.cafestory.repository.PageFollowRepository;
+import com.cafestory.repository.PageMemberRepository;
 import com.cafestory.service.serviceInterface.PageFollowService;
+import com.cafestory.service.serviceInterface.NotificationService;
 import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.UserValidator;
 import org.springframework.cache.annotation.CacheEvict;
@@ -18,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -27,16 +33,22 @@ public class PageFollowServiceImpl implements PageFollowService {
     private final CafePageInteractionMapper cafePageInteractionMapper;
     private final CafePageValidator cafePageValidator;
     private final UserValidator userValidator;
+    private final PageMemberRepository pageMemberRepository;
+    private final NotificationService notificationService;
 
     public PageFollowServiceImpl(
             PageFollowRepository pageFollowRepository,
             CafePageInteractionMapper cafePageInteractionMapper,
             CafePageValidator cafePageValidator,
-            UserValidator userValidator) {
+            UserValidator userValidator,
+            PageMemberRepository pageMemberRepository,
+            NotificationService notificationService) {
         this.pageFollowRepository = pageFollowRepository;
         this.cafePageInteractionMapper = cafePageInteractionMapper;
         this.cafePageValidator = cafePageValidator;
         this.userValidator = userValidator;
+        this.pageMemberRepository = pageMemberRepository;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -65,6 +77,7 @@ public class PageFollowServiceImpl implements PageFollowService {
 
         PageFollow savedPageFollow = pageFollowRepository.save(pageFollow);
         incrementFollowerCount(cafePage);
+        notifyPageManagers(cafePage, userId);
         return cafePageInteractionMapper.toPageFollowResponseDTO(savedPageFollow);
     }
 
@@ -119,5 +132,23 @@ public class PageFollowServiceImpl implements PageFollowService {
     private void decrementFollowerCount(CafePage cafePage) {
         int currentCount = cafePage.getFollowerCount() == null ? 0 : cafePage.getFollowerCount();
         cafePage.setFollowerCount(Math.max(0, currentCount - 1));
+    }
+
+    private void notifyPageManagers(CafePage cafePage, UUID actorUserId) {
+        Set<UUID> recipientIds = new LinkedHashSet<>();
+        if (cafePage.getOwner() != null && cafePage.getOwner().getUserId() != null) {
+            recipientIds.add(cafePage.getOwner().getUserId());
+        }
+        pageMemberRepository.findByCafePageIdAndStatus(cafePage.getId(), PageMemberStatus.ACTIVE)
+                .stream()
+                .filter(member -> PageMember.ROLE_OWNER.equals(member.getRoleName())
+                        || PageMember.ROLE_CO_OWNER.equals(member.getRoleName()))
+                .map(PageMember::getUser)
+                .filter(memberUser -> memberUser != null && memberUser.getUserId() != null)
+                .map(User::getUserId)
+                .forEach(recipientIds::add);
+
+        recipientIds.forEach(recipientId ->
+                notificationService.createFollowPageNotification(recipientId, actorUserId, cafePage.getId()));
     }
 }

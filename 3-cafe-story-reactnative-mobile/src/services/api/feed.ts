@@ -1,4 +1,9 @@
-import type { FeedParams, FeedResponse } from "../../types";
+import type {
+  FeedImpressionBatchRequest,
+  FeedImpressionResponse,
+  FeedParams,
+  FeedResponse,
+} from "../../types";
 import { apiCacheTtl, cachedApiCall } from "./api-cache";
 import { apiFetch } from "./client";
 import { apiEndpoints } from "./endpoints";
@@ -28,4 +33,11 @@ export function getMixedFeed(params: FeedParams = {}) {
       method: "GET",
     }),
   );
+}
+
+export function recordFeedImpressions(request: FeedImpressionBatchRequest) {
+  return apiFetch<FeedImpressionResponse>(apiEndpoints.feed.impressions, {
+    body: request,
+    method: "POST",
+  });
 }

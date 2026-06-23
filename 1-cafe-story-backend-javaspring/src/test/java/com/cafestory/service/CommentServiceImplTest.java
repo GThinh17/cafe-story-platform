@@ -6,11 +6,15 @@ import com.cafestory.dto.responseDTO.CommentResponseDTO;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.Comment;
 import com.cafestory.entity.User;
+import com.cafestory.entity.enums.ActorContextType;
 import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.mapper.CommentMapper;
 import com.cafestory.repository.CommentRepository;
+import com.cafestory.service.model.ActorContext;
 import com.cafestory.service.serviceImplement.CommentServiceImpl;
+import com.cafestory.validation.ActorContextResolver;
 import com.cafestory.validation.BlogValidator;
+import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.CommentValidator;
 import com.cafestory.validation.UserValidator;
 import org.junit.jupiter.api.Test;
@@ -50,6 +54,12 @@ class CommentServiceImplTest {
     @Mock
     private CommentValidator commentValidator;
 
+    @Mock
+    private ActorContextResolver actorContextResolver;
+
+    @Mock
+    private CafePageValidator cafePageValidator;
+
     @InjectMocks
     private CommentServiceImpl commentService;
 
@@ -67,7 +77,8 @@ class CommentServiceImplTest {
         CommentResponseDTO response = commentResponse(savedComment.getId(), blogId, userId, parentCommentId);
 
         when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
-        when(userValidator.validateUserExists(userId)).thenReturn(user);
+        when(actorContextResolver.resolve(userId, null, null))
+                .thenReturn(new ActorContext(user, ActorContextType.USER, null));
         when(commentValidator.validateCommentExists(parentCommentId)).thenReturn(parentComment);
         when(commentMapper.toComment(request)).thenReturn(comment);
         when(commentRepository.save(comment)).thenReturn(savedComment);
@@ -115,7 +126,8 @@ class CommentServiceImplTest {
         Comment parentComment = comment(parentCommentId, blog(UUID.randomUUID()), user(userId));
 
         when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
-        when(userValidator.validateUserExists(userId)).thenReturn(user(userId));
+        when(actorContextResolver.resolve(userId, null, null))
+                .thenReturn(new ActorContext(user(userId), ActorContextType.USER, null));
         when(commentValidator.validateCommentExists(parentCommentId)).thenReturn(parentComment);
 
         assertThatThrownBy(() -> commentService.createComment(request))

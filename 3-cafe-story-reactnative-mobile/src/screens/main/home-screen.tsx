@@ -27,6 +27,7 @@ import {
   getFollowingByUserId,
   getFollowingTargetsByUserId,
   getMixedFeed,
+  recordFeedImpressions,
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import { routes } from "../../navigation";
@@ -37,6 +38,7 @@ import type {
   FeedResponse,
   BlogLikeResponse,
   BlogSaveResponse,
+  FeedImpressionItemRequest,
   FollowTargetResponse,
   StoryItem,
   UserFollowResponse,
@@ -142,6 +144,7 @@ export function HomeScreen() {
   const isFetchingRef = useRef(false);
   const isPrefetchingRef = useRef(false);
   const prefetchGenerationRef = useRef(0);
+  const recordedImpressionBlogIdsRef = useRef<Set<string>>(new Set());
   const [feedItems, setFeedItems] = useState<FeedItemResponse[]>([]);
   const [error, setError] = useState("");
   const [loadMoreError, setLoadMoreError] = useState("");
@@ -157,6 +160,10 @@ export function HomeScreen() {
   const [prefetchFailedCursor, setPrefetchFailedCursor] = useState<string | null>(null);
   const [shouldAppendPrefetch, setShouldAppendPrefetch] = useState(false);
   const [followingTargets, setFollowingTargets] = useState<FollowTargetResponse[]>([]);
+
+  useEffect(() => {
+    recordedImpressionBlogIdsRef.current.clear();
+  }, [user?.userId]);
 
   const loadFollowingTargets = useCallback(async () => {
     if (!user?.userId) {
@@ -226,6 +233,41 @@ export function HomeScreen() {
 
     return enrichFeedResponse(response);
   }, [enrichFeedResponse]);
+
+  const recordVisibleFeedImpressions = useCallback((
+    items: FeedItemResponse[],
+  ) => {
+    if (!user?.userId) {
+      return;
+    }
+
+    const impressionItems: FeedImpressionItemRequest[] = [];
+    items.forEach((item, index) => {
+      const blogId = item.blog?.blogId;
+      if (!blogId || recordedImpressionBlogIdsRef.current.has(blogId)) {
+        return;
+      }
+
+      impressionItems.push({
+        blogId,
+        position: item.position ?? index,
+      });
+    });
+
+    if (!impressionItems.length) {
+      return;
+    }
+
+    void recordFeedImpressions({ items: impressionItems })
+      .then(() => {
+        impressionItems.forEach((item) => {
+          recordedImpressionBlogIdsRef.current.add(item.blogId);
+        });
+      })
+      .catch(() => {
+        // Impression tracking should not block feed rendering.
+      });
+  }, [user?.userId]);
 
   const prefetchFeedPage = useCallback(async (cursorToPrefetch: string | null) => {
     if (isPrefetchingRef.current || !cursorToPrefetch) {
@@ -304,6 +346,7 @@ export function HomeScreen() {
       const pageSize = append ? LOAD_MORE_FEED_PAGE_SIZE : INITIAL_FEED_PAGE_SIZE;
       const response = await fetchFeedPage(cursorToLoad, pageSize);
       const responseItems = response.items ?? [];
+      recordVisibleFeedImpressions(responseItems);
 
       setFeedItems((currentItems) =>
         append
@@ -335,7 +378,7 @@ export function HomeScreen() {
       setIsLoadingMore(false);
       setIsRefreshing(false);
     }
-  }, [fetchFeedPage, prefetchFeedPage]);
+  }, [fetchFeedPage, prefetchFeedPage, recordVisibleFeedImpressions]);
 
   const appendPrefetchedFeedItems = useCallback(() => {
     if (!nextCursor || prefetchedCursor !== nextCursor) {
@@ -356,6 +399,7 @@ export function HomeScreen() {
     setShouldAppendPrefetch(false);
     setIsLoadingMore(false);
     setLoadMoreError("");
+    recordVisibleFeedImpressions(bufferedItems);
 
     if (canLoadMore) {
       void prefetchFeedPage(nextCursorFromPrefetch);
@@ -368,6 +412,7 @@ export function HomeScreen() {
     prefetchedFeedItems,
     prefetchedNextCursor,
     prefetchFeedPage,
+    recordVisibleFeedImpressions,
   ]);
 
   useEffect(() => {

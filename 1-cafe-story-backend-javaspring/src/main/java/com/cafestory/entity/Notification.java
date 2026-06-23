@@ -1,5 +1,7 @@
 package com.cafestory.entity;
 
+import com.cafestory.entity.enums.ActorContextType;
+import com.cafestory.entity.enums.FollowTargetType;
 import com.cafestory.entity.enums.NotificationType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -42,6 +44,15 @@ public class Notification {
 
     @NotNull
     @Enumerated(EnumType.STRING)
+    @Column(name = "actor_context_type", nullable = false)
+    private ActorContextType actorContextType = ActorContextType.USER;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "actor_cafe_page_id")
+    private CafePage actorCafePage;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
     private NotificationType type;
 
@@ -53,6 +64,13 @@ public class Notification {
 
     @Column(name = "target_user_id")
     private UUID targetUserId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_type")
+    private FollowTargetType targetType;
+
+    @Column(name = "target_cafe_page_id")
+    private UUID targetCafePageId;
 
     @Column(name = "comment_id")
     private UUID commentId;
@@ -76,6 +94,9 @@ public class Notification {
         updatedAt = createdAt;
         if (isRead == null) {
             isRead = false;
+        }
+        if (actorContextType == null) {
+            actorContextType = ActorContextType.USER;
         }
     }
 

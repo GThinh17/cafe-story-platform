@@ -15,12 +15,18 @@ import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.entity.enums.TrendWindowType;
 import com.cafestory.repository.AiModerationResultRepository;
 import com.cafestory.repository.BlogEventRepository;
+import com.cafestory.repository.BlogLikeRepository;
 import com.cafestory.repository.BlogRecommendationScoreRepository;
 import com.cafestory.repository.BlogRepository;
+import com.cafestory.repository.BlogSaveRepository;
+import com.cafestory.repository.BlogShareRepository;
 import com.cafestory.repository.BlogTrendingScoreRepository;
 import com.cafestory.repository.CafePageRepository;
+import com.cafestory.repository.CommentRepository;
+import com.cafestory.repository.FeedImpressionRepository;
 import com.cafestory.repository.PageFollowRepository;
 import com.cafestory.repository.RegionRepository;
+import com.cafestory.repository.ReviewerRepository;
 import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceImplement.BlogFeedRankingServiceImpl;
@@ -77,6 +83,21 @@ class BlogFeedRankingServiceImplTest {
     private BlogEventRepository blogEventRepository;
 
     @Mock
+    private BlogLikeRepository blogLikeRepository;
+
+    @Mock
+    private CommentRepository commentRepository;
+
+    @Mock
+    private BlogShareRepository blogShareRepository;
+
+    @Mock
+    private BlogSaveRepository blogSaveRepository;
+
+    @Mock
+    private FeedImpressionRepository feedImpressionRepository;
+
+    @Mock
     private AiModerationResultRepository aiModerationResultRepository;
 
     @Mock
@@ -84,6 +105,9 @@ class BlogFeedRankingServiceImplTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private ReviewerRepository reviewerRepository;
 
     @Mock
     private UserValidator userValidator;
@@ -291,12 +315,17 @@ class BlogFeedRankingServiceImplTest {
                 eq(15.0),
                 eq(25.0),
                 eq(30.0),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
                 eq(0.0),
+                any(Double.class),
+                any(Double.class),
                 eq(1),
                 any(String.class),
                 any(LocalDateTime.class),
                 any(LocalDateTime.class));
-        assertThat(feedScoreCaptor.getValue()).isGreaterThan(100.0 * 0.4 + 30 + 25 + 15);
+        assertThat(feedScoreCaptor.getValue()).isGreaterThan(100.0 * 0.35 + 30 + 25 + 15);
     }
 
     @Test
@@ -330,6 +359,11 @@ class BlogFeedRankingServiceImplTest {
                 followedUserScoreCaptor.capture(),
                 any(Double.class),
                 any(Double.class),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
                 any(Integer.class),
                 reasonCaptor.capture(),
                 any(LocalDateTime.class),
@@ -342,7 +376,7 @@ class BlogFeedRankingServiceImplTest {
     }
 
     @Test
-    void getPersonalizedFeed_success_doesNotRebuildCacheWhenCurrentUserHasNewerOwnBlog_TC008() {
+    void getPersonalizedFeed_success_rebuildsCacheWhenCurrentUserHasNewerOwnBlog_TC008() {
         User user = user();
         UUID regionId = user.getRegion().getRegionId();
         Blog ownBlog = blogWithAuthor(user, regionId);
@@ -368,12 +402,17 @@ class BlogFeedRankingServiceImplTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getBlogId()).isEqualTo(ownBlog.getId());
-        verify(blogRecommendationScoreRepository, never()).upsertRecommendationScore(
+        verify(blogRecommendationScoreRepository).upsertRecommendationScore(
                 any(UUID.class),
                 eq(user.getUserId()),
                 eq(ownBlog.getId()),
                 eq(TrendWindowType.HOUR_24.name()),
                 eq(regionId),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
                 any(Double.class),
                 any(Double.class),
                 any(Double.class),
@@ -426,7 +465,12 @@ class BlogFeedRankingServiceImplTest {
                 any(Double.class),
                 any(Double.class),
                 any(Double.class),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
                 reportPenaltyCaptor.capture(),
+                any(Double.class),
+                any(Double.class),
                 eq(1),
                 reasonCaptor.capture(),
                 any(LocalDateTime.class),
@@ -444,6 +488,20 @@ class BlogFeedRankingServiceImplTest {
         lenient().when(aiModerationResultRepository.existsByBlogIdAndDecision(any(UUID.class), any())).thenReturn(false);
         lenient().when(aiModerationResultRepository.findBlogIdsByBlogIdInAndDecision(any(), any())).thenReturn(List.of());
         lenient().when(blogEventRepository.countByBlogIdsAndEventTypeAndCreatedAtBetween(any(), any(), any(), any()))
+                .thenReturn(List.of());
+        lenient().when(blogLikeRepository.countByBlogIdsAndCreatedAtBetween(any(), any(), any()))
+                .thenReturn(List.of());
+        lenient().when(commentRepository.countRootCommentsByBlogIdsAndCreatedAtBetween(any(), any(), any()))
+                .thenReturn(List.of());
+        lenient().when(commentRepository.countRepliesByBlogIdsAndCreatedAtBetween(any(), any(), any()))
+                .thenReturn(List.of());
+        lenient().when(blogShareRepository.countByBlogIdsAndCreatedAtBetween(any(), any(), any()))
+                .thenReturn(List.of());
+        lenient().when(blogSaveRepository.countByBlogIdsAndCreatedAtBetween(any(), any(), any()))
+                .thenReturn(List.of());
+        lenient().when(feedImpressionRepository.findSeenBlogIds(any(UUID.class), any(), any()))
+                .thenReturn(List.of());
+        lenient().when(reviewerRepository.findActiveReviewerUserIdsByUserIds(any()))
                 .thenReturn(List.of());
         lenient().when(pageFollowRepository.findFollowedCafePageIds(any(UUID.class), any())).thenReturn(List.of());
         lenient().when(userFollowRepository.findFollowedUserIds(any(UUID.class), any())).thenReturn(List.of());
@@ -498,9 +556,15 @@ class BlogFeedRankingServiceImplTest {
                 pageFollowRepository,
                 userFollowRepository,
                 blogEventRepository,
+                blogLikeRepository,
+                commentRepository,
+                blogShareRepository,
+                blogSaveRepository,
+                feedImpressionRepository,
                 aiModerationResultRepository,
                 regionRepository,
                 userRepository,
+                reviewerRepository,
                 userValidator,
                 new ConcurrentMapCacheManager(CacheConfig.ORGANIC_FEED_CACHE));
     }
@@ -627,7 +691,12 @@ class BlogFeedRankingServiceImplTest {
         score.setFollowedUserScore(25.0);
         score.setSameRegionScore(15.0);
         score.setFreshnessScore(6.0);
+        score.setActivityScore(0.0);
+        score.setOwnAuthorScore(0.0);
+        score.setReviewerScore(0.0);
         score.setReportPenalty(0.0);
+        score.setSeenPenalty(0.0);
+        score.setRepetitionPenalty(0.0);
         score.setRankPosition(rankPosition);
         score.setReason("cached score");
         score.setComputedAt(LocalDateTime.now());

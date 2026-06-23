@@ -3,12 +3,15 @@ package com.cafestory.service;
 import com.cafestory.dto.requestDTO.CreateNotificationRequestDTO;
 import com.cafestory.entity.Notification;
 import com.cafestory.entity.User;
+import com.cafestory.entity.enums.ActorContextType;
 import com.cafestory.entity.enums.NotificationTargetType;
 import com.cafestory.entity.enums.NotificationType;
 import com.cafestory.mapper.NotificationMapper;
 import com.cafestory.repository.NotificationRepository;
+import com.cafestory.service.model.ActorContext;
 import com.cafestory.service.serviceImplement.NotificationServiceImpl;
 import com.cafestory.service.serviceInterface.NotificationRealtimeService;
+import com.cafestory.validation.ActorContextResolver;
 import com.cafestory.validation.UserValidator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,6 +49,9 @@ class NotificationServiceImplTest {
     @Mock
     private NotificationRealtimeService notificationRealtimeService;
 
+    @Mock
+    private ActorContextResolver actorContextResolver;
+
     private NotificationServiceImpl notificationService;
 
     @BeforeEach
@@ -53,6 +59,7 @@ class NotificationServiceImplTest {
         notificationService = new NotificationServiceImpl(
                 notificationRepository,
                 userValidator,
+                actorContextResolver,
                 new NotificationMapper(),
                 notificationRealtimeService);
     }
@@ -178,6 +185,9 @@ class NotificationServiceImplTest {
     @Test
     void createNotification_success_doNotNotifySelf_TC009() {
         UUID selfId = UUID.randomUUID();
+        User self = user(selfId);
+        when(actorContextResolver.resolve(selfId, ActorContextType.USER, null))
+                .thenReturn(new ActorContext(self, ActorContextType.USER, null));
 
         var result = notificationService.createLikeNotification(selfId, selfId, UUID.randomUUID());
 
@@ -240,7 +250,9 @@ class NotificationServiceImplTest {
 
     private void mockCreate(NotificationType type) {
         when(userValidator.validateUserExists(recipientId())).thenReturn(user(recipientId()));
-        when(userValidator.validateUserExists(actorId())).thenReturn(user(actorId()));
+        User actor = user(actorId());
+        when(actorContextResolver.resolve(eq(actorId()), any(), any()))
+                .thenReturn(new ActorContext(actor, ActorContextType.USER, null));
         when(notificationRepository.countByRecipientUserIdAndIsRead(recipientId(), false)).thenReturn(1L);
         doAnswer(invocation -> {
             Notification notification = invocation.getArgument(0);

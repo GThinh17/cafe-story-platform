@@ -19,6 +19,7 @@ import { useAuth } from "../../features/auth";
 import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
 import {
+  followCafePage,
   followUser,
   likeBlog,
   saveBlog,
@@ -244,7 +245,11 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
     setIsFollowed(nextIsFollowed);
 
     try {
-      await followUser(blog.authorUserId);
+      if (blog.displayAuthorType === "CAFE_PAGE" && blog.pageId) {
+        await followCafePage(blog.pageId);
+      } else {
+        await followUser(blog.authorUserId);
+      }
     } catch {
       setIsFollowed(!nextIsFollowed);
     } finally {

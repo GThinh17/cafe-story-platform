@@ -150,6 +150,7 @@ public class AdminPaymentServiceImpl implements AdminPaymentService {
         response.setBuyerUserAvatar(payment.getBuyer() == null ? null : payment.getBuyer().getUserAvatar());
         response.setExtraFeeId(payment.getExtraFee() == null ? null : payment.getExtraFee().getExtraFeeId());
         response.setAdFeeId(payment.getAdFee() == null ? null : payment.getAdFee().getAdFeeId());
+        response.setActivatedCafePageId(payment.getCafePage() == null ? null : payment.getCafePage().getId());
         if (payment.getExtraFee() != null) {
             response.setProductName(payment.getExtraFee().getName());
         } else if (payment.getAdFee() != null) {

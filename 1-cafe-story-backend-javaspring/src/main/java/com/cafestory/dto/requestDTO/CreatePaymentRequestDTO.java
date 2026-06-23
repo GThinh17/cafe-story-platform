@@ -16,6 +16,8 @@ public class CreatePaymentRequestDTO {
 
     private UUID adFeeId;
 
+    private UUID cafePageId;
+
     @NotNull(message = "Payment method is mandatory")
     private PaymentMethod paymentMethod;
 

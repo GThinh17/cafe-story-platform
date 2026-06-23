@@ -1,5 +1,6 @@
 package com.cafestory.entity;
 
+import com.cafestory.entity.enums.ActorContextType;
 import com.cafestory.entity.enums.PostStatus;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -35,7 +36,8 @@ import java.util.UUID;
         indexes = {
                 @Index(name = "idx_comments_blog_status_created", columnList = "blog_id, status, created_at"),
                 @Index(name = "idx_comments_parent_status_created", columnList = "parent_comment_id, status, created_at"),
-                @Index(name = "idx_comments_user_created", columnList = "user_id, created_at")
+                @Index(name = "idx_comments_user_created", columnList = "user_id, created_at"),
+                @Index(name = "idx_comments_actor_page_created", columnList = "actor_cafe_page_id, created_at")
         })
 public class Comment {
 
@@ -53,6 +55,15 @@ public class Comment {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "actor_context_type", nullable = false)
+    private ActorContextType actorContextType = ActorContextType.USER;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "actor_cafe_page_id")
+    private CafePage actorCafePage;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_comment_id")
@@ -84,6 +95,9 @@ public class Comment {
         createdAt = LocalDateTime.now();
         if (status == null) {
             status = PostStatus.PUBLISHED;
+        }
+        if (actorContextType == null) {
+            actorContextType = ActorContextType.USER;
         }
     }
 
