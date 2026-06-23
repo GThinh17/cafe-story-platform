@@ -2,7 +2,6 @@
 
 import {
   useEffect,
-  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -21,13 +20,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import { Textarea } from "@/components/ui/textarea";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { ApiError } from "@/lib/api/client";
@@ -37,6 +30,14 @@ import {
   updateCafePage,
 } from "@/lib/api/cafes";
 import { uploadCafeImageToCloudinary } from "@/lib/api/cloudinary";
+import {
+  getRegionProvinces,
+  getRegionCities,
+  getRegionWards,
+  type RegionProvinceResponse,
+  type RegionCityResponse,
+  type RegionWardResponse,
+} from "@/lib/api/regions";
 import { DEFAULT_AVATAR_IMAGE } from "@/lib/avatar";
 import type { CafePageResponse } from "@/types/cafe";
 
@@ -46,22 +47,14 @@ type FormStatus = {
 };
 
 type RegionState = {
-  provinceId: string;
+  provinceCode: string;
   province: string;
+  cityCode: string;
+  city: string;
+  wardCode: string;
   ward: string;
   area: string;
   street: string;
-};
-
-type ProvinceOption = {
-  idProvince: string;
-  name: string;
-};
-
-type WardOption = {
-  idProvince: string;
-  idWard: string;
-  name: string;
 };
 
 const emptyStatus: FormStatus = {
@@ -73,15 +66,6 @@ const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const DEFAULT_COVER_IMAGE = "/images/cafes/velvet-roast/minimal-interior.jpg";
 const BACKEND_DEFAULT_ADDRESS = "Pending update";
 
-function getCityName(province: string) {
-  return province
-    .replace(/^Thanh pho\s+/i, "")
-    .replace(/^Tinh\s+/i, "")
-    .replace(/^Th\u00e0nh ph\u1ed1\s+/i, "")
-    .replace(/^T\u1ec9nh\s+/i, "")
-    .trim();
-}
-
 function getSubmitErrorMessage(error: unknown, fallback: string) {
   if (error instanceof ApiError || error instanceof Error) {
     return error.message;
@@ -90,10 +74,8 @@ function getSubmitErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-function buildAddress(region: RegionState, selectedProvinceName: string) {
-  const city = getCityName(selectedProvinceName);
-
-  return [region.street, region.ward, region.area, city || selectedProvinceName]
+function buildAddress(region: RegionState) {
+  return [region.street, region.ward, region.area, region.city || region.province]
     .map((part) => part.trim())
     .filter(Boolean)
     .join(", ");
@@ -123,27 +105,24 @@ export function EditCafePageForm() {
     description: "",
   });
   const [region, setRegion] = useState<RegionState>({
-    provinceId: "",
+    provinceCode: "",
     province: "",
+    cityCode: "",
+    city: "",
+    wardCode: "",
     ward: "",
     area: "",
     street: "",
   });
-  const [provinceOptions, setProvinceOptions] = useState<ProvinceOption[]>([]);
-  const [wardOptions, setWardOptions] = useState<WardOption[]>([]);
+  const [provinceOptions, setProvinceOptions] = useState<RegionProvinceResponse[]>([]);
+  const [cityOptions, setCityOptions] = useState<RegionCityResponse[]>([]);
+  const [wardOptions, setWardOptions] = useState<RegionWardResponse[]>([]);
   const [isProvinceLoading, setIsProvinceLoading] = useState(true);
+  const [isCityLoading, setIsCityLoading] = useState(false);
   const [isWardLoading, setIsWardLoading] = useState(false);
   const [addressDataError, setAddressDataError] = useState<string | null>(null);
   const [formStatus, setFormStatus] = useState<FormStatus>(emptyStatus);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const selectedProvince = useMemo(
-    () =>
-      provinceOptions.find(
-        (province) => province.idProvince === region.provinceId,
-      ),
-    [provinceOptions, region.provinceId],
-  );
 
   const isCurrentUserUnavailable = !isUserLoading && !user;
 
@@ -210,31 +189,39 @@ export function EditCafePageForm() {
   }, [isLoadingCafePage, ownedCafePage]);
 
   useEffect(() => {
-    let isMounted = true;
-
-    async function loadProvinces() {
-      setIsProvinceLoading(true);
-      setAddressDataError(null);
-
-      try {
-        const { getAllProvincesSorted } = await import("new-vn-provinces/provinces");
-        const provinces = await getAllProvincesSorted();
-
-        if (isMounted) {
-          setProvinceOptions(provinces);
-        }
-      } catch {
-        if (isMounted) {
-          setAddressDataError("Unable to load Vietnam address data.");
-        }
-      } finally {
-        if (isMounted) {
-          setIsProvinceLoading(false);
-        }
-      }
+    if (isLoadingCafePage) {
+      return;
     }
 
-    void loadProvinces();
+    setRegion({
+      provinceCode: ownedCafePage?.regionProvinceCode ?? "",
+      province: ownedCafePage?.regionProvince ?? "",
+      cityCode: ownedCafePage?.regionCityCode ?? "",
+      city: ownedCafePage?.regionCity ?? "",
+      wardCode: ownedCafePage?.regionWardCode ?? "",
+      ward: ownedCafePage?.regionWard ?? "",
+      area: ownedCafePage?.regionArea ?? "",
+      street:
+        ownedCafePage?.regionStreet ??
+        (isUsableAddress(ownedCafePage?.address) ? ownedCafePage?.address ?? "" : ""),
+    });
+  }, [isLoadingCafePage, ownedCafePage]);
+
+  useEffect(() => {
+    let isMounted = true;
+    setIsProvinceLoading(true);
+    setAddressDataError(null);
+
+    getRegionProvinces()
+      .then((provinces) => {
+        if (isMounted) setProvinceOptions(provinces);
+      })
+      .catch(() => {
+        if (isMounted) setAddressDataError("Unable to load Vietnam address data.");
+      })
+      .finally(() => {
+        if (isMounted) setIsProvinceLoading(false);
+      });
 
     return () => {
       isMounted = false;
@@ -242,62 +229,56 @@ export function EditCafePageForm() {
   }, []);
 
   useEffect(() => {
-    if (isLoadingCafePage || provinceOptions.length === 0) {
+    if (!region.provinceCode) {
+      setCityOptions([]);
       return;
     }
 
-    const provinceName = ownedCafePage?.regionProvince ?? "";
-    const matchedProvince = provinceOptions.find(
-      (province) => province.name === provinceName,
-    );
+    let isMounted = true;
+    setIsCityLoading(true);
+    setAddressDataError(null);
 
-    setRegion({
-      provinceId: matchedProvince?.idProvince ?? "",
-      province: provinceName,
-      ward: ownedCafePage?.regionWard ?? "",
-      area: ownedCafePage?.regionArea ?? "",
-      street:
-        ownedCafePage?.regionStreet ??
-        (isUsableAddress(ownedCafePage?.address) ? ownedCafePage?.address ?? "" : ""),
-    });
-  }, [isLoadingCafePage, ownedCafePage, provinceOptions]);
+    getRegionCities(region.provinceCode)
+      .then((cities) => {
+        if (isMounted) setCityOptions(cities);
+      })
+      .catch(() => {
+        if (isMounted) setAddressDataError("Unable to load city data for this province.");
+      })
+      .finally(() => {
+        if (isMounted) setIsCityLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [region.provinceCode]);
 
   useEffect(() => {
-    if (!region.provinceId) {
+    if (!region.cityCode || !region.provinceCode) {
       setWardOptions([]);
       return;
     }
 
     let isMounted = true;
+    setIsWardLoading(true);
+    setAddressDataError(null);
 
-    async function loadWards() {
-      setIsWardLoading(true);
-      setAddressDataError(null);
-
-      try {
-        const { getWardsByProvinceId } = await import("new-vn-provinces/provinces");
-        const wards = await getWardsByProvinceId(region.provinceId);
-
-        if (isMounted) {
-          setWardOptions(wards);
-        }
-      } catch {
-        if (isMounted) {
-          setAddressDataError("Unable to load ward data for this province.");
-        }
-      } finally {
-        if (isMounted) {
-          setIsWardLoading(false);
-        }
-      }
-    }
-
-    void loadWards();
+    getRegionWards({ cityCode: region.cityCode, provinceCode: region.provinceCode })
+      .then((wards) => {
+        if (isMounted) setWardOptions(wards);
+      })
+      .catch(() => {
+        if (isMounted) setAddressDataError("Unable to load ward data for this city.");
+      })
+      .finally(() => {
+        if (isMounted) setIsWardLoading(false);
+      });
 
     return () => {
       isMounted = false;
     };
-  }, [region.provinceId]);
+  }, [region.cityCode, region.provinceCode]);
 
   useEffect(() => {
     return () => {
@@ -376,16 +357,15 @@ export function EditCafePageForm() {
 
     const name = basicInfo.name.trim();
     const description = basicInfo.description.trim();
-    const provinceName = selectedProvince?.name ?? "";
-    const address = buildAddress(region, provinceName);
+    const address = buildAddress(region);
 
     if (!name) {
       setFormStatus({ error: "Cafe name is required.", success: null });
       return;
     }
 
-    if (!provinceName || !region.ward) {
-      setFormStatus({ error: "Province and ward are required.", success: null });
+    if (!region.provinceCode || !region.wardCode) {
+      setFormStatus({ error: "Province, city and ward are required.", success: null });
       return;
     }
 
@@ -563,79 +543,72 @@ export function EditCafePageForm() {
         </FieldGroup>
 
         <FieldGroup>
-          <Field>
-            <FieldLabel>Province / city</FieldLabel>
-            <Select
-              disabled={isProvinceLoading || isSubmitting}
-              onValueChange={(provinceId) =>
-                setRegion((current) => ({
-                  ...current,
-                  provinceId,
-                  province:
-                    provinceOptions.find(
-                      (province) => province.idProvince === provinceId,
-                    )?.name ?? "",
-                  ward: "",
-                  area: "",
-                }))
-              }
-              value={region.provinceId}
-            >
-              <SelectTrigger className="h-12 w-full bg-surface">
-                <SelectValue
-                  placeholder={
-                    isProvinceLoading ? "Loading provinces..." : "Select province"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {provinceOptions.map((province) => (
-                  <SelectItem key={province.idProvince} value={province.idProvince}>
-                    {province.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field>
-            <FieldLabel>Ward</FieldLabel>
-            <Select
-              disabled={!region.provinceId || isWardLoading || isSubmitting}
-              onValueChange={(ward) =>
-                setRegion((current) => ({
-                  ...current,
-                  ward,
-                  area: "",
-                }))
-              }
-              value={region.ward}
-            >
-              <SelectTrigger className="h-12 w-full bg-surface">
-                <SelectValue
-                  placeholder={isWardLoading ? "Loading wards..." : "Select ward"}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {wardOptions.map((ward) => (
-                  <SelectItem key={ward.idWard} value={ward.name}>
-                    {ward.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="city">City</FieldLabel>
-            <Input
-              id="city"
-              name="city"
-              readOnly
-              value={selectedProvince ? getCityName(selectedProvince.name) : ""}
-            />
-            <FieldDescription>
-              Derived from the selected Vietnam province or centrally governed city.
-            </FieldDescription>
-          </Field>
+          <SearchableDropdown
+            disabled={isSubmitting}
+            emptyLabel="No provinces found."
+            isLoading={isProvinceLoading}
+            label="Province / city"
+            labelClassName="text-sm font-medium normal-case tracking-normal text-foreground leading-none"
+            triggerClassName="h-12 bg-surface"
+            onSelect={(province) =>
+              setRegion((current) => ({
+                ...current,
+                provinceCode: province.provinceCode,
+                province: province.name,
+                cityCode: "",
+                city: "",
+                wardCode: "",
+                ward: "",
+              }))
+            }
+            options={provinceOptions}
+            placeholder="Select province..."
+            selectedCode={region.provinceCode || null}
+            selectedName={region.province || null}
+            valueKey="provinceCode"
+          />
+          <SearchableDropdown
+            disabled={!region.provinceCode || isSubmitting}
+            emptyLabel="No cities found for this province."
+            isLoading={isCityLoading}
+            label="City / district"
+            labelClassName="text-sm font-medium normal-case tracking-normal text-foreground leading-none"
+            triggerClassName="h-12 bg-surface"
+            onSelect={(city) =>
+              setRegion((current) => ({
+                ...current,
+                cityCode: city.cityCode,
+                city: city.name,
+                wardCode: "",
+                ward: "",
+              }))
+            }
+            options={cityOptions}
+            placeholder="Select city / district..."
+            selectedCode={region.cityCode || null}
+            selectedName={region.city || null}
+            valueKey="cityCode"
+          />
+          <SearchableDropdown
+            disabled={!region.cityCode || isSubmitting}
+            emptyLabel="No wards found for this city."
+            isLoading={isWardLoading}
+            label="Ward"
+            labelClassName="text-sm font-medium normal-case tracking-normal text-foreground leading-none"
+            triggerClassName="h-12 bg-surface"
+            onSelect={(ward) =>
+              setRegion((current) => ({
+                ...current,
+                wardCode: ward.wardCode,
+                ward: ward.name,
+              }))
+            }
+            options={wardOptions}
+            placeholder="Select ward..."
+            selectedCode={region.wardCode || null}
+            selectedName={region.ward || null}
+            valueKey="wardCode"
+          />
           <Field>
             <FieldLabel htmlFor="area">Area</FieldLabel>
             <Input
@@ -650,7 +623,6 @@ export function EditCafePageForm() {
               }
               value={region.area}
             />
-            {/* Vietnam's post-2025 dataset exposes province/city and ward/commune only, so area remains optional free text. */}
             <FieldDescription>
               Optional smaller area, neighborhood, or local landmark.
             </FieldDescription>
