@@ -122,7 +122,7 @@ export function SearchableDropdown<T extends SearchableDropdownOption>({
                   autoComplete="off"
                   className="w-full bg-transparent text-sm text-espresso outline-none placeholder:text-muted"
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder={`Search ${label.toLowerCase()}...`}
+                  placeholder={label ? `Search ${label.toLowerCase()}...` : "Search..."}
                   ref={inputRef}
                   type="text"
                   value={query}

@@ -124,7 +124,7 @@ async function loadCafeData(
   }
 
   try {
-    const cafes = await getAllCafePages({ status: "DRAFT" });
+    const cafes = await getAllCafePages({ status: "ACTIVE" });
     return cafes.slice(0, 20).map(cafeResponseToItem);
   } catch {
     return [];
