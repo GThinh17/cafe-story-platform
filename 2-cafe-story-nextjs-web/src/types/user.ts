@@ -7,6 +7,7 @@ export type UserProfile = {
   email?: string;
   location: string;
   website: string;
+  badge?: string | null;
   stats: {
     posts: string;
     following: string;

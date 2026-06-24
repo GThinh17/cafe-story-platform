@@ -20,4 +20,5 @@ public class ReviewerResponseDTO {
     private ReviewerBadge badge;
     private long score;
     private LocalDateTime expireDate;
+    private Boolean isFollowing;
 }

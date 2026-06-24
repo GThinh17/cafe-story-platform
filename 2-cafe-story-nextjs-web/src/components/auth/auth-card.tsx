@@ -11,18 +11,20 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/api/client";
 import { login, register, suggestUserNames } from "@/lib/api/auth";
 import { updateMeRegion, type UpdateMeRegionRequest } from "@/lib/api/users";
+import {
+  getRegionProvinces,
+  getRegionCities,
+  getRegionWards,
+  type RegionProvinceResponse,
+  type RegionCityResponse,
+  type RegionWardResponse,
+} from "@/lib/api/regions";
 import type { AuthField, AuthFormCopy, AuthMode } from "@/types/auth";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -32,27 +34,22 @@ type AuthCardProps = {
 };
 
 type RegionState = {
-  provinceId: string;
+  provinceCode: string;
   province: string;
+  cityCode: string;
+  city: string;
+  wardCode: string;
   ward: string;
   area: string;
   street: string;
 };
 
-type ProvinceOption = {
-  idProvince: string;
-  name: string;
-};
-
-type WardOption = {
-  idProvince: string;
-  idWard: string;
-  name: string;
-};
-
 const emptyRegion: RegionState = {
-  provinceId: "",
+  provinceCode: "",
   province: "",
+  cityCode: "",
+  city: "",
+  wardCode: "",
   ward: "",
   area: "",
   street: "",
@@ -163,13 +160,6 @@ function buildSwitchHref(
   return query ? `${baseHref}?${query}` : baseHref;
 }
 
-function getCityName(province: string) {
-  return province
-    .replace(/^Th\u00e0nh ph\u1ed1\s+/i, "")
-    .replace(/^T\u1ec9nh\s+/i, "")
-    .trim();
-}
-
 function trimToUndefined(value: string) {
   const trimmedValue = value.trim();
 
@@ -178,7 +168,7 @@ function trimToUndefined(value: string) {
 
 function hasStartedRegion(region: RegionState) {
   return Boolean(
-    region.provinceId ||
+    region.provinceCode ||
       region.province.trim() ||
       region.ward.trim() ||
       region.area.trim() ||
@@ -209,9 +199,11 @@ export function AuthCard({ mode }: AuthCardProps) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [userName, setUserName] = useState("");
   const [region, setRegion] = useState<RegionState>(emptyRegion);
-  const [provinceOptions, setProvinceOptions] = useState<ProvinceOption[]>([]);
-  const [wardOptions, setWardOptions] = useState<WardOption[]>([]);
+  const [provinceOptions, setProvinceOptions] = useState<RegionProvinceResponse[]>([]);
+  const [cityOptions, setCityOptions] = useState<RegionCityResponse[]>([]);
+  const [wardOptions, setWardOptions] = useState<RegionWardResponse[]>([]);
   const [isProvinceLoading, setIsProvinceLoading] = useState(mode === "register");
+  const [isCityLoading, setIsCityLoading] = useState(false);
   const [isWardLoading, setIsWardLoading] = useState(false);
   const [addressDataError, setAddressDataError] = useState<string | null>(null);
   const suggestionRequestIdRef = useRef(0);
@@ -219,13 +211,6 @@ export function AuthCard({ mode }: AuthCardProps) {
   const nextPath = getSafeNextPath(searchParams.get("next"));
   const switchHref = buildSwitchHref(copy.switchHref, nextPath, reason);
   const shouldShowAuthNotice = reason === "auth_required";
-  const selectedProvince = useMemo(
-    () =>
-      provinceOptions.find(
-        (province) => province.idProvince === region.provinceId,
-      ),
-    [provinceOptions, region.provinceId],
-  );
 
   useEffect(() => {
     if (mode !== "register") {
@@ -284,30 +269,19 @@ export function AuthCard({ mode }: AuthCardProps) {
     }
 
     let isMounted = true;
+    setIsProvinceLoading(true);
+    setAddressDataError(null);
 
-    async function loadProvinces() {
-      setIsProvinceLoading(true);
-      setAddressDataError(null);
-
-      try {
-        const { getAllProvincesSorted } = await import("new-vn-provinces/provinces");
-        const provinces = await getAllProvincesSorted();
-
-        if (isMounted) {
-          setProvinceOptions(provinces);
-        }
-      } catch {
-        if (isMounted) {
-          setAddressDataError("Unable to load Vietnam address data.");
-        }
-      } finally {
-        if (isMounted) {
-          setIsProvinceLoading(false);
-        }
-      }
-    }
-
-    void loadProvinces();
+    getRegionProvinces()
+      .then((provinces) => {
+        if (isMounted) setProvinceOptions(provinces);
+      })
+      .catch(() => {
+        if (isMounted) setAddressDataError("Unable to load Vietnam address data.");
+      })
+      .finally(() => {
+        if (isMounted) setIsProvinceLoading(false);
+      });
 
     return () => {
       isMounted = false;
@@ -315,41 +289,56 @@ export function AuthCard({ mode }: AuthCardProps) {
   }, [mode]);
 
   useEffect(() => {
-    if (mode !== "register" || !region.provinceId) {
+    if (mode !== "register" || !region.provinceCode) {
+      setCityOptions([]);
+      return;
+    }
+
+    let isMounted = true;
+    setIsCityLoading(true);
+    setAddressDataError(null);
+
+    getRegionCities(region.provinceCode)
+      .then((cities) => {
+        if (isMounted) setCityOptions(cities);
+      })
+      .catch(() => {
+        if (isMounted) setAddressDataError("Unable to load city data for this province.");
+      })
+      .finally(() => {
+        if (isMounted) setIsCityLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [mode, region.provinceCode]);
+
+  useEffect(() => {
+    if (mode !== "register" || !region.cityCode || !region.provinceCode) {
       setWardOptions([]);
       return;
     }
 
     let isMounted = true;
+    setIsWardLoading(true);
+    setAddressDataError(null);
 
-    async function loadWards() {
-      setIsWardLoading(true);
-      setAddressDataError(null);
-
-      try {
-        const { getWardsByProvinceId } = await import("new-vn-provinces/provinces");
-        const wards = await getWardsByProvinceId(region.provinceId);
-
-        if (isMounted) {
-          setWardOptions(wards);
-        }
-      } catch {
-        if (isMounted) {
-          setAddressDataError("Unable to load ward data for this province.");
-        }
-      } finally {
-        if (isMounted) {
-          setIsWardLoading(false);
-        }
-      }
-    }
-
-    void loadWards();
+    getRegionWards({ cityCode: region.cityCode, provinceCode: region.provinceCode })
+      .then((wards) => {
+        if (isMounted) setWardOptions(wards);
+      })
+      .catch(() => {
+        if (isMounted) setAddressDataError("Unable to load ward data for this city.");
+      })
+      .finally(() => {
+        if (isMounted) setIsWardLoading(false);
+      });
 
     return () => {
       isMounted = false;
     };
-  }, [mode, region.provinceId]);
+  }, [mode, region.cityCode, region.provinceCode]);
 
   function handleFullNameChange(value: string) {
     setFullName(value);
@@ -369,19 +358,18 @@ export function AuthCard({ mode }: AuthCardProps) {
       return null;
     }
 
-    if (!selectedProvince?.name || !region.ward) {
-      throw new Error("Select both province and ward, or leave the address fields blank.");
+    if (!region.provinceCode || !region.wardCode) {
+      throw new Error("Select province, city and ward, or leave the address fields blank.");
     }
 
     const area = region.area.trim();
-    const wardCode = wardOptions.find((ward) => ward.name === region.ward)?.idWard;
 
     return {
-      cityCode: region.provinceId || undefined,
-      city: trimToUndefined(getCityName(selectedProvince.name)),
-      provinceCode: region.provinceId || undefined,
+      cityCode: region.cityCode || undefined,
+      city: trimToUndefined(region.city),
+      provinceCode: region.provinceCode || undefined,
       province: trimToUndefined(region.province),
-      wardCode,
+      wardCode: region.wardCode || undefined,
       ward: trimToUndefined(region.ward),
       area: area || undefined,
       district: area || undefined,
@@ -565,98 +553,72 @@ export function AuthCard({ mode }: AuthCardProps) {
         {mode === "register" ? (
           <>
             <FieldGroup>
-              <Field>
-                <FieldLabel className="text-xs font-black uppercase tracking-[0.08em] text-coffee-muted">
-                  Province / city
-                </FieldLabel>
-                <Select
-                  disabled={isProvinceLoading || isSubmitting}
-                  onValueChange={(provinceId) =>
-                    setRegion((current) => ({
-                      ...current,
-                      provinceId,
-                      province:
-                        provinceOptions.find(
-                          (province) => province.idProvince === provinceId,
-                        )?.name ?? "",
-                      ward: "",
-                      area: "",
-                      street: current.street,
-                    }))
-                  }
-                  value={region.provinceId}
-                >
-                  <SelectTrigger
-                    aria-invalid={hasStartedRegion(region) && !region.provinceId}
-                    className="h-12 w-full rounded-none border-0 border-b border-line-soft bg-transparent px-0 text-base text-espresso focus:border-espresso"
-                  >
-                    <SelectValue
-                      placeholder={
-                        isProvinceLoading
-                          ? "Loading provinces..."
-                          : "Select province"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {provinceOptions.map((province) => (
-                      <SelectItem
-                        key={province.idProvince}
-                        value={province.idProvince}
-                      >
-                        {province.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field>
-                <FieldLabel className="text-xs font-black uppercase tracking-[0.08em] text-coffee-muted">
-                  Ward
-                </FieldLabel>
-                <Select
-                  disabled={!region.provinceId || isWardLoading || isSubmitting}
-                  onValueChange={(ward) =>
-                    setRegion((current) => ({
-                      ...current,
-                      ward,
-                      area: "",
-                    }))
-                  }
-                  value={region.ward}
-                >
-                  <SelectTrigger
-                    aria-invalid={hasStartedRegion(region) && !region.ward}
-                    className="h-12 w-full rounded-none border-0 border-b border-line-soft bg-transparent px-0 text-base text-espresso focus:border-espresso"
-                  >
-                    <SelectValue
-                      placeholder={isWardLoading ? "Loading wards..." : "Select ward"}
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {wardOptions.map((ward) => (
-                      <SelectItem key={ward.idWard} value={ward.name}>
-                        {ward.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
-              <Field>
-                <FieldLabel
-                  className="text-xs font-black uppercase tracking-[0.08em] text-coffee-muted"
-                  htmlFor="city"
-                >
-                  City
-                </FieldLabel>
-                <Input
-                  className="rounded-none border-0 border-b border-line-soft bg-transparent px-0 text-base text-espresso placeholder:text-line-soft focus:border-espresso"
-                  id="city"
-                  name="city"
-                  readOnly
-                  value={selectedProvince ? getCityName(selectedProvince.name) : ""}
-                />
-              </Field>
+              <SearchableDropdown
+                disabled={isSubmitting}
+                emptyLabel="No provinces found."
+                isLoading={isProvinceLoading}
+                label="Province / city"
+                labelClassName="text-xs font-black uppercase tracking-[0.08em] text-coffee-muted leading-none"
+                triggerClassName="h-12 rounded-none border-0 border-b border-line-soft bg-transparent px-0 text-base text-espresso"
+                onSelect={(province) =>
+                  setRegion((current) => ({
+                    ...current,
+                    provinceCode: province.provinceCode,
+                    province: province.name,
+                    cityCode: "",
+                    city: "",
+                    wardCode: "",
+                    ward: "",
+                  }))
+                }
+                options={provinceOptions}
+                placeholder="Select province..."
+                selectedCode={region.provinceCode || null}
+                selectedName={region.province || null}
+                valueKey="provinceCode"
+              />
+              <SearchableDropdown
+                disabled={!region.provinceCode || isSubmitting}
+                emptyLabel="No cities found for this province."
+                isLoading={isCityLoading}
+                label="City / district"
+                labelClassName="text-xs font-black uppercase tracking-[0.08em] text-coffee-muted leading-none"
+                triggerClassName="h-12 rounded-none border-0 border-b border-line-soft bg-transparent px-0 text-base text-espresso"
+                onSelect={(city) =>
+                  setRegion((current) => ({
+                    ...current,
+                    cityCode: city.cityCode,
+                    city: city.name,
+                    wardCode: "",
+                    ward: "",
+                  }))
+                }
+                options={cityOptions}
+                placeholder="Select city / district..."
+                selectedCode={region.cityCode || null}
+                selectedName={region.city || null}
+                valueKey="cityCode"
+              />
+              <SearchableDropdown
+                disabled={!region.cityCode || isSubmitting}
+                emptyLabel="No wards found for this city."
+                isLoading={isWardLoading}
+                label="Ward"
+                labelClassName="text-xs font-black uppercase tracking-[0.08em] text-coffee-muted leading-none"
+                triggerClassName="h-12 rounded-none border-0 border-b border-line-soft bg-transparent px-0 text-base text-espresso"
+                onSelect={(ward) =>
+                  setRegion((current) => ({
+                    ...current,
+                    wardCode: ward.wardCode,
+                    ward: ward.name,
+                  }))
+                }
+                options={wardOptions}
+                placeholder="Select ward..."
+                selectedCode={region.wardCode || null}
+                selectedName={region.ward || null}
+                valueKey="wardCode"
+              />
               <Field>
                 <FieldLabel
                   className="text-xs font-black uppercase tracking-[0.08em] text-coffee-muted"

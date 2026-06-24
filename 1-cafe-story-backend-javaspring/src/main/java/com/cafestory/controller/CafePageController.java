@@ -49,19 +49,31 @@ public class CafePageController {
     @GetMapping
     public List<CafePageResponseDTO> getCafePages(
             @RequestParam(required = false) UUID ownerUserId,
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) String status,
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
-        if (ownerUserId != null) {
-            return cafePageService.getCafePagesByOwnerId(ownerUserId, optionalUserId(principal));
+        UUID viewerUserId = optionalUserId(principal);
+        if (query != null && !query.isBlank()) {
+            return cafePageService.searchCafePages(query, viewerUserId);
         }
-        return cafePageService.getAllCafePages(optionalUserId(principal));
+        if (ownerUserId != null) {
+            return cafePageService.getCafePagesByOwnerId(ownerUserId, viewerUserId);
+        }
+        if ("ACTIVE".equalsIgnoreCase(status)) {
+            return cafePageService.getActiveCafePages(viewerUserId);
+        }
+        return cafePageService.getAllCafePages(viewerUserId);
     }
 
     @GetMapping("/top")
     public List<CafePageRankingResponseDTO> getTopCafePages(
             @RequestParam(required = false) UUID regionId,
             @RequestParam(required = false) String city,
-            @RequestParam(defaultValue = "10") int size) {
-        return cafePageService.getTopCafePages(regionId, city, size);
+            @RequestParam(required = false) String area,
+            @RequestParam(required = false) String province,
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return cafePageService.getTopCafePages(regionId, city, area, province, size, optionalUserId(principal));
     }
 
     @GetMapping("/{cafePageId}")
@@ -75,8 +87,9 @@ public class CafePageController {
     public BlogCursorPageResponseDTO getBlogsByCafePageId(
             @PathVariable UUID cafePageId,
             @RequestParam(required = false) String cursor,
-            @RequestParam(defaultValue = "20") int size) {
-        return cafePageService.getBlogsByCafePageId(cafePageId, cursor, size);
+            @RequestParam(defaultValue = "20") int size,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return cafePageService.getBlogsByCafePageId(cafePageId, cursor, size, optionalUserId(principal));
     }
 
     @PatchMapping("/{cafePageId}")

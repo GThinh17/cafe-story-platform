@@ -25,5 +25,6 @@ public class CafePageRankingResponseDTO {
     private Boolean pageActive;
     private Double rankingScore;
     private Integer rankPosition;
+    private Boolean isFollowing;
     private LocalDateTime createdAt;
 }

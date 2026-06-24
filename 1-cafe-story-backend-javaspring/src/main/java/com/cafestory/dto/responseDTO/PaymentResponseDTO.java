@@ -1,5 +1,6 @@
 package com.cafestory.dto.responseDTO;
 
+import com.cafestory.entity.enums.ExtraFeeType;
 import com.cafestory.entity.enums.PaymentMethod;
 import com.cafestory.entity.enums.PaymentStatus;
 import lombok.Data;
@@ -18,6 +19,7 @@ public class PaymentResponseDTO {
     private String buyerUserAvatar;
 
     private UUID extraFeeId;
+    private ExtraFeeType extraFeeType;
     private UUID adFeeId;
     private String productName;
 

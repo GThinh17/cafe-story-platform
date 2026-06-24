@@ -1,5 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.requestDTO.CreatePaymentRequestDTO;
 import com.cafestory.dto.responseDTO.PaymentResponseDTO;
 import com.cafestory.dto.responseDTO.VnpayIpnResponseDTO;
@@ -40,6 +41,7 @@ import com.stripe.net.Webhook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -179,6 +181,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, allEntries = true)
     public PaymentResponseDTO markBankTransferPaid(UUID requesterUserId, UUID paymentId) {
         validateAdmin(requesterUserId);
         Payment payment = validatePaymentExists(paymentId);
@@ -192,6 +195,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, allEntries = true)
     public void handleStripeWebhook(String payload, String signatureHeader) {
         validateStripeSignatureIfConfigured(payload, signatureHeader);
         StripeWebhookData webhookData = parseStripeWebhookData(payload);
@@ -234,6 +238,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, allEntries = true)
     public VnpayIpnResponseDTO handleVnpayIpn(Map<String, String> params) {
         try {
             if (!vnpayPaymentClient.verifySignature(params)) {
@@ -269,6 +274,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, allEntries = true)
     public PaymentResponseDTO syncStripePayment(UUID requesterUserId, UUID paymentId) {
         Payment payment = paymentRepository.findByIdWithLock(paymentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
@@ -522,6 +528,7 @@ public class PaymentServiceImpl implements PaymentService {
         response.setPaymentId(payment.getPaymentId());
         response.setBuyerId(payment.getBuyer().getUserId());
         response.setExtraFeeId(payment.getExtraFee() == null ? null : payment.getExtraFee().getExtraFeeId());
+        response.setExtraFeeType(payment.getExtraFee() == null ? null : payment.getExtraFee().getFeeType());
         response.setAdFeeId(payment.getAdFee() == null ? null : payment.getAdFee().getAdFeeId());
         response.setPaymentMethod(payment.getPaymentMethod());
         response.setAmount(payment.getAmount());

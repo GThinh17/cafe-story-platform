@@ -32,5 +32,7 @@ public class BlogFeedResponse {
     private String regionProvince;
     private String regionArea;
     private Integer rankPosition;
+    private Boolean isAuthorFollowing;
+    private Boolean isPageFollowing;
     private LocalDateTime createdAt;
 }

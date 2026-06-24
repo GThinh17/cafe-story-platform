@@ -3,7 +3,10 @@ import type { NextConfig } from "next";
 const cloudinaryCloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
 
 const nextConfig: NextConfig = {
-  reactCompiler: true,
+  reactCompiler: process.env.NODE_ENV === "production",
+  turbopack: {
+    root: __dirname,
+  },
   images: {
     remotePatterns: cloudinaryCloudName
       ? [
