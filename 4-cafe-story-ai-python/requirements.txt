@@ -7,3 +7,5 @@ torch
 transformers
 google-genai
 python-dotenv
+chromadb
+jinja2

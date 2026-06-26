@@ -5,7 +5,7 @@ import requests
 from PIL import Image
 
 
-_AI_MAX_SIDE = 800
+_AI_MAX_SIDE = 512
 
 
 class ImageLoadError(Exception):

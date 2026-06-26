@@ -1,7 +1,8 @@
 {
   "ai_model": {
     "provider": "openrouter",
-    "model_name": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
+    "text_model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+    "vision_model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
   },
   "clip": {
     "_note": "CLIP is kept for reference but is no longer used. AI model handles cafe detection instead.",
@@ -15,12 +16,6 @@
       "not a coffee shop (bar, office workspace with computers, restaurant, classroom, gym), unrelated image"
     ],
     "high_not_cafe_confidence": 80
-  },
-  "text_moderator": {
-    "prompt_template": "Bạn là hệ thống kiểm duyệt nội dung cho nền tảng review quán cà phê CafeStory.\n\nĐỊNH NGHĨA \"liên quan đến quán cafe\":\nBất kỳ nội dung nào gắn với TRẢI NGHIỆM đến quán cafe, bao gồm:\n- Đồ uống: cà phê, trà, nước ép, smoothie, bánh, đồ ăn phục vụ tại quán\n- Không gian: decor, góc chụp hình, ánh sáng, nội thất, cây xanh, bàn ghế\n- Hoạt động TẠI quán: học bài, đọc sách, làm việc, gặp bạn bè, chụp hình\n- Thú cưng của quán: mèo, chó, thỏ...\n- Dịch vụ/phụ kiện quán cung cấp: xếp giấy origami, board game, sách, workshop\n- Nhân viên, barista, menu, giá, khuyến mãi, review chất lượng\n- Cảm nhận khi đến quán: không khí, vibe, góc view đẹp\n\nis_coffee_related = false CHỈ KHI caption hoàn toàn không liên quan đến quán cafe.\n\nVÍ DỤ:\n- \"quán cung cấp cho mình những bộ xếp giấy nhe\" → is_coffee_related: true\n- \"đến quán để nựng những chú mèo dễ thưn nhe\" → is_coffee_related: true\n- \"ly cà phê sáng nay ngon quá\" → is_coffee_related: true\n- \"không gian quán yên tĩnh lắm, mình hay đến học bài\" → is_coffee_related: true\n- \"mình đang bán nhà cần tiền gấp\" → is_coffee_related: false\n- \"đăng ký tham gia sự kiện chính trị\" → is_coffee_related: false\n\nCaption cần phân tích: \"{text}\"\n\nTrả về JSON:\n{{\n  \"is_coffee_related\": boolean,\n  \"is_violation\": boolean,\n  \"score\": integer (0-100),\n  \"reason\": \"Giải thích ngắn gọn bằng tiếng Việt\"\n}}\n\nQuy tắc score: 0 = không độc hại, >50 = chửi thề/khiếm nhã, >80 = xúc phạm nghiêm trọng, 100 = rất độc hại.\nChỉ trả về JSON, không giải thích thêm."
-  },
-  "image_cafe_detector": {
-    "prompt": "Bạn là hệ thống kiểm duyệt ảnh cho nền tảng review quán cà phê CafeStory.\n\nẢnh liên quan đến quán cafe bao gồm:\n- Không gian: bàn ghế, quầy bar, trang trí nội thất, đèn, cây cối trong quán\n- Đồ uống và thức ăn phục vụ tại quán\n- Con người: barista, khách ngồi trong quán, nhân viên phục vụ\n- Thú cưng của quán (mèo, chó, thỏ...)\n- Chi tiết quán: menu, biển hiệu, cốc chén, máy pha cà phê, decor\n- Phụ kiện quán cung cấp: origami, board game, sách\n- Góc chụp hình nghệ thuật bên trong hoặc ngoài quán\n\nĐánh giá toàn bộ ảnh được cung cấp và trả về JSON:\n{\n  \"is_cafe\": boolean,\n  \"confidence\": integer (0-100),\n  \"reason\": \"Giải thích ngắn gọn bằng tiếng Việt\"\n}\n\nQuy tắc:\n- is_cafe = true nếu ít nhất 1 ảnh liên quan đến không gian hoặc trải nghiệm quán cafe.\n- confidence: mức độ chắc chắn (0-100).\n- Không yêu cầu phải thấy ly cà phê - thú cưng, decor, nhân viên cũng là dấu hiệu hợp lệ.\nChỉ trả về JSON, không giải thích thêm."
   },
   "image_classifier": {
     "max_images": 3,

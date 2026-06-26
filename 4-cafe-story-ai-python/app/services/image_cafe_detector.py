@@ -3,9 +3,7 @@ from dataclasses import dataclass
 
 from PIL import Image
 
-from app.ai.enums import ModelProvider
-from app.ai.factory import get_model
-from app.config.rules import get_rules
+from app.prompts.model_selector import get_response, render_prompt
 from app.utils.json_extractor import extract_json
 
 
@@ -24,11 +22,10 @@ def detect_cafe_images(images: list[Image.Image]) -> ImageCafeResult:
     if not images:
         return ImageCafeResult(is_cafe=False, confidence=0, reason="Không có ảnh được cung cấp.")
 
-    ai = get_rules()["ai_model"]
-    rules = get_rules()["image_cafe_detector"]
-    model = get_model(ModelProvider(ai["provider"]), ai["model_name"])
+    prompt = render_prompt("image_cafe_detection.j2")
     try:
-        raw = model.generate_with_images(rules["prompt"], images)
+        raw = get_response(prompt, images)
+        logger.info("raw cafe detection output: %s", raw)
         payload = extract_json(raw)
         confidence = max(0, min(100, int(payload.get("confidence", 0))))
         return ImageCafeResult(
