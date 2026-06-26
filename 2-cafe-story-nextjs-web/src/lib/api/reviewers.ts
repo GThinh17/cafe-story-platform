@@ -1,11 +1,14 @@
 import { apiFetch } from "@/lib/api/client";
 import { apiEndpoints } from "@/lib/api/endpoints";
 import type {
+  ReviewerBadgeResponse,
   ReviewerConnectOnboardResponse,
   ReviewerConnectStatus,
   ReviewerDiscoveryResponse,
   ReviewerPayoutResponse,
+  ReviewerRankingResponse,
   ReviewerResponse,
+  ReviewerStatsResponse,
 } from "@/types/reviewer";
 
 function withQuery(path: string, params: Record<string, string | number | boolean | undefined>) {
@@ -80,4 +83,24 @@ export function syncConnectStatus() {
   return apiFetch<ReviewerConnectStatus>(apiEndpoints.reviewers.connect.sync, {
     method: "POST",
   });
+}
+
+export function getReviewerStats(reviewerId: string, period: string) {
+  return apiFetch<ReviewerStatsResponse>(
+    withQuery(apiEndpoints.reviewers.stats(reviewerId), { period }),
+    { method: "GET" },
+  );
+}
+
+export function getReviewerBadges(reviewerId: string) {
+  return apiFetch<ReviewerBadgeResponse[]>(apiEndpoints.reviewers.badges(reviewerId), {
+    method: "GET",
+  });
+}
+
+export function getReviewerRanking(period: string, page = 1, limit = 20) {
+  return apiFetch<ReviewerRankingResponse[]>(
+    withQuery(apiEndpoints.reviewers.ranking, { period, page, limit }),
+    { method: "GET" },
+  );
 }

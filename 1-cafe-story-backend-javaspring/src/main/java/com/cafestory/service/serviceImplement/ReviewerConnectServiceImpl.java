@@ -194,6 +194,11 @@ public class ReviewerConnectServiceImpl implements ReviewerConnectService {
                     .setRefreshUrl(refreshUrl)
                     .setReturnUrl(returnUrl)
                     .setType(AccountLinkCreateParams.Type.ACCOUNT_ONBOARDING)
+                    .setCollectionOptions(
+                            AccountLinkCreateParams.CollectionOptions.builder()
+                                    .setServiceAgreement(AccountLinkCreateParams.CollectionOptions.ServiceAgreement.FULL)
+                                    .build()
+                    )
                     .build();
             AccountLink link = AccountLink.create(params);
             return link.getUrl();

@@ -129,7 +129,7 @@ public class ReviewerServiceImpl implements ReviewerService {
         reviewer.setUser(user);
         Reviewer saved = reviewerRepository.save(reviewer);
         snapshotService.initSnapshotForNewReviewer(saved);
-        return toReviewerResponse(saved);
+        return toReviewerResponse(saved, null);
     }
 
     @Override
@@ -137,7 +137,7 @@ public class ReviewerServiceImpl implements ReviewerService {
     public ReviewerResponseDTO getReviewer(UUID userId) {
         Reviewer reviewer = reviewerRepository.findByUserUserId(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reviewer not found"));
-        return toReviewerResponse(reviewer);
+        return toReviewerResponse(reviewer, null);
     }
 
     @Override

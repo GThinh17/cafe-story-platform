@@ -64,3 +64,34 @@ export type ReviewerConnectOnboardResponse = {
   stripeAccountId: string | null;
   onboardingStatus: string | null;
 };
+
+export type ReviewerStatsResponse = {
+  reviewerId: string;
+  period: string;
+  likeCount: number;
+  shareCount: number;
+  commentCount: number;
+  score: number;
+};
+
+export type ReviewerBadgeResponse = {
+  id: string;
+  reviewerId: string;
+  month: string;
+  score: number;
+  badge: ReviewerBadge;
+  likeCount: number;
+  shareCount: number;
+  commentCount: number;
+};
+
+export type ReviewerRankingResponse = {
+  rank: number;
+  reviewerId: string;
+  score: number;
+  likeCount: number;
+  shareCount: number;
+  commentCount: number;
+  badge: ReviewerBadge | string | null;
+  location: string | null;
+};

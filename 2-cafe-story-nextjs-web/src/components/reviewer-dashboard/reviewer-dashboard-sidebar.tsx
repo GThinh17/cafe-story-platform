@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -12,28 +13,32 @@ import {
   WalletIcon,
 } from "lucide-react";
 import { BrandIcon } from "@/components/ui/brand-icon";
-import type { ReviewerProfile } from "@/features/reviewer-dashboard/reviewer-dashboard.types";
-
-type ReviewerDashboardSidebarProps = {
-  profile: ReviewerProfile;
-};
+import { ReviewerBadgeChip } from "@/components/ui/reviewer-badge-chip";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { getReviewerByUserId } from "@/lib/api/reviewers";
 
 const sidebarLinks = [
   { href: "/reviewer-dashboard", icon: LayoutDashboardIcon, label: "Overview" },
-  {
-    href: "/reviewer-dashboard/performance",
-    icon: BarChart3Icon,
-    label: "Performance",
-  },
+  { href: "/reviewer-dashboard/performance", icon: BarChart3Icon, label: "Performance" },
   { href: "/reviewer-dashboard/ranking", icon: TrophyIcon, label: "Ranking" },
   { href: "/reviewer-dashboard/badges", icon: BadgeIcon, label: "Badges" },
   { href: "/reviewer-dashboard/earnings", icon: WalletIcon, label: "Earnings" },
 ];
 
-export function ReviewerDashboardSidebar({
-  profile,
-}: ReviewerDashboardSidebarProps) {
+export function ReviewerDashboardSidebar() {
   const pathname = usePathname();
+  const { user } = useCurrentUser();
+  const [badge, setBadge] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.userId) return;
+    void getReviewerByUserId(user.userId)
+      .then((r) => setBadge(r.badge))
+      .catch(() => null);
+  }, [user?.userId]);
+
+  const avatar = user?.userAvatar ?? null;
+  const name = user?.userFullName ?? user?.userName ?? null;
 
   return (
     <aside className="border-border bg-surface px-4 py-5 lg:fixed lg:inset-y-0 lg:left-0 lg:w-72 lg:border-r">
@@ -58,19 +63,23 @@ export function ReviewerDashboardSidebar({
 
         <div className="rounded-md border border-line-soft bg-background p-4">
           <div className="flex items-center gap-3">
-            <img
-              alt={`${profile.name} avatar`}
-              className="size-12 shrink-0 rounded-full border border-border object-cover"
-              decoding="async"
-              src={profile.avatar}
-            />
+            {avatar ? (
+              <img
+                alt={name ?? "avatar"}
+                className="size-12 shrink-0 rounded-full border border-border object-cover"
+                decoding="async"
+                src={avatar}
+              />
+            ) : (
+              <div className="size-12 shrink-0 rounded-full border border-border bg-surface-muted" />
+            )}
             <div className="min-w-0">
               <p className="truncate text-sm font-black text-espresso">
-                {profile.name}
+                {name ?? "—"}
               </p>
-              <p className="truncate text-xs font-semibold text-muted">
-                {profile.badge} Reviewer
-              </p>
+              <div className="mt-1">
+                <ReviewerBadgeChip badge={badge} />
+              </div>
             </div>
           </div>
         </div>
@@ -83,19 +92,19 @@ export function ReviewerDashboardSidebar({
                 : pathname === href || pathname.startsWith(`${href}/`);
 
             return (
-            <Link
-              aria-current={isActive ? "page" : undefined}
-              className={`flex min-h-11 items-center gap-3 rounded-md px-3 text-left text-sm font-semibold no-underline transition ${
-                isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted hover:bg-surface-muted hover:text-primary"
-              }`}
-              href={href}
-              key={label}
-            >
-              <Icon className="size-4" />
-              {label}
-            </Link>
+              <Link
+                aria-current={isActive ? "page" : undefined}
+                className={`flex min-h-11 items-center gap-3 rounded-md px-3 text-left text-sm font-semibold no-underline transition ${
+                  isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted hover:bg-surface-muted hover:text-primary"
+                }`}
+                href={href}
+                key={label}
+              >
+                <Icon className="size-4" />
+                {label}
+              </Link>
             );
           })}
         </nav>
