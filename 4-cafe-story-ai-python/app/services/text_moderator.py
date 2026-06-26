@@ -2,9 +2,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
-from app.ai.enums import ModelProvider
-from app.ai.factory import get_model
-from app.config.rules import get_rules
+from app.prompts.model_selector import get_response, render_prompt
 from app.utils.json_extractor import extract_json
 
 
@@ -31,12 +29,10 @@ def _coerce_result(payload: dict[str, Any]) -> CaptionModerationResult:
 
 
 def moderate_caption(text: str) -> CaptionModerationResult:
-    ai = get_rules()["ai_model"]
-    rules = get_rules()["text_moderator"]
-    model = get_model(ModelProvider(ai["provider"]), ai["model_name"])
-    prompt = rules["prompt_template"].format(text=text or "")
+    prompt = render_prompt("text_moderation.j2", text=text or "")
     try:
-        raw = model.generate_text(prompt)
+        raw = get_response(prompt)
+        logger.info("raw model output: %s", raw)
         return _coerce_result(extract_json(raw))
     except Exception as exc:
         logger.exception("text moderation failed")
