@@ -1,5 +1,8 @@
--- CafePage actor/target standardization.
--- Apply manually because the backend currently uses JPA_DDL_AUTO=none and has no Flyway/Liquibase runner.
+-- Required schema sync for current CafeStory backend/mobile API.
+-- Run this once in the PostgreSQL/Supabase database used by the backend.
+-- It is safe to rerun because columns/indexes/constraints use IF NOT EXISTS guards where PostgreSQL supports them.
+
+-- 1) Actor context support for user/page actions.
 
 alter table blog_likes
     add column if not exists actor_context_type varchar(32) not null default 'USER',
@@ -114,3 +117,60 @@ create index if not exists idx_notifications_target_page
 
 create index if not exists idx_payments_cafe_page
     on payments(cafe_page_id, created_at);
+
+-- 2) Feed activity ranking support.
+
+alter table blog_recommendation_scores
+    add column if not exists activity_score double precision not null default 0,
+    add column if not exists own_author_score double precision not null default 0,
+    add column if not exists reviewer_score double precision not null default 0,
+    add column if not exists seen_penalty double precision not null default 0,
+    add column if not exists repetition_penalty double precision not null default 0;
+
+create table if not exists feed_impressions (
+    id uuid primary key,
+    user_id uuid not null references users(user_id),
+    blog_id uuid not null references blogs(id),
+    position integer,
+    shown_at timestamp not null,
+    clicked boolean not null default false,
+    dismissed boolean not null default false
+);
+
+create index if not exists idx_feed_impressions_user_blog_shown
+    on feed_impressions(user_id, blog_id, shown_at desc);
+
+create index if not exists idx_feed_impressions_user_shown
+    on feed_impressions(user_id, shown_at desc);
+
+create index if not exists idx_blog_recommendation_scores_user_window_rank
+    on blog_recommendation_scores(user_id, window_type, context_region_id, computed_at, rank_position);
+
+-- 3) Verification query. It should return zero rows after a successful schema sync.
+
+with required_columns(table_name, column_name) as (
+    values
+        ('blog_likes', 'actor_context_type'),
+        ('blog_likes', 'actor_cafe_page_id'),
+        ('comments', 'actor_context_type'),
+        ('comments', 'actor_cafe_page_id'),
+        ('blog_shares', 'actor_context_type'),
+        ('blog_shares', 'actor_cafe_page_id'),
+        ('notifications', 'actor_context_type'),
+        ('notifications', 'actor_cafe_page_id'),
+        ('notifications', 'target_type'),
+        ('notifications', 'target_cafe_page_id'),
+        ('payments', 'cafe_page_id'),
+        ('blog_recommendation_scores', 'activity_score'),
+        ('blog_recommendation_scores', 'own_author_score'),
+        ('blog_recommendation_scores', 'reviewer_score'),
+        ('blog_recommendation_scores', 'seen_penalty'),
+        ('blog_recommendation_scores', 'repetition_penalty')
+)
+select required_columns.table_name, required_columns.column_name
+from required_columns
+left join information_schema.columns existing_columns
+    on existing_columns.table_schema = current_schema()
+    and existing_columns.table_name = required_columns.table_name
+    and existing_columns.column_name = required_columns.column_name
+where existing_columns.column_name is null;

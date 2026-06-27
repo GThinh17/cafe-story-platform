@@ -1,6 +1,3 @@
--- CafePage actor/target standardization.
--- Apply manually because the backend currently uses JPA_DDL_AUTO=none and has no Flyway/Liquibase runner.
-
 alter table blog_likes
     add column if not exists actor_context_type varchar(32) not null default 'USER',
     add column if not exists actor_cafe_page_id uuid;
