@@ -79,6 +79,19 @@ export type FeedParams = {
   size?: number;
 };
 
+export type FeedImpressionItemRequest = {
+  blogId: string;
+  position: number;
+};
+
+export type FeedImpressionBatchRequest = {
+  items: FeedImpressionItemRequest[];
+};
+
+export type FeedImpressionResponse = {
+  recordedCount: number | null;
+};
+
 export type BlogPostStatus = "PUBLISHED" | "DRAFT" | "ARCHIVED" | string;
 
 export type BlogResponse = {
@@ -180,6 +193,10 @@ export type BlogFeedParams = {
 };
 
 export type CommentResponse = {
+  actorAvatarUrl?: string | null;
+  actorCafePageId?: string | null;
+  actorContextType?: "USER" | "CAFE_PAGE" | string | null;
+  actorDisplayName?: string | null;
   authorUserAvatar?: string | null;
   authorUserName?: string | null;
   blogId: string;
@@ -194,6 +211,8 @@ export type CommentResponse = {
 };
 
 export type CommentCreateRequest = {
+  actorCafePageId?: string;
+  actorContextType?: "USER" | "CAFE_PAGE";
   blogId: string;
   content: string;
   imageUrls?: string[];
@@ -201,6 +220,10 @@ export type CommentCreateRequest = {
 };
 
 export type BlogLikeResponse = {
+  actorAvatarUrl?: string | null;
+  actorCafePageId?: string | null;
+  actorContextType?: "USER" | "CAFE_PAGE" | string | null;
+  actorDisplayName?: string | null;
   blogId: string;
   createdAt: string | null;
   id: string;
@@ -217,10 +240,16 @@ export type BlogSaveResponse = {
 };
 
 export type BlogShareRequest = {
+  actorCafePageId?: string;
+  actorContextType?: "USER" | "CAFE_PAGE";
   shareType?: ShareType;
 };
 
 export type BlogShareResponse = {
+  actorAvatarUrl?: string | null;
+  actorCafePageId?: string | null;
+  actorContextType?: "USER" | "CAFE_PAGE" | string | null;
+  actorDisplayName?: string | null;
   blogId: string;
   createdAt: string | null;
   id: string;

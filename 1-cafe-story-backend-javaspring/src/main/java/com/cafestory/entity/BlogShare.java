@@ -1,5 +1,6 @@
 package com.cafestory.entity;
 
+import com.cafestory.entity.enums.ActorContextType;
 import com.cafestory.entity.enums.ShareType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -26,7 +27,8 @@ import java.util.UUID;
         name = "blog_shares",
         indexes = {
                 @Index(name = "idx_blog_shares_user_created", columnList = "user_id, created_at"),
-                @Index(name = "idx_blog_shares_blog_created", columnList = "blog_id, created_at")
+                @Index(name = "idx_blog_shares_blog_created", columnList = "blog_id, created_at"),
+                @Index(name = "idx_blog_shares_actor_page_created", columnList = "actor_cafe_page_id, created_at")
         })
 public class BlogShare {
 
@@ -47,6 +49,15 @@ public class BlogShare {
 
     @NotNull
     @Enumerated(EnumType.STRING)
+    @Column(name = "actor_context_type", nullable = false)
+    private ActorContextType actorContextType = ActorContextType.USER;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "actor_cafe_page_id")
+    private CafePage actorCafePage;
+
+    @NotNull
+    @Enumerated(EnumType.STRING)
     @Column(name = "share_type", nullable = false)
     private ShareType shareType = ShareType.PUBLIC;
 
@@ -59,6 +70,9 @@ public class BlogShare {
         createdAt = LocalDateTime.now();
         if (shareType == null) {
             shareType = ShareType.PUBLIC;
+        }
+        if (actorContextType == null) {
+            actorContextType = ActorContextType.USER;
         }
     }
 }

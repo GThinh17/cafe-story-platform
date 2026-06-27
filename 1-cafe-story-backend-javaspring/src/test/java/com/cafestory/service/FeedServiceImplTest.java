@@ -5,6 +5,7 @@ import com.cafestory.dto.responseDTO.FeedItemResponseDTO;
 import com.cafestory.dto.responseDTO.FeedResponseDTO;
 import com.cafestory.dto.responseDTO.SponsoredCafeResponseDTO;
 import com.cafestory.entity.enums.FeedItemType;
+import com.cafestory.entity.enums.TrendWindowType;
 import com.cafestory.service.serviceImplement.FeedServiceImpl;
 import com.cafestory.service.serviceInterface.BlogFeedRankingService;
 import com.cafestory.service.serviceInterface.SponsoredCafeCandidateService;
@@ -53,7 +54,8 @@ class FeedServiceImplTest {
         SponsoredCafeResponseDTO secondAd = sponsoredCafe(
                 UUID.fromString("33333333-3333-3333-3333-333333333333"),
                 UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"));
-        when(blogFeedRankingService.getOrganicFeed(null, 18)).thenReturn(organicPage);
+        when(blogFeedRankingService.getPersonalizedFeedPage(USER_ID, TrendWindowType.HOUR_24, null, null, 18))
+                .thenReturn(organicPage);
         when(sponsoredCafeCandidateService.getCandidates(USER_ID, 2, 0)).thenReturn(List.of(firstAd, secondAd));
 
         FeedResponseDTO result = feedService.getFeed(USER_ID, null, 20);
@@ -72,7 +74,8 @@ class FeedServiceImplTest {
     @Test
     void getFeed_success_noAdsReturnsOrganicOnly_TC002() {
         FeedResponseDTO organicPage = organicPage(20, null, false);
-        when(blogFeedRankingService.getOrganicFeed(null, 18)).thenReturn(organicPage);
+        when(blogFeedRankingService.getPersonalizedFeedPage(USER_ID, TrendWindowType.HOUR_24, null, null, 18))
+                .thenReturn(organicPage);
         when(sponsoredCafeCandidateService.getCandidates(USER_ID, 2, 0)).thenReturn(List.of());
 
         FeedResponseDTO result = feedService.getFeed(USER_ID, null, 20);
@@ -86,25 +89,28 @@ class FeedServiceImplTest {
 
     @Test
     void getFeed_success_nextCursorPassesOrganicCursorAndAdOffset_TC003() {
-        when(blogFeedRankingService.getOrganicFeed(null, 18)).thenReturn(organicPage(18, "organic-next", true));
+        when(blogFeedRankingService.getPersonalizedFeedPage(USER_ID, TrendWindowType.HOUR_24, null, null, 18))
+                .thenReturn(organicPage(18, "personalized-next", true));
         when(sponsoredCafeCandidateService.getCandidates(USER_ID, 2, 0))
                 .thenReturn(List.of(
                         sponsoredCafe(UUID.fromString("44444444-4444-4444-4444-444444444444"), UUID.randomUUID()),
                         sponsoredCafe(UUID.fromString("55555555-5555-5555-5555-555555555555"), UUID.randomUUID())));
         FeedResponseDTO firstPage = feedService.getFeed(USER_ID, null, 20);
-        when(blogFeedRankingService.getOrganicFeed("organic-next", 18)).thenReturn(organicPage(18, null, false));
+        when(blogFeedRankingService.getPersonalizedFeedPage(USER_ID, TrendWindowType.HOUR_24, null, "personalized-next", 18))
+                .thenReturn(organicPage(18, null, false));
         when(sponsoredCafeCandidateService.getCandidates(USER_ID, 2, 2)).thenReturn(List.of());
 
         feedService.getFeed(USER_ID, firstPage.getNextCursor(), 20);
 
-        verify(blogFeedRankingService).getOrganicFeed("organic-next", 18);
+        verify(blogFeedRankingService).getPersonalizedFeedPage(USER_ID, TrendWindowType.HOUR_24, null, "personalized-next", 18);
         verify(sponsoredCafeCandidateService).getCandidates(USER_ID, 2, 2);
     }
 
     @Test
     void getFeed_success_dedupesSponsoredCafePages_TC004() {
         UUID cafePageId = UUID.fromString("cccccccc-cccc-cccc-cccc-cccccccccccc");
-        when(blogFeedRankingService.getOrganicFeed(null, 18)).thenReturn(organicPage(18, null, false));
+        when(blogFeedRankingService.getPersonalizedFeedPage(USER_ID, TrendWindowType.HOUR_24, null, null, 18))
+                .thenReturn(organicPage(18, null, false));
         when(sponsoredCafeCandidateService.getCandidates(USER_ID, 2, 0))
                 .thenReturn(List.of(
                         sponsoredCafe(UUID.fromString("66666666-6666-6666-6666-666666666666"), cafePageId),
@@ -119,7 +125,8 @@ class FeedServiceImplTest {
 
     @Test
     void getFeed_success_smallSizeAppendsOneAdSafely_TC005() {
-        when(blogFeedRankingService.getOrganicFeed(null, 5)).thenReturn(organicPage(5, null, false));
+        when(blogFeedRankingService.getPersonalizedFeedPage(USER_ID, TrendWindowType.HOUR_24, null, null, 5))
+                .thenReturn(organicPage(5, null, false));
         when(sponsoredCafeCandidateService.getCandidates(USER_ID, 1, 0))
                 .thenReturn(List.of(sponsoredCafe(
                         UUID.fromString("88888888-8888-8888-8888-888888888888"),
@@ -136,13 +143,45 @@ class FeedServiceImplTest {
 
     @Test
     void getFeed_success_sizeBelowAdThresholdDoesNotRequestAds_TC006() {
-        when(blogFeedRankingService.getOrganicFeed(null, 5)).thenReturn(organicPage(5, null, false));
+        when(blogFeedRankingService.getPersonalizedFeedPage(USER_ID, TrendWindowType.HOUR_24, null, null, 5))
+                .thenReturn(organicPage(5, null, false));
 
         FeedResponseDTO result = feedService.getFeed(USER_ID, null, 5);
 
         assertThat(result.getItems()).hasSize(5);
         assertThat(result.getItems()).extracting(FeedItemResponseDTO::getItemType)
                 .containsOnly(FeedItemType.USER_BLOG);
+        verify(sponsoredCafeCandidateService, never()).getCandidates(eq(USER_ID), anyInt(), anyInt());
+    }
+
+    @Test
+    void getFeed_success_anonymousUsesOrganicFeed_TC007() {
+        when(blogFeedRankingService.getOrganicFeed(null, 5)).thenReturn(organicPage(5, null, false));
+
+        FeedResponseDTO result = feedService.getFeed(null, null, 5);
+
+        assertThat(result.getItems()).hasSize(5);
+        verify(blogFeedRankingService).getOrganicFeed(null, 5);
+        verify(blogFeedRankingService, never()).getPersonalizedFeedPage(
+                eq(USER_ID),
+                eq(TrendWindowType.HOUR_24),
+                eq(null),
+                eq(null),
+                anyInt());
+        verify(sponsoredCafeCandidateService, never()).getCandidates(eq(USER_ID), anyInt(), anyInt());
+    }
+
+    @Test
+    void getFeed_success_personalizedFailureFallsBackToOrganic_TC008() {
+        when(blogFeedRankingService.getPersonalizedFeedPage(USER_ID, TrendWindowType.HOUR_24, null, null, 5))
+                .thenThrow(new IllegalStateException("missing recommendation column"));
+        when(blogFeedRankingService.getOrganicFeed(null, 5)).thenReturn(organicPage(5, null, false));
+
+        FeedResponseDTO result = feedService.getFeed(USER_ID, null, 5);
+
+        assertThat(result.getItems()).hasSize(5);
+        assertThat(result.getHasMore()).isFalse();
+        verify(blogFeedRankingService).getOrganicFeed(null, 5);
         verify(sponsoredCafeCandidateService, never()).getCandidates(eq(USER_ID), anyInt(), anyInt());
     }
 

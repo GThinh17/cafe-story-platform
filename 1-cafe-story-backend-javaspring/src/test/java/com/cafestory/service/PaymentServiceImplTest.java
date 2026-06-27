@@ -32,6 +32,7 @@ import com.cafestory.service.serviceImplement.PaymentServiceImpl;
 import com.cafestory.service.serviceImplement.StripeCheckoutClientImpl;
 import com.cafestory.service.serviceInterface.StripeCheckoutClient;
 import com.cafestory.service.serviceInterface.VnpayPaymentClient;
+import com.cafestory.validation.CafePageValidator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stripe.exception.ApiException;
 import com.stripe.model.checkout.Session;
@@ -59,6 +60,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -106,6 +108,9 @@ class PaymentServiceImplTest {
     @Mock
     private VnpayPaymentClient vnpayPaymentClient;
 
+    @Mock
+    private CafePageValidator cafePageValidator;
+
     private PaymentServiceImpl paymentService;
 
     @BeforeEach
@@ -124,6 +129,7 @@ class PaymentServiceImplTest {
                 stripeCheckoutClient,
                 vnpayPaymentClient,
                 new ObjectMapper(),
+                cafePageValidator,
                 "");
     }
 
@@ -468,6 +474,7 @@ class PaymentServiceImplTest {
                 stripeCheckoutClient,
                 vnpayPaymentClient,
                 new ObjectMapper(),
+                cafePageValidator,
                 "whsec_test_secret");
 
         assertThatThrownBy(() -> serviceWithWebhookSecret.handleStripeWebhook(stripePayload(), "invalid-signature"))
@@ -505,7 +512,7 @@ class PaymentServiceImplTest {
         assertThat(payment.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
         assertThat(payment.getPaidAt()).isNotNull();
         assertThat(detail.getProviderTransactionId()).isEqualTo("14123456");
-        verify(paymentRepository).save(payment);
+        verify(paymentRepository, times(2)).save(payment);
         verify(paymentDetailRepository).save(detail);
         verify(cafePageRepository).save(any(CafePage.class));
         verify(pageMemberRepository).save(any(PageMember.class));

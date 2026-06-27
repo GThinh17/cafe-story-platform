@@ -3,5 +3,6 @@ package com.cafestory.entity.enums;
 public enum NotificationTargetType {
     BLOG,
     CONVERSATION,
-    USER
+    USER,
+    CAFE_PAGE
 }

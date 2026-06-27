@@ -39,7 +39,7 @@ type CommentItemProps = {
   isLiked: boolean;
   likeCount: number;
   level?: number;
-  onOpenProfile: (userId: string, userName?: string | null) => void;
+  onOpenProfile: (comment: CommentResponse) => void;
   onReply: (comment: CommentListItem) => void;
   onToggleLike: (commentId: string) => void;
 };
@@ -84,7 +84,11 @@ function formatCommentTime(value: string | null) {
 }
 
 function getCommentAuthor(comment: CommentResponse) {
-  return comment.authorUserName || "CafeStory user";
+  return comment.actorDisplayName || comment.authorUserName || "CafeStory user";
+}
+
+function getCommentAvatar(comment: CommentResponse) {
+  return comment.actorAvatarUrl || comment.authorUserAvatar;
 }
 
 function getInitials(name: string) {
@@ -139,13 +143,13 @@ function CommentItem({
         accessibilityLabel={`Open ${authorName} profile`}
         accessibilityRole="button"
         disabled={isPending}
-        onPress={() => onOpenProfile(comment.userId, comment.authorUserName)}
+        onPress={() => onOpenProfile(comment)}
         style={({ pressed }) => pressed && styles.pressed}
       >
         <Avatar
           initials={getInitials(authorName)}
           size={isReply ? 30 : 38}
-          uri={comment.authorUserAvatar}
+          uri={getCommentAvatar(comment)}
         />
       </Pressable>
       <View style={styles.commentBody}>
@@ -421,6 +425,9 @@ export function CommentModal({
     const currentReplyTarget = replyTarget;
     const pendingCommentId = `pending-${Date.now()}`;
     const pendingComment: CommentListItem = {
+      actorAvatarUrl: user?.userAvatar ?? null,
+      actorContextType: "USER",
+      actorDisplayName: user?.userName || "You",
       authorUserAvatar: user?.userAvatar ?? null,
       authorUserName: user?.userName || "You",
       blogId,
@@ -482,11 +489,17 @@ export function CommentModal({
     }
   }
 
-  function handleOpenProfile(userId: string, userName?: string | null) {
+  function handleOpenProfile(comment: CommentResponse) {
     closeModal(true, () => {
+      if (comment.actorContextType === "CAFE_PAGE" && comment.actorCafePageId) {
+        navigation.navigate(routes.cafeDetail, {
+          cafeId: comment.actorCafePageId,
+        });
+        return;
+      }
       navigation.navigate(routes.otherUserProfile, {
-        userId,
-        userName,
+        userId: comment.userId,
+        userName: comment.authorUserName,
       });
     });
   }

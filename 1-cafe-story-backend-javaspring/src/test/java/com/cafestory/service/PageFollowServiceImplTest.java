@@ -6,6 +6,8 @@ import com.cafestory.entity.PageFollow;
 import com.cafestory.entity.User;
 import com.cafestory.mapper.CafePageInteractionMapper;
 import com.cafestory.repository.PageFollowRepository;
+import com.cafestory.repository.PageMemberRepository;
+import com.cafestory.service.serviceInterface.NotificationService;
 import com.cafestory.service.serviceImplement.PageFollowServiceImpl;
 import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.UserValidator;
@@ -42,6 +44,12 @@ class PageFollowServiceImplTest {
 
     @Mock
     private UserValidator userValidator;
+
+    @Mock
+    private PageMemberRepository pageMemberRepository;
+
+    @Mock
+    private NotificationService notificationService;
 
     @InjectMocks
     private PageFollowServiceImpl pageFollowService;

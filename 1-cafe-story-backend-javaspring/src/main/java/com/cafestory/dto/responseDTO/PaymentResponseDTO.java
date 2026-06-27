@@ -21,6 +21,7 @@ public class PaymentResponseDTO {
     private UUID extraFeeId;
     private ExtraFeeType extraFeeType;
     private UUID adFeeId;
+    private UUID activatedCafePageId;
     private String productName;
 
     private PaymentMethod paymentMethod;

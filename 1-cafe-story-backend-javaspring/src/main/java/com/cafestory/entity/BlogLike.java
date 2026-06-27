@@ -1,7 +1,10 @@
 package com.cafestory.entity;
 
+import com.cafestory.entity.enums.ActorContextType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -11,7 +14,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
@@ -24,9 +26,9 @@ import java.util.UUID;
         name = "blog_likes",
         indexes = {
                 @Index(name = "idx_blog_likes_user_created", columnList = "user_id, created_at"),
-                @Index(name = "idx_blog_likes_blog_created", columnList = "blog_id, created_at")
-        },
-        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "blog_id"}))
+                @Index(name = "idx_blog_likes_blog_created", columnList = "blog_id, created_at"),
+                @Index(name = "idx_blog_likes_actor_page", columnList = "actor_cafe_page_id, created_at")
+        })
 public class BlogLike {
 
     @Id
@@ -45,11 +47,23 @@ public class BlogLike {
     private Blog blog;
 
     @NotNull
+    @Enumerated(EnumType.STRING)
+    @Column(name = "actor_context_type", nullable = false)
+    private ActorContextType actorContextType = ActorContextType.USER;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "actor_cafe_page_id")
+    private CafePage actorCafePage;
+
+    @NotNull
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
     void prePersist() {
         createdAt = LocalDateTime.now();
+        if (actorContextType == null) {
+            actorContextType = ActorContextType.USER;
+        }
     }
 }

@@ -84,6 +84,10 @@ export type BlogLikeResponse = {
   id: string;
   userId: string;
   blogId: string;
+  actorContextType?: "USER" | "CAFE_PAGE" | string | null;
+  actorCafePageId?: string | null;
+  actorDisplayName?: string | null;
+  actorAvatarUrl?: string | null;
   createdAt: string | null;
 };
 
@@ -91,6 +95,10 @@ export type CommentResponse = {
   id: string;
   blogId: string;
   userId: string;
+  actorContextType?: "USER" | "CAFE_PAGE" | string | null;
+  actorCafePageId?: string | null;
+  actorDisplayName?: string | null;
+  actorAvatarUrl?: string | null;
   username?: string | null;
   userName?: string | null;
   authorUserAvatar?: string | null;
@@ -107,6 +115,8 @@ export type CommentResponse = {
 
 export type CommentCreateRequest = {
   blogId: string;
+  actorContextType?: "USER" | "CAFE_PAGE";
+  actorCafePageId?: string;
   parentCommentId?: string;
   content: string;
   imageUrls?: string[];

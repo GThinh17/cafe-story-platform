@@ -83,8 +83,28 @@ public class BlogRecommendationScore {
     private Double freshnessScore;
 
     @NotNull
+    @Column(name = "activity_score", nullable = false)
+    private Double activityScore = 0.0;
+
+    @NotNull
+    @Column(name = "own_author_score", nullable = false)
+    private Double ownAuthorScore = 0.0;
+
+    @NotNull
+    @Column(name = "reviewer_score", nullable = false)
+    private Double reviewerScore = 0.0;
+
+    @NotNull
     @Column(name = "report_penalty", nullable = false)
     private Double reportPenalty;
+
+    @NotNull
+    @Column(name = "seen_penalty", nullable = false)
+    private Double seenPenalty = 0.0;
+
+    @NotNull
+    @Column(name = "repetition_penalty", nullable = false)
+    private Double repetitionPenalty = 0.0;
 
     @NotNull
     @Column(name = "rank_position", nullable = false)
@@ -106,6 +126,21 @@ public class BlogRecommendationScore {
         createdAt = LocalDateTime.now();
         if (computedAt == null) {
             computedAt = createdAt;
+        }
+        if (activityScore == null) {
+            activityScore = 0.0;
+        }
+        if (ownAuthorScore == null) {
+            ownAuthorScore = 0.0;
+        }
+        if (reviewerScore == null) {
+            reviewerScore = 0.0;
+        }
+        if (seenPenalty == null) {
+            seenPenalty = 0.0;
+        }
+        if (repetitionPenalty == null) {
+            repetitionPenalty = 0.0;
         }
     }
 }

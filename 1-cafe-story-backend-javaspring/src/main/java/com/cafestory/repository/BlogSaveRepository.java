@@ -8,6 +8,8 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.LocalDateTime;
+import java.util.Collection;
 
 public interface BlogSaveRepository extends JpaRepository<BlogSave, UUID> {
     Optional<BlogSave> findByUserUserIdAndBlogId(UUID userId, UUID blogId);
@@ -36,9 +38,28 @@ public interface BlogSaveRepository extends JpaRepository<BlogSave, UUID> {
 
     long countByBlogId(UUID blogId);
 
+    @Query("""
+            select save.blog.id as blogId, count(save) as eventCount
+            from BlogSave save
+            where save.blog.id in :blogIds
+            and save.createdAt >= :startAt
+            and save.createdAt < :endAt
+            group by save.blog.id
+            """)
+    List<BlogSaveCountRow> countByBlogIdsAndCreatedAtBetween(
+            @Param("blogIds") Collection<UUID> blogIds,
+            @Param("startAt") LocalDateTime startAt,
+            @Param("endAt") LocalDateTime endAt);
+
     interface BlogCountRow {
         UUID getBlogId();
 
         Long getCount();
+    }
+
+    interface BlogSaveCountRow {
+        UUID getBlogId();
+
+        Long getEventCount();
     }
 }

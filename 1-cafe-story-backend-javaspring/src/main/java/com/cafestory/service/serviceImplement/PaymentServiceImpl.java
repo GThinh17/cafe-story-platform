@@ -34,6 +34,7 @@ import com.cafestory.repository.UserRoleAssignmentRepository;
 import com.cafestory.service.serviceInterface.PaymentService;
 import com.cafestory.service.serviceInterface.StripeCheckoutClient;
 import com.cafestory.service.serviceInterface.VnpayPaymentClient;
+import com.cafestory.validation.CafePageValidator;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.stripe.exception.SignatureVerificationException;
@@ -79,6 +80,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final VnpayPaymentClient vnpayPaymentClient;
     private final ObjectMapper objectMapper;
     private final String stripeWebhookSecret;
+    private final CafePageValidator cafePageValidator;
 
     public PaymentServiceImpl(
             PaymentRepository paymentRepository,
@@ -94,6 +96,7 @@ public class PaymentServiceImpl implements PaymentService {
             StripeCheckoutClient stripeCheckoutClient,
             VnpayPaymentClient vnpayPaymentClient,
             ObjectMapper objectMapper,
+            CafePageValidator cafePageValidator,
             @Value("${stripe.webhook-secret:}") String stripeWebhookSecret) {
         this.paymentRepository = paymentRepository;
         this.paymentDetailRepository = paymentDetailRepository;
@@ -108,6 +111,7 @@ public class PaymentServiceImpl implements PaymentService {
         this.stripeCheckoutClient = stripeCheckoutClient;
         this.vnpayPaymentClient = vnpayPaymentClient;
         this.objectMapper = objectMapper;
+        this.cafePageValidator = cafePageValidator;
         this.stripeWebhookSecret = stripeWebhookSecret;
     }
 
@@ -117,11 +121,13 @@ public class PaymentServiceImpl implements PaymentService {
         User buyer = userRepository.findById(buyerId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Buyer not found"));
         ProductPurchase productPurchase = resolveProductPurchase(request);
+        CafePage targetCafePage = resolveTargetCafePage(request, buyer, productPurchase);
 
         Payment payment = new Payment();
         payment.setBuyer(buyer);
         payment.setExtraFee(productPurchase.extraFee());
         payment.setAdFee(productPurchase.adFee());
+        payment.setCafePage(targetCafePage);
         payment.setPaymentMethod(request.getPaymentMethod());
         payment.setAmount(productPurchase.amount());
         payment.setCurrency(productPurchase.currency());
@@ -386,6 +392,18 @@ public class PaymentServiceImpl implements PaymentService {
         return new ProductPurchase(null, adFee, adFee.getPrice(), currency);
     }
 
+    private CafePage resolveTargetCafePage(CreatePaymentRequestDTO request, User buyer, ProductPurchase productPurchase) {
+        if (request.getCafePageId() == null) {
+            return null;
+        }
+        if (productPurchase.extraFee() == null
+                || productPurchase.extraFee().getFeeType() != ExtraFeeType.CAFE_PAGE_OPENING) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "cafePageId is only supported for cafe page packages");
+        }
+        cafePageValidator.validateUserCanManagePage(request.getCafePageId(), buyer.getUserId());
+        return cafePageValidator.validateCafePageExists(request.getCafePageId());
+    }
+
     private void markPaymentFailed(Payment payment, Map<String, String> params) {
         if ("24".equals(params.get("vnp_ResponseCode"))) {
             payment.setPaymentStatus(PaymentStatus.CANCELLED);
@@ -403,7 +421,9 @@ public class PaymentServiceImpl implements PaymentService {
         if (extraFee.getFeeType() == ExtraFeeType.REVIEWER_REGISTRATION) {
             activateReviewerSubscription(payment.getBuyer(), extraFee);
         } else if (extraFee.getFeeType() == ExtraFeeType.CAFE_PAGE_OPENING) {
-            activateCafePagePackage(payment.getBuyer(), extraFee);
+            CafePage activatedCafePage = activateCafePagePackage(payment.getBuyer(), payment.getCafePage(), extraFee);
+            payment.setCafePage(activatedCafePage);
+            paymentRepository.save(payment);
         }
     }
 
@@ -424,14 +444,17 @@ public class PaymentServiceImpl implements PaymentService {
         assignRole(buyer, REVIEWER_ROLE);
     }
 
-    private void activateCafePagePackage(User buyer, ExtraFee extraFee) {
-        CafePage cafePage = cafePageRepository.findByOwnerUserId(buyer.getUserId()).stream()
+    private CafePage activateCafePagePackage(User buyer, CafePage requestedCafePage, ExtraFee extraFee) {
+        CafePage cafePage = requestedCafePage != null
+                ? requestedCafePage
+                : cafePageRepository.findByOwnerUserId(buyer.getUserId()).stream()
                 .findFirst()
                 .orElseGet(() -> createCafePageForBuyer(buyer));
         applyCafePagePackage(cafePage, extraFee);
         CafePage savedCafePage = cafePageRepository.save(cafePage);
         ensureOwnerMembership(savedCafePage, buyer);
         assignRole(buyer, CAFE_PAGE_ROLE);
+        return savedCafePage;
     }
 
     private CafePage createCafePageForBuyer(User buyer) {
@@ -530,6 +553,7 @@ public class PaymentServiceImpl implements PaymentService {
         response.setExtraFeeId(payment.getExtraFee() == null ? null : payment.getExtraFee().getExtraFeeId());
         response.setExtraFeeType(payment.getExtraFee() == null ? null : payment.getExtraFee().getFeeType());
         response.setAdFeeId(payment.getAdFee() == null ? null : payment.getAdFee().getAdFeeId());
+        response.setActivatedCafePageId(payment.getCafePage() == null ? null : payment.getCafePage().getId());
         response.setPaymentMethod(payment.getPaymentMethod());
         response.setAmount(payment.getAmount());
         response.setCurrency(payment.getCurrency());

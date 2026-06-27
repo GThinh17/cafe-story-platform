@@ -7,10 +7,14 @@ import com.cafestory.dto.responseDTO.CommentResponseDTO;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.Comment;
 import com.cafestory.entity.User;
+import com.cafestory.entity.enums.ActorContextType;
 import com.cafestory.mapper.CommentMapper;
 import com.cafestory.repository.CommentRepository;
+import com.cafestory.service.model.ActorContext;
 import com.cafestory.service.serviceInterface.CommentService;
+import com.cafestory.validation.ActorContextResolver;
 import com.cafestory.validation.BlogValidator;
+import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.CommentValidator;
 import com.cafestory.validation.UserValidator;
 import org.springframework.cache.annotation.CacheEvict;
@@ -32,18 +36,24 @@ public class CommentServiceImpl implements CommentService {
     private final BlogValidator blogValidator;
     private final UserValidator userValidator;
     private final CommentValidator commentValidator;
+    private final ActorContextResolver actorContextResolver;
+    private final CafePageValidator cafePageValidator;
 
     public CommentServiceImpl(
             CommentRepository commentRepository,
             CommentMapper commentMapper,
             BlogValidator blogValidator,
             UserValidator userValidator,
-            CommentValidator commentValidator) {
+            CommentValidator commentValidator,
+            ActorContextResolver actorContextResolver,
+            CafePageValidator cafePageValidator) {
         this.commentRepository = commentRepository;
         this.commentMapper = commentMapper;
         this.blogValidator = blogValidator;
         this.userValidator = userValidator;
         this.commentValidator = commentValidator;
+        this.actorContextResolver = actorContextResolver;
+        this.cafePageValidator = cafePageValidator;
     }
 
     @Override
@@ -57,12 +67,17 @@ public class CommentServiceImpl implements CommentService {
     public CommentResponseDTO createComment(CommentCreateDTO commentCreateDTO) {
         Blog blog = blogValidator.validateBlogExists(commentCreateDTO.getBlogId());
         validateBlogAllowComment(blog);
-        User user = userValidator.validateUserExists(commentCreateDTO.getUserId());
+        ActorContext actorContext = actorContextResolver.resolve(
+                commentCreateDTO.getUserId(),
+                commentCreateDTO.getActorContextType(),
+                commentCreateDTO.getActorCafePageId());
         Comment parentComment = validateParentComment(commentCreateDTO.getParentCommentId(), blog.getId());
 
         Comment comment = commentMapper.toComment(commentCreateDTO);
         comment.setBlog(blog);
-        comment.setUser(user);
+        comment.setUser(actorContext.actorUser());
+        comment.setActorContextType(actorContext.actorContextType());
+        comment.setActorCafePage(actorContext.actorCafePage());
         comment.setParentComment(parentComment);
 
         Comment savedComment = commentRepository.save(comment);
@@ -158,9 +173,14 @@ public class CommentServiceImpl implements CommentService {
     }
 
     private void validateCommentOwner(Comment comment, UUID actorUserId) {
-        if (actorUserId == null || comment.getUser() == null || !actorUserId.equals(comment.getUser().getUserId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not allowed to manage this comment");
+        if (actorUserId != null && comment.getUser() != null && actorUserId.equals(comment.getUser().getUserId())) {
+            return;
         }
+        if (comment.getActorContextType() == ActorContextType.CAFE_PAGE && comment.getActorCafePage() != null) {
+            cafePageValidator.validateUserCanManagePage(comment.getActorCafePage().getId(), actorUserId);
+            return;
+        }
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User is not allowed to manage this comment");
     }
 
     private void validateBlogAllowComment(Blog blog) {

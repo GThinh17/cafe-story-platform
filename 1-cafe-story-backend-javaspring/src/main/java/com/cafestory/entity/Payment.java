@@ -47,6 +47,10 @@ public class Payment {
     @JoinColumn(name = "ad_fee_id")
     private AdFee adFee;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cafe_page_id")
+    private CafePage cafePage;
+
     @NotNull
     @Enumerated(EnumType.STRING)
     @Column(name = "payment_method", nullable = false)

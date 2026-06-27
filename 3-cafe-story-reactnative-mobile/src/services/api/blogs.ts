@@ -120,16 +120,28 @@ export function getTaggedBlogsByUser(userId: string) {
   );
 }
 
-export async function likeBlog(blogId: string) {
-  const response = await apiFetch<BlogLikeResponse>(apiEndpoints.blogs.likes(blogId), {
+type ActorContextOptions = {
+  actorCafePageId?: string;
+  actorContextType?: "USER" | "CAFE_PAGE";
+};
+
+function withActorContext(path: string, options?: ActorContextOptions) {
+  return withQuery(path, {
+    actorCafePageId: options?.actorCafePageId,
+    actorContextType: options?.actorContextType,
+  });
+}
+
+export async function likeBlog(blogId: string, options?: ActorContextOptions) {
+  const response = await apiFetch<BlogLikeResponse>(withActorContext(apiEndpoints.blogs.likes(blogId), options), {
     method: "POST",
   });
   invalidateBlogInteractionCache(blogId);
   return response;
 }
 
-export async function unlikeBlog(blogId: string) {
-  const response = await apiFetch<void>(apiEndpoints.blogs.likes(blogId), {
+export async function unlikeBlog(blogId: string, options?: ActorContextOptions) {
+  const response = await apiFetch<void>(withActorContext(apiEndpoints.blogs.likes(blogId), options), {
     method: "DELETE",
   });
   invalidateBlogInteractionCache(blogId);

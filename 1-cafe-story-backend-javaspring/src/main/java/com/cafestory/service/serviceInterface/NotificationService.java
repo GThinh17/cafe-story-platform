@@ -2,6 +2,7 @@ package com.cafestory.service.serviceInterface;
 
 import com.cafestory.dto.requestDTO.CreateNotificationRequestDTO;
 import com.cafestory.dto.responseDTO.NotificationResponseDTO;
+import com.cafestory.entity.enums.ActorContextType;
 import com.cafestory.entity.enums.NotificationType;
 
 import java.util.List;
@@ -13,13 +14,21 @@ public interface NotificationService {
 
     NotificationResponseDTO createLikeNotification(UUID recipientId, UUID actorId, UUID blogId);
 
+    NotificationResponseDTO createLikeNotification(UUID recipientId, UUID actorId, UUID blogId, ActorContextType actorContextType, UUID actorCafePageId);
+
     NotificationResponseDTO createShareNotification(UUID recipientId, UUID actorId, UUID blogId);
 
+    NotificationResponseDTO createShareNotification(UUID recipientId, UUID actorId, UUID blogId, ActorContextType actorContextType, UUID actorCafePageId);
+
     NotificationResponseDTO createCommentNotification(UUID recipientId, UUID actorId, UUID blogId, UUID commentId);
+
+    NotificationResponseDTO createCommentNotification(UUID recipientId, UUID actorId, UUID blogId, UUID commentId, ActorContextType actorContextType, UUID actorCafePageId);
 
     NotificationResponseDTO createMessageNotification(UUID recipientId, UUID actorId, UUID conversationId, UUID messageId);
 
     NotificationResponseDTO createFollowNotification(UUID recipientId, UUID actorId, UUID userId);
+
+    NotificationResponseDTO createFollowPageNotification(UUID recipientId, UUID actorId, UUID cafePageId);
 
     NotificationResponseDTO createTagNotification(UUID recipientId, UUID actorId, UUID blogId);
 
