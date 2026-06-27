@@ -180,13 +180,16 @@ class CafePageServiceImplTest {
         secondCafe.setRegion(region(regionId, "Ho Chi Minh"));
         secondCafe.setCreatedAt(LocalDateTime.now().minusDays(1));
 
-        when(cafePageRepository.findActiveCafePagesForRegionalRanking(regionId, "Ho Chi Minh"))
+        when(cafePageRepository.findActiveCafePagesForRegionalRanking(regionId, "Ho Chi Minh", null, null))
                 .thenReturn(List.of(secondCafe, firstCafe));
 
         List<CafePageRankingResponseDTO> result = cafePageService.getTopCafePages(
                 regionId,
                 " Ho Chi Minh ",
-                10);
+                null,
+                null,
+                10,
+                null);
 
         assertThat(result).hasSize(2);
         assertThat(result.get(0).getId()).isEqualTo(firstCafe.getId());

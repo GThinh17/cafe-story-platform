@@ -48,6 +48,8 @@ public interface ReviewerRepository extends JpaRepository<Reviewer, UUID> {
             and r.reviewerActive = true
             """)
     List<UUID> findActiveReviewerUserIdsByUserIds(@Param("userIds") Collection<UUID> userIds);
+
+    @Query("""
             select r from Reviewer r
             left join fetch r.user u
             left join fetch u.region region

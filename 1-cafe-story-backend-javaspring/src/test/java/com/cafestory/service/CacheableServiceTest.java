@@ -484,7 +484,9 @@ class CacheableServiceTest {
                 BlogValidator blogValidator,
                 CafePageValidator cafePageValidator,
                 UserValidator userValidator,
-                BlogTagService blogTagService) {
+                BlogTagService blogTagService,
+                UserFollowRepository userFollowRepository,
+                PageFollowRepository pageFollowRepository) {
             return new BlogServiceImpl(
                     blogRepository,
                     blogLikeRepository,
@@ -498,7 +500,9 @@ class CacheableServiceTest {
                     blogValidator,
                     cafePageValidator,
                     userValidator,
-                    blogTagService);
+                    blogTagService,
+                    userFollowRepository,
+                    pageFollowRepository);
         }
 
         @Bean

@@ -59,14 +59,15 @@ class ReviewerControllerTest {
 
     @Test
     void getAllReviewer_success_TC003() {
+        UUID viewerUserId = UUID.randomUUID();
         ReviewerResponseDTO response = new ReviewerResponseDTO();
         response.setReviewerId(UUID.randomUUID());
-        when(reviewerService.getAllReviewer()).thenReturn(List.of(response));
+        when(reviewerService.getAllReviewer(viewerUserId)).thenReturn(List.of(response));
 
-        List<ReviewerResponseDTO> result = reviewerController.getAllReviewer();
+        List<ReviewerResponseDTO> result = reviewerController.getAllReviewer(null, null, principal(viewerUserId));
 
         assertThat(result).containsExactly(response);
-        verify(reviewerService).getAllReviewer();
+        verify(reviewerService).getAllReviewer(viewerUserId);
     }
 
     private AuthenticatedUserPrincipal principal(UUID userId) {

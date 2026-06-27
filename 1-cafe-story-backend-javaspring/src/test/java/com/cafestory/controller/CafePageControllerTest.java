@@ -52,7 +52,11 @@ class CafePageControllerTest {
 
         when(cafePageService.getAllCafePages(viewerUserId)).thenReturn(response);
 
-        List<CafePageResponseDTO> result = cafePageController.getCafePages(null, principal(viewerUserId));
+        List<CafePageResponseDTO> result = cafePageController.getCafePages(
+                null,
+                null,
+                null,
+                principal(viewerUserId));
 
         assertThat(result).isEqualTo(response);
         verify(cafePageService).getAllCafePages(viewerUserId);
@@ -66,7 +70,11 @@ class CafePageControllerTest {
 
         when(cafePageService.getCafePagesByOwnerId(ownerUserId, viewerUserId)).thenReturn(response);
 
-        List<CafePageResponseDTO> result = cafePageController.getCafePages(ownerUserId, principal(viewerUserId));
+        List<CafePageResponseDTO> result = cafePageController.getCafePages(
+                ownerUserId,
+                null,
+                null,
+                principal(viewerUserId));
 
         assertThat(result).isEqualTo(response);
         verify(cafePageService).getCafePagesByOwnerId(ownerUserId, viewerUserId);
@@ -77,15 +85,20 @@ class CafePageControllerTest {
         UUID regionId = UUID.randomUUID();
         List<CafePageRankingResponseDTO> response = List.of(new CafePageRankingResponseDTO());
 
-        when(cafePageService.getTopCafePages(regionId, "Ho Chi Minh", 10)).thenReturn(response);
+        UUID viewerUserId = UUID.randomUUID();
+        when(cafePageService.getTopCafePages(regionId, "Ho Chi Minh", null, null, 10, viewerUserId))
+                .thenReturn(response);
 
         List<CafePageRankingResponseDTO> result = cafePageController.getTopCafePages(
                 regionId,
                 "Ho Chi Minh",
-                10);
+                null,
+                null,
+                10,
+                principal(viewerUserId));
 
         assertThat(result).isEqualTo(response);
-        verify(cafePageService).getTopCafePages(regionId, "Ho Chi Minh", 10);
+        verify(cafePageService).getTopCafePages(regionId, "Ho Chi Minh", null, null, 10, viewerUserId);
     }
 
     @Test
@@ -109,12 +122,17 @@ class CafePageControllerTest {
         response.setItems(List.of());
         response.setHasMore(false);
 
-        when(cafePageService.getBlogsByCafePageId(cafePageId, "cursor-token", 10)).thenReturn(response);
+        UUID viewerUserId = UUID.randomUUID();
+        when(cafePageService.getBlogsByCafePageId(cafePageId, "cursor-token", 10, viewerUserId)).thenReturn(response);
 
-        BlogCursorPageResponseDTO result = cafePageController.getBlogsByCafePageId(cafePageId, "cursor-token", 10);
+        BlogCursorPageResponseDTO result = cafePageController.getBlogsByCafePageId(
+                cafePageId,
+                "cursor-token",
+                10,
+                principal(viewerUserId));
 
         assertThat(result).isEqualTo(response);
-        verify(cafePageService).getBlogsByCafePageId(cafePageId, "cursor-token", 10);
+        verify(cafePageService).getBlogsByCafePageId(cafePageId, "cursor-token", 10, viewerUserId);
     }
 
     @Test

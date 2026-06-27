@@ -18,7 +18,9 @@ import com.cafestory.repository.BlogRatingRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.BlogSaveRepository;
 import com.cafestory.repository.BlogTaggedUserRepository;
+import com.cafestory.repository.PageFollowRepository;
 import com.cafestory.repository.RegionRepository;
+import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.service.serviceImplement.BlogServiceImpl;
 import com.cafestory.service.serviceInterface.AiBlogModerationService;
 import com.cafestory.service.serviceInterface.BlogTagService;
@@ -82,6 +84,12 @@ class BlogServiceImplTest {
     private BlogTagService blogTagService;
 
     @Mock
+    private UserFollowRepository userFollowRepository;
+
+    @Mock
+    private PageFollowRepository pageFollowRepository;
+
+    @Mock
     private AiBlogModerationService aiBlogModerationService;
 
     @Mock
@@ -104,7 +112,9 @@ class BlogServiceImplTest {
                 blogValidator,
                 cafePageValidator,
                 userValidator,
-                blogTagService);
+                blogTagService,
+                userFollowRepository,
+                pageFollowRepository);
     }
 
     @Test

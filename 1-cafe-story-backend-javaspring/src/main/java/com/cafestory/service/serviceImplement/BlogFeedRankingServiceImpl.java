@@ -280,8 +280,6 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                         error);
                 return fallbackOrganicFeedResponses(safeSize);
             }
-            List<BlogRecommendationScore> scores = buildRecommendationScores(user, windowType, contextRegionId);
-            return toFeedResponses(pageScores(scores, safePage, safeSize), userId);
         }
 
         List<BlogRecommendationScore> scores = blogRecommendationScoreRepository.findLatestPage(
@@ -769,8 +767,11 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             response.setRegionArea(region.getArea());
         }
         response.setRankPosition(score.getRankPosition());
-        response.setIsAuthorFollowing(viewerUserId != null && author.getUserId() != null
-                && userFollowRepository.existsByFollowerUserIdAndFollowingUserId(viewerUserId, author.getUserId()));
+        UUID authorUserId = author.getUserId();
+        response.setIsAuthorFollowing(viewerUserId != null
+                && authorUserId != null
+                && !viewerUserId.equals(authorUserId)
+                && userFollowRepository.existsByFollowerUserIdAndFollowingUserId(viewerUserId, authorUserId));
         UUID pageId = blog.getPageId();
         response.setIsPageFollowing(viewerUserId != null && pageId != null
                 && pageFollowRepository.existsByUserUserIdAndCafePageId(viewerUserId, pageId));
