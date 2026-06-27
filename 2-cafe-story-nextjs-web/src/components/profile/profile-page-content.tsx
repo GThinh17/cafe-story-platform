@@ -20,7 +20,8 @@ import { getBlogsByUser, getSharedBlogsByUser } from "@/lib/api/blogs";
 import { getCafePagesByOwnerId } from "@/lib/api/cafes";
 import { createDirectConversation } from "@/lib/api/chat";
 import { ApiError } from "@/lib/api/client";
-import { followUser, getUserByUsername, unfollowUser } from "@/lib/api/users";
+import { getReviewerByUserId } from "@/lib/api/reviewers";
+import { getUserByUsername } from "@/lib/api/users";
 import {
   DEFAULT_AVATAR_IMAGE,
   getUserAvatarImage,
@@ -43,7 +44,7 @@ function mapAuthUserToProfile(user: AuthUser | null): UserProfile {
   return {
     avatarImage: getUserAvatarImage(user),
     avatarInitials: getUserInitials(user),
-    bio: email ? `Email: ${email}` : "",
+    bio: "",
     displayName,
     email,
     location: "",
@@ -73,7 +74,7 @@ function mapUserResponseToProfile(user: UserResponse): UserProfile {
   return {
     avatarImage: getProfileAvatarImage(user),
     avatarInitials: getInitials(displayName),
-    bio: user.userEmail ? `Email: ${user.userEmail}` : "",
+    bio: user.userDescription?.trim() ?? "",
     displayName,
     email: user.userEmail ?? "",
     location,
@@ -182,6 +183,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
   );
   const isOwnProfile = isCurrentUserProfile(routeUsername, user);
   const [viewedUser, setViewedUser] = useState<UserResponse | null>(null);
+  const [reviewerBadge, setReviewerBadge] = useState<string | null>(null);
   const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -203,6 +205,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
     profileRequestIdRef.current = requestId;
 
     setViewedUser(null);
+    setReviewerBadge(null);
     setIsFollowing(false);
     setFollowerCount(0);
     setOwnPosts([]);
@@ -230,6 +233,18 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
       setViewedUser(response);
       setIsFollowing(Boolean(response.isFollowing));
       setFollowerCount(response.userFollower ?? 0);
+
+      getReviewerByUserId(response.userId)
+        .then((reviewer) => {
+          if (profileRequestIdRef.current === requestId) {
+            setReviewerBadge(reviewer.badge ?? null);
+          }
+        })
+        .catch(() => {
+          if (profileRequestIdRef.current === requestId) {
+            setReviewerBadge(null);
+          }
+        });
     } catch (requestError) {
       if (profileRequestIdRef.current !== requestId) {
         return;
@@ -356,6 +371,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
     if (viewedUser) {
       return {
         ...mapUserResponseToProfile(viewedUser),
+        badge: reviewerBadge,
         stats: {
           posts: String(visiblePostCount),
           following: String(viewedUser.followingCount ?? 0),
@@ -365,7 +381,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
     }
 
     if (isOwnProfile) {
-      return mapAuthUserToProfile(user);
+      return { ...mapAuthUserToProfile(user), badge: reviewerBadge };
     }
 
     return {
@@ -377,6 +393,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
     followerCount,
     activeCafePages.length,
     isOwnProfile,
+    reviewerBadge,
     visiblePostCount,
     routeUsername,
     user,
@@ -391,31 +408,9 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
   const cafePageHref = primaryCafePage ? `/cafes/${primaryCafePage.id}` : undefined;
   const profileUserId = viewedUser?.userId ?? (isOwnProfile ? user?.userId : undefined);
 
-  async function handleFollowToggle() {
-    if (!viewedUser?.userId) {
-      return;
-    }
-
-    const wasFollowing = isFollowing;
-    const previousFollowerCount = followerCount;
-    const nextFollowerCount = Math.max(
-      0,
-      previousFollowerCount + (wasFollowing ? -1 : 1),
-    );
-
-    setIsFollowing(!wasFollowing);
-    setFollowerCount(nextFollowerCount);
-
-    try {
-      if (wasFollowing) {
-        await unfollowUser(viewedUser.userId);
-      } else {
-        await followUser(viewedUser.userId);
-      }
-    } catch {
-      setIsFollowing(wasFollowing);
-      setFollowerCount(previousFollowerCount);
-    }
+  function handleFollowToggle(nextIsFollowing: boolean) {
+    setIsFollowing(nextIsFollowing);
+    setFollowerCount((prev) => Math.max(0, prev + (nextIsFollowing ? 1 : -1)));
   }
 
   async function handleMessageClick() {
@@ -456,6 +451,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
         isLoading={isProfileLoading && !viewedUser}
         isMessageLoading={isMessageLoading}
         isOwnProfile={isOwnProfile}
+        profileUserId={profileUserId}
         onFollowToggle={handleFollowToggle}
         onFollowersClick={
           profileUserId ? () => setActiveUserListModal("followers") : undefined

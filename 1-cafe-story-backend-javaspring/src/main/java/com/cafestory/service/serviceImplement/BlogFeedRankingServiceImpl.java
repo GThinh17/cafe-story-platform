@@ -280,6 +280,8 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                         error);
                 return fallbackOrganicFeedResponses(safeSize);
             }
+            List<BlogRecommendationScore> scores = buildRecommendationScores(user, windowType, contextRegionId);
+            return toFeedResponses(pageScores(scores, safePage, safeSize), userId);
         }
 
         List<BlogRecommendationScore> scores = blogRecommendationScoreRepository.findLatestPage(
@@ -288,7 +290,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                         contextRegionId,
                         latestComputedAt,
                         PageRequest.of(safePage, safeSize));
-        return toFeedResponses(scores);
+        return toFeedResponses(scores, userId);
     }
 
     @Override
@@ -314,7 +316,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         List<BlogRecommendationScore> scores = buildRecommendationScores(user, windowType, contextRegionId);
 
         upsertRecommendationScores(scores, LocalDateTime.now());
-        return toFeedResponses(scores);
+        return toFeedResponses(scores, user.getUserId());
     }
 
     private List<BlogRecommendationScore> buildRecommendationScores(
@@ -689,7 +691,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         return score;
     }
 
-    private List<BlogFeedResponse> toFeedResponses(List<BlogRecommendationScore> scores) {
+    private List<BlogFeedResponse> toFeedResponses(List<BlogRecommendationScore> scores, UUID viewerUserId) {
         List<UUID> blogIds = scores.stream()
                 .map(score -> score.getBlog().getId())
                 .filter(blogId -> blogId != null)
@@ -714,7 +716,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                 .collect(Collectors.toMap(Region::getRegionId, Function.identity()));
 
         return scores.stream()
-                .map(score -> toFeedResponse(score, cafePagesById, regionsById, imageUrlsByBlogId))
+                .map(score -> toFeedResponse(score, cafePagesById, regionsById, imageUrlsByBlogId, viewerUserId))
                 .toList();
     }
 
@@ -734,7 +736,8 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             BlogRecommendationScore score,
             Map<UUID, CafePage> cafePagesById,
             Map<UUID, Region> regionsById,
-            Map<UUID, List<String>> imageUrlsByBlogId) {
+            Map<UUID, List<String>> imageUrlsByBlogId,
+            UUID viewerUserId) {
         Blog blog = score.getBlog();
         User author = blog.getAuthor();
         CafePage cafePage = blog.getPageId() == null ? null : cafePagesById.get(blog.getPageId());
@@ -766,6 +769,11 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             response.setRegionArea(region.getArea());
         }
         response.setRankPosition(score.getRankPosition());
+        response.setIsAuthorFollowing(viewerUserId != null && author.getUserId() != null
+                && userFollowRepository.existsByFollowerUserIdAndFollowingUserId(viewerUserId, author.getUserId()));
+        UUID pageId = blog.getPageId();
+        response.setIsPageFollowing(viewerUserId != null && pageId != null
+                && pageFollowRepository.existsByUserUserIdAndCafePageId(viewerUserId, pageId));
         response.setCreatedAt(blog.getCreatedAt());
         return response;
     }
@@ -1027,7 +1035,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                 })
                 .filter(score -> score != null)
                 .toList();
-        return toFeedResponses(recommendationScores);
+        return toFeedResponses(recommendationScores, null);
     }
 
     private FeedResponseDTO toFeedResponse(BlogFeedCursorPageResponseDTO organicPage) {

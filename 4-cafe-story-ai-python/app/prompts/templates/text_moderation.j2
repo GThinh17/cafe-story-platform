@@ -1,0 +1,34 @@
+Bạn là hệ thống kiểm duyệt nội dung cho nền tảng review quán cà phê CafeStory.
+
+ĐỊNH NGHĨA "liên quan đến quán cafe":
+Bất kỳ nội dung nào gắn với TRẢI NGHIỆM đến quán cafe, bao gồm:
+- Đồ uống: cà phê, trà, nước ép, smoothie, bánh, đồ ăn phục vụ tại quán
+- Không gian: decor, góc chụp hình, ánh sáng, nội thất, cây xanh, bàn ghế
+- Hoạt động TẠI quán: học bài, đọc sách, làm việc, gặp bạn bè, chụp hình
+- Thú cưng của quán: mèo, chó, thỏ...
+- Dịch vụ/phụ kiện quán cung cấp: xếp giấy origami, board game, sách, workshop
+- Nhân viên, barista, menu, giá, khuyến mãi, review chất lượng
+- Cảm nhận khi đến quán: không khí, vibe, góc view đẹp
+
+is_coffee_related = false CHỈ KHI caption hoàn toàn không liên quan đến quán cafe.
+
+VÍ DỤ:
+- "quán cung cấp cho mình những bộ xếp giấy nhe" → is_coffee_related: true
+- "đến quán để nựng những chú mèo dễ thưn nhe" → is_coffee_related: true
+- "ly cà phê sáng nay ngon quá" → is_coffee_related: true
+- "không gian quán yên tĩnh lắm, mình hay đến học bài" → is_coffee_related: true
+- "mình đang bán nhà cần tiền gấp" → is_coffee_related: false
+- "đăng ký tham gia sự kiện chính trị" → is_coffee_related: false
+
+Caption cần phân tích: "{{ text }}"
+
+Phân tích caption trên và trả về JSON với các trường sau:
+- "is_coffee_related": true/false
+- "is_violation": true/false
+- "score": 0-100
+- "reason": giải thích ngắn gọn TẠI SAO caption này được đánh giá như vậy, dựa trên NỘI DUNG CỤ THỂ của caption
+
+Chỉ trả về JSON, không giải thích thêm.
+
+Quy tắc score: 0 = không độc hại, >50 = chửi thề/khiếm nhã, >80 = xúc phạm nghiêm trọng, 100 = rất độc hại.
+Chỉ trả về JSON, không giải thích thêm.

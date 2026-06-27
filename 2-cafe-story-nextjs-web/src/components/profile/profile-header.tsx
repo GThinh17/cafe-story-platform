@@ -5,6 +5,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FollowButton } from "@/components/ui/follow-button";
+import { ReviewerBadgeChip } from "@/components/ui/reviewer-badge-chip";
 import { ProfileSettingsModal } from "@/components/profile/profile-settings-modal";
 import type { AuthUser } from "@/types/auth";
 import { DEFAULT_AVATAR_IMAGE } from "@/lib/avatar";
@@ -18,7 +20,8 @@ type ProfileHeaderProps = {
   isLoading?: boolean;
   isMessageLoading?: boolean;
   isOwnProfile?: boolean;
-  onFollowToggle?: () => void;
+  profileUserId?: string;
+  onFollowToggle?: (nextIsFollowing: boolean) => void;
   onFollowersClick?: () => void;
   onFollowingClick?: () => void;
   onMessageClick?: () => void;
@@ -40,6 +43,7 @@ export function ProfileHeader({
   isLoading = false,
   isMessageLoading = false,
   isOwnProfile = true,
+  profileUserId,
   onFollowToggle,
   onFollowersClick,
   onFollowingClick,
@@ -71,7 +75,7 @@ export function ProfileHeader({
               <h1 className="truncate text-3xl font-bold text-foreground">
                 {isLoading ? "Loading..." : profile.username}
               </h1>
-
+              <ReviewerBadgeChip badge={profile.badge} className="px-3 py-1 text-xs" />
               {areActionsLoading ? null : isOwnProfile ? (
                 <Button
                   aria-label="Profile settings"
@@ -83,28 +87,31 @@ export function ProfileHeader({
                 >
                   <MoreHorizontal />
                 </Button>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    className="h-8 px-5 text-sm font-black"
-                    onClick={onFollowToggle}
-                    type="button"
-                    variant={isFollowing ? "secondary" : "default"}
-                  >
-                    {isFollowing ? "Following" : "Follow"}
-                  </Button>
-                  <Button
-                    className="h-8 px-5 text-sm font-black"
-                    disabled={isMessageLoading}
-                    onClick={onMessageClick}
-                    type="button"
-                    variant="secondary"
-                  >
-                    {isMessageLoading ? "Opening" : "Message"}
-                  </Button>
-                </div>
-              )}
+              ) : null}
             </div>
+
+            {areActionsLoading ? null : !isOwnProfile ? (
+              <div className="flex flex-wrap gap-2 w-full">
+                {profileUserId ? (
+                  <FollowButton
+                    className="flex-1"
+                    isFollowing={isFollowing}
+                    targetId={profileUserId}
+                    targetType="user"
+                    onToggle={onFollowToggle}
+                  />
+                ) : null}
+                <Button
+                  className="h-8 flex-1 text-sm font-black"
+                  disabled={isMessageLoading}
+                  onClick={onMessageClick}
+                  type="button"
+                  variant="secondary"
+                >
+                  {isMessageLoading ? "Opening" : "Message"}
+                </Button>
+              </div>
+            ) : null}
 
             <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-sm">
               {Object.entries(profile.stats).map(([label, value]) => {
@@ -145,7 +152,9 @@ export function ProfileHeader({
 
             <div className="min-w-0 space-y-1 text-sm leading-6">
               <p className="font-black">{profile.displayName}</p>
-              <p className="max-w-full break-words">{profile.bio}</p>
+              {profile.bio ? (
+                <p className="max-w-full break-words">{profile.bio}</p>
+              ) : null}
               <p className="text-muted">{profile.location}</p>
             </div>
           </div>

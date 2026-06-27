@@ -36,9 +36,12 @@ export function AuthLayoutShell({ children }: AuthLayoutShellProps) {
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/75">
                 Est. 2026
               </p>
-              <h2 className="text-4xl font-black leading-tight text-white sm:text-5xl">
-                Cafe Story
-              </h2>
+              <img
+                alt="CaféStory"
+                className="h-12 w-auto object-contain brightness-0 invert sm:h-14"
+                decoding="async"
+                src="/icons/cafestory-wordmark.png"
+              />
               <p className="text-base leading-7 text-white/88 sm:text-lg">
                 Where every cafe tells a story, and every cup keeps a small
                 memory warm.
@@ -50,7 +53,12 @@ export function AuthLayoutShell({ children }: AuthLayoutShellProps) {
         <section className="flex h-full min-h-0 justify-center overflow-y-auto bg-surface px-5 py-10 sm:px-10 lg:px-16">
           <div className="my-auto w-full max-w-[400px]">
             <div className="mb-12 lg:hidden">
-              <p className="text-lg font-black text-espresso">Cafe Story</p>
+              <img
+                alt="CaféStory"
+                className="h-8 w-auto object-contain [mix-blend-mode:multiply]"
+                decoding="async"
+                src="/icons/cafestory-wordmark.png"
+              />
               <p className="mt-2 text-sm leading-6 text-coffee-muted">
                 Coffee moments, collected.
               </p>

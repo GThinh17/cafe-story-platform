@@ -48,4 +48,22 @@ public interface ReviewerRepository extends JpaRepository<Reviewer, UUID> {
             and r.reviewerActive = true
             """)
     List<UUID> findActiveReviewerUserIdsByUserIds(@Param("userIds") Collection<UUID> userIds);
+            select r from Reviewer r
+            left join fetch r.user u
+            left join fetch u.region region
+            where u.accountStatus = true
+            and r.reviewerActive = true
+            """)
+    List<Reviewer> findAllActiveReviewers();
+
+    @Query("""
+            select r from Reviewer r
+            left join fetch r.user u
+            left join fetch u.region region
+            where u.accountStatus = true
+            and r.reviewerActive = true
+            and (lower(u.userName) like lower(concat('%', :query, '%'))
+                or lower(u.userFullName) like lower(concat('%', :query, '%')))
+            """)
+    List<Reviewer> searchActiveReviewers(@Param("query") String query);
 }

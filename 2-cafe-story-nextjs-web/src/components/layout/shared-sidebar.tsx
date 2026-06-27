@@ -80,9 +80,12 @@ export function SharedSidebar() {
           onClick={() => setIsNotificationsOpen(false)}
         >
           <BrandIcon className="size-10 shadow-sm" />
-          <span className="translate-x-[-4px] whitespace-nowrap text-lg font-medium text-primary-strong opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100">
-            Cafe Story
-          </span>
+          <img
+            alt="CaféStory"
+            className="h-7 w-auto translate-x-[-4px] object-contain opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100 [mix-blend-mode:multiply] dark:invert dark:[mix-blend-mode:screen]"
+            decoding="async"
+            src="/icons/cafestory-wordmark.png"
+          />
         </Link>
 
         <nav className="grid gap-1.5 px-2 py-2 sm:px-3">

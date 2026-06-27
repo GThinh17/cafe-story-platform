@@ -38,6 +38,9 @@ export type FeedPost = {
   authorUserId?: string;
   authorUsername?: string;
   authorAvatar?: string;
+  authorBadge?: string | null;
+  isAuthorFollowing?: boolean;
+  isPageFollowing?: boolean;
   displayAuthorType?: "USER" | "CAFE_PAGE" | null;
   displayName?: string | null;
   displayAvatarUrl?: string | null;

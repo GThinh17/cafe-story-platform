@@ -28,6 +28,8 @@ import { cn } from "@/lib/utils";
 import type { AuthUser } from "@/types/auth";
 import type { CommentResponse } from "@/types/blog";
 import type { FeedPost, FeedPostComment } from "@/types/feed";
+import { FollowButton } from "@/components/ui/follow-button";
+import { ReviewerBadgeChip } from "@/components/ui/reviewer-badge-chip";
 
 type PostCommentsModalProps = {
   currentUser: AuthUser | null;
@@ -596,12 +598,23 @@ export function PostCommentsModal({
                   src={identity.primaryAvatar}
                 />
               </Link>
-              <div className="min-w-0">
-                <h2 className="truncate text-sm font-black text-espresso">
-                  <Link className="cursor-pointer" href={identity.primaryHref}>
-                    {identity.primaryName}
-                  </Link>
-                </h2>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <h2 className="truncate text-sm font-black text-espresso">
+                    <Link className="cursor-pointer" href={identity.primaryHref}>
+                      {identity.primaryName}
+                    </Link>
+                  </h2>
+                  <ReviewerBadgeChip badge={post.authorBadge} />
+                  {currentUser?.userId !== post.authorUserId && (post.pageId ?? post.authorUserId) ? (
+                    <FollowButton
+                      className="ml-auto !h-[24px] shrink-0 !px-2 !text-[12px]"
+                      isFollowing={post.pageId ? post.isPageFollowing : post.isAuthorFollowing}
+                      targetId={(post.pageId ?? post.authorUserId)!}
+                      targetType={post.pageId ? "cafe" : "user"}
+                    />
+                  ) : null}
+                </div>
                 {identity.isPagePost && identity.secondaryHref ? (
                   <Link
                     className="block cursor-pointer truncate text-xs font-bold text-coffee-muted"

@@ -16,6 +16,7 @@ export type CafeSummary = {
   photoCount?: string;
   likeCount?: number;
   isLiked?: boolean;
+  isFollowing?: boolean | null;
   pageActive?: boolean | null;
   image: string;
   avatarImage?: string;
@@ -132,11 +133,14 @@ export type CafePageRankingResponse = {
   pageActive: boolean | null;
   rankingScore: number | null;
   rankPosition: number | null;
+  isFollowing: boolean | null;
   createdAt: string | null;
 };
 
 export type CafeTopParams = {
   city?: string;
+  area?: string;
+  province?: string;
   regionId?: string;
   size?: number;
 };

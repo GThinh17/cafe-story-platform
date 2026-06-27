@@ -46,7 +46,20 @@ export const apiEndpoints = {
   payments: {
     list: "/api/payments",
     byId: (paymentId: string) => `/api/payments/${pathId(paymentId)}`,
+    stripeSync: (paymentId: string) => `/api/payments/${pathId(paymentId)}/stripe/sync`,
     vnpayReturn: "/api/payments/vnpay/return",
+  },
+  reviewers: {
+    list: "/api/reviewers",
+    region: "/api/reviewers/region",
+    byUserId: (userId: string) => `/api/reviewers/${pathId(userId)}`,
+    payouts: (reviewerId: string) => `/api/reviewers/${pathId(reviewerId)}/payouts`,
+    top: "/api/reviewers/top",
+    connect: {
+      onboard: "/api/reviewers/connect/onboard",
+      status: "/api/reviewers/connect/status",
+      sync: "/api/reviewers/connect/sync",
+    },
   },
   extraFees: {
     list: "/api/extra-fees",
@@ -97,6 +110,16 @@ export const apiEndpoints = {
       requirement
         ? `/api/regions?requirement=${pathId(requirement)}`
         : "/api/regions",
+  },
+  recommendations: {
+    mixed: (page = 0, size = 30) =>
+      `/api/recommendations/mixed?page=${page}&size=${size}`,
+    cafePages: (page = 0, size = 20) =>
+      `/api/recommendations/cafe-pages?page=${page}&size=${size}`,
+    reviewers: (page = 0, size = 20) =>
+      `/api/recommendations/reviewers?page=${page}&size=${size}`,
+    users: (page = 0, size = 20) =>
+      `/api/recommendations/users?page=${page}&size=${size}`,
   },
   chat: {
     conversations: "/api/chat/conversations",

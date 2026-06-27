@@ -145,6 +145,8 @@ export function mapBlogFeedToFeedPosts(feed: BlogFeedResponse[]): FeedPost[] {
       shares: formatCount(item.shareCount),
       tags: buildTags(item),
       time: formatRelativeTime(item.createdAt),
+      isAuthorFollowing: item.isAuthorFollowing ?? false,
+      isPageFollowing: item.isPageFollowing ?? false,
     };
   });
 }
@@ -205,6 +207,8 @@ export function mapBlogResponsesToFeedPosts(blogs: BlogResponse[]): FeedPost[] {
       rating,
       shares: formatCount(item.shareCount),
       status: item.status,
+      isAuthorFollowing: item.isAuthorFollowing ?? false,
+      isPageFollowing: item.isPageFollowing ?? false,
       tags: [
         "Profile",
         ...[item.pageName, item.status].filter(

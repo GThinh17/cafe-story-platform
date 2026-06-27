@@ -123,6 +123,7 @@ export function CafePage({
             cafeId={cafe.id}
             cafeName={cafe.name}
             isLiked={cafe.isLiked}
+            isFollowing={cafe.isFollowing ?? false}
             likeCount={cafe.likeCount}
             menu={menu}
             onLikeStateChange={onCafeLikeStateChange}

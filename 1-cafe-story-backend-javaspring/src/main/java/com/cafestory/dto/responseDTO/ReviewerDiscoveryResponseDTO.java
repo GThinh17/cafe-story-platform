@@ -1,6 +1,7 @@
 package com.cafestory.dto.responseDTO;
 
 import com.cafestory.entity.enums.ReviewerBadge;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.util.UUID;
@@ -33,6 +34,8 @@ public class ReviewerDiscoveryResponseDTO {
     private int badgeLevel;
     private double badgeScore;
     private double rankingScore;
+    @JsonProperty("isFollowing")
     private boolean isFollowing;
+    @JsonProperty("isMe")
     private boolean isMe;
 }
