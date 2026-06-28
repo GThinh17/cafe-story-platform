@@ -9,9 +9,9 @@ export const mockMessageDock: MessageDockData = {
   title: "Messages",
   unreadCount: 3,
   contacts: [
-    { name: "Jessica Brew", initials: "JB" },
-    { name: "Marco Explorer", initials: "ME" },
-    { name: "Gia Thinh", initials: "GT" },
+    { id: "mock-1", name: "Jessica Brew", initials: "JB" },
+    { id: "mock-2", name: "Marco Explorer", initials: "ME" },
+    { id: "mock-3", name: "Gia Thinh", initials: "GT" },
   ],
 };
 

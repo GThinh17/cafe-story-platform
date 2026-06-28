@@ -3,6 +3,7 @@ import { apiEndpoints } from "@/lib/api/endpoints";
 import type {
   CafePageBlogCursorResponse,
   CafePageCreateRequest,
+  CafePageFollowResponse,
   CafePageLikeResponse,
   CafePageRankingResponse,
   CafePageResponse,
@@ -61,6 +62,19 @@ export function getTopCafePages(
       regionId: params.regionId,
       size: params.size,
     }),
+    {
+      headers: options.headers,
+      method: "GET",
+    },
+  );
+}
+
+export function getFollowedCafePagesByUserId(
+  userId: string,
+  options: ApiRequestOptions = {},
+) {
+  return apiFetch<CafePageFollowResponse[]>(
+    apiEndpoints.cafes.followsByUser(userId),
     {
       headers: options.headers,
       method: "GET",

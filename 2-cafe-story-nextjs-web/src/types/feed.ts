@@ -1,7 +1,9 @@
 export type StoryItem = {
   id: string;
-  name: string;
-  image: string;
+  kind: "user" | "cafe-page";
+  label: string;
+  avatarUrl: string;
+  href: string;
 };
 
 export type FeedPostComment = {

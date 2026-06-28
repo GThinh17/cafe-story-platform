@@ -26,9 +26,10 @@ export function register(request: RegisterRequest) {
   });
 }
 
-export function getMe() {
+export function getMe(options: { headers?: HeadersInit } = {}) {
   return apiFetch<AuthResponse>(apiEndpoints.auth.me, {
     method: "GET",
+    headers: options.headers,
   });
 }
 
