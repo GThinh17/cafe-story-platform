@@ -1,6 +1,8 @@
 export type MessageContact = {
+  id: string;
   name: string;
   initials: string;
+  avatarImage?: string;
 };
 
 export type MessageDockData = {

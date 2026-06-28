@@ -17,6 +17,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { BrandIcon } from "@/components/ui/brand-icon";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useNotifications } from "@/hooks/use-notifications";
 import {
   Sheet,
   SheetContent,
@@ -24,7 +25,9 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useCreatePost } from "@/context/create-post-context";
-import { usePathname } from "next/navigation";
+import { useCommentModal } from "@/context/comment-modal-context";
+import { usePathname, useRouter } from "next/navigation";
+import type { NotificationResponse } from "@/types/notification";
 
 type SidebarItem = {
   href: string;
@@ -66,11 +69,50 @@ export function SharedSidebar() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isPricingPlanOpen, setIsPricingPlanOpen] = useState(false);
   const profileHref = user?.userName ? `/${user.userName}` : "/login";
+  const router = useRouter();
+  const commentModal = useCommentModal();
+  const {
+    notifications,
+    unreadCount,
+    isLoading: notifLoading,
+    error: notifError,
+    activeFilter,
+    actors,
+    setActiveFilter,
+    markAllRead,
+    markRead,
+  } = useNotifications();
+
+  function handleNotificationClick(notification: NotificationResponse) {
+    if (!notification.isRead) void markRead(notification.id);
+    setIsNotificationsOpen(false);
+
+    switch (notification.type) {
+      case "MESSAGE":
+        if (notification.conversationId) {
+          router.push(`/messages?conversationId=${notification.conversationId}`);
+        }
+        break;
+      case "LIKE":
+      case "SHARE":
+      case "COMMENT":
+      case "TAG":
+        if (notification.blogId) commentModal.openByBlogId(notification.blogId);
+        break;
+      case "FOLLOW": {
+        const actor = actors[notification.actorId];
+        if (actor?.userName) {
+          router.push(`/${encodeURIComponent(actor.userName)}`);
+        }
+        break;
+      }
+    }
+  }
 
   return (
     <>
       <aside
-        className="group fixed inset-y-0 left-0 z-50 hidden w-16 flex-col overflow-hidden border-r border-border bg-surface shadow-lg transition-[width,box-shadow] duration-200 ease-out hover:w-60 hover:shadow-lg focus-within:w-60 focus-within:shadow-lg sm:flex sm:w-[72px]"
+        className="group fixed inset-y-0 left-0 z-50 hidden w-16 flex-col overflow-hidden shadow-lg bg-surface  transition-[width] duration-200 ease-out hover:w-60 hover:shadow-lg focus-within:w-60 focus-within:shadow-lg sm:flex sm:w-[72px]"
         aria-label="Primary navigation"
       >
         <Link
@@ -111,8 +153,13 @@ export function SharedSidebar() {
 
             const itemContent = (
               <>
-                <span className="grid size-6 shrink-0 place-items-center">
+                <span className="relative grid size-6 shrink-0 place-items-center">
                   <Icon aria-hidden="true" />
+                  {isNotificationItem && unreadCount > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-black leading-none text-white">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
                 </span>
                 <span className="translate-x-[-4px] whitespace-nowrap opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100">
                   {item.label}
@@ -213,7 +260,7 @@ export function SharedSidebar() {
 
         <div className="mt-auto px-2 pb-4 sm:px-3">
           <div className="flex h-12 min-w-0 items-center gap-3 px-3">
-            <ThemeToggle />
+            <ThemeToggle/>
             <span className="translate-x-[-4px] whitespace-nowrap text-sm font-medium text-muted opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100">
               Theme
             </span>
@@ -229,7 +276,15 @@ export function SharedSidebar() {
         >
           <SheetTitle className="sr-only">Notifications</SheetTitle>
           <ActivityList
-            items={[]}
+            notifications={notifications}
+            unreadCount={unreadCount}
+            isLoading={notifLoading}
+            error={notifError}
+            activeFilter={activeFilter}
+            actors={actors}
+            onFilterChange={setActiveFilter}
+            onMarkAllRead={markAllRead}
+            onItemClick={handleNotificationClick}
             onClose={() => setIsNotificationsOpen(false)}
           />
         </SheetContent>

@@ -11,9 +11,10 @@ type MessagePageOptions = {
   size?: number;
 };
 
-export function getConversations() {
+export function getConversations(options: { headers?: HeadersInit } = {}) {
   return apiFetch<ConversationResponse[]>(apiEndpoints.chat.conversations, {
     method: "GET",
+    headers: options.headers,
   });
 }
 

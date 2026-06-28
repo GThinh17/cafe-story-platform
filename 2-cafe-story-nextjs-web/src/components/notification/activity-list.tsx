@@ -1,100 +1,162 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import type { ActivityNotification } from "@/types/user";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar";
+import { useRef, useState, useEffect } from "react";
+import { ChevronLeftIcon, ChevronRightIcon, UserIcon } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import type { NotificationResponse, NotificationType } from "@/types/notification";
+import type { UserResponse } from "@/types/user";
 
-type ActivityListProps = {
-  items: ActivityNotification[];
-  onClose?: () => void;
+const NOTIFICATION_VERBS: Record<NotificationType, string> = {
+  LIKE: "liked your post.",
+  SHARE: "shared your post.",
+  COMMENT: "commented on your post.",
+  MESSAGE: "sent you a message.",
+  FOLLOW: "started following you.",
+  TAG: "tagged you in a post.",
 };
 
-const filterTabs = [
-  "T\u1ea5t c\u1ea3",
-  "Ng\u01b0\u1eddi m\u00e0 b\u1ea1n theo d\u00f5i",
-  "B\u00ecnh lu\u1eadn",
-  "L\u01b0\u1ee3t theo",
+const TYPE_LABELS: Record<NotificationType, string> = {
+  LIKE: "Likes",
+  SHARE: "Shares",
+  COMMENT: "Comments",
+  MESSAGE: "Messages",
+  FOLLOW: "Follows",
+  TAG: "Tags",
+};
+
+const TYPE_ORDER: NotificationType[] = [
+  "FOLLOW",
+  "COMMENT",
+  "LIKE",
+  "SHARE",
+  "MESSAGE",
+  "TAG",
 ];
 
-function NotificationAvatars({ item }: { item: ActivityNotification }) {
-  if (item.iconLabel) {
-    return (
-      <Avatar className="size-14" size="lg">
-        <AvatarFallback className="bg-foreground text-xl font-black text-background">
-          @
-        </AvatarFallback>
-      </Avatar>
-    );
-  }
-
+function getActorDisplayName(actor: UserResponse | undefined): string {
   return (
-    <span className="relative size-14 shrink-0">
-      {item.avatarImages.map((image, index) => (
-        <Avatar
-          className={`absolute size-10 border-2 border-surface ${
-            index === 0 ? "left-0 top-0" : "bottom-0 right-0"
-          }`}
-          key={image}
-        >
-          <AvatarImage alt="" src={image} />
-          <AvatarFallback>{item.actors[index]?.slice(0, 1) ?? "U"}</AvatarFallback>
-        </Avatar>
-      ))}
-    </span>
+    actor?.userName?.trim() ||
+    actor?.userFullName?.trim() ||
+    "Someone"
   );
 }
 
-function NotificationRow({ item }: { item: ActivityNotification }) {
+function getActorAvatar(actor: UserResponse | undefined): string | undefined {
   return (
-    <article className="flex min-w-0 items-center gap-4 py-4">
-      <NotificationAvatars item={item} />
+    actor?.userAvatar ||
+    actor?.avatar ||
+    actor?.profileImage ||
+    actor?.imageUrl ||
+    undefined
+  );
+}
+
+function formatRelativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60_000);
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d`;
+  return `${Math.floor(days / 30)}mo`;
+}
+
+function isThisMonth(dateStr: string): boolean {
+  const now = new Date();
+  const d = new Date(dateStr);
+  return (
+    d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+  );
+}
+
+function NotificationRow({
+  item,
+  actor,
+  onClick,
+}: {
+  item: NotificationResponse;
+  actor: UserResponse | undefined;
+  onClick: (notification: NotificationResponse) => void;
+}) {
+  const displayName = getActorDisplayName(actor);
+  const avatarUrl = getActorAvatar(actor);
+  const initial = displayName.slice(0, 1).toUpperCase();
+
+  return (
+    <article
+      className={`flex min-w-0 cursor-pointer items-center gap-4 rounded-lg px-2 py-4 transition-colors ${!item.isRead ? "bg-surface-muted/60" : ""}`}
+      onClick={() => onClick(item)}
+    >
+      <Avatar className="size-12 shrink-0 border-2 border-surface">
+        {avatarUrl ? <AvatarImage alt={displayName} src={avatarUrl} /> : null}
+        <AvatarFallback>
+          {actor ? initial : <UserIcon className="size-5 text-muted" />}
+        </AvatarFallback>
+      </Avatar>
 
       <p className="min-w-0 flex-1 text-base leading-6 text-foreground">
-        {item.actors.map((actor, index) => (
-          <span key={actor}>
-            {index > 0 ? " v\u00e0 " : ""}
-            <span className="font-black">{actor}</span>
-          </span>
-        ))}
-        {item.actors.length > 0 ? " " : ""}
-        {item.message} <span className="text-muted">{item.date}</span>
+        <span className="font-black">{displayName}</span>{" "}
+        {NOTIFICATION_VERBS[item.type]}{" "}
+        <span className="text-muted">{formatRelativeTime(item.createdAt)}</span>
       </p>
 
-      {item.thumbnailImage ? (
-        <img
-          alt=""
-          className="size-14 shrink-0 rounded-md object-cover"
-          decoding="async"
-          loading="lazy"
-          src={item.thumbnailImage}
-        />
-      ) : null}
+      {!item.isRead && (
+        <span className="size-2.5 shrink-0 rounded-full bg-primary" />
+      )}
     </article>
   );
 }
 
-export function ActivityList({ items, onClose }: ActivityListProps) {
-  const thisMonthItems = items.filter((item) => item.section === "thisMonth");
-  const earlierItems = items.filter((item) => item.section === "earlier");
+function NotificationSkeleton() {
+  return (
+    <div className="flex items-center gap-4 py-4">
+      <Skeleton className="size-12 shrink-0 rounded-full" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-4 w-3/4 rounded" />
+        <Skeleton className="h-3 w-1/3 rounded" />
+      </div>
+    </div>
+  );
+}
+
+type ActivityListProps = {
+  notifications: NotificationResponse[];
+  unreadCount: number;
+  isLoading: boolean;
+  error: string | null;
+  activeFilter: string;
+  actors: Record<string, UserResponse>;
+  onFilterChange: (filter: string) => void;
+  onMarkAllRead: () => void;
+  onItemClick: (notification: NotificationResponse) => void;
+  onClose?: () => void;
+};
+
+export function ActivityList({
+  notifications,
+  unreadCount,
+  isLoading,
+  error,
+  activeFilter,
+  actors,
+  onFilterChange,
+  onMarkAllRead,
+  onItemClick,
+  onClose,
+}: ActivityListProps) {
   const tabsViewportRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
   function updateTabScrollState() {
     const viewport = tabsViewportRef.current;
-
-    if (!viewport) {
-      return;
-    }
-
+    if (!viewport) return;
     setCanScrollLeft(viewport.scrollLeft > 0);
     setCanScrollRight(
       viewport.scrollLeft + viewport.clientWidth < viewport.scrollWidth - 1,
@@ -102,13 +164,7 @@ export function ActivityList({ items, onClose }: ActivityListProps) {
   }
 
   function scrollTabs(direction: "left" | "right") {
-    const viewport = tabsViewportRef.current;
-
-    if (!viewport) {
-      return;
-    }
-
-    viewport.scrollBy({
+    tabsViewportRef.current?.scrollBy({
       left: direction === "right" ? 200 : -200,
       behavior: "smooth",
     });
@@ -117,30 +173,50 @@ export function ActivityList({ items, onClose }: ActivityListProps) {
   useEffect(() => {
     updateTabScrollState();
     window.addEventListener("resize", updateTabScrollState);
-
     return () => window.removeEventListener("resize", updateTabScrollState);
   }, []);
+
+  const filtered =
+    activeFilter === "ALL"
+      ? notifications
+      : notifications.filter((n) => n.type === activeFilter);
+
+  const thisMonthItems = filtered.filter((n) => isThisMonth(n.createdAt));
+  const earlierItems = filtered.filter((n) => !isThisMonth(n.createdAt));
 
   return (
     <main className="h-screen w-full overflow-hidden border-x border-border bg-background shadow-xl">
       <section className="flex h-full flex-col">
         <header className="shrink-0 px-4 pb-4 pt-10 sm:px-6">
           <div className="flex items-start justify-between gap-6">
-            <h1 className="text-3xl font-black text-foreground">
-              {"Th\u00f4ng b\u00e1o"}
-            </h1>
-            <Button
-              aria-label="\u0110\u00f3ng th\u00f4ng b\u00e1o"
-              onClick={onClose}
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-            >
-              {"\u00d7"}
-            </Button>
+            <h1 className="text-3xl font-black text-foreground">Notifications</h1>
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
+                <Button
+                  className="text-xs text-muted"
+                  onClick={onMarkAllRead}
+                  size="sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  Mark all as read
+                </Button>
+              )}
+              {onClose && (
+                <Button
+                  aria-label="Close notifications"
+                  onClick={onClose}
+                  size="icon-sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  ×
+                </Button>
+              )}
+            </div>
           </div>
 
-          <Tabs className="mt-7" defaultValue={filterTabs[0]}>
+          <Tabs className="mt-7" value={activeFilter} onValueChange={onFilterChange}>
             <div className="relative">
               {canScrollLeft ? (
                 <Button
@@ -161,13 +237,19 @@ export function ActivityList({ items, onClose }: ActivityListProps) {
                 ref={tabsViewportRef}
               >
                 <TabsList className="flex h-auto w-max flex-nowrap justify-start gap-3 rounded-none bg-transparent p-0 pr-12">
-                  {filterTabs.map((tab) => (
+                  <TabsTrigger
+                    className="shrink-0 rounded-full border border-border bg-surface px-5 py-2.5 text-sm font-black shadow-sm data-[state=active]:border-transparent data-[state=active]:bg-surface-muted"
+                    value="ALL"
+                  >
+                    All
+                  </TabsTrigger>
+                  {TYPE_ORDER.map((type) => (
                     <TabsTrigger
                       className="shrink-0 rounded-full border border-border bg-surface px-5 py-2.5 text-sm font-black shadow-sm data-[state=active]:border-transparent data-[state=active]:bg-surface-muted"
-                      key={tab}
-                      value={tab}
+                      key={type}
+                      value={type}
                     >
-                      {tab}
+                      {TYPE_LABELS[type]}
                     </TabsTrigger>
                   ))}
                 </TabsList>
@@ -190,24 +272,38 @@ export function ActivityList({ items, onClose }: ActivityListProps) {
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 [scrollbar-width:none] sm:px-6 [&::-webkit-scrollbar]:hidden">
-          {thisMonthItems.length === 0 && earlierItems.length === 0 ? (
+          {isLoading ? (
+            <div className="flex flex-col">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <NotificationSkeleton key={i} />
+              ))}
+            </div>
+          ) : error ? (
             <div className="flex flex-col items-center gap-3 py-20 text-center">
-              <p className="text-base font-medium text-foreground">Ch\u01b0a c\u00f3 th\u00f4ng b\u00e1o n\u00e0o.</p>
+              <p className="text-base font-medium text-foreground">{error}</p>
+            </div>
+          ) : thisMonthItems.length === 0 && earlierItems.length === 0 ? (
+            <div className="flex flex-col items-center gap-3 py-20 text-center">
+              <p className="text-base font-medium text-foreground">
+                No notifications yet.
+              </p>
               <p className="max-w-[240px] text-sm leading-6 text-muted">
-                Theo d\u00f5i ai \u0111\u00f3 \u0111\u1ec3 nh\u1eadn c\u1eadp nh\u1eadt v\u1ec1 b\u00e0i vi\u1ebft v\u00e0 ho\u1ea1t \u0111\u1ed9ng c\u1ee7a h\u1ecd.
+                Follow someone to get updates about their posts and activity.
               </p>
             </div>
           ) : (
             <>
               {thisMonthItems.length > 0 && (
                 <section>
-                  <h2 className="text-xl font-black text-foreground">
-                    {"Th\u00e1ng n\u00e0y"}
-                  </h2>
-                  <div className="mt-5 flex flex-col">
+                  <h2 className="text-xl font-black text-foreground">This month</h2>
+                  <div className="mt-3 flex flex-col">
                     {thisMonthItems.map((item) => (
                       <div key={item.id}>
-                        <NotificationRow item={item} />
+                        <NotificationRow
+                          item={item}
+                          actor={actors[item.actorId]}
+                          onClick={onItemClick}
+                        />
                         <Separator />
                       </div>
                     ))}
@@ -217,12 +313,17 @@ export function ActivityList({ items, onClose }: ActivityListProps) {
 
               {earlierItems.length > 0 && (
                 <section className="mt-7">
-                  <h2 className="text-xl font-black text-foreground">
-                    {"Tr\u01b0\u1edbc \u0111\u00f3"}
-                  </h2>
-                  <div className="mt-5 flex flex-col gap-2">
+                  <h2 className="text-xl font-black text-foreground">Earlier</h2>
+                  <div className="mt-3 flex flex-col">
                     {earlierItems.map((item) => (
-                      <NotificationRow item={item} key={item.id} />
+                      <div key={item.id}>
+                        <NotificationRow
+                          item={item}
+                          actor={actors[item.actorId]}
+                          onClick={onItemClick}
+                        />
+                        <Separator />
+                      </div>
                     ))}
                   </div>
                 </section>

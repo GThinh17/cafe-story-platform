@@ -82,6 +82,13 @@ export type CafePageResponse = {
   updatedAt: string | null;
 };
 
+export type CafePageFollowResponse = {
+  id: string;
+  userId: string;
+  cafePageId: string;
+  createdAt: string | null;
+};
+
 export type CafePageCreateRequest = {
   name: string;
   address: string;
