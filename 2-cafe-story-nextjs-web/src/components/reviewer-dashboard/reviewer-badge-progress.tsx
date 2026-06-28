@@ -9,6 +9,7 @@ import type {
 type ReviewerBadgeProgressProps = {
   badges: ReviewerBadgeHistoryItem[];
   profile: ReviewerProfile;
+  currentScore?: number;
 };
 
 const badgeThresholds: Record<ReviewerBadge, { max: number; min: number }> = {
@@ -30,13 +31,15 @@ function getNextBadge(current: ReviewerBadge) {
 export function ReviewerBadgeProgress({
   badges,
   profile,
+  currentScore,
 }: ReviewerBadgeProgressProps) {
+  const score = currentScore ?? profile.score;
   const nextBadge = getNextBadge(profile.badge);
-  const nextMin = nextBadge ? badgeThresholds[nextBadge].min : profile.score;
+  const nextMin = nextBadge ? badgeThresholds[nextBadge].min : score;
   const currentMin = badgeThresholds[profile.badge].min;
   const progress =
     nextBadge && nextMin > currentMin
-      ? Math.min(100, ((profile.score - currentMin) / (nextMin - currentMin)) * 100)
+      ? Math.min(100, ((score - currentMin) / (nextMin - currentMin)) * 100)
       : 100;
 
   return (
@@ -48,7 +51,7 @@ export function ReviewerBadgeProgress({
             {profile.badge}
           </h2>
         </div>
-        <Badge variant="rating">{profile.score} score</Badge>
+        <Badge variant="rating">{score} score</Badge>
       </div>
 
       <div className="mt-5">

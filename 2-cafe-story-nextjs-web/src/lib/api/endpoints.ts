@@ -54,6 +54,9 @@ export const apiEndpoints = {
     region: "/api/reviewers/region",
     byUserId: (userId: string) => `/api/reviewers/${pathId(userId)}`,
     payouts: (reviewerId: string) => `/api/reviewers/${pathId(reviewerId)}/payouts`,
+    stats: (reviewerId: string) => `/api/reviewers/${pathId(reviewerId)}/stats`,
+    badges: (reviewerId: string) => `/api/reviewers/${pathId(reviewerId)}/badges`,
+    ranking: "/api/reviewers/ranking",
     top: "/api/reviewers/top",
     connect: {
       onboard: "/api/reviewers/connect/onboard",

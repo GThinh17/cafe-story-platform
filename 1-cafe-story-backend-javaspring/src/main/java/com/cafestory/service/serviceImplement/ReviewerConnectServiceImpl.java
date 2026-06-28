@@ -176,6 +176,11 @@ public class ReviewerConnectServiceImpl implements ReviewerConnectService {
             AccountCreateParams params = AccountCreateParams.builder()
                     .setType(AccountCreateParams.Type.EXPRESS)
                     .setCountry("VN")
+                    .setTosAcceptance(
+                            AccountCreateParams.TosAcceptance.builder()
+                                    .setServiceAgreement("full")
+                                    .build()
+                    )
                     .build();
             Account account = Account.create(params);
             return account.getId();
