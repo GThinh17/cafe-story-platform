@@ -251,7 +251,7 @@ export type ReviewerRankingSnapshot = {
   likeCount: number;
   shareCount: number;
   commentCount: number;
-  badge: ReviewerBadge;
+  badge: ReviewerBadge | null;
   formulaId: UUID | null;
 };
 

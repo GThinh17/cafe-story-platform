@@ -130,24 +130,39 @@ export function AdminRankingPage() {
   }, [load]);
 
   const columns = useMemo<AdminTableColumn<ReviewerRankingSnapshot>[]>(
-    () => [
-      { header: "Rank", className: "w-16", cell: (row) => `#${row.rankPosition}` },
-      {
-        header: "Reviewer",
-        cell: (row) => (
-          <UserCell name={row.reviewerUserName} avatar={row.reviewerUserAvatar} />
-        ),
-      },
-      {
-        header: "Badge",
-        cell: (row) => <Badge variant={badgeVariant[row.badge]}>{row.badge}</Badge>,
-      },
-      { header: "Score", cell: (row) => row.score },
-      { header: "Likes", cell: (row) => row.likeCount },
-      { header: "Shares", cell: (row) => row.shareCount },
-      { header: "Comments", cell: (row) => row.commentCount },
-    ],
-    [],
+    () => {
+      const baseColumns: AdminTableColumn<ReviewerRankingSnapshot>[] = [
+        { header: "Rank", className: "w-16", cell: (row) => `#${row.rankPosition}` },
+        {
+          header: "Reviewer",
+          cell: (row) => (
+            <UserCell name={row.reviewerUserName} avatar={row.reviewerUserAvatar} />
+          ),
+        },
+      ];
+
+      if (periodType === "MONTHLY") {
+        baseColumns.push({
+          header: "Badge",
+          cell: (row) =>
+            row.badge ? (
+              <Badge variant={badgeVariant[row.badge]}>{row.badge}</Badge>
+            ) : (
+              <span className="text-muted-foreground">—</span>
+            ),
+        });
+      }
+
+      baseColumns.push(
+        { header: "Score", cell: (row) => row.score },
+        { header: "Likes", cell: (row) => row.likeCount },
+        { header: "Shares", cell: (row) => row.shareCount },
+        { header: "Comments", cell: (row) => row.commentCount },
+      );
+
+      return baseColumns;
+    },
+    [periodType],
   );
 
   async function handleGenerate() {
