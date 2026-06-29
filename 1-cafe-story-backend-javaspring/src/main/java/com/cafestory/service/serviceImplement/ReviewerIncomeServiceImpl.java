@@ -16,6 +16,7 @@ import com.cafestory.repository.CommentRepository;
 import com.cafestory.repository.ReviewerIncomeRepository;
 import com.cafestory.repository.ReviewerRankingSnapshotRepository;
 import com.cafestory.repository.ReviewerRepository;
+import com.cafestory.service.serviceInterface.ReviewerBadgeThresholdService;
 import com.cafestory.service.serviceInterface.ReviewerFormulaService;
 import com.cafestory.service.serviceInterface.ReviewerIncomeService;
 import org.springframework.data.domain.Page;
@@ -44,6 +45,7 @@ public class ReviewerIncomeServiceImpl implements ReviewerIncomeService {
     private final BlogShareRepository blogShareRepository;
     private final CommentRepository commentRepository;
     private final ReviewerFormulaService formulaService;
+    private final ReviewerBadgeThresholdService badgeThresholdService;
 
     public ReviewerIncomeServiceImpl(
             ReviewerIncomeRepository incomeRepository,
@@ -52,7 +54,8 @@ public class ReviewerIncomeServiceImpl implements ReviewerIncomeService {
             BlogLikeRepository blogLikeRepository,
             BlogShareRepository blogShareRepository,
             CommentRepository commentRepository,
-            ReviewerFormulaService formulaService) {
+            ReviewerFormulaService formulaService,
+            ReviewerBadgeThresholdService badgeThresholdService) {
         this.incomeRepository = incomeRepository;
         this.reviewerRepository = reviewerRepository;
         this.snapshotRepository = snapshotRepository;
@@ -60,6 +63,7 @@ public class ReviewerIncomeServiceImpl implements ReviewerIncomeService {
         this.blogShareRepository = blogShareRepository;
         this.commentRepository = commentRepository;
         this.formulaService = formulaService;
+        this.badgeThresholdService = badgeThresholdService;
     }
 
     @Override
@@ -95,7 +99,9 @@ public class ReviewerIncomeServiceImpl implements ReviewerIncomeService {
         Map<UUID, ReviewerBadge> badgeByReviewerId = new HashMap<>();
         for (ReviewerRankingSnapshot snapshot : snapshotRepository
                 .findByPeriodAndPeriodTypeOrderByRankPositionAsc(period, RankingPeriodType.DAILY)) {
-            badgeByReviewerId.put(snapshot.getReviewer().getReviewerId(), snapshot.getBadge());
+            badgeByReviewerId.put(
+                    snapshot.getReviewer().getReviewerId(),
+                    badgeThresholdService.badgeForScore(snapshot.getScore()));
         }
 
         Map<UUID, ReviewerIncome> existingByReviewerId = new HashMap<>();

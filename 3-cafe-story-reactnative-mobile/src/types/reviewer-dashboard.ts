@@ -47,7 +47,6 @@ export type ReviewerDashboardStats = {
 };
 
 export type ReviewerDashboardRankingItem = {
-  badge: ReviewerDashboardBadge | null;
   commentCount: number;
   likeCount: number;
   location: string;

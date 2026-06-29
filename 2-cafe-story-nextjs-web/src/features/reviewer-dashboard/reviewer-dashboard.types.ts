@@ -47,7 +47,6 @@ export type ReviewerRankingItem = {
   likeCount: number;
   shareCount: number;
   commentCount: number;
-  badge: ReviewerBadge;
   location: string;
 };
 

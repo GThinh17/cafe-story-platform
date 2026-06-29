@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ReviewerLeaderboardPanel } from "@/components/reviewer-dashboard/reviewer-leaderboard-panel";
 import type {
@@ -44,7 +43,6 @@ function toRankingItems(ranking: ReviewerRankingResponse[]): ReviewerRankingItem
     likeCount: r.likeCount,
     shareCount: r.shareCount,
     commentCount: r.commentCount,
-    badge: (r.badge as ReviewerBadge) ?? "IRON",
     location: r.location ?? "",
   }));
 }
@@ -149,7 +147,6 @@ export function ReviewerRankingDetail() {
               <thead className="text-xs uppercase text-muted">
                 <tr>
                   <th className="py-2 pr-3">Rank</th>
-                  <th className="py-2 pr-3">Badge</th>
                   <th className="py-2 pr-3">Location</th>
                   <th className="py-2 pr-3">Score</th>
                   <th className="py-2 pr-3">Likes</th>
@@ -166,11 +163,6 @@ export function ReviewerRankingDetail() {
                       key={item.reviewerId}
                     >
                       <td className="py-3 pr-3 font-black text-espresso">#{item.rank}</td>
-                      <td className="py-3 pr-3">
-                        <Badge variant={isCurrent ? "default" : "secondary"}>
-                          {isCurrent ? "You" : item.badge}
-                        </Badge>
-                      </td>
                       <td className="py-3 pr-3 text-muted">{item.location}</td>
                       <td className="py-3 pr-3 font-black text-primary">{item.score}</td>
                       <td className="py-3 pr-3 text-muted">{item.likeCount}</td>

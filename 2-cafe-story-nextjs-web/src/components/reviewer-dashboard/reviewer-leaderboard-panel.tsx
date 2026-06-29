@@ -1,5 +1,4 @@
 import { TrophyIcon } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type {
   ReviewerProfile,
@@ -56,9 +55,11 @@ export function ReviewerLeaderboardPanel({
                   <p className="text-sm font-black text-espresso">
                     #{item.rank}
                   </p>
-                  <Badge variant={isCurrent ? "default" : "secondary"}>
-                    {isCurrent ? "You" : item.badge}
-                  </Badge>
+                  {isCurrent ? (
+                    <span className="rounded-md bg-primary px-2 py-0.5 text-xs font-black text-primary-foreground">
+                      You
+                    </span>
+                  ) : null}
                 </div>
                 <p className="mt-1 truncate text-xs font-semibold text-muted">
                   {item.location} - {numberFormatter.format(item.score)} score
