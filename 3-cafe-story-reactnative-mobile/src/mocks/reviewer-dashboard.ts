@@ -73,6 +73,7 @@ export const mockReviewerDashboardStats: Record<
 
 export const mockReviewerDashboardRanking: ReviewerDashboardRankingItem[] = [
   {
+    badge: "DIAMOND",
     commentCount: 566,
     likeCount: 2050,
     location: "Da Nang",
@@ -82,6 +83,7 @@ export const mockReviewerDashboardRanking: ReviewerDashboardRankingItem[] = [
     shareCount: 410,
   },
   {
+    badge: "GOLD",
     commentCount: 436,
     likeCount: 1840,
     location: "Ho Chi Minh",
@@ -91,6 +93,7 @@ export const mockReviewerDashboardRanking: ReviewerDashboardRankingItem[] = [
     shareCount: 322,
   },
   {
+    badge: "GOLD",
     commentCount: 360,
     likeCount: 1420,
     location: "Ha Noi",
@@ -100,6 +103,7 @@ export const mockReviewerDashboardRanking: ReviewerDashboardRankingItem[] = [
     shareCount: 240,
   },
   {
+    badge: "SILVER",
     commentCount: 150,
     likeCount: 840,
     location: "Can Tho",
