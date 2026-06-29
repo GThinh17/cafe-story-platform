@@ -1,6 +1,7 @@
 package com.cafestory.dto.responseDTO;
 
 import com.cafestory.entity.enums.RankingPeriodType;
+import com.cafestory.entity.enums.ReviewerBadge;
 import lombok.Data;
 
 import java.util.UUID;
@@ -19,5 +20,6 @@ public class ReviewerRankingSnapshotResponseDTO {
     private long likeCount;
     private long shareCount;
     private long commentCount;
+    private ReviewerBadge badge;
     private UUID formulaId;
 }

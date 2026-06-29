@@ -194,9 +194,31 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
                 .findByPeriodAndPeriodTypeOrderByRankPositionAsc(period, periodType);
         int fromIndex = Math.min((sanitizedPage - 1) * sanitizedLimit, all.size());
         int toIndex = Math.min(fromIndex + sanitizedLimit, all.size());
-        return all.subList(fromIndex, toIndex)
-                .stream()
-                .map(this::toResponseDTO)
+        List<ReviewerRankingSnapshot> pageItems = all.subList(fromIndex, toIndex);
+
+        Map<UUID, ReviewerBadgeHistory> badgeByReviewerId = Map.of();
+        if (periodType == RankingPeriodType.MONTHLY && !pageItems.isEmpty()) {
+            List<UUID> reviewerIds = pageItems.stream()
+                    .map(s -> s.getReviewer().getReviewerId())
+                    .toList();
+            badgeByReviewerId = reviewerBadgeHistoryRepository
+                    .findByMonthAndReviewerReviewerIdIn(period, reviewerIds)
+                    .stream()
+                    .collect(java.util.stream.Collectors.toMap(
+                            h -> h.getReviewer().getReviewerId(),
+                            h -> h));
+        }
+
+        Map<UUID, ReviewerBadgeHistory> badges = badgeByReviewerId;
+        return pageItems.stream()
+                .map(snapshot -> {
+                    ReviewerRankingSnapshotResponseDTO dto = toResponseDTO(snapshot);
+                    ReviewerBadgeHistory history = badges.get(snapshot.getReviewer().getReviewerId());
+                    if (history != null) {
+                        dto.setBadge(history.getBadge());
+                    }
+                    return dto;
+                })
                 .toList();
     }
 
