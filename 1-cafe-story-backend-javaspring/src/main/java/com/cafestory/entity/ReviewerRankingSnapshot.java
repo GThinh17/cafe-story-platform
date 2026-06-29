@@ -1,7 +1,6 @@
 package com.cafestory.entity;
 
 import com.cafestory.entity.enums.RankingPeriodType;
-import com.cafestory.entity.enums.ReviewerBadge;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -62,11 +61,6 @@ public class ReviewerRankingSnapshot {
 
     @Column(name = "comment_count", nullable = false)
     private long commentCount;
-
-    @NotNull
-    @Enumerated(EnumType.STRING)
-    @Column(name = "badge", nullable = false)
-    private ReviewerBadge badge;
 
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

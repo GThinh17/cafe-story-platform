@@ -836,7 +836,7 @@ function RankingRow({
         <Text style={styles.rankingRankText}>#{item.rank}</Text>
       </View>
       <View style={styles.rankingCopy}>
-        <Text style={styles.rankingTitle}>{isCurrent ? "You" : item.badge}</Text>
+        {isCurrent ? <Text style={styles.rankingTitle}>You</Text> : null}
         <Text style={styles.rankingDescription}>
           {item.location} - {formatCount(item.score)} score
         </Text>

@@ -71,7 +71,6 @@ function toRankingItems(ranking: ReviewerRankingResponse[]): ReviewerRankingItem
     likeCount: r.likeCount,
     shareCount: r.shareCount,
     commentCount: r.commentCount,
-    badge: (r.badge as ReviewerBadge) ?? "IRON",
     location: r.location ?? "",
   }));
 }

@@ -92,6 +92,5 @@ export type ReviewerRankingResponse = {
   likeCount: number;
   shareCount: number;
   commentCount: number;
-  badge: ReviewerBadge | string | null;
   location: string | null;
 };
