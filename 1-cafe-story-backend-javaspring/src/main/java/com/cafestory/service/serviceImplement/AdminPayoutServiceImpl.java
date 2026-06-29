@@ -18,6 +18,7 @@ import com.cafestory.repository.ReviewerRankingSnapshotRepository;
 import com.cafestory.repository.ReviewerStripeAccountRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.AdminPayoutService;
+import com.cafestory.service.serviceInterface.ReviewerBadgeThresholdService;
 import com.cafestory.service.serviceInterface.ReviewerFormulaService;
 import com.cafestory.service.serviceInterface.ReviewerIncomeService;
 import com.stripe.Stripe;
@@ -60,6 +61,7 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
     private final ReviewerFormulaService formulaService;
     private final ReviewerIncomeService reviewerIncomeService;
     private final ReviewerStripeAccountRepository stripeAccountRepository;
+    private final ReviewerBadgeThresholdService badgeThresholdService;
 
     public AdminPayoutServiceImpl(
             @Value("${stripe.secret-key:}") String stripeSecretKey,
@@ -69,7 +71,8 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
             UserRepository userRepository,
             ReviewerFormulaService formulaService,
             ReviewerIncomeService reviewerIncomeService,
-            ReviewerStripeAccountRepository stripeAccountRepository) {
+            ReviewerStripeAccountRepository stripeAccountRepository,
+            ReviewerBadgeThresholdService badgeThresholdService) {
         this.stripeSecretKey = stripeSecretKey;
         this.payoutRepository = payoutRepository;
         this.incomeRepository = incomeRepository;
@@ -78,6 +81,7 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
         this.formulaService = formulaService;
         this.reviewerIncomeService = reviewerIncomeService;
         this.stripeAccountRepository = stripeAccountRepository;
+        this.badgeThresholdService = badgeThresholdService;
     }
 
     @Override
@@ -135,7 +139,9 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
         Map<UUID, ReviewerBadge> badgeByReviewerId = new HashMap<>();
         for (ReviewerRankingSnapshot snapshot : snapshotRepository
                 .findByPeriodAndPeriodTypeOrderByRankPositionAsc(month, RankingPeriodType.MONTHLY)) {
-            badgeByReviewerId.put(snapshot.getReviewer().getReviewerId(), snapshot.getBadge());
+            badgeByReviewerId.put(
+                    snapshot.getReviewer().getReviewerId(),
+                    badgeThresholdService.badgeForScore(snapshot.getScore()));
         }
 
         Map<UUID, AdminPayout> existingPayouts = new HashMap<>();

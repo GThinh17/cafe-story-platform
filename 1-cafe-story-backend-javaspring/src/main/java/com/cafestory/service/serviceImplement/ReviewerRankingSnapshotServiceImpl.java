@@ -5,13 +5,14 @@ import com.cafestory.entity.BlogLike;
 import com.cafestory.entity.BlogShare;
 import com.cafestory.entity.Comment;
 import com.cafestory.entity.Reviewer;
+import com.cafestory.entity.ReviewerBadgeHistory;
 import com.cafestory.entity.ReviewerFormula;
 import com.cafestory.entity.ReviewerRankingSnapshot;
 import com.cafestory.entity.enums.RankingPeriodType;
-import com.cafestory.entity.enums.ReviewerBadge;
 import com.cafestory.repository.BlogLikeRepository;
 import com.cafestory.repository.BlogShareRepository;
 import com.cafestory.repository.CommentRepository;
+import com.cafestory.repository.ReviewerBadgeHistoryRepository;
 import com.cafestory.repository.ReviewerRankingSnapshotRepository;
 import com.cafestory.repository.ReviewerRepository;
 import com.cafestory.service.serviceInterface.ReviewerBadgeThresholdService;
@@ -42,6 +43,7 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
     private final CommentRepository commentRepository;
     private final ReviewerFormulaService formulaService;
     private final ReviewerBadgeThresholdService badgeThresholdService;
+    private final ReviewerBadgeHistoryRepository reviewerBadgeHistoryRepository;
 
     public ReviewerRankingSnapshotServiceImpl(
             ReviewerRankingSnapshotRepository snapshotRepository,
@@ -50,7 +52,8 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
             BlogShareRepository blogShareRepository,
             CommentRepository commentRepository,
             ReviewerFormulaService formulaService,
-            ReviewerBadgeThresholdService badgeThresholdService) {
+            ReviewerBadgeThresholdService badgeThresholdService,
+            ReviewerBadgeHistoryRepository reviewerBadgeHistoryRepository) {
         this.snapshotRepository = snapshotRepository;
         this.reviewerRepository = reviewerRepository;
         this.blogLikeRepository = blogLikeRepository;
@@ -58,6 +61,7 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
         this.commentRepository = commentRepository;
         this.formulaService = formulaService;
         this.badgeThresholdService = badgeThresholdService;
+        this.reviewerBadgeHistoryRepository = reviewerBadgeHistoryRepository;
     }
 
     @Override
@@ -110,8 +114,7 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
         for (Reviewer reviewer : allReviewers) {
             long[] c = counts.get(reviewer.getReviewerId());
             long score = formulaService.calculateScore(c[0], c[1], c[2]);
-            ReviewerBadge badge = badgeThresholdService.badgeForScore(score);
-            entries.add(new SnapshotEntry(reviewer, c[0], c[1], c[2], score, badge));
+            entries.add(new SnapshotEntry(reviewer, c[0], c[1], c[2], score));
         }
         entries.sort(Comparator.comparingLong(SnapshotEntry::score).reversed());
 
@@ -128,11 +131,30 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
             snapshot.setLikeCount(entry.likeCount());
             snapshot.setShareCount(entry.shareCount());
             snapshot.setCommentCount(entry.commentCount());
-            snapshot.setBadge(entry.badge());
             snapshot.setFormula(formula);
             toSave.add(snapshot);
         }
         snapshotRepository.saveAll(toSave);
+
+        if (periodType == RankingPeriodType.MONTHLY) {
+            upsertReviewerBadges(period, entries);
+        }
+    }
+
+    private void upsertReviewerBadges(String month, List<SnapshotEntry> entries) {
+        for (SnapshotEntry entry : entries) {
+            ReviewerBadgeHistory history = reviewerBadgeHistoryRepository
+                    .findByReviewerReviewerIdAndMonth(entry.reviewer().getReviewerId(), month)
+                    .orElseGet(ReviewerBadgeHistory::new);
+            history.setReviewer(entry.reviewer());
+            history.setMonth(month);
+            history.setLikeCount(entry.likeCount());
+            history.setShareCount(entry.shareCount());
+            history.setCommentCount(entry.commentCount());
+            history.setScore(entry.score());
+            history.setBadge(badgeThresholdService.badgeForScore(entry.score()));
+            reviewerBadgeHistoryRepository.save(history);
+        }
     }
 
     @Override
@@ -140,7 +162,6 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
     public void initSnapshotForNewReviewer(Reviewer reviewer) {
         LocalDate today = LocalDate.now();
         ReviewerFormula formula = formulaService.getActiveFormula();
-        ReviewerBadge defaultBadge = badgeThresholdService.badgeForScore(0);
 
         for (RankingPeriodType periodType : RankingPeriodType.values()) {
             String period = resolvePeriod(today, periodType);
@@ -158,7 +179,6 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
                 snapshot.setLikeCount(0);
                 snapshot.setShareCount(0);
                 snapshot.setCommentCount(0);
-                snapshot.setBadge(defaultBadge);
                 snapshot.setFormula(formula);
                 snapshotRepository.save(snapshot);
             }
@@ -174,9 +194,31 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
                 .findByPeriodAndPeriodTypeOrderByRankPositionAsc(period, periodType);
         int fromIndex = Math.min((sanitizedPage - 1) * sanitizedLimit, all.size());
         int toIndex = Math.min(fromIndex + sanitizedLimit, all.size());
-        return all.subList(fromIndex, toIndex)
-                .stream()
-                .map(this::toResponseDTO)
+        List<ReviewerRankingSnapshot> pageItems = all.subList(fromIndex, toIndex);
+
+        Map<UUID, ReviewerBadgeHistory> badgeByReviewerId = Map.of();
+        if (periodType == RankingPeriodType.MONTHLY && !pageItems.isEmpty()) {
+            List<UUID> reviewerIds = pageItems.stream()
+                    .map(s -> s.getReviewer().getReviewerId())
+                    .toList();
+            badgeByReviewerId = reviewerBadgeHistoryRepository
+                    .findByMonthAndReviewerReviewerIdIn(period, reviewerIds)
+                    .stream()
+                    .collect(java.util.stream.Collectors.toMap(
+                            h -> h.getReviewer().getReviewerId(),
+                            h -> h));
+        }
+
+        Map<UUID, ReviewerBadgeHistory> badges = badgeByReviewerId;
+        return pageItems.stream()
+                .map(snapshot -> {
+                    ReviewerRankingSnapshotResponseDTO dto = toResponseDTO(snapshot);
+                    ReviewerBadgeHistory history = badges.get(snapshot.getReviewer().getReviewerId());
+                    if (history != null) {
+                        dto.setBadge(history.getBadge());
+                    }
+                    return dto;
+                })
                 .toList();
     }
 
@@ -215,7 +257,6 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
         dto.setLikeCount(snapshot.getLikeCount());
         dto.setShareCount(snapshot.getShareCount());
         dto.setCommentCount(snapshot.getCommentCount());
-        dto.setBadge(snapshot.getBadge());
         dto.setFormulaId(snapshot.getFormula().getId());
         return dto;
     }
@@ -223,6 +264,6 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
     private record DateRange(LocalDateTime startDate, LocalDateTime endDate) {
     }
 
-    private record SnapshotEntry(Reviewer reviewer, long likeCount, long shareCount, long commentCount, long score, ReviewerBadge badge) {
+    private record SnapshotEntry(Reviewer reviewer, long likeCount, long shareCount, long commentCount, long score) {
     }
 }

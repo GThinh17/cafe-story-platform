@@ -16,4 +16,6 @@ public interface ReviewerBadgeHistoryRepository extends JpaRepository<ReviewerBa
     List<ReviewerBadgeHistory> findByReviewerReviewerIdOrderByMonthDesc(UUID reviewerId);
 
     Optional<ReviewerBadgeHistory> findTopByReviewerReviewerIdOrderByMonthDesc(UUID reviewerId);
+
+    List<ReviewerBadgeHistory> findByMonthAndReviewerReviewerIdIn(String month, java.util.Collection<UUID> reviewerIds);
 }

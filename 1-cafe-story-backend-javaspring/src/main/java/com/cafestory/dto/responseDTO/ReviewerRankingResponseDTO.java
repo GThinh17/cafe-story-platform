@@ -1,6 +1,5 @@
 package com.cafestory.dto.responseDTO;
 
-import com.cafestory.entity.enums.ReviewerBadge;
 import lombok.Data;
 
 import java.util.UUID;
@@ -19,8 +18,6 @@ public class ReviewerRankingResponseDTO {
     private long shareCount;
 
     private long commentCount;
-
-    private ReviewerBadge badge;
 
     private String location;
 }

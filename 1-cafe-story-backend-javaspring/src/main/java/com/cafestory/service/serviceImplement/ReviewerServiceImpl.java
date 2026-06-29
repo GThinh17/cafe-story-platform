@@ -499,7 +499,6 @@ public class ReviewerServiceImpl implements ReviewerService {
         response.setShareCount(accumulator.shareCount());
         response.setCommentCount(accumulator.commentCount());
         response.setScore(accumulator.score());
-        response.setBadge(badgeThresholdService.badgeForScore(accumulator.score()));
         Region region = accumulator.reviewer().getUser().getRegion();
         response.setLocation(region == null ? "unknown" : firstNonBlank(region.getCity(), region.getProvince(), "unknown"));
         return response;
