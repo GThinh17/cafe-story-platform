@@ -1,7 +1,20 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
-import { CreatePostModal } from "@/components/review/create-post-modal";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
+import {
+  CreatePostModal,
+  type CreatePostInitialImage,
+} from "@/components/review/create-post-modal";
+import {
+  CreatePostSetupModal,
+  type CroppedImage,
+} from "@/components/review/create-post-setup-modal";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { getCafePagesByOwnerId } from "@/lib/api/cafes";
 import { mockReviewComposer, mockReviewDraftHints } from "@/mocks/reviews";
@@ -12,6 +25,8 @@ type CreatePostContextValue = {
   open: () => void;
   close: () => void;
 };
+
+type CreatePostStep = "idle" | "setup" | "compose";
 
 const CreatePostContext = createContext<CreatePostContextValue | null>(null);
 
@@ -28,16 +43,21 @@ function isActiveCafePage(cafe: CafePageResponse) {
 export function CreatePostProvider({ children }: { children: React.ReactNode }) {
   const { user } = useCurrentUser();
   const userId = user?.userId;
-  const [isOpen, setIsOpen] = useState(false);
+  const [step, setStep] = useState<CreatePostStep>("idle");
+  const [composeImages, setComposeImages] = useState<CreatePostInitialImage[]>([]);
   const [ownedCafePage, setOwnedCafePage] = useState<CafePageResponse | null>(null);
+  const [sessionKey, setSessionKey] = useState(0);
 
   useEffect(() => {
     let active = true;
 
     if (!userId) {
-      setIsOpen(false);
+      setStep("idle");
+      setComposeImages([]);
       setOwnedCafePage(null);
-      return () => { active = false; };
+      return () => {
+        active = false;
+      };
     }
 
     async function load() {
@@ -50,18 +70,53 @@ export function CreatePostProvider({ children }: { children: React.ReactNode }) 
     }
 
     void load();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [userId]);
 
+  const open = useCallback(() => {
+    setComposeImages([]);
+    setSessionKey((k) => k + 1);
+    setStep("setup");
+  }, []);
+
+  const close = useCallback(() => {
+    setStep("idle");
+    setComposeImages([]);
+  }, []);
+
+  const handleSetupNext = useCallback((images: CroppedImage[]) => {
+    setComposeImages(
+      images.map((img) => ({ id: img.id, file: img.file, name: img.name })),
+    );
+    setStep("compose");
+  }, []);
+
+  const handleComposeBack = useCallback(() => {
+    setStep("setup");
+  }, []);
+
+  const isOpen = step !== "idle";
+
   return (
-    <CreatePostContext.Provider value={{ isOpen, open: () => setIsOpen(true), close: () => setIsOpen(false) }}>
+    <CreatePostContext.Provider value={{ isOpen, open, close }}>
       {children}
+      <CreatePostSetupModal
+        isOpen={step === "setup"}
+        key={`setup-${sessionKey}`}
+        onClose={close}
+        onNext={handleSetupNext}
+      />
       <CreatePostModal
         composer={mockReviewComposer}
         hints={mockReviewDraftHints}
-        isOpen={isOpen}
+        initialImages={composeImages}
+        isOpen={step === "compose"}
+        key={`compose-${sessionKey}`}
+        onBack={handleComposeBack}
+        onClose={close}
         ownedCafePage={ownedCafePage}
-        onClose={() => setIsOpen(false)}
       />
     </CreatePostContext.Provider>
   );

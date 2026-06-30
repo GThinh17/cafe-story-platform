@@ -5,14 +5,12 @@ import {
   useEffect,
   useRef,
   useState,
-  type ChangeEvent,
   type FormEvent,
 } from "react";
 import {
-  ImageIcon,
+  ArrowLeftIcon,
   LoaderCircleIcon,
   MapPinIcon,
-  PlusIcon,
   XIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,7 +26,6 @@ import { uploadPostImageToCloudinary } from "@/lib/api/cloudinary";
 import type { BlogCreateRequest, BlogResponse } from "@/types/blog";
 import type { CafePageResponse } from "@/types/cafe";
 import type { ReviewComposerModel, ReviewDraftHint } from "@/types/review";
-import { Input } from "../ui/input";
 
 type SelectedImage = {
   id: string;
@@ -37,12 +34,20 @@ type SelectedImage = {
   previewUrl: string;
 };
 
+export type CreatePostInitialImage = {
+  id?: string;
+  file: File;
+  name: string;
+};
+
 type CreatePostModalProps = {
   composer: ReviewComposerModel;
   hints: ReviewDraftHint[];
   isOpen: boolean;
   ownedCafePage?: CafePageResponse | null;
+  initialImages?: CreatePostInitialImage[];
   onClose: () => void;
+  onBack?: () => void;
   onCreated?: (post: BlogResponse) => void;
 };
 
@@ -57,15 +62,25 @@ function revokeImagePreview(image: SelectedImage) {
   URL.revokeObjectURL(image.previewUrl);
 }
 
+function buildSelectedImages(initial: CreatePostInitialImage[]): SelectedImage[] {
+  return initial.map((item) => ({
+    id: item.id ?? createImageId(item.file),
+    file: item.file,
+    name: item.name,
+    previewUrl: URL.createObjectURL(item.file),
+  }));
+}
+
 export function CreatePostModal({
   composer,
   hints: _hints,
   isOpen,
   ownedCafePage = null,
+  initialImages,
   onClose,
+  onBack,
   onCreated,
 }: CreatePostModalProps) {
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const selectedImagesRef = useRef<SelectedImage[]>([]);
   const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
   const [caption, setCaption] = useState("");
@@ -77,8 +92,6 @@ export function CreatePostModal({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const trimmedCaption = caption.trim();
   const isPostDisabled = isSubmitting || !trimmedCaption;
-  const MAX_IMAGES = 10;
-  const isImageLimitReached = selectedImages.length >= MAX_IMAGES;
 
   useEffect(() => {
     selectedImagesRef.current = selectedImages;
@@ -95,17 +108,15 @@ export function CreatePostModal({
     setPostAsCafePage(false);
     setTurnOffCommenting(false);
     setErrorMessage(null);
-
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
   }, []);
 
   useEffect(() => {
-    if (!isOpen) {
-      resetForm();
-    }
-  }, [isOpen, resetForm]);
+    if (!initialImages || initialImages.length === 0) return;
+    setSelectedImages((current) => {
+      current.forEach(revokeImagePreview);
+      return buildSelectedImages(initialImages);
+    });
+  }, [initialImages]);
 
   useEffect(() => {
     return () => {
@@ -122,43 +133,15 @@ export function CreatePostModal({
     onClose();
   }, [isSubmitting, onClose, resetForm]);
 
-  const handleSelectImages = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(event.target.files ?? []).filter((file) =>
-        file.type.startsWith("image/"),
-      );
-
-      if (files.length > 0) {
-        setSelectedImages((currentImages) => {
-          const remaining = MAX_IMAGES - currentImages.length;
-          if (remaining <= 0) return currentImages;
-          const allowed = files.slice(0, remaining);
-          return [
-            ...currentImages,
-            ...allowed.map((file) => ({
-              id: createImageId(file),
-              file,
-              name: file.name,
-              previewUrl: URL.createObjectURL(file),
-            })),
-          ];
-        });
-      }
-
-      event.target.value = "";
-      setErrorMessage(null);
-    },
-    [],
-  );
+  const handleBack = useCallback(() => {
+    if (isSubmitting || !onBack) return;
+    onBack();
+  }, [isSubmitting, onBack]);
 
   const handleRemoveImage = useCallback((imageId: string) => {
     setSelectedImages((currentImages) => {
       const removedImage = currentImages.find((image) => image.id === imageId);
-
-      if (removedImage) {
-        revokeImagePreview(removedImage);
-      }
-
+      if (removedImage) revokeImagePreview(removedImage);
       return currentImages.filter((image) => image.id !== imageId);
     });
   }, []);
@@ -212,18 +195,33 @@ export function CreatePostModal({
           onSubmit={handleSubmit}
         >
           <header className="flex h-[72px] items-center justify-between border-b border-line-soft px-6">
-            <DialogTitle className="font-sans text-xl font-bold text-espresso">
-              {composer.title}
-            </DialogTitle>
+            <div className="flex items-center gap-3">
+              {onBack ? (
+                <Button
+                  aria-label="Back to image setup"
+                  className="size-9 text-espresso"
+                  disabled={isSubmitting}
+                  onClick={handleBack}
+                  size="icon-sm"
+                  type="button"
+                  variant="ghost"
+                >
+                  <ArrowLeftIcon aria-hidden="true" />
+                </Button>
+              ) : null}
+              <DialogTitle className="font-sans text-xl font-bold text-espresso">
+                {composer.title}
+              </DialogTitle>
+            </div>
 
             <Button
-              className="h-10 bg-espresso px-6 text-sm font-black hover:bg-primary-container"
+              className="h-10 bg-primary px-6 text-sm font-bold text-primary-foreground hover:bg-primary-strong"
               disabled={isPostDisabled}
               type="submit"
             >
               {isSubmitting ? (
                 <>
-                  <LoaderCircleIcon data-icon="inline-start" />
+                  <LoaderCircleIcon data-icon="inline-start" className="animate-spin" />
                   Posting
                 </>
               ) : (
@@ -233,44 +231,22 @@ export function CreatePostModal({
           </header>
 
           <div className="flex flex-1 flex-col gap-8 overflow-y-auto px-6 py-6">
-            <section className="flex flex-col gap-4">
-              <div className="flex items-center justify-between gap-4 text-sm text-espresso">
-                <h3>Selected Photos ({selectedImages.length})</h3>
-                <Button
-                  className="h-auto p-0 text-sm font-medium text-espresso"
-                  disabled={isSubmitting || isImageLimitReached}
-                  onClick={() => fileInputRef.current?.click()}
-                  type="button"
-                  variant="link"
-                >
-                  {selectedImages.length > 0 ? (
-                    isImageLimitReached ? (
-                      <span className="text-muted">Max {MAX_IMAGES} photos</span>
-                    ) : (
-                      <>
-                        <PlusIcon data-icon="inline-start" />
-                        Add more
-                      </>
-                    )
-                  ) : (
-                    <>
-                      <ImageIcon data-icon="inline-start" />
-                      Add photos
-                    </>
-                  )}
-                </Button>
-              </div>
+            {selectedImages.length > 0 ? (
+              <section className="flex flex-col gap-4">
+                <div className="flex items-center justify-between gap-4 text-sm text-espresso">
+                  <h3>Selected Photos ({selectedImages.length})</h3>
+                  {onBack ? (
+                    <button
+                      className="text-sm font-medium text-primary hover:underline disabled:opacity-50"
+                      disabled={isSubmitting}
+                      onClick={handleBack}
+                      type="button"
+                    >
+                      Edit photos
+                    </button>
+                  ) : null}
+                </div>
 
-              <Input
-                accept="image/*"
-                className="hidden"
-                multiple
-                onChange={handleSelectImages}
-                ref={fileInputRef}
-                type="file"
-              />
-
-              {selectedImages.length > 0 ? (
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                   {selectedImages.map((image) => (
                     <div
@@ -297,19 +273,8 @@ export function CreatePostModal({
                     </div>
                   ))}
                 </div>
-              ) : (
-                <Button
-                  className="min-h-48 w-full flex-col border-dashed border-line-soft bg-surface-muted px-4 py-8 text-center text-sm font-medium text-muted whitespace-normal hover:border-espresso hover:text-espresso"
-                  disabled={isSubmitting}
-                  onClick={() => fileInputRef.current?.click()}
-                  type="button"
-                  variant="outline"
-                >
-                  <ImageIcon aria-hidden="true" />
-                  Choose photos from your device
-                </Button>
-              )}
-            </section>
+              </section>
+            ) : null}
 
             <label className="flex flex-col gap-4">
               <span className="block text-sm text-espresso">Caption</span>
