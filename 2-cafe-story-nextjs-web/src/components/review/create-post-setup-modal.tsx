@@ -28,6 +28,7 @@ const RATIO_OPTIONS = [
   { id: "1:1", label: "1:1", value: 1 },
   { id: "4:3", label: "4:3", value: 4 / 3 },
   { id: "16:9", label: "16:9", value: 16 / 9 },
+  { id: "10:16", label: "10:16", value: 10 / 16 },
 ] as const;
 
 type RatioId = (typeof RATIO_OPTIONS)[number]["id"];
