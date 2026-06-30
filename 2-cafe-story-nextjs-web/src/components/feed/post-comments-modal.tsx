@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  BookmarkIcon,
   HeartIcon,
   MessageCircleIcon,
   MoreHorizontalIcon,
@@ -23,6 +22,7 @@ import {
 } from "@/components/feed/post-media-carousel";
 import { getPostIdentity } from "@/components/feed/post-identity";
 import { MentionText } from "@/components/feed/mention-text";
+import { SaveButton } from "@/components/feed/save-button";
 import { getBlogById } from "@/lib/api/blogs";
 import { createComment, getCommentsByBlog } from "@/lib/api/comments";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,7 @@ type PostCommentsModalProps = {
   ) => void;
   onOpenChange: (open: boolean) => void;
   onPostLikeClick: (post: FeedPost) => void;
+  onPostSaveClick?: (post: FeedPost) => void;
   post: FeedPost | null;
 };
 
@@ -337,6 +338,7 @@ export function PostCommentsModal({
   onCommentCountChange,
   onOpenChange,
   onPostLikeClick,
+  onPostSaveClick,
   post,
 }: PostCommentsModalProps) {
   const [draftComment, setDraftComment] = useState("");
@@ -747,14 +749,12 @@ export function PostCommentsModal({
                 <Repeat2Icon className="size-6" strokeWidth={2.2} />
                 <span>{shareCount}</span>
               </Button>
-              <Button
-                aria-label="Bookmark post"
-                className="ml-auto h-auto cursor-pointer px-0 py-0 hover:bg-transparent hover:text-primary"
-                type="button"
-                variant="ghost"
-              >
-                <BookmarkIcon className="size-7" strokeWidth={2.4} />
-              </Button>
+              <SaveButton
+                className="ml-auto"
+                isSaved={post.isSaved}
+                onToggle={() => onPostSaveClick?.(post)}
+                size="lg"
+              />
             </div>
 
             {locationLabel ? (

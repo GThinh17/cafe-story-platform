@@ -6,6 +6,7 @@ import type {
   BlogFeedResponse,
   BlogLikeResponse,
   BlogResponse,
+  BlogSaveResponse,
   BlogTrendingResponse,
 } from "@/types/blog";
 
@@ -177,5 +178,39 @@ export function shareBlog(
 export function unshareBlog(blogId: string) {
   return apiFetch<void>(apiEndpoints.blogs.shares(blogId), {
     method: "DELETE",
+  });
+}
+
+export function saveBlog(blogId: string, options: ApiRequestOptions = {}) {
+  return apiFetch<BlogSaveResponse>(apiEndpoints.blogs.saves(blogId), {
+    headers: options.headers,
+    method: "POST",
+  });
+}
+
+export function unsaveBlog(blogId: string, options: ApiRequestOptions = {}) {
+  return apiFetch<void>(apiEndpoints.blogs.saves(blogId), {
+    headers: options.headers,
+    method: "DELETE",
+  });
+}
+
+export function getBlogSavesByUser(
+  userId: string,
+  options: ApiRequestOptions = {},
+) {
+  return apiFetch<BlogSaveResponse[]>(apiEndpoints.blogs.savesByUser(userId), {
+    headers: options.headers,
+    method: "GET",
+  });
+}
+
+export function getSavedBlogsByUserId(
+  userId: string,
+  options: ApiRequestOptions = {},
+) {
+  return apiFetch<BlogResponse[]>(apiEndpoints.blogs.savedByUser(userId), {
+    headers: options.headers,
+    method: "GET",
   });
 }

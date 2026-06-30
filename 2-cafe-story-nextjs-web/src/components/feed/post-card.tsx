@@ -1,7 +1,6 @@
 import {
   HeartIcon,
   MessageCircleIcon,
-  BookmarkIcon,
   Repeat2Icon,
 } from "lucide-react";
 import Link from "next/link";
@@ -21,6 +20,7 @@ import {
 } from "@/components/feed/post-media-carousel";
 import { getPostIdentity } from "@/components/feed/post-identity";
 import { MentionText } from "@/components/feed/mention-text";
+import { SaveButton } from "@/components/feed/save-button";
 import type { FeedPost } from "@/types/feed";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +30,7 @@ type PostCardProps = {
   currentUserId?: string;
   onCommentClick?: (post: FeedPost) => void;
   onLikeClick?: (post: FeedPost) => void;
+  onSaveClick?: (post: FeedPost) => void;
   onShareClick?: (post: FeedPost) => void;
   post: FeedPost;
 };
@@ -71,7 +72,7 @@ function formatPostLikeCount(post: FeedPost) {
   return typeof post.likeCount === "number" ? formatCount(post.likeCount) : post.likes;
 }
 
-export function PostCard({ currentUserId, onCommentClick, onLikeClick, onShareClick, post }: PostCardProps) {
+export function PostCard({ currentUserId, onCommentClick, onLikeClick, onSaveClick, onShareClick, post }: PostCardProps) {
   const identity = getPostIdentity(post);
   const locationLabel = post.locationLabel?.trim() || post.location?.trim();
   const commentCount = formatPostCommentCount(post);
@@ -173,14 +174,10 @@ export function PostCard({ currentUserId, onCommentClick, onLikeClick, onShareCl
               </Button>
             ))}
           </div>
-          <Button
-            aria-label="Bookmark"
-            className="h-auto cursor-pointer px-0 py-0 text-foreground hover:bg-transparent hover:text-primary data-[state=active]:bg-transparent"
-            type="button"
-            variant="ghost"
-          >
-            <BookmarkIcon className="size-6" strokeWidth={2.2} />
-          </Button>
+          <SaveButton
+            isSaved={post.isSaved}
+            onToggle={() => onSaveClick?.(post)}
+          />
         </div>
 
         {locationLabel ? (

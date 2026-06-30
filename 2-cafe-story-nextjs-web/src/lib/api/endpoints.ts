@@ -25,6 +25,9 @@ export const apiEndpoints = {
     shares: (blogId: string) => `/api/blogs/${pathId(blogId)}/shares`,
     sharesByUser: (userId: string) => `/api/blogs/shares/users/${pathId(userId)}`,
     sharedByUser: (userId: string) => `/api/blogs/users/${pathId(userId)}/shared`,
+    saves: (blogId: string) => `/api/blogs/${pathId(blogId)}/saves`,
+    savesByUser: (userId: string) => `/api/blogs/saves/users/${pathId(userId)}`,
+    savedByUser: (userId: string) => `/api/blogs/users/${pathId(userId)}/saved`,
   },
   cafes: {
     list: "/api/cafe-pages",

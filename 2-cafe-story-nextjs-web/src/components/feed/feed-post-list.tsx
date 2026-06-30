@@ -14,9 +14,12 @@ import { mapBlogFeedToFeedPosts } from "@/features/blogs/blog-feed-adapter";
 import {
   getBlogFeed,
   getBlogLikesByUser,
+  getBlogSavesByUser,
   likeBlog,
+  saveBlog,
   shareBlog,
   unlikeBlog,
+  unsaveBlog,
   unshareBlog,
 } from "@/lib/api/blogs";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -44,6 +47,7 @@ export function FeedPostList({
   const [hasMore, setHasMore] = useState(posts.length >= pageSize);
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [likedPostIds, setLikedPostIds] = useState<Set<string> | null>(null);
+  const [savedPostIds, setSavedPostIds] = useState<Set<string> | null>(null);
   const isLoadingMoreRef = useRef(false);
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
@@ -126,6 +130,66 @@ export function FeedPostList({
     [likedPostIds],
   );
 
+  const applySavedState = useCallback(
+    (nextPosts: FeedPost[]) => {
+      if (!savedPostIds) {
+        return nextPosts;
+      }
+      return nextPosts.map((post) => ({
+        ...post,
+        isSaved: post.id ? savedPostIds.has(post.id) : false,
+      }));
+    },
+    [savedPostIds],
+  );
+
+  const handleSaveClick = useCallback(
+    async (post: FeedPost) => {
+      if (!post.id) return;
+      const wasSaved = Boolean(post.isSaved);
+
+      updatePost(post.id, (currentPost) => ({
+        ...currentPost,
+        isSaved: !wasSaved,
+      }));
+
+      setSavedPostIds((current) => {
+        if (!current) return current;
+        const next = new Set(current);
+        if (wasSaved) {
+          next.delete(post.id!);
+        } else {
+          next.add(post.id!);
+        }
+        return next;
+      });
+
+      try {
+        if (wasSaved) {
+          await unsaveBlog(post.id);
+        } else {
+          await saveBlog(post.id);
+        }
+      } catch {
+        updatePost(post.id, (currentPost) => ({
+          ...currentPost,
+          isSaved: wasSaved,
+        }));
+        setSavedPostIds((current) => {
+          if (!current) return current;
+          const next = new Set(current);
+          if (wasSaved) {
+            next.add(post.id!);
+          } else {
+            next.delete(post.id!);
+          }
+          return next;
+        });
+      }
+    },
+    [updatePost],
+  );
+
   const loadMorePosts = useCallback(async () => {
     if (!hasMore || isLoadingMoreRef.current) {
       return;
@@ -141,7 +205,9 @@ export function FeedPostList({
         size: pageSize,
         windowType,
       });
-      const nextPosts = applyLikedState(mapBlogFeedToFeedPosts(response));
+      const nextPosts = applySavedState(
+        applyLikedState(mapBlogFeedToFeedPosts(response)),
+      );
 
       setFeedPosts((currentPosts) => [...currentPosts, ...nextPosts]);
       setNextPage((currentPage) => currentPage + 1);
@@ -152,7 +218,7 @@ export function FeedPostList({
       isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [applyLikedState, hasMore, nextPage, pageSize, windowType]);
+  }, [applyLikedState, applySavedState, hasMore, nextPage, pageSize, windowType]);
 
   useEffect(() => {
     setFeedPosts(posts);
@@ -211,7 +277,37 @@ export function FeedPostList({
   useEffect(() => {
     if (!user?.userId) {
       setLikedPostIds(null);
+      setSavedPostIds(null);
     }
+  }, [user?.userId]);
+
+  useEffect(() => {
+    if (!user?.userId) return;
+    let isActive = true;
+    const userId = user.userId;
+
+    async function syncSavedPosts() {
+      try {
+        const saves = await getBlogSavesByUser(userId);
+        if (!isActive) return;
+        const nextIds = new Set(saves.map((s) => s.blogId));
+        setSavedPostIds(nextIds);
+        setFeedPosts((currentPosts) =>
+          currentPosts.map((post) => ({
+            ...post,
+            isSaved: post.id ? nextIds.has(post.id) : false,
+          })),
+        );
+      } catch {
+        if (!isActive) return;
+        setSavedPostIds(new Set());
+      }
+    }
+
+    void syncSavedPosts();
+    return () => {
+      isActive = false;
+    };
   }, [user?.userId]);
 
   useEffect(() => {
@@ -342,6 +438,7 @@ export function FeedPostList({
               }
             }}
             onLikeClick={handleLikeClick}
+            onSaveClick={handleSaveClick}
             onShareClick={handleShareClick}
             post={post}
           />
@@ -378,6 +475,7 @@ export function FeedPostList({
           }
         }}
         onPostLikeClick={handleLikeClick}
+        onPostSaveClick={handleSaveClick}
         post={selectedPost}
       />
 

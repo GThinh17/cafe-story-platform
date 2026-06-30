@@ -16,7 +16,11 @@ import {
 } from "@/features/blogs/blog-feed-adapter";
 import { useBfcacheRestoreEffect } from "@/hooks/use-bfcache-restore";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { getBlogsByUser, getSharedBlogsByUser } from "@/lib/api/blogs";
+import {
+  getBlogsByUser,
+  getSavedBlogsByUserId,
+  getSharedBlogsByUser,
+} from "@/lib/api/blogs";
 import { getCafePagesByOwnerId } from "@/lib/api/cafes";
 import { createDirectConversation } from "@/lib/api/chat";
 import { ApiError } from "@/lib/api/client";
@@ -191,6 +195,8 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
   const [followerCount, setFollowerCount] = useState(0);
   const [ownPosts, setOwnPosts] = useState<FeedPost[]>([]);
   const [sharedPosts, setSharedPosts] = useState<FeedPost[]>([]);
+  const [savedPosts, setSavedPosts] = useState<FeedPost[]>([]);
+  const [isSavedLoading, setIsSavedLoading] = useState(false);
   const [isPostsLoading, setIsPostsLoading] = useState(false);
   const [postsError, setPostsError] = useState<string | null>(null);
   const [hasLoadedPosts, setHasLoadedPosts] = useState(false);
@@ -354,6 +360,35 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
     void loadProfileCafePages(viewedUser.userId);
   }, [loadProfileCafePages, loadProfilePosts, viewedUser?.userId]);
 
+  useEffect(() => {
+    if (!isOwnProfile || !user?.userId) {
+      setSavedPosts([]);
+      setIsSavedLoading(false);
+      return;
+    }
+
+    let isActive = true;
+    const viewerId = user.userId;
+    setIsSavedLoading(true);
+
+    getSavedBlogsByUserId(viewerId)
+      .then((blogs) => {
+        if (!isActive) return;
+        setSavedPosts(mapBlogResponsesToFeedPosts(blogs));
+      })
+      .catch(() => {
+        if (!isActive) return;
+        setSavedPosts([]);
+      })
+      .finally(() => {
+        if (isActive) setIsSavedLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [isOwnProfile, user?.userId]);
+
   const handleBfcacheRestore = useCallback(() => {
     void loadProfile(routeUsername);
   }, [loadProfile, routeUsername]);
@@ -490,6 +525,8 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
         }}
         posts={ownPosts}
         sharedPosts={sharedPosts}
+        savedPosts={savedPosts}
+        isLoadingSaved={isSavedLoading}
       />
       <CreatePostModal
         composer={mockReviewComposer}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  BookmarkIcon,
   CameraIcon,
   EyeOffIcon,
   Grid3X3Icon,
@@ -16,9 +17,18 @@ import { PostCommentsModal } from "@/components/feed/post-comments-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { getBlogLikesByUser, likeBlog, unlikeBlog } from "@/lib/api/blogs";
+import { cn } from "@/lib/utils";
+import {
+  getBlogLikesByUser,
+  likeBlog,
+  saveBlog,
+  unlikeBlog,
+  unsaveBlog,
+} from "@/lib/api/blogs";
 import type { FeedPost } from "@/types/feed";
 import type { ProfileReview } from "@/types/review";
+
+type ProfileTab = "posts" | "shared" | "tagged" | "saved";
 
 type ProfileReviewGridProps = {
   canCreatePost?: boolean;
@@ -31,6 +41,8 @@ type ProfileReviewGridProps = {
   posts?: FeedPost[];
   reviews?: ProfileReview[];
   sharedPosts?: FeedPost[];
+  savedPosts?: FeedPost[];
+  isLoadingSaved?: boolean;
 };
 
 const tabTriggerClassName =
@@ -75,29 +87,88 @@ export function ProfileReviewGrid({
   posts = [],
   reviews = [],
   sharedPosts = [],
+  savedPosts = [],
+  isLoadingSaved = false,
 }: ProfileReviewGridProps) {
-  const [activeTab, setActiveTab] = useState<"posts" | "shared">("posts");
+  const [activeTab, setActiveTab] = useState<ProfileTab>("posts");
   const [gridPosts, setGridPosts] = useState(posts);
   const [gridSharedPosts, setGridSharedPosts] = useState(sharedPosts);
+  const [gridSavedPosts, setGridSavedPosts] = useState(savedPosts);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const { user } = useCurrentUser();
   const visiblePosts = useMemo(() => filterPostsByVisibility(posts, isOwnProfile), [posts, isOwnProfile]);
   const visibleSharedPosts = useMemo(() => filterPostsByVisibility(sharedPosts, isOwnProfile), [sharedPosts, isOwnProfile]);
-  const activePosts = activeTab === "posts" ? visiblePosts : visibleSharedPosts;
+  const activePosts =
+    activeTab === "posts"
+      ? visiblePosts
+      : activeTab === "shared"
+        ? visibleSharedPosts
+        : activeTab === "saved"
+          ? gridSavedPosts
+          : [];
   const shouldShowEmptyState =
-    hasLoadedPosts && !isLoading && !errorMessage && activePosts.length === 0;
-  const selectedPost = useMemo(
-    () => gridPosts.find((post) => post.id === selectedPostId) ?? null,
-    [gridPosts, selectedPostId],
-  );
+    activeTab === "saved"
+      ? !isLoadingSaved && !errorMessage && gridSavedPosts.length === 0
+      : hasLoadedPosts && !isLoading && !errorMessage && activePosts.length === 0;
+  const selectedPost = useMemo(() => {
+    const pool =
+      activeTab === "saved"
+        ? gridSavedPosts
+        : activeTab === "shared"
+          ? gridSharedPosts
+          : gridPosts;
+    return pool.find((post) => post.id === selectedPostId) ?? null;
+  }, [activeTab, gridPosts, gridSavedPosts, gridSharedPosts, selectedPostId]);
 
   const updatePost = useCallback(
     (postId: string, updater: (post: FeedPost) => FeedPost) => {
       setGridPosts((currentPosts) =>
         currentPosts.map((post) => (post.id === postId ? updater(post) : post)),
       );
+      setGridSharedPosts((currentPosts) =>
+        currentPosts.map((post) => (post.id === postId ? updater(post) : post)),
+      );
+      setGridSavedPosts((currentPosts) =>
+        currentPosts.map((post) => (post.id === postId ? updater(post) : post)),
+      );
     },
     [],
+  );
+
+  const handleSaveClick = useCallback(
+    async (post: FeedPost) => {
+      if (!post.id) return;
+      const wasSaved = Boolean(post.isSaved);
+
+      updatePost(post.id, (currentPost) => ({
+        ...currentPost,
+        isSaved: !wasSaved,
+      }));
+
+      // Remove from saved tab when unsaving from own profile
+      if (wasSaved && isOwnProfile) {
+        setGridSavedPosts((current) => current.filter((p) => p.id !== post.id));
+      }
+
+      try {
+        if (wasSaved) {
+          await unsaveBlog(post.id);
+        } else {
+          await saveBlog(post.id);
+        }
+      } catch {
+        updatePost(post.id, (currentPost) => ({
+          ...currentPost,
+          isSaved: wasSaved,
+        }));
+        if (wasSaved && isOwnProfile) {
+          setGridSavedPosts((current) =>
+            current.some((p) => p.id === post.id) ? current : [...current, post],
+          );
+        }
+      }
+    },
+    [isOwnProfile, updatePost],
   );
 
   const syncPostCounts = useCallback(
@@ -157,6 +228,15 @@ export function ProfileReviewGrid({
   }, [sharedPosts]);
 
   useEffect(() => {
+    const seen = new Set<string>();
+    setGridSavedPosts(
+      savedPosts
+        .filter((p) => (p.id ? !seen.has(p.id) && seen.add(p.id) : true))
+        .map((p) => ({ ...p, isSaved: true })),
+    );
+  }, [savedPosts]);
+
+  useEffect(() => {
     if (!user?.userId || posts.length === 0) {
       return;
     }
@@ -203,9 +283,12 @@ export function ProfileReviewGrid({
   return (
     <>
       <section className="flex flex-col">
-        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "posts" | "shared")}>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ProfileTab)}>
           <TabsList
-            className="relative z-10 grid h-16 w-full grid-cols-3 overflow-visible rounded-none bg-background p-0 text-muted"
+            className={cn(
+              "relative z-10 grid h-16 w-full overflow-visible rounded-none bg-background p-0 text-muted",
+              isOwnProfile ? "grid-cols-4" : "grid-cols-3",
+            )}
             variant="line"
           >
             <TabsTrigger
@@ -229,11 +312,20 @@ export function ProfileReviewGrid({
             >
               <UserSquare2Icon className="size-6" strokeWidth={1.75} />
             </TabsTrigger>
+            {isOwnProfile ? (
+              <TabsTrigger
+                aria-label="Saved"
+                className={tabTriggerClassName}
+                value="saved"
+              >
+                <BookmarkIcon className="size-6" strokeWidth={1.75} />
+              </TabsTrigger>
+            ) : null}
           </TabsList>
         </Tabs>
 
         <div className="relative z-0 mt-3 border-t border-border pt-1">
-          {isLoading ? (
+          {(activeTab === "saved" ? isLoadingSaved : isLoading) ? (
             <div className="grid grid-cols-3 gap-1">
               {Array.from({ length: 6 }, (_, index) => (
                 <Skeleton className="aspect-square rounded-none" key={index} />
@@ -254,6 +346,20 @@ export function ProfileReviewGrid({
                 </Button>
               ) : null}
             </Alert>
+          ) : shouldShowEmptyState && activeTab === "saved" ? (
+            <div className="grid min-h-[360px] place-items-center px-6 py-12 text-center">
+              <div className="flex max-w-[360px] flex-col items-center">
+                <div className="grid size-20 place-items-center rounded-full border-2 border-foreground text-foreground">
+                  <BookmarkIcon className="size-10" strokeWidth={1.8} />
+                </div>
+                <h2 className="mt-5 text-3xl font-black text-foreground">
+                  No saved posts yet
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-muted">
+                  Tap the bookmark icon on any post to save it here. Only you can see saved posts.
+                </p>
+              </div>
+            </div>
           ) : shouldShowEmptyState ? (
             <div className="grid min-h-[360px] place-items-center px-6 py-12 text-center">
               <div className="flex max-w-[360px] flex-col items-center">
@@ -278,11 +384,15 @@ export function ProfileReviewGrid({
                 ) : null}
               </div>
             </div>
-          ) : (activeTab === "posts" ? visiblePosts.length > 0 : visibleSharedPosts.length > 0) ? (
+          ) : activePosts.length > 0 ? (
             <div className="grid grid-cols-3 gap-1">
               {(activeTab === "posts"
                 ? gridPosts.filter((p) => filterPostsByVisibility([p], isOwnProfile).length > 0)
-                : gridSharedPosts.filter((p) => filterPostsByVisibility([p], isOwnProfile).length > 0)
+                : activeTab === "shared"
+                  ? gridSharedPosts.filter((p) => filterPostsByVisibility([p], isOwnProfile).length > 0)
+                  : activeTab === "saved"
+                    ? gridSavedPosts
+                    : []
               ).map((post) => {
                 const isHidden = post.status === "HIDDEN";
 
@@ -366,6 +476,7 @@ export function ProfileReviewGrid({
           }
         }}
         onPostLikeClick={handleLikeClick}
+        onPostSaveClick={handleSaveClick}
         post={selectedPost}
       />
     </>

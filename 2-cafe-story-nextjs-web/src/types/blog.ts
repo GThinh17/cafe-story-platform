@@ -12,6 +12,8 @@ export type BlogFeedResponse = {
   likeCount: number | null;
   commentCount: number | null;
   shareCount: number | null;
+  saveCount?: number | null;
+  isSave?: boolean | null;
   authorUserId: string;
   authorUserName: string | null;
   authorUserFullName: string | null;
@@ -89,6 +91,13 @@ export type BlogLikeResponse = {
   actorCafePageId?: string | null;
   actorDisplayName?: string | null;
   actorAvatarUrl?: string | null;
+  createdAt: string | null;
+};
+
+export type BlogSaveResponse = {
+  id: string;
+  userId: string;
+  blogId: string;
   createdAt: string | null;
 };
 
