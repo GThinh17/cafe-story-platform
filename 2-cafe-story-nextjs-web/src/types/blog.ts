@@ -77,6 +77,7 @@ export type BlogCreateRequest = {
   pageId?: string;
   regionId?: string;
   taggedUserIds?: string[];
+  taggedCafePageIds?: string[];
   isPinned?: boolean;
 };
 

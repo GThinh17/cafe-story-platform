@@ -20,6 +20,7 @@ import {
   PostMediaCarousel,
 } from "@/components/feed/post-media-carousel";
 import { getPostIdentity } from "@/components/feed/post-identity";
+import { MentionText } from "@/components/feed/mention-text";
 import type { FeedPost } from "@/types/feed";
 import { cn } from "@/lib/utils";
 
@@ -190,7 +191,7 @@ export function PostCard({ currentUserId, onCommentClick, onLikeClick, onShareCl
           <Link className="cursor-pointer font-bold" href={identity.primaryHref}>
             {identity.primaryName}
           </Link>{" "}
-          {post.caption}
+          <MentionText text={post.caption} />
         </p>
         <div className="flex flex-wrap gap-2">
           {post.tags.map((tag) => (

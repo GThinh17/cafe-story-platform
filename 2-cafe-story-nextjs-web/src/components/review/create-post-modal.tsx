@@ -3,9 +3,12 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
+  type ChangeEvent,
   type FormEvent,
+  type KeyboardEvent,
 } from "react";
 import {
   ArrowLeftIcon,
@@ -21,8 +24,19 @@ import {
   CreatePostLocationPicker,
   type PostLocation,
 } from "@/components/review/create-post-form";
+import { MentionPicker } from "@/components/review/mention-picker";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { useFollowings, type MentionItem } from "@/hooks/use-followings";
 import { createModeratedBlog } from "@/lib/api/blogs";
 import { uploadPostImageToCloudinary } from "@/lib/api/cloudinary";
+import {
+  detectActiveMention,
+  encodeMentionsForSubmit,
+  replaceMentionAt,
+  resolveMentionedIds,
+  type MentionMap,
+  type MentionRange,
+} from "@/lib/mention/parse-mentions";
 import type { BlogCreateRequest, BlogResponse } from "@/types/blog";
 import type { CafePageResponse } from "@/types/cafe";
 import type { ReviewComposerModel, ReviewDraftHint } from "@/types/review";
@@ -82,6 +96,7 @@ export function CreatePostModal({
   onCreated,
 }: CreatePostModalProps) {
   const selectedImagesRef = useRef<SelectedImage[]>([]);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
   const [caption, setCaption] = useState("");
   const [location, setLocation] = useState<PostLocation | null>(null);
@@ -90,8 +105,33 @@ export function CreatePostModal({
   const [turnOffCommenting, setTurnOffCommenting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [mentionRange, setMentionRange] = useState<MentionRange | null>(null);
+  const [mentionMap, setMentionMap] = useState<MentionMap>({});
+  const [pickerActiveIdx, setPickerActiveIdx] = useState(0);
   const trimmedCaption = caption.trim();
   const isPostDisabled = isSubmitting || !trimmedCaption;
+
+  const { user: currentUser } = useCurrentUser();
+  const currentUserId = currentUser?.userId;
+  const { items: followingItems, isLoading: isFollowingsLoading } = useFollowings(
+    currentUserId,
+    isOpen,
+  );
+
+  const filteredMentionItems = useMemo<MentionItem[]>(() => {
+    if (!mentionRange) return [];
+    const q = mentionRange.query.toLowerCase();
+    if (!q) return followingItems;
+    return followingItems.filter(
+      (item) =>
+        item.slug.toLowerCase().includes(q) ||
+        item.displayName.toLowerCase().includes(q),
+    );
+  }, [mentionRange, followingItems]);
+
+  useEffect(() => {
+    setPickerActiveIdx(0);
+  }, [mentionRange?.query, followingItems.length]);
 
   useEffect(() => {
     selectedImagesRef.current = selectedImages;
@@ -108,6 +148,9 @@ export function CreatePostModal({
     setPostAsCafePage(false);
     setTurnOffCommenting(false);
     setErrorMessage(null);
+    setMentionRange(null);
+    setMentionMap({});
+    setPickerActiveIdx(0);
   }, []);
 
   useEffect(() => {
@@ -146,6 +189,83 @@ export function CreatePostModal({
     });
   }, []);
 
+  const handleCaptionChange = useCallback(
+    (event: ChangeEvent<HTMLTextAreaElement>) => {
+      const value = event.target.value;
+      setCaption(value);
+      setErrorMessage(null);
+      const cursor = event.target.selectionStart ?? value.length;
+      setMentionRange(detectActiveMention(value, cursor));
+    },
+    [],
+  );
+
+  const handleCaptionSelect = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const cursor = el.selectionStart ?? caption.length;
+    setMentionRange(detectActiveMention(caption, cursor));
+  }, [caption]);
+
+  const handleMentionSelect = useCallback(
+    (item: MentionItem) => {
+      if (!mentionRange) return;
+      const next = replaceMentionAt(caption, mentionRange, item.slug);
+      setCaption(next.text);
+      setMentionMap((m) => ({
+        ...m,
+        [item.slug]: { type: item.kind, id: item.id },
+      }));
+      setMentionRange(null);
+      requestAnimationFrame(() => {
+        const el = textareaRef.current;
+        if (!el) return;
+        el.focus();
+        el.setSelectionRange(next.cursor, next.cursor);
+      });
+    },
+    [caption, mentionRange],
+  );
+
+  const handleCaptionKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (!mentionRange) return;
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMentionRange(null);
+        return;
+      }
+
+      if (filteredMentionItems.length === 0) return;
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setPickerActiveIdx(
+          (idx) => (idx + 1) % filteredMentionItems.length,
+        );
+        return;
+      }
+
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setPickerActiveIdx(
+          (idx) =>
+            (idx - 1 + filteredMentionItems.length) %
+            filteredMentionItems.length,
+        );
+        return;
+      }
+
+      if (event.key === "Enter" || event.key === "Tab") {
+        event.preventDefault();
+        const item = filteredMentionItems[pickerActiveIdx];
+        if (item) handleMentionSelect(item);
+      }
+    },
+    [filteredMentionItems, handleMentionSelect, mentionRange, pickerActiveIdx],
+  );
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -161,15 +281,25 @@ export function CreatePostModal({
       const imageUrls = await Promise.all(
         selectedImages.map((image) => uploadPostImageToCloudinary(image.file)),
       );
+      const { userIds, cafePageIds } = resolveMentionedIds(
+        trimmedCaption,
+        mentionMap,
+      );
+      const encodedContent = encodeMentionsForSubmit(
+        trimmedCaption,
+        mentionMap,
+      );
       const payload: BlogCreateRequest = {
         allowComment: !turnOffCommenting,
-        content: trimmedCaption,
+        content: encodedContent,
         imageUrls,
         isPinned: false,
         ...(postAsCafePage && ownedCafePage?.id
           ? { pageId: ownedCafePage.id }
           : {}),
         ...(location?.regionId ? { regionId: location.regionId } : {}),
+        ...(userIds.length ? { taggedUserIds: userIds } : {}),
+        ...(cafePageIds.length ? { taggedCafePageIds: cafePageIds } : {}),
       };
       const createdPost = await createModeratedBlog(payload);
 
@@ -276,19 +406,30 @@ export function CreatePostModal({
               </section>
             ) : null}
 
-            <label className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4">
               <span className="block text-sm text-espresso">Caption</span>
-              <Textarea
-                className="min-h-32 resize-none rounded-none border-line-soft bg-surface-muted px-4 py-4 outline-none focus:border-line-soft focus:outline-none focus:ring-0 focus-visible:border-line-soft focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
-                disabled={isSubmitting}
-                onChange={(event) => {
-                  setCaption(event.target.value);
-                  setErrorMessage(null);
-                }}
-                placeholder="Share your experience..."
-                value={caption}
-              />
-            </label>
+              <div className="relative">
+                <Textarea
+                  className="min-h-32 resize-none rounded-none border-line-soft bg-surface-muted px-4 py-4 outline-none focus:border-line-soft focus:outline-none focus:ring-0 focus-visible:border-line-soft focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                  disabled={isSubmitting}
+                  onChange={handleCaptionChange}
+                  onKeyDown={handleCaptionKeyDown}
+                  onSelect={handleCaptionSelect}
+                  placeholder="Share your experience... Type @ to tag a user or cafe page."
+                  ref={textareaRef}
+                  value={caption}
+                />
+                <MentionPicker
+                  activeIndex={pickerActiveIdx}
+                  isLoading={isFollowingsLoading}
+                  isOpen={mentionRange !== null}
+                  items={filteredMentionItems}
+                  onHoverIndex={setPickerActiveIdx}
+                  onSelect={handleMentionSelect}
+                  query={mentionRange?.query ?? ""}
+                />
+              </div>
+            </div>
 
             <section className="flex flex-col gap-2 rounded-md bg-surface-muted px-4 py-4">
               <div className="flex items-center justify-between gap-4">

@@ -22,6 +22,7 @@ import {
   PostMediaCarousel,
 } from "@/components/feed/post-media-carousel";
 import { getPostIdentity } from "@/components/feed/post-identity";
+import { MentionText } from "@/components/feed/mention-text";
 import { getBlogById } from "@/lib/api/blogs";
 import { createComment, getCommentsByBlog } from "@/lib/api/comments";
 import { cn } from "@/lib/utils";
@@ -658,7 +659,10 @@ export function PostCommentsModal({
                   >
                     {identity.primaryName}
                   </Link>{" "}
-                  <span className="text-coffee-muted">{post.caption}</span>
+                  <MentionText
+                    className="text-coffee-muted"
+                    text={post.caption}
+                  />
                 </p>
                 <p className="mt-1 text-xs font-semibold text-muted">
                   {post.time}
