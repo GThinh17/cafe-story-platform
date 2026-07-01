@@ -1,8 +1,8 @@
 {
   "ai_model": {
-    "provider": "openrouter",
-    "text_model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
-    "vision_model": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
+    "provider": "openai",
+    "text_model": "gpt-4o-mini",
+    "vision_model": "gpt-4o-mini"
   },
   "clip": {
     "_note": "CLIP is kept for reference but is no longer used. AI model handles cafe detection instead.",

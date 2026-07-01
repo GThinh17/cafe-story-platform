@@ -30,6 +30,9 @@ def _get_model(provider: ModelProvider, model_name: str) -> AIModel:
     if provider == ModelProvider.OLLAMA:
         from app.infra.ollama import OllamaModel
         return OllamaModel(model_name)
+    if provider == ModelProvider.OPENAI:
+        from app.infra.openai_model import OpenAIModel
+        return OpenAIModel(model_name)
     raise ValueError(f"Unknown provider: {provider}")
 
 

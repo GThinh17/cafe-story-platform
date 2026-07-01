@@ -6,6 +6,7 @@ requests
 torch
 transformers
 google-genai
+openai
 python-dotenv
 chromadb
 jinja2
