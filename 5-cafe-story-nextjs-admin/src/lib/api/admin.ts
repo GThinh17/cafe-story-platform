@@ -201,9 +201,9 @@ export function deleteComment(commentId: string) {
 export type ModerationFilterParams = {
   page: number;
   size: number;
+  aiStatus?: string;
   decision?: string;
   resolved?: boolean | null;
-  resolvedAction?: string;
 };
 
 export function getAdminModerationResults(
@@ -221,9 +221,9 @@ export function getAdminModerationResults(
     size: params.size,
   };
 
+  if (params.aiStatus) queryParams.aiStatus = params.aiStatus;
   if (params.decision) queryParams.decision = params.decision;
   if (params.resolved !== undefined && params.resolved !== null) queryParams.resolved = params.resolved;
-  if (params.resolvedAction) queryParams.resolvedAction = params.resolvedAction;
 
   return apiFetch<PageResponse<AdminModerationResult>>(withQuery(endpoint, queryParams), {
     method: "GET",
@@ -376,9 +376,15 @@ export function getReviewerRanking(params: {
   );
 }
 
-export function generateReviewerRanking(periodType: RankingPeriodType) {
+export function generateReviewerRanking(
+  periodType: RankingPeriodType,
+  referenceDate?: string,
+) {
   return apiFetch<void>(
-    withQuery(apiEndpoints.admin.generateReviewerRanking, { periodType }),
+    withQuery(apiEndpoints.admin.generateReviewerRanking, {
+      periodType,
+      referenceDate,
+    }),
     { method: "POST" },
   );
 }

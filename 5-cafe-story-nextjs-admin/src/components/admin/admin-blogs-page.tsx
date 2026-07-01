@@ -6,7 +6,6 @@ import {
   ChevronRightIcon,
   EyeIcon,
   PinIcon,
-  Trash2Icon,
 } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
 import { UserCell } from "@/components/admin/user-cell";
@@ -34,7 +33,6 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   createBlogRankingOverride,
-  deleteBlog,
   getAdminBlog,
   getBlogs,
   updateBlogStatus,
@@ -46,7 +44,6 @@ const detailStatuses: PostStatus[] = ["PUBLISHED", "HIDDEN", "REMOVED"];
 
 type PendingBlogAction =
   | { type: "status"; blog: Blog; status: PostStatus }
-  | { type: "delete"; blog: Blog }
   | { type: "rank"; blog: Blog };
 
 function countLabel(value: number | null | undefined) {
@@ -214,7 +211,7 @@ export function AdminBlogsPage() {
               .map((nextStatus) => (
                 <Button
                   type="button"
-                  variant="outline"
+                  variant={nextStatus === "REMOVED" ? "destructive" : "outline"}
                   size="sm"
                   key={nextStatus}
                   onClick={() => setPendingAction({ type: "status", blog, status: nextStatus })}
@@ -230,15 +227,6 @@ export function AdminBlogsPage() {
             >
               <PinIcon data-icon="inline-start" />
               Boost
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              onClick={() => setPendingAction({ type: "delete", blog })}
-            >
-              <Trash2Icon data-icon="inline-start" />
-              Delete
             </Button>
           </div>
         ),
@@ -260,12 +248,6 @@ export function AdminBlogsPage() {
         const updatedBlog = await updateBlogStatus(pendingAction.blog.id, pendingAction.status);
         if (detailBlog?.id === updatedBlog.id) {
           setDetailBlog(updatedBlog);
-        }
-      } else if (pendingAction.type === "delete") {
-        await deleteBlog(pendingAction.blog.id);
-        if (detailBlog?.id === pendingAction.blog.id) {
-          setDetailOpen(false);
-          setDetailBlog(null);
         }
       } else {
         const now = new Date();
@@ -340,15 +322,6 @@ export function AdminBlogsPage() {
                   Set {nextStatus}
                 </Button>
               ))}
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                onClick={() => setPendingAction({ type: "delete", blog: detailBlog })}
-              >
-                <Trash2Icon data-icon="inline-start" />
-                Delete
-              </Button>
             </div>
           ) : null
         }

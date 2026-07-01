@@ -2,6 +2,7 @@ package com.cafestory.service.serviceInterface;
 
 import com.cafestory.dto.requestDTO.AdminModerationResolveRequestDTO;
 import com.cafestory.dto.responseDTO.AdminModerationResultResponseDTO;
+import com.cafestory.entity.enums.ModerationDecision;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -9,7 +10,11 @@ import java.util.UUID;
 
 public interface AdminModerationService {
 
-    Page<AdminModerationResultResponseDTO> getAllResults(Pageable pageable);
+    Page<AdminModerationResultResponseDTO> getAllResults(
+            String aiStatus,
+            ModerationDecision decision,
+            Boolean resolved,
+            Pageable pageable);
 
     Page<AdminModerationResultResponseDTO> getQueue(Pageable pageable);
 

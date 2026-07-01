@@ -88,8 +88,13 @@ export function AdminRankingPage() {
   const [error, setError] = useState<string | null>(null);
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [generatePeriodType, setGeneratePeriodType] = useState<RankingPeriodType>("DAILY");
+  const [generateDate, setGenerateDate] = useState(() => defaultPeriod("DAILY"));
+  const [generateMonth, setGenerateMonth] = useState(() => defaultPeriod("MONTHLY"));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [generateError, setGenerateError] = useState<string | null>(null);
+
+  const todayISO = defaultPeriod("DAILY");
+  const thisMonthISO = defaultPeriod("MONTHLY");
 
   const load = useCallback(
     (signal?: AbortSignal) => {
@@ -169,8 +174,15 @@ export function AdminRankingPage() {
     setIsSubmitting(true);
     setGenerateError(null);
 
+    let referenceDate: string | undefined;
+    if (generatePeriodType === "DAILY") {
+      referenceDate = generateDate || undefined;
+    } else if (generatePeriodType === "MONTHLY") {
+      referenceDate = generateMonth ? `${generateMonth}-01` : undefined;
+    }
+
     try {
-      await generateReviewerRanking(generatePeriodType);
+      await generateReviewerRanking(generatePeriodType, referenceDate);
       setIsGenerateOpen(false);
       void load();
     } catch (requestError) {
@@ -266,10 +278,12 @@ export function AdminRankingPage() {
           if (!open) {
             setGenerateError(null);
             setGeneratePeriodType("DAILY");
+            setGenerateDate(todayISO);
+            setGenerateMonth(thisMonthISO);
           }
         }}
         title="Generate ranking snapshot"
-        description="Select a period type to generate a ranking snapshot for the current time."
+        description="Chọn loại kỳ và ngày/tháng cụ thể để tạo snapshot xếp hạng."
         confirmLabel="Generate"
         isSubmitting={isSubmitting}
         onConfirm={handleGenerate}
@@ -294,6 +308,36 @@ export function AdminRankingPage() {
             ))}
           </div>
         </div>
+        {generatePeriodType === "DAILY" ? (
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium" htmlFor="generate-daily-date">
+              Ngày
+            </label>
+            <input
+              id="generate-daily-date"
+              type="date"
+              value={generateDate}
+              max={todayISO}
+              onChange={(event) => setGenerateDate(event.target.value)}
+              className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+        ) : null}
+        {generatePeriodType === "MONTHLY" ? (
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium" htmlFor="generate-monthly-month">
+              Tháng
+            </label>
+            <input
+              id="generate-monthly-month"
+              type="month"
+              value={generateMonth}
+              max={thisMonthISO}
+              onChange={(event) => setGenerateMonth(event.target.value)}
+              className="rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+        ) : null}
         {generateError ? <p className="text-sm text-accent">{generateError}</p> : null}
       </AdminConfirmDialog>
     </div>

@@ -16,6 +16,7 @@ public class PaymentResponseDTO {
 
     private UUID buyerId;
     private String buyerUserName;
+    private String buyerUserFullName;
     private String buyerUserAvatar;
 
     private UUID extraFeeId;

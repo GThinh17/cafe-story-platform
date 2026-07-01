@@ -184,7 +184,13 @@ export function AdminPaymentsPage() {
         {detail.data ? (
           <AdminDetailGrid>
             <AdminDetailField label="Payment ID">{detail.data.paymentId}</AdminDetailField>
-            <AdminDetailField label="Buyer">{detail.data.buyerId}</AdminDetailField>
+            <AdminDetailField label="Buyer">
+              <UserCell
+                name={detail.data.buyerUserFullName || detail.data.buyerUserName}
+                avatar={detail.data.buyerUserAvatar}
+                subtitle={detail.data.buyerUserName || detail.data.buyerId}
+              />
+            </AdminDetailField>
             <AdminDetailField label="Status">
               <AdminStatusBadge value={detail.data.paymentStatus} />
             </AdminDetailField>
@@ -192,8 +198,10 @@ export function AdminPaymentsPage() {
             <AdminDetailField label="Amount">
               {detail.data.amount.toLocaleString()} {detail.data.currency}
             </AdminDetailField>
-            <AdminDetailField label="Extra fee">{detail.data.extraFeeId || "-"}</AdminDetailField>
-            <AdminDetailField label="Ad fee">{detail.data.adFeeId || "-"}</AdminDetailField>
+            <AdminDetailField label="Product name">{detail.data.productName || "-"}</AdminDetailField>
+            {detail.data.extraFeeType ? (
+              <AdminDetailField label="Extra fee type">{detail.data.extraFeeType}</AdminDetailField>
+            ) : null}
             <AdminDetailField label="Transfer content">
               {detail.data.transferContent || "-"}
             </AdminDetailField>

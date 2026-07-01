@@ -2,6 +2,7 @@ package com.cafestory.controller;
 
 import com.cafestory.dto.requestDTO.AdminModerationResolveRequestDTO;
 import com.cafestory.dto.responseDTO.AdminModerationResultResponseDTO;
+import com.cafestory.entity.enums.ModerationDecision;
 import com.cafestory.service.serviceInterface.AdminModerationService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -30,9 +31,13 @@ public class AdminModerationController {
 
     @GetMapping("/results")
     public Page<AdminModerationResultResponseDTO> getAllResults(
+            @RequestParam(required = false) String aiStatus,
+            @RequestParam(required = false) ModerationDecision decision,
+            @RequestParam(required = false) Boolean resolved,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return adminModerationService.getAllResults(pageable(page, size));
+        return adminModerationService.getAllResults(
+                aiStatus, decision, resolved, pageable(page, size));
     }
 
     @GetMapping("/queue")

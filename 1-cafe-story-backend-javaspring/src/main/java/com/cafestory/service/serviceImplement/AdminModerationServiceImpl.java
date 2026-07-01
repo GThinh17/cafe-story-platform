@@ -10,14 +10,17 @@ import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.repository.AiModerationResultRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.service.serviceInterface.AdminModerationService;
+import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,8 +42,25 @@ public class AdminModerationServiceImpl implements AdminModerationService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<AdminModerationResultResponseDTO> getAllResults(Pageable pageable) {
-        return moderationResultRepository.findAll(pageable)
+    public Page<AdminModerationResultResponseDTO> getAllResults(
+            String aiStatus,
+            ModerationDecision decision,
+            Boolean resolved,
+            Pageable pageable) {
+        Specification<AiModerationResult> spec = (root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (aiStatus != null && !aiStatus.isBlank()) {
+                predicates.add(cb.equal(root.get("aiStatus"), aiStatus));
+            }
+            if (decision != null) {
+                predicates.add(cb.equal(root.get("decision"), decision));
+            }
+            if (resolved != null) {
+                predicates.add(cb.equal(root.get("resolved"), resolved));
+            }
+            return predicates.isEmpty() ? cb.conjunction() : cb.and(predicates.toArray(new Predicate[0]));
+        };
+        return moderationResultRepository.findAll(spec, pageable)
                 .map(this::toResponse);
     }
 

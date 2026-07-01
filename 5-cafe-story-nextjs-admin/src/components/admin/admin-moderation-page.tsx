@@ -36,14 +36,15 @@ import {
 } from "@/lib/api/admin";
 import type {
   AdminModerationResult,
+  AiStatus,
   Blog,
   ModerationDecision,
   ModerationResolveAction,
 } from "@/types/admin";
 
-const resolveActions: ModerationResolveAction[] = ["APPROVE", "HIDE", "REMOVE"];
+const resolveActions: ModerationResolveAction[] = ["APPROVE", "REMOVE"];
+const aiStatusOptions: AiStatus[] = ["SEND_ADMIN", "APPROVE", "DENY"];
 const decisionOptions: ModerationDecision[] = ["SAFE", "NEEDS_REVIEW", "VIOLATION"];
-const resolvedActionOptions: ModerationResolveAction[] = ["APPROVE", "HIDE", "REMOVE"];
 
 const ACTION_LABELS: Record<ModerationResolveAction, string> = {
   APPROVE: "Approve",
@@ -57,9 +58,9 @@ type PendingModerationAction = {
 };
 
 export function AdminModerationPage() {
+  const [filterAiStatus, setFilterAiStatus] = useState<AiStatus | "">("");
   const [filterDecision, setFilterDecision] = useState<ModerationDecision | "">("");
   const [filterResolved, setFilterResolved] = useState<boolean | null>(null);
-  const [filterResolvedAction, setFilterResolvedAction] = useState<ModerationResolveAction | "">("");
 
   const [pendingAction, setPendingAction] = useState<PendingModerationAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -77,13 +78,13 @@ export function AdminModerationPage() {
         {
           page,
           size: PAGE_SIZE,
+          aiStatus: filterAiStatus || undefined,
           decision: filterDecision || undefined,
           resolved: filterResolved,
-          resolvedAction: filterResolvedAction || undefined,
         },
         signal,
       ),
-    [filterDecision, filterResolved, filterResolvedAction],
+    [filterAiStatus, filterDecision, filterResolved],
   );
 
   async function openDetail(result: AdminModerationResult) {
@@ -143,9 +144,9 @@ export function AdminModerationPage() {
       { header: "Created", cell: (result) => formatDate(result.createdAt) },
       {
         header: "Actions",
-        className: "w-80",
+        className: "w-64",
         cell: (result) => (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-nowrap gap-2 whitespace-nowrap">
             <Button type="button" variant="outline" size="sm" onClick={() => openDetail(result)}>
               <EyeIcon data-icon="inline-start" />
               View
@@ -155,7 +156,6 @@ export function AdminModerationPage() {
                 type="button"
                 variant={action === "REMOVE" ? "destructive" : "outline"}
                 size="sm"
-                disabled={Boolean(result.resolved)}
                 key={action}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -227,6 +227,13 @@ export function AdminModerationPage() {
         description="Review AI moderation results and resolve flagged content."
       />
       <Toolbar onRefresh={resource.refetch}>
+        <FilterSelect<AiStatus>
+          label="AI status"
+          value={filterAiStatus}
+          options={aiStatusOptions}
+          placeholder="All AI statuses"
+          onChange={setFilterAiStatus}
+        />
         <FilterSelect<ModerationDecision>
           label="Decision"
           value={filterDecision}
@@ -235,18 +242,11 @@ export function AdminModerationPage() {
           onChange={setFilterDecision}
         />
         <BooleanFilterSelect
-          label="Status"
+          label="Resolved"
           value={filterResolved}
           onChange={setFilterResolved}
           trueLabel="Resolved"
           falseLabel="Unresolved"
-        />
-        <FilterSelect<ModerationResolveAction>
-          label="Resolved action"
-          value={filterResolvedAction}
-          options={resolvedActionOptions}
-          placeholder="All actions"
-          onChange={setFilterResolvedAction}
         />
       </Toolbar>
       <AdminDataTable
@@ -274,7 +274,6 @@ export function AdminModerationPage() {
                   type="button"
                   variant={action === "REMOVE" ? "destructive" : "outline"}
                   size="sm"
-                  disabled={Boolean(detailResult.resolved)}
                   key={action}
                   onClick={() => setPendingAction({ result: detailResult, action })}
                 >

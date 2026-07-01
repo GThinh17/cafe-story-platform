@@ -16,6 +16,7 @@ export type PaymentMethod = "STRIPE_CARD" | "BANK_TRANSFER" | "VNPAY";
 export type ExtraFeeType = "REVIEWER_REGISTRATION" | "CAFE_PAGE_OPENING";
 export type ModerationDecision = "SAFE" | "NEEDS_REVIEW" | "VIOLATION";
 export type ModerationResolveAction = "APPROVE" | "HIDE" | "REMOVE";
+export type AiStatus = "SEND_ADMIN" | "APPROVE" | "DENY";
 export type RankingPeriodType = "DAILY" | "WEEKLY" | "MONTHLY";
 export type ReviewerBadge = "IRON" | "BRONZE" | "SILVER" | "GOLD" | "DIAMOND";
 
@@ -133,7 +134,7 @@ export type AdminModerationResult = {
   imageScore: number | null;
   imageReason: string | null;
   tags: string[];
-  aiStatus: string | null;
+  aiStatus: AiStatus | null;
   blogStatus: PostStatus | null;
   labels: string | null;
   explanation: string | null;
@@ -167,9 +168,12 @@ export type Payment = {
   paymentId: UUID;
   buyerId: UUID;
   buyerUserName: string | null;
+  buyerUserFullName: string | null;
   buyerUserAvatar: string | null;
   extraFeeId: UUID | null;
+  extraFeeType: ExtraFeeType | null;
   adFeeId: UUID | null;
+  activatedCafePageId: UUID | null;
   productName: string | null;
   paymentMethod: PaymentMethod;
   amount: number;

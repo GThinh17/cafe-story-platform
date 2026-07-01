@@ -4,6 +4,7 @@ import com.cafestory.dto.responseDTO.ReviewerRankingSnapshotResponseDTO;
 import com.cafestory.entity.enums.RankingPeriodType;
 import com.cafestory.service.serviceInterface.ReviewerRankingSnapshotService;
 import com.cafestory.until.security.AuthenticatedUserPrincipal;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import static com.cafestory.until.security.AuthenticationPrincipalUtils.requireUserId;
@@ -31,9 +33,13 @@ public class AdminReviewerConfigController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void generateRankingSnapshot(
             @RequestParam(defaultValue = "DAILY") RankingPeriodType periodType,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate referenceDate,
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
         requireUserId(principal);
-        snapshotService.generateSnapshot(periodType);
+        snapshotService.generateSnapshot(
+                periodType,
+                referenceDate != null ? referenceDate : LocalDate.now());
     }
 
     @GetMapping("/ranking")

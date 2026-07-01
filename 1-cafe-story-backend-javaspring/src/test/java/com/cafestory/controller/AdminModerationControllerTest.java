@@ -1,6 +1,7 @@
 package com.cafestory.controller;
 
 import com.cafestory.dto.responseDTO.AdminModerationResultResponseDTO;
+import com.cafestory.entity.enums.ModerationDecision;
 import com.cafestory.service.serviceInterface.AdminModerationService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +17,8 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -32,12 +35,40 @@ class AdminModerationControllerTest {
     void getAllResults_success_TC001() {
         Page<AdminModerationResultResponseDTO> response = new PageImpl<>(List.of(resultResponse()));
 
-        when(adminModerationService.getAllResults(any(Pageable.class))).thenReturn(response);
+        when(adminModerationService.getAllResults(
+                isNull(), isNull(), isNull(), any(Pageable.class))).thenReturn(response);
 
-        Page<AdminModerationResultResponseDTO> result = adminModerationController.getAllResults(0, 20);
+        Page<AdminModerationResultResponseDTO> result =
+                adminModerationController.getAllResults(null, null, null, 0, 20);
 
         assertThat(result).isEqualTo(response);
-        verify(adminModerationService).getAllResults(any(Pageable.class));
+        verify(adminModerationService).getAllResults(
+                isNull(), isNull(), isNull(), any(Pageable.class));
+    }
+
+    @Test
+    void getAllResults_withFilters_TC002() {
+        Page<AdminModerationResultResponseDTO> response = new PageImpl<>(List.of(resultResponse()));
+
+        when(adminModerationService.getAllResults(
+                eq("SEND_ADMIN"),
+                eq(ModerationDecision.VIOLATION),
+                eq(Boolean.FALSE),
+                any(Pageable.class))).thenReturn(response);
+
+        Page<AdminModerationResultResponseDTO> result = adminModerationController.getAllResults(
+                "SEND_ADMIN",
+                ModerationDecision.VIOLATION,
+                Boolean.FALSE,
+                0,
+                20);
+
+        assertThat(result).isEqualTo(response);
+        verify(adminModerationService).getAllResults(
+                eq("SEND_ADMIN"),
+                eq(ModerationDecision.VIOLATION),
+                eq(Boolean.FALSE),
+                any(Pageable.class));
     }
 
     private AdminModerationResultResponseDTO resultResponse() {

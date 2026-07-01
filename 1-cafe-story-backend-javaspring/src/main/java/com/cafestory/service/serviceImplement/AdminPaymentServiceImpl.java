@@ -147,6 +147,7 @@ public class AdminPaymentServiceImpl implements AdminPaymentService {
         response.setPaymentId(payment.getPaymentId());
         response.setBuyerId(payment.getBuyer() == null ? null : payment.getBuyer().getUserId());
         response.setBuyerUserName(payment.getBuyer() == null ? null : payment.getBuyer().getUserName());
+        response.setBuyerUserFullName(payment.getBuyer() == null ? null : payment.getBuyer().getUserFullName());
         response.setBuyerUserAvatar(payment.getBuyer() == null ? null : payment.getBuyer().getUserAvatar());
         response.setExtraFeeId(payment.getExtraFee() == null ? null : payment.getExtraFee().getExtraFeeId());
         response.setAdFeeId(payment.getAdFee() == null ? null : payment.getAdFee().getAdFeeId());
