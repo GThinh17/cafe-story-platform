@@ -9,6 +9,16 @@ from app.utils.json_extractor import extract_json
 logger = logging.getLogger("cafestory-ai.text-moderator")
 
 
+_REASON_MESSAGES: dict[str, str] = {
+    "COFFEE_RELATED": "Caption liên quan đến trải nghiệm quán cà phê.",
+    "NOT_COFFEE": "Caption không liên quan đến quán cà phê.",
+    "PROFANITY": "Caption chứa ngôn từ thô tục hoặc xúc phạm.",
+    "IRRELEVANT": "Caption không phù hợp với nội dung nền tảng.",
+    "SPAM": "Caption có dấu hiệu spam hoặc quảng cáo ngoài chủ đề.",
+}
+_DEFAULT_REASON = "Không có lý do từ hệ thống kiểm duyệt."
+
+
 @dataclass(frozen=True)
 class CaptionModerationResult:
     is_coffee_related: bool
@@ -20,11 +30,13 @@ class CaptionModerationResult:
 
 def _coerce_result(payload: dict[str, Any]) -> CaptionModerationResult:
     score = max(0, min(100, int(payload.get("score", 0))))
+    code = str(payload.get("reason_code") or "").strip().upper()
+    reason = _REASON_MESSAGES.get(code) or str(payload.get("reason") or _DEFAULT_REASON)
     return CaptionModerationResult(
         is_coffee_related=bool(payload.get("is_coffee_related", False)),
         is_violation=bool(payload.get("is_violation", False)),
         score=score,
-        reason=str(payload.get("reason") or "Không có lý do từ hệ thống kiểm duyệt."),
+        reason=reason,
     )
 
 

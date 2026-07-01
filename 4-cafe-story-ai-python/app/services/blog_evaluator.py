@@ -58,20 +58,21 @@ def evaluate_blog(payload: BlogEvaluateRequest) -> BlogEvaluateResponse:
             image_errors.append(f"{url}: {exc}")
 
     images = [img for _, img in loaded_images]
+    max_images = get_rules()["image_classifier"]["max_images"]
 
-    with ThreadPoolExecutor(max_workers=2) as executor:
+    with ThreadPoolExecutor(max_workers=3) as executor:
         text_future = executor.submit(moderate_caption, payload.caption)
         image_future = executor.submit(detect_cafe_images, images)
+        tags_future = executor.submit(classify_image_tags, images[:max_images])
 
     caption: CaptionModerationResult = text_future.result()
     cafe_detection: ImageCafeResult = image_future.result()
+    tag_result: ImageTagResult = tags_future.result()
 
     status = _decide_status(caption, cafe_detection, len(image_urls), image_errors)
 
     tags: list[str] = []
     if status == "approve":
-        max_images = get_rules()["image_classifier"]["max_images"]
-        tag_result: ImageTagResult = classify_image_tags(images[:max_images])
         if not tag_result.error and len(tag_result.tags) >= 1:
             tags = tag_result.tags
         else:

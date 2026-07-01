@@ -13,7 +13,7 @@ class OpenAIModel(AIModel):
         self.model_name = model_name
         if not OPENAI_API_KEY:
             raise RuntimeError("OPENAI_API_KEY is required for OpenAI.")
-        self._client = OpenAI(api_key=OPENAI_API_KEY)
+        self._client = OpenAI(api_key=OPENAI_API_KEY, timeout=15.0)
 
     def _image_to_base64(self, image: Image.Image) -> str:
         buf = io.BytesIO()
@@ -24,6 +24,9 @@ class OpenAIModel(AIModel):
         response = self._client.chat.completions.create(
             model=self.model_name,
             messages=[{"role": "user", "content": prompt}],
+            max_tokens=300,
+            temperature=0,
+            response_format={"type": "json_object"},
         )
         return response.choices[0].message.content or ""
 
@@ -35,5 +38,7 @@ class OpenAIModel(AIModel):
         response = self._client.chat.completions.create(
             model=self.model_name,
             messages=[{"role": "user", "content": content}],
+            max_tokens=400,
+            temperature=0,
         )
         return response.choices[0].message.content or ""
