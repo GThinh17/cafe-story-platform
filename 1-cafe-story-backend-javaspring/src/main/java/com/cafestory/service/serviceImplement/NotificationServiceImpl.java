@@ -177,6 +177,31 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
+    @Transactional
+    public NotificationResponseDTO createModerationNotification(UUID recipientId, UUID blogId, String moderationStatus, String moderationReason) {
+        if (recipientId == null || blogId == null || moderationStatus == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "recipientId, blogId and moderationStatus are required");
+        }
+        User recipient = userValidator.validateUserExists(recipientId);
+
+        Notification notification = new Notification();
+        notification.setRecipient(recipient);
+        notification.setActor(recipient);
+        notification.setActorContextType(ActorContextType.USER);
+        notification.setType(NotificationType.BLOG_MODERATION);
+        notification.setBlogId(blogId);
+        notification.setModerationStatus(moderationStatus);
+        notification.setModerationReason(moderationReason);
+        notification.setIsRead(false);
+
+        Notification savedNotification = notificationRepository.save(notification);
+        NotificationResponseDTO response = notificationMapper.toNotificationResponseDTO(savedNotification);
+        notificationRealtimeService.emitNewNotification(recipient.getUserId(), response);
+        notificationRealtimeService.emitUnreadCountUpdated(recipient.getUserId(), getUnreadCount(recipient.getUserId()));
+        return response;
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<NotificationResponseDTO> getUserNotifications(
             UUID userId,

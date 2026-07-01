@@ -1,7 +1,9 @@
-export type NotificationType = "LIKE" | "SHARE" | "COMMENT" | "MESSAGE" | "FOLLOW" | "TAG";
+export type NotificationType = "LIKE" | "SHARE" | "COMMENT" | "MESSAGE" | "FOLLOW" | "TAG" | "BLOG_MODERATION";
+
+export type ModerationStatus = "APPROVED" | "DENIED" | "SEND_ADMIN";
 
 export type NotificationNavigation = {
-  targetType: "BLOG" | "CONVERSATION" | "USER";
+  targetType: "BLOG" | "CONVERSATION" | "USER" | "CAFE_PAGE";
   targetId: string;
   action: string;
 };
@@ -16,6 +18,8 @@ export type NotificationResponse = {
   userId: string | null;
   commentId: string | null;
   messageId: string | null;
+  moderationStatus: ModerationStatus | null;
+  moderationReason: string | null;
   isRead: boolean;
   createdAt: string;
   updatedAt: string | null;

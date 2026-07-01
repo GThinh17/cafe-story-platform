@@ -6,5 +6,6 @@ public enum NotificationType {
     COMMENT,
     MESSAGE,
     FOLLOW,
-    TAG
+    TAG,
+    BLOG_MODERATION
 }

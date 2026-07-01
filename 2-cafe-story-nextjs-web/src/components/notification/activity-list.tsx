@@ -1,7 +1,13 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
-import { ChevronLeftIcon, ChevronRightIcon, UserIcon } from "lucide-react";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ShieldAlertIcon,
+  ShieldCheckIcon,
+  UserIcon,
+} from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -17,6 +23,13 @@ const NOTIFICATION_VERBS: Record<NotificationType, string> = {
   MESSAGE: "sent you a message.",
   FOLLOW: "started following you.",
   TAG: "tagged you in a post.",
+  BLOG_MODERATION: "",
+};
+
+const MODERATION_MESSAGES: Record<string, string> = {
+  APPROVED: "Bài đăng của bạn đã được duyệt.",
+  DENIED: "Bài đăng của bạn đã bị từ chối.",
+  SEND_ADMIN: "Bài đăng của bạn đang chờ admin xem xét.",
 };
 
 const TYPE_LABELS: Record<NotificationType, string> = {
@@ -26,6 +39,7 @@ const TYPE_LABELS: Record<NotificationType, string> = {
   MESSAGE: "Messages",
   FOLLOW: "Follows",
   TAG: "Tags",
+  BLOG_MODERATION: "Moderation",
 };
 
 const TYPE_ORDER: NotificationType[] = [
@@ -35,6 +49,7 @@ const TYPE_ORDER: NotificationType[] = [
   "SHARE",
   "MESSAGE",
   "TAG",
+  "BLOG_MODERATION",
 ];
 
 function getActorDisplayName(actor: UserResponse | undefined): string {
@@ -84,25 +99,49 @@ function NotificationRow({
   actor: UserResponse | undefined;
   onClick: (notification: NotificationResponse) => void;
 }) {
+  const isModeration = item.type === "BLOG_MODERATION";
   const displayName = getActorDisplayName(actor);
   const avatarUrl = getActorAvatar(actor);
   const initial = displayName.slice(0, 1).toUpperCase();
+  const moderationApproved = item.moderationStatus === "APPROVED";
 
   return (
     <article
       className={`flex min-w-0 cursor-pointer items-center gap-4 rounded-lg px-2 py-4 transition-colors ${!item.isRead ? "bg-surface-muted/60" : ""}`}
       onClick={() => onClick(item)}
     >
-      <Avatar className="size-12 shrink-0 border-2 border-surface">
-        {avatarUrl ? <AvatarImage alt={displayName} src={avatarUrl} /> : null}
-        <AvatarFallback>
-          {actor ? initial : <UserIcon className="size-5 text-muted" />}
-        </AvatarFallback>
-      </Avatar>
+      {isModeration ? (
+        <div
+          className={`flex size-12 shrink-0 items-center justify-center rounded-full border-2 border-surface ${
+            moderationApproved ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+          }`}
+        >
+          {moderationApproved ? (
+            <ShieldCheckIcon className="size-6" />
+          ) : (
+            <ShieldAlertIcon className="size-6" />
+          )}
+        </div>
+      ) : (
+        <Avatar className="size-12 shrink-0 border-2 border-surface">
+          {avatarUrl ? <AvatarImage alt={displayName} src={avatarUrl} /> : null}
+          <AvatarFallback>
+            {actor ? initial : <UserIcon className="size-5 text-muted" />}
+          </AvatarFallback>
+        </Avatar>
+      )}
 
       <p className="min-w-0 flex-1 text-base leading-6 text-foreground">
-        <span className="font-black">{displayName}</span>{" "}
-        {NOTIFICATION_VERBS[item.type]}{" "}
+        {isModeration ? (
+          <span>
+            {MODERATION_MESSAGES[item.moderationStatus ?? "SEND_ADMIN"]}
+          </span>
+        ) : (
+          <>
+            <span className="font-black">{displayName}</span>{" "}
+            {NOTIFICATION_VERBS[item.type]}
+          </>
+        )}{" "}
         <span className="text-muted">{formatRelativeTime(item.createdAt)}</span>
       </p>
 

@@ -12,6 +12,7 @@ import {
   UserIcon,
 } from "lucide-react";
 import { ActivityList } from "@/components/notification/activity-list";
+import { ModerationReasonDialog } from "@/components/notification/moderation-reason-dialog";
 import { PricingPlanModal } from "@/components/layout/pricing-plan-modal";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { BrandIcon } from "@/components/ui/brand-icon";
@@ -27,7 +28,7 @@ import { cn } from "@/lib/utils";
 import { useCreatePost } from "@/context/create-post-context";
 import { useCommentModal } from "@/context/comment-modal-context";
 import { usePathname, useRouter } from "next/navigation";
-import type { NotificationResponse } from "@/types/notification";
+import type { ModerationStatus, NotificationResponse } from "@/types/notification";
 
 type SidebarItem = {
   href: string;
@@ -68,6 +69,11 @@ export function SharedSidebar() {
   const { isOpen: isCreatePostOpen, open: openCreatePost } = useCreatePost();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isPricingPlanOpen, setIsPricingPlanOpen] = useState(false);
+  const [moderationDialog, setModerationDialog] = useState<{
+    open: boolean;
+    status: ModerationStatus | null;
+    reason: string | null;
+  }>({ open: false, status: null, reason: null });
   const profileHref = user?.userName ? `/${user.userName}` : "/login";
   const router = useRouter();
   const commentModal = useCommentModal();
@@ -106,6 +112,17 @@ export function SharedSidebar() {
         }
         break;
       }
+      case "BLOG_MODERATION":
+        if (notification.moderationStatus === "APPROVED") {
+          if (notification.blogId) commentModal.openByBlogId(notification.blogId);
+        } else {
+          setModerationDialog({
+            open: true,
+            status: notification.moderationStatus,
+            reason: notification.moderationReason,
+          });
+        }
+        break;
     }
   }
 
@@ -293,6 +310,15 @@ export function SharedSidebar() {
       <PricingPlanModal
         isOpen={isPricingPlanOpen}
         onOpenChange={setIsPricingPlanOpen}
+      />
+
+      <ModerationReasonDialog
+        open={moderationDialog.open}
+        status={moderationDialog.status}
+        reason={moderationDialog.reason}
+        onClose={() =>
+          setModerationDialog({ open: false, status: null, reason: null })
+        }
       />
     </>
   );

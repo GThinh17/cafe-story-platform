@@ -43,6 +43,10 @@ public class NotificationResponseDTO {
 
     private UUID messageId;
 
+    private String moderationStatus;
+
+    private String moderationReason;
+
     private Boolean isRead;
 
     private LocalDateTime createdAt;

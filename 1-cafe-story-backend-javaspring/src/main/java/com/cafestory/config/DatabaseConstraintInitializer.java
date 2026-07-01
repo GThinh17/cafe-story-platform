@@ -46,7 +46,7 @@ public class DatabaseConstraintInitializer implements CommandLineRunner {
                         ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
                         ALTER TABLE notifications
                             ADD CONSTRAINT notifications_type_check
-                            CHECK (type IN ('LIKE', 'SHARE', 'COMMENT', 'MESSAGE', 'FOLLOW', 'TAG'));
+                            CHECK (type IN ('LIKE', 'SHARE', 'COMMENT', 'MESSAGE', 'FOLLOW', 'TAG', 'BLOG_MODERATION'));
                     END IF;
                 END $$;
                 """);

@@ -78,6 +78,12 @@ public class Notification {
     @Column(name = "message_id")
     private UUID messageId;
 
+    @Column(name = "moderation_status")
+    private String moderationStatus;
+
+    @Column(name = "moderation_reason", length = 1024)
+    private String moderationReason;
+
     @Column(name = "is_read", nullable = false)
     private Boolean isRead = false;
 

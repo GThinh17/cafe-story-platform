@@ -16,6 +16,7 @@ import {
   MapPinIcon,
   XIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
@@ -306,6 +307,9 @@ export function CreatePostModal({
       onCreated?.(createdPost);
       resetForm();
       onClose();
+      toast.info("Bài đăng đang được kiểm duyệt bởi AI. Bạn sẽ nhận thông báo khi hoàn tất.", {
+        duration: 5000,
+      });
     } catch (error) {
       setErrorMessage(
         error instanceof Error

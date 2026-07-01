@@ -9,6 +9,7 @@ import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.repository.AiModerationResultRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.service.serviceInterface.AiBlogModerationService;
+import com.cafestory.service.serviceInterface.NotificationService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +38,7 @@ public class AiBlogModerationServiceImpl implements AiBlogModerationService {
 
     private final AiModerationResultRepository moderationResultRepository;
     private final BlogRepository blogRepository;
+    private final NotificationService notificationService;
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
 
@@ -44,12 +46,14 @@ public class AiBlogModerationServiceImpl implements AiBlogModerationService {
     public AiBlogModerationServiceImpl(
             AiModerationResultRepository moderationResultRepository,
             BlogRepository blogRepository,
+            NotificationService notificationService,
             ObjectMapper objectMapper,
             @Value("${ai.moderation.base-url:http://localhost:8036}") String baseUrl,
             @Value("${ai.moderation.timeout-ms:10000}") int timeoutMs) {
         this(
                 moderationResultRepository,
                 blogRepository,
+                notificationService,
                 objectMapper,
                 RestClient.builder()
                         .baseUrl(baseUrl)
@@ -60,10 +64,12 @@ public class AiBlogModerationServiceImpl implements AiBlogModerationService {
     AiBlogModerationServiceImpl(
             AiModerationResultRepository moderationResultRepository,
             BlogRepository blogRepository,
+            NotificationService notificationService,
             ObjectMapper objectMapper,
             RestClient restClient) {
         this.moderationResultRepository = moderationResultRepository;
         this.blogRepository = blogRepository;
+        this.notificationService = notificationService;
         this.objectMapper = objectMapper;
         this.restClient = restClient;
     }
@@ -82,7 +88,31 @@ public class AiBlogModerationServiceImpl implements AiBlogModerationService {
         blog.setStatus(postStatus(decision));
         Blog savedBlog = blogRepository.save(blog);
         moderationResultRepository.save(toModerationResult(savedBlog, response, decision));
+        pushModerationNotification(savedBlog, response, decision);
         return savedBlog;
+    }
+
+    private void pushModerationNotification(
+            Blog blog,
+            AiBlogModerationResponseDTO response,
+            ModerationDecision decision) {
+        try {
+            String status = switch (decision) {
+                case SAFE -> "APPROVED";
+                case VIOLATION -> "DENIED";
+                default -> "SEND_ADMIN";
+            };
+            String reason = decision == ModerationDecision.SAFE
+                    ? null
+                    : nullToBlank(response.getCaptionReason()) + " " + nullToBlank(response.getImageReason());
+            notificationService.createModerationNotification(
+                    blog.getAuthor().getUserId(),
+                    blog.getId(),
+                    status,
+                    reason == null ? null : reason.trim());
+        } catch (Exception exception) {
+            LOGGER.error("Failed to push moderation notification blogId={}", blog.getId(), exception);
+        }
     }
 
     protected AiBlogModerationResponseDTO callAiService(Blog blog) {

@@ -34,6 +34,8 @@ public class NotificationMapper {
         response.setTargetId(resolveTargetId(notification));
         response.setCommentId(notification.getCommentId());
         response.setMessageId(notification.getMessageId());
+        response.setModerationStatus(notification.getModerationStatus());
+        response.setModerationReason(notification.getModerationReason());
         response.setIsRead(notification.getIsRead());
         response.setCreatedAt(notification.getCreatedAt());
         response.setUpdatedAt(notification.getUpdatedAt());
@@ -51,6 +53,9 @@ public class NotificationMapper {
         }
         if (type == NotificationType.MESSAGE) {
             return navigation(NotificationTargetType.CONVERSATION, notification.getConversationId(), "open_conversation");
+        }
+        if (type == NotificationType.BLOG_MODERATION) {
+            return navigation(NotificationTargetType.BLOG, notification.getBlogId(), "open_moderation_result");
         }
         if (notification.getTargetType() == FollowTargetType.CAFE_PAGE) {
             return navigation(NotificationTargetType.CAFE_PAGE, notification.getTargetCafePageId(), "open_cafe_page");

@@ -9,6 +9,7 @@ import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.repository.AiModerationResultRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.service.serviceImplement.AiBlogModerationServiceImpl;
+import com.cafestory.service.serviceInterface.NotificationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,11 +27,13 @@ class AiBlogModerationServiceImplTest {
 
     private AiModerationResultRepository moderationResultRepository;
     private BlogRepository blogRepository;
+    private NotificationService notificationService;
 
     @BeforeEach
     void setUp() {
         moderationResultRepository = mock(AiModerationResultRepository.class);
         blogRepository = mock(BlogRepository.class);
+        notificationService = mock(NotificationService.class);
     }
 
     @Test
@@ -81,6 +84,7 @@ class AiBlogModerationServiceImplTest {
         return new AiBlogModerationServiceImpl(
                 moderationResultRepository,
                 blogRepository,
+                notificationService,
                 new ObjectMapper(),
                 "http://localhost:8036",
                 1000) {
@@ -95,6 +99,7 @@ class AiBlogModerationServiceImplTest {
         return new AiBlogModerationServiceImpl(
                 moderationResultRepository,
                 blogRepository,
+                notificationService,
                 new ObjectMapper(),
                 "http://localhost:8036",
                 1000) {

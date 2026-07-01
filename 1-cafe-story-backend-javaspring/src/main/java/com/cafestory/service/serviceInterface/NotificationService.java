@@ -32,6 +32,8 @@ public interface NotificationService {
 
     NotificationResponseDTO createTagNotification(UUID recipientId, UUID actorId, UUID blogId);
 
+    NotificationResponseDTO createModerationNotification(UUID recipientId, UUID blogId, String moderationStatus, String moderationReason);
+
     List<NotificationResponseDTO> getUserNotifications(UUID userId, int page, int limit, Boolean isRead, NotificationType type);
 
     long getUnreadCount(UUID userId);
