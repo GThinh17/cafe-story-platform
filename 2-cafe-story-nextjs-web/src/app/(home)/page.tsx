@@ -259,7 +259,7 @@ export default async function Home() {
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-clip bg-background text-foreground">
       
-      <main className="grid w-full max-w-[1120px] touch-pan-y grid-cols-1 gap-14 overflow-x-clip px-4 py-8 sm:px-8 xl:ml-12 xl:grid-cols-[680px_220px] xl:px-0 2xl:ml-20">
+      <main className="grid w-full max-w-[1120px] touch-pan-y grid-cols-1 gap-14 overflow-x-clip px-4 py-8 sm:px-8 xl:ml-12 xl:max-w-none xl:grid-cols-[680px_1fr_320px] xl:gap-0 xl:px-0 xl:pr-16 2xl:ml-20 2xl:pr-24">
 
         <section className="w-full max-w-[630px] space-y-8">
           {hasSession ? <StoryRail stories={storyItems} /> : null}
@@ -272,7 +272,7 @@ export default async function Home() {
           />
         </section>
 
-        <aside className="sticky top-8 hidden h-fit w-full xl:block">
+        <aside className="sticky top-8 hidden h-fit w-full xl:col-start-3 xl:block">
           <section className="space-y-7">
             <HomeAccountPanel />
 

@@ -9,7 +9,6 @@ import {
   HeartIcon,
   MessageCircleIcon,
   Repeat2Icon,
-  UserSquare2Icon,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -28,7 +27,7 @@ import {
 import type { FeedPost } from "@/types/feed";
 import type { ProfileReview } from "@/types/review";
 
-type ProfileTab = "posts" | "shared" | "tagged" | "saved";
+type ProfileTab = "posts" | "shared" | "saved";
 
 type ProfileReviewGridProps = {
   canCreatePost?: boolean;
@@ -287,7 +286,7 @@ export function ProfileReviewGrid({
           <TabsList
             className={cn(
               "relative z-10 grid h-16 w-full overflow-visible rounded-none bg-background p-0 text-muted",
-              isOwnProfile ? "grid-cols-4" : "grid-cols-3",
+              isOwnProfile ? "grid-cols-3" : "grid-cols-2",
             )}
             variant="line"
           >
@@ -304,13 +303,6 @@ export function ProfileReviewGrid({
               value="shared"
             >
               <Repeat2Icon className="size-6" strokeWidth={1.75} />
-            </TabsTrigger>
-            <TabsTrigger
-              aria-label="Tagged"
-              className={tabTriggerClassName}
-              value="tagged"
-            >
-              <UserSquare2Icon className="size-6" strokeWidth={1.75} />
             </TabsTrigger>
             {isOwnProfile ? (
               <TabsTrigger
