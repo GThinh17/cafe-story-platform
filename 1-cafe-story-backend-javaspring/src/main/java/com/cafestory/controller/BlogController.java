@@ -4,6 +4,7 @@ import com.cafestory.dto.requestDTO.BlogCreateDTO;
 import com.cafestory.dto.requestDTO.BlogUpdateDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
 import com.cafestory.dto.responseDTO.BlogTaggedUserResponseDTO;
+import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.service.serviceInterface.BlogService;
 import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
@@ -64,8 +65,9 @@ public class BlogController {
     @GetMapping("/users/{userId}")
     public List<BlogResponseDTO> getAllBlogsByUserId(
             @PathVariable UUID userId,
+            @RequestParam(required = false) PostStatus status,
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
-        return blogService.getAllBlogsByUserId(userId, optionalUserId(principal));
+        return blogService.getAllBlogsByUserId(userId, optionalUserId(principal), status);
     }
 
     @GetMapping("/users/{userId}/saved")

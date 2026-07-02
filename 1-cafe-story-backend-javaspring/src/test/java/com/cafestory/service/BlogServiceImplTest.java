@@ -384,6 +384,69 @@ class BlogServiceImplTest {
     }
 
     @Test
+    void getAllBlogsByUserIdWithStatus_success_ownerRequestsHidden_TC009A() {
+        UUID userId = UUID.randomUUID();
+        Blog hidden = blog();
+        hidden.setStatus(PostStatus.HIDDEN);
+
+        when(blogRepository.findByAuthorUserIdAndStatus(userId, PostStatus.HIDDEN))
+                .thenReturn(List.of(hidden));
+
+        List<BlogResponseDTO> result = blogService.getAllBlogsByUserId(userId, userId, PostStatus.HIDDEN);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getId()).isEqualTo(hidden.getId());
+        verify(blogRepository).findByAuthorUserIdAndStatus(userId, PostStatus.HIDDEN);
+        verify(blogRepository, never()).findByAuthorUserId(userId);
+    }
+
+    @Test
+    void getAllBlogsByUserIdWithStatus_fail_nonOwnerRequestsHidden_TC009B() {
+        UUID userId = UUID.randomUUID();
+        UUID viewerUserId = UUID.randomUUID();
+
+        assertThatThrownBy(() ->
+                blogService.getAllBlogsByUserId(userId, viewerUserId, PostStatus.HIDDEN))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.FORBIDDEN));
+
+        verify(blogRepository, never()).findByAuthorUserIdAndStatus(any(), any());
+        verify(blogRepository, never()).findByAuthorUserId(any());
+    }
+
+    @Test
+    void getAllBlogsByUserIdWithStatus_success_publishedAllowedForNonOwner_TC009C() {
+        UUID userId = UUID.randomUUID();
+        UUID viewerUserId = UUID.randomUUID();
+        Blog published = blog();
+
+        when(blogRepository.findByAuthorUserIdAndStatus(userId, PostStatus.PUBLISHED))
+                .thenReturn(List.of(published));
+
+        List<BlogResponseDTO> result = blogService.getAllBlogsByUserId(userId, viewerUserId, PostStatus.PUBLISHED);
+
+        assertThat(result).hasSize(1);
+        verify(blogRepository).findByAuthorUserIdAndStatus(userId, PostStatus.PUBLISHED);
+    }
+
+    @Test
+    void getAllBlogsByUserIdWithStatus_success_nullStatusStripsNonPublishedForNonOwner_TC009D() {
+        UUID userId = UUID.randomUUID();
+        UUID viewerUserId = UUID.randomUUID();
+        Blog published = blog();
+        Blog hidden = blog();
+        hidden.setStatus(PostStatus.HIDDEN);
+
+        when(blogRepository.findByAuthorUserId(userId)).thenReturn(List.of(published, hidden));
+
+        List<BlogResponseDTO> result = blogService.getAllBlogsByUserId(userId, viewerUserId, null);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getId()).isEqualTo(published.getId());
+    }
+
+    @Test
     void getBlogById_success_TC010() {
         UUID blogId = UUID.randomUUID();
         Blog blog = blog();
