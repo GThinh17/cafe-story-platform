@@ -3,6 +3,7 @@ import {
   Award,
   Pencil,
   Plus,
+  Store,
   UserPlus,
 } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -937,6 +938,24 @@ export function ProfileScreen() {
             </Text>
           </View>
 
+          {shouldShowCafePageAction ? (
+            <Pressable
+              accessibilityLabel="Open cafe page"
+              accessibilityRole="button"
+              onPress={openOwnedCafePage}
+              style={({ pressed }) => [
+                styles.profileChip,
+                styles.cafePageChip,
+                pressed && styles.actionPressed,
+              ]}
+            >
+              <Store color={colors.primary} size={16} strokeWidth={2.5} />
+              <Text numberOfLines={1} style={styles.cafePageChipText}>
+                Cafe
+              </Text>
+            </Pressable>
+          ) : null}
+
           {shouldShowReviewerDashboardAction ? (
             <Pressable
               accessibilityLabel="Open reviewer dashboard"
@@ -1118,6 +1137,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.xs,
     width: 104,
+  },
+
+  cafePageChip: {
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
+  },
+
+  cafePageChipText: {
+    color: colors.primary,
+    fontSize: typography.label,
+    fontWeight: "900",
   },
 
   descriptionPrompt: {

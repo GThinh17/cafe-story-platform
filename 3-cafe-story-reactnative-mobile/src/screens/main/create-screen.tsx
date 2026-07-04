@@ -31,6 +31,7 @@ type CreateRouteProp = RouteProp<MainTabParamList, typeof routes.create>;
 const initialDraft: CreatePostDraft = {
   allowComments: true,
   caption: "",
+  mediaAspectRatio: 1,
   mediaUrls: [],
   pinToProfile: false,
   taggedUserIds: [],
@@ -289,12 +290,8 @@ export function CreateScreen() {
       });
       resetDraft();
       navigation.navigate(routes.home);
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to create post.",
-      );
+    } catch {
+      setError("Unable to create post. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

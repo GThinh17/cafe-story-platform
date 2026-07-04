@@ -1,10 +1,12 @@
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { Bell, House, Search, SquarePlus, User } from "lucide-react-native";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { routes } from "../../navigation/routes";
 import type { MainTabParamList } from "../../navigation/types";
+import { getUnreadNotificationCount } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 
 type TabName = keyof MainTabParamList;
@@ -43,6 +45,27 @@ export function BottomBar({
   state,
 }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
+
+  useEffect(() => {
+    let isActive = true;
+
+    getUnreadNotificationCount()
+      .then((response) => {
+        if (isActive) {
+          setUnreadNotificationCount(response.unreadCount ?? 0);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setUnreadNotificationCount(0);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [state.index]);
 
   return (
     <View style={[styles.shell, { paddingBottom: Math.max(insets.bottom, 10) }]}>
@@ -55,6 +78,8 @@ export function BottomBar({
           const { Icon, label } = tabItems[route.name];
           const isFocused = state.index === index;
           const options = descriptors[route.key]?.options;
+          const showNotificationBadge =
+            route.name === routes.notifications && unreadNotificationCount > 0;
 
           const onPress = () => {
             const event = navigation.emit({
@@ -86,11 +111,20 @@ export function BottomBar({
               style={[styles.item, isFocused && styles.itemActive]}
               testID={options?.tabBarButtonTestID}
             >
-              <Icon
-                color={isFocused ? colors.white : colors.foreground}
-                size={22}
-                strokeWidth={isFocused ? 2.7 : 2.1}
-              />
+              <View style={styles.iconWrap}>
+                <Icon
+                  color={isFocused ? colors.white : colors.foreground}
+                  size={22}
+                  strokeWidth={isFocused ? 2.7 : 2.1}
+                />
+                {showNotificationBadge ? (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                      {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
               {isFocused ? <Text style={styles.label}>{label}</Text> : null}
             </Pressable>
           );
@@ -101,6 +135,26 @@ export function BottomBar({
 }
 
 const styles = StyleSheet.create({
+  badge: {
+    alignItems: "center",
+    backgroundColor: colors.danger,
+    borderColor: colors.surface,
+    borderRadius: 9,
+    borderWidth: 1,
+    height: 18,
+    justifyContent: "center",
+    minWidth: 18,
+    paddingHorizontal: 4,
+    position: "absolute",
+    right: -10,
+    top: -9,
+  },
+  badgeText: {
+    color: colors.white,
+    fontSize: 9,
+    fontWeight: "900",
+    lineHeight: 11,
+  },
   container: {
     alignItems: "center",
     alignSelf: "center",
@@ -135,6 +189,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     gap: spacing.xs,
     minWidth: 94,
+  },
+  iconWrap: {
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
   },
   label: {
     color: colors.white,

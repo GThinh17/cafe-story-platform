@@ -1,4 +1,4 @@
-import { Heart, Send, X } from "lucide-react-native";
+import { Heart, Send, Store, X } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -128,6 +128,7 @@ function CommentItem({
   const authorName = getCommentAuthor(comment);
   const isReply = level > 0;
   const isPending = Boolean(comment.isPending);
+  const isCafePageComment = comment.actorContextType === "CAFE_PAGE";
   const isLongComment = comment.content.length > LONG_COMMENT_THRESHOLD;
   const [isExpanded, setIsExpanded] = useState(!isLongComment);
 
@@ -155,11 +156,20 @@ function CommentItem({
       <View style={styles.commentBody}>
         <View style={styles.commentContentRow}>
           <View style={styles.commentTextBlock}>
+            <View style={styles.commentAuthorRow}>
+              <Text numberOfLines={1} style={styles.commentAuthor}>
+                {authorName}
+              </Text>
+              {isCafePageComment ? (
+                <View style={styles.commentCafeBadge}>
+                  <Store color={colors.primary} size={11} strokeWidth={2.5} />
+                </View>
+              ) : null}
+            </View>
             <Text
               numberOfLines={isExpanded ? undefined : COLLAPSED_COMMENT_LINES}
               style={styles.commentLine}
             >
-              <Text style={styles.commentAuthor}>{authorName} </Text>
               {renderCommentContent(comment.content)}
             </Text>
             {isLongComment ? (
@@ -328,14 +338,10 @@ export function CommentModal({
           setComments(response);
         }
       })
-      .catch((requestError) => {
+      .catch(() => {
         if (isActive) {
           setComments([]);
-          setError(
-            requestError instanceof Error
-              ? requestError.message
-              : "Unable to load comments.",
-          );
+          setError("Unable to load comments. Please try again.");
         }
       })
       .finally(() => {
@@ -473,17 +479,13 @@ export function CommentModal({
         ),
       );
       onCommentCreated?.();
-    } catch (requestError) {
+    } catch {
       setComments((currentComments) =>
         currentComments.filter((comment) => comment.id !== pendingCommentId),
       );
       setDraft(content);
       setReplyTarget(currentReplyTarget);
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to post comment.",
-      );
+      setError("Unable to post comment. Please try again.");
     } finally {
       setIsPosting(false);
     }
@@ -728,10 +730,27 @@ const styles = StyleSheet.create({
   },
   commentAuthor: {
     color: colors.foreground,
+    flexShrink: 1,
+    fontSize: typography.label,
     fontWeight: "900",
+  },
+  commentAuthorRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+    marginBottom: 2,
+    minWidth: 0,
   },
   commentBody: {
     flex: 1,
+  },
+  commentCafeBadge: {
+    alignItems: "center",
+    backgroundColor: colors.primarySoft,
+    borderRadius: 8,
+    height: 16,
+    justifyContent: "center",
+    width: 16,
   },
   commentContentRow: {
     alignItems: "flex-start",

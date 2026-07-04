@@ -33,12 +33,8 @@ export function BlogDetailScreen() {
       const response = await getBlogById(blogId);
       setBlog(blogResponseToFeedBlog(response));
       setError("");
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to load this post.",
-      );
+    } catch {
+      setError("Unable to load this post.");
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);

@@ -21,7 +21,7 @@ import {
   View,
 } from "react-native";
 
-import { Button, EmptyState, LoadingState, Screen } from "../../components";
+import { EmptyState, Screen } from "../../components";
 import { routes } from "../../navigation";
 import type { MainTabParamList, RootStackParamList } from "../../navigation";
 import {
@@ -35,6 +35,46 @@ import { colors, spacing, typography } from "../../theme";
 import type { NotificationResponse } from "../../types";
 
 const NOTIFICATION_PAGE_SIZE = 30;
+type NotificationFilterKey = "ALL" | "MESSAGES" | "TAGS" | "POSTS" | "FOLLOWS";
+
+const notificationFilters: Array<{
+  key: NotificationFilterKey;
+  label: string;
+}> = [
+  { key: "ALL", label: "All" },
+  { key: "MESSAGES", label: "Messages" },
+  { key: "TAGS", label: "Tags" },
+  { key: "POSTS", label: "Posts" },
+  { key: "FOLLOWS", label: "Follows" },
+];
+
+const postNotificationTypes = new Set(["LIKE", "COMMENT", "SHARE", "BLOG_MODERATION"]);
+
+function getRequestTypeForFilter(filter: NotificationFilterKey) {
+  switch (filter) {
+    case "MESSAGES":
+      return "MESSAGE";
+    case "TAGS":
+      return "TAG";
+    case "FOLLOWS":
+      return "FOLLOW";
+    default:
+      return undefined;
+  }
+}
+
+function filterNotifications(
+  notifications: NotificationResponse[],
+  filter: NotificationFilterKey,
+) {
+  if (filter !== "POSTS") {
+    return notifications;
+  }
+
+  return notifications.filter((notification) =>
+    postNotificationTypes.has(notification.type),
+  );
+}
 
 function formatNotificationTitle(notification: NotificationResponse) {
   switch (notification.type) {
@@ -50,6 +90,8 @@ function formatNotificationTitle(notification: NotificationResponse) {
       return "New follower";
     case "TAG":
       return "You were tagged";
+    case "BLOG_MODERATION":
+      return "Post update";
     default:
       return "Notification";
   }
@@ -69,8 +111,40 @@ function formatNotificationDescription(notification: NotificationResponse) {
       return "Someone started following your profile.";
     case "TAG":
       return "Open the tagged post to view the mention.";
+    case "BLOG_MODERATION":
+      return "Your post has a moderation update.";
     default:
       return "Open this notification for more details.";
+  }
+}
+
+function getEmptyCopy(filter: NotificationFilterKey) {
+  switch (filter) {
+    case "MESSAGES":
+      return {
+        description: "Conversation updates will appear here.",
+        title: "No message notifications yet",
+      };
+    case "TAGS":
+      return {
+        description: "Posts that mention you will appear here.",
+        title: "No tag notifications yet",
+      };
+    case "POSTS":
+      return {
+        description: "Likes, comments, shares, and post updates will appear here.",
+        title: "No post notifications yet",
+      };
+    case "FOLLOWS":
+      return {
+        description: "New followers will appear here.",
+        title: "No follow notifications yet",
+      };
+    default:
+      return {
+        description: "Likes, follows, comments, and cafe updates will appear here.",
+        title: "No notifications yet",
+      };
   }
 }
 
@@ -114,8 +188,47 @@ function getNotificationIcon(type: string) {
       return UserPlus;
     case "TAG":
       return Tag;
+    case "BLOG_MODERATION":
+      return Bell;
     default:
       return Bell;
+  }
+}
+
+function getNotificationVisual(type: string) {
+  switch (type) {
+    case "LIKE":
+      return {
+        backgroundColor: colors.secondarySoft,
+        color: colors.danger,
+      };
+    case "COMMENT":
+    case "MESSAGE":
+      return {
+        backgroundColor: colors.primarySoft,
+        color: colors.link,
+      };
+    case "TAG":
+      return {
+        backgroundColor: colors.secondarySoft,
+        color: colors.secondaryStrong,
+      };
+    case "FOLLOW":
+      return {
+        backgroundColor: colors.tertiarySoft,
+        color: colors.tertiary,
+      };
+    case "SHARE":
+    case "BLOG_MODERATION":
+      return {
+        backgroundColor: colors.secondarySoft,
+        color: colors.rating,
+      };
+    default:
+      return {
+        backgroundColor: colors.primarySoft,
+        color: colors.primary,
+      };
   }
 }
 
@@ -131,6 +244,7 @@ export function NotificationsScreen() {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isMutating, setIsMutating] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<NotificationFilterKey>("ALL");
 
   const unreadLabel = useMemo(() => {
     if (!unreadCount) {
@@ -150,22 +264,22 @@ export function NotificationsScreen() {
 
     try {
       const [nextNotifications, nextUnread] = await Promise.all([
-        getNotifications({ limit: NOTIFICATION_PAGE_SIZE, page: 0 }),
+        getNotifications({
+          limit: NOTIFICATION_PAGE_SIZE,
+          page: 0,
+          type: getRequestTypeForFilter(activeFilter),
+        }),
         getUnreadNotificationCount(),
       ]);
-      setNotifications(nextNotifications);
+      setNotifications(filterNotifications(nextNotifications, activeFilter));
       setUnreadCount(nextUnread.unreadCount ?? 0);
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to load notifications.",
-      );
+    } catch {
+      setError("Unable to load notifications. Pull down to try again.");
     } finally {
       setIsInitialLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [activeFilter]);
 
   useFocusEffect(
     useCallback(() => {
@@ -229,12 +343,8 @@ export function NotificationsScreen() {
         })),
       );
       setUnreadCount(0);
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to mark notifications as read.",
-      );
+    } catch {
+      setError("Unable to mark notifications as read.");
     } finally {
       setIsMutating(false);
     }
@@ -251,12 +361,8 @@ export function NotificationsScreen() {
 
     try {
       await deleteNotification(notificationId);
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to delete notification.",
-      );
+    } catch {
+      setError("Unable to delete notification.");
       void loadNotifications(true);
     }
   }, [loadNotifications, notifications]);
@@ -265,7 +371,11 @@ export function NotificationsScreen() {
     return (
       <Screen padded={false}>
         <Header unreadLabel={unreadLabel} />
-        <LoadingState label="Loading notifications..." />
+        <NotificationFilterBar
+          activeFilter={activeFilter}
+          onChange={setActiveFilter}
+        />
+        <NotificationSkeletonList />
       </Screen>
     );
   }
@@ -276,6 +386,10 @@ export function NotificationsScreen() {
         onMarkAllRead={handleMarkAllRead}
         showMarkAll={unreadCount > 0}
         unreadLabel={unreadLabel}
+      />
+      <NotificationFilterBar
+        activeFilter={activeFilter}
+        onChange={setActiveFilter}
       />
       <ScrollView
         contentContainerStyle={styles.content}
@@ -301,12 +415,78 @@ export function NotificationsScreen() {
           </View>
         ) : (
           <EmptyState
-            description="Likes, follows, comments, and cafe updates will appear here."
-            title="No notifications yet"
+            description={getEmptyCopy(activeFilter).description}
+            title={getEmptyCopy(activeFilter).title}
           />
         )}
       </ScrollView>
     </Screen>
+  );
+}
+
+function NotificationFilterBar({
+  activeFilter,
+  onChange,
+}: {
+  activeFilter: NotificationFilterKey;
+  onChange: (filter: NotificationFilterKey) => void;
+}) {
+  return (
+    <View style={styles.filterShell}>
+      <ScrollView
+        contentContainerStyle={styles.filterList}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+      >
+        {notificationFilters.map((filter) => {
+          const selected = filter.key === activeFilter;
+
+          return (
+            <Pressable
+              accessibilityLabel={`Show ${filter.label.toLowerCase()} notifications`}
+              accessibilityRole="button"
+              key={filter.key}
+              onPress={() => onChange(filter.key)}
+              style={({ pressed }) => [
+                styles.filterChip,
+                selected && styles.filterChipActive,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.filterChipText,
+                  selected && styles.filterChipTextActive,
+                ]}
+              >
+                {filter.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+function NotificationSkeletonList() {
+  return (
+    <View
+      accessibilityLabel="Loading notifications"
+      accessibilityRole="progressbar"
+      style={styles.skeletonContent}
+    >
+      {[0, 1, 2, 3].map((item) => (
+        <View key={item} style={styles.skeletonRow}>
+          <View style={styles.skeletonIcon} />
+          <View style={styles.skeletonCopy}>
+            <View style={styles.skeletonTitle} />
+            <View style={styles.skeletonDescription} />
+            <View style={styles.skeletonTime} />
+          </View>
+        </View>
+      ))}
+    </View>
   );
 }
 
@@ -349,6 +529,7 @@ function NotificationRow({
   onPress: (notification: NotificationResponse) => void;
 }) {
   const Icon = getNotificationIcon(notification.type);
+  const visual = getNotificationVisual(notification.type);
   const isUnread = !notification.isRead;
 
   return (
@@ -359,12 +540,18 @@ function NotificationRow({
       style={({ pressed }) => [
         styles.notificationRow,
         isUnread && styles.notificationRowUnread,
+        isUnread && { borderColor: visual.color },
         pressed && styles.pressed,
       ]}
     >
-      <View style={[styles.iconWrap, isUnread && styles.iconWrapUnread]}>
+      <View
+        style={[
+          styles.iconWrap,
+          { backgroundColor: isUnread ? visual.color : visual.backgroundColor },
+        ]}
+      >
         <Icon
-          color={isUnread ? colors.white : colors.primary}
+          color={isUnread ? colors.white : visual.color}
           size={20}
           strokeWidth={2.5}
         />
@@ -415,6 +602,39 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     padding: spacing.md,
     textAlign: "center",
+  },
+  filterChip: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 18,
+    borderWidth: 1,
+    minHeight: 36,
+    justifyContent: "center",
+    paddingHorizontal: spacing.md,
+  },
+  filterChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  filterChipText: {
+    color: colors.foreground,
+    fontSize: typography.caption,
+    fontWeight: "900",
+  },
+  filterChipTextActive: {
+    color: colors.white,
+  },
+  filterList: {
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  filterShell: {
+    backgroundColor: colors.background,
+    borderBottomColor: colors.border,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingBottom: spacing.md,
+    paddingTop: spacing.sm,
   },
   header: {
     alignItems: "center",
@@ -489,6 +709,49 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.72,
+  },
+  skeletonContent: {
+    gap: spacing.sm,
+    padding: spacing.lg,
+  },
+  skeletonCopy: {
+    flex: 1,
+    gap: spacing.sm,
+  },
+  skeletonDescription: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 999,
+    height: 12,
+    width: "88%",
+  },
+  skeletonIcon: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 20,
+    height: 40,
+    width: 40,
+  },
+  skeletonRow: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    minHeight: 88,
+    padding: spacing.md,
+  },
+  skeletonTime: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 999,
+    height: 10,
+    width: "28%",
+  },
+  skeletonTitle: {
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: 999,
+    height: 14,
+    width: "48%",
   },
   subtitle: {
     color: colors.muted,

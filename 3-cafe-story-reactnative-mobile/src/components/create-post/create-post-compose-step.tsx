@@ -40,6 +40,12 @@ type CreatePostComposeStepProps = {
 };
 
 const commonTags = ["Coffee", "Brunch", "Quiet", "Work friendly", "Hidden gem"];
+const mediaRatioOptions = [
+  { label: "1:1", value: 1 },
+  { label: "4:3", value: 4 / 3 },
+  { label: "16:9", value: 16 / 9 },
+  { label: "10:16", value: 10 / 16 },
+];
 
 export function CreatePostComposeStep({
   draft,
@@ -136,7 +142,7 @@ export function CreatePostComposeStep({
           {hasMedia ? (
             <>
               <MobilePostCarousel
-                aspectRatio={0.92}
+                aspectRatio={draft.mediaAspectRatio}
                 imageAccessibilityLabel="Selected post media"
                 imageUrls={draft.mediaUrls}
                 insetHorizontal={0}
@@ -186,6 +192,38 @@ export function CreatePostComposeStep({
               </Text>
             </Pressable>
           )}
+        </View>
+
+        <View style={styles.ratioSection}>
+          <Text style={styles.ratioTitle}>Image ratio</Text>
+          <View style={styles.ratioOptions}>
+            {mediaRatioOptions.map((option) => {
+              const selected = draft.mediaAspectRatio === option.value;
+
+              return (
+                <Pressable
+                  accessibilityLabel={`Use ${option.label} image ratio`}
+                  accessibilityRole="button"
+                  key={option.label}
+                  onPress={() => onUpdateDraft({ mediaAspectRatio: option.value })}
+                  style={({ pressed }) => [
+                    styles.ratioChip,
+                    selected && styles.ratioChipActive,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.ratioChipText,
+                      selected && styles.ratioChipTextActive,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
 
         <View style={styles.rowsCard}>
@@ -457,6 +495,43 @@ const styles = StyleSheet.create({
     color: colors.foreground,
     fontSize: typography.label,
     fontWeight: "800",
+  },
+  ratioChip: {
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+    borderRadius: 16,
+    borderWidth: 1,
+    minHeight: 34,
+    minWidth: 58,
+    justifyContent: "center",
+    paddingHorizontal: spacing.md,
+  },
+  ratioChipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  ratioChipText: {
+    color: colors.foreground,
+    fontSize: typography.caption,
+    fontWeight: "900",
+  },
+  ratioChipTextActive: {
+    color: colors.white,
+  },
+  ratioOptions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+  },
+  ratioSection: {
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+  ratioTitle: {
+    color: colors.foreground,
+    fontSize: typography.label,
+    fontWeight: "900",
   },
   rowsCard: {
     backgroundColor: colors.surface,

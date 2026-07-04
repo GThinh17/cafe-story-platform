@@ -1,4 +1,4 @@
-import { X } from "lucide-react-native";
+import { Store, X } from "lucide-react-native";
 import {
   Pressable,
   ScrollView,
@@ -94,9 +94,16 @@ export function ProfileSuggestions({
                   ]}
                 >
                   <Avatar size={92} uri={suggestion.avatar} />
-                  <Text numberOfLines={1} style={styles.name}>
-                    {getDisplayName(suggestion)}
-                  </Text>
+                  <View style={styles.nameRow}>
+                    <Text numberOfLines={1} style={styles.name}>
+                      {getDisplayName(suggestion)}
+                    </Text>
+                    {isCafePage ? (
+                      <View style={styles.cafeBadge}>
+                        <Store color={colors.primary} size={12} strokeWidth={2.5} />
+                      </View>
+                    ) : null}
+                  </View>
                   <Text numberOfLines={1} style={styles.reason}>
                     {getSubtitle(suggestion)}
                   </Text>
@@ -171,6 +178,14 @@ const styles = StyleSheet.create({
     position: "relative",
     width: 172,
   },
+  cafeBadge: {
+    alignItems: "center",
+    backgroundColor: colors.primarySoft,
+    borderRadius: 9,
+    height: 18,
+    justifyContent: "center",
+    width: 18,
+  },
   dismissButton: {
     alignItems: "center",
     height: 32,
@@ -218,10 +233,18 @@ const styles = StyleSheet.create({
   },
   name: {
     color: colors.foreground,
+    flexShrink: 1,
     fontSize: typography.body,
     fontWeight: "900",
+    maxWidth: "100%",
+  },
+  nameRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
     marginTop: spacing.md,
     maxWidth: "100%",
+    minWidth: 0,
   },
   pressed: {
     opacity: 0.72,

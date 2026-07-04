@@ -69,7 +69,12 @@ export function CreatePostSettingsStep({
             accessibilityLabel="Post preview"
             resizeMode="cover"
             source={{ uri: previewImage }}
-            style={styles.previewImage}
+            style={[
+              styles.previewImage,
+              {
+                aspectRatio: draft.mediaAspectRatio,
+              },
+            ]}
           />
         ) : null}
         <Text numberOfLines={3} style={styles.previewCaption}>
@@ -243,7 +248,6 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   previewImage: {
-    aspectRatio: 1.1,
     backgroundColor: colors.surfaceMuted,
     borderRadius: 14,
     width: "100%",
