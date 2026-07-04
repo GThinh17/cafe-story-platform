@@ -1,0 +1,153 @@
+{
+  "name": "CafeStory Report OpenAI Moderation",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cafestory-report-moderation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "0b7ec1bb-c66b-4d8f-b044-8189c35f9e81",
+      "name": "Report Moderation Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -620,
+        0
+      ],
+      "webhookId": "cafestory-report-moderation"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? $json;\nconst required = ['reportId', 'targetType', 'targetId'];\nfor (const key of required) {\n  if (!body[key]) {\n    throw new Error(`Missing required field: ${key}`);\n  }\n}\nconst contentText = String(body.contentText ?? '').trim();\nconst description = String(body.description ?? '').trim();\nconst reasonLabel = String(body.reasonLabel ?? '').trim();\nconst reasonCode = String(body.reasonCode ?? '').trim();\nconst inputText = [\n  `targetType: ${body.targetType}`,\n  reasonCode ? `reasonCode: ${reasonCode}` : '',\n  reasonLabel ? `reasonLabel: ${reasonLabel}` : '',\n  description ? `reportDescription: ${description}` : '',\n  contentText ? `reportedContent: ${contentText}` : '',\n].filter(Boolean).join('\\n');\nconst imageUrls = Array.isArray(body.imageUrls) ? body.imageUrls.filter(Boolean) : [];\nconst moderationInput = [{ type: 'text', text: inputText || `${body.targetType} report` }];\nfor (const imageUrl of imageUrls.slice(0, 10)) {\n  moderationInput.push({ type: 'image_url', image_url: { url: imageUrl } });\n}\nreturn [{\n  json: {\n    report: body,\n    openaiRequest: {\n      model: $env.OPENAI_MODERATION_MODEL || 'omni-moderation-latest',\n      input: moderationInput,\n    },\n  },\n}];"
+      },
+      "id": "334d73c6-6b12-459d-af44-f21cd46c51fa",
+      "name": "Validate And Build OpenAI Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -380,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/moderations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.OPENAI_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.openaiRequest }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "e0c71c1c-1047-4119-bda3-b28854ca72a9",
+      "name": "OpenAI Moderation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -120,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const report = $('Validate And Build OpenAI Request').first().json.report;\nconst result = Array.isArray($json.results) ? $json.results[0] : undefined;\nif (!result) {\n  throw new Error('OpenAI moderation response does not contain results[0]');\n}\nconst categories = result.categories ?? {};\nconst categoryScores = result.category_scores ?? {};\nconst labels = Object.entries(categories)\n  .filter(([, flagged]) => Boolean(flagged))\n  .map(([label]) => label);\nconst maxScore = Object.values(categoryScores).reduce((max, value) => {\n  const numeric = Number(value);\n  return Number.isFinite(numeric) ? Math.max(max, numeric) : max;\n}, 0);\nconst score = Math.round(maxScore * 10000) / 100;\nlet decision = 'SAFE';\nif (result.flagged || score >= 80) {\n  decision = 'VIOLATION';\n} else if (score >= 45 || labels.length > 0) {\n  decision = 'NEEDS_REVIEW';\n}\nconst explanation = labels.length > 0\n  ? `OpenAI moderation flagged ${labels.join(', ')} with max score ${score}.`\n  : `OpenAI moderation did not flag the content. Max score ${score}.`;\nreturn [{\n  json: {\n    decision,\n    score,\n    labels,\n    explanation,\n    modelName: $json.model || $env.OPENAI_MODERATION_MODEL || 'omni-moderation-latest',\n    rawCategories: {\n      flagged: result.flagged,\n      categories,\n      category_scores: categoryScores,\n      category_applied_input_types: result.category_applied_input_types ?? {},\n      reportId: report.reportId,\n      targetType: report.targetType,\n      targetId: report.targetId,\n    },\n  },\n}];"
+      },
+      "id": "64512468-c4c7-48f8-a983-337bb4da325b",
+      "name": "Normalize CafeStory Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        140,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "8090544d-7b4a-4b60-ac22-a38bc5499f8e",
+      "name": "Respond To Backend",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        380,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Report Moderation Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate And Build OpenAI Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate And Build OpenAI Request": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Moderation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Moderation": {
+      "main": [
+        [
+          {
+            "node": "Normalize CafeStory Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize CafeStory Response": {
+      "main": [
+        [
+          {
+            "node": "Respond To Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a1f44ccd-1b02-49dc-a0ec-760f4fd8e705",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "cafestory-report-openai-moderation",
+  "tags": []
+}

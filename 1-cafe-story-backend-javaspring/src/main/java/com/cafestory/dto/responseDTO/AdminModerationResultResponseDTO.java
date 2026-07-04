@@ -3,6 +3,7 @@ package com.cafestory.dto.responseDTO;
 import com.cafestory.entity.enums.ModerationDecision;
 import com.cafestory.entity.enums.ModerationResolveAction;
 import com.cafestory.entity.enums.PostStatus;
+import com.cafestory.entity.enums.ReportTargetType;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -15,6 +16,10 @@ public class AdminModerationResultResponseDTO {
     private UUID id;
 
     private UUID blogId;
+
+    private UUID commentId;
+
+    private ReportTargetType targetType;
 
     private UUID authorUserId;
 
@@ -43,6 +48,8 @@ public class AdminModerationResultResponseDTO {
     private String aiStatus;
 
     private PostStatus blogStatus;
+
+    private PostStatus commentStatus;
 
     private String labels;
 

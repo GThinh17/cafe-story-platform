@@ -45,6 +45,10 @@ public class AiModerationResult {
     @JoinColumn(name = "blog_id")
     private Blog blog;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "comment_id")
+    private Comment comment;
+
     @Column(name = "caption", columnDefinition = "TEXT")
     private String caption;
 

@@ -17,6 +17,7 @@ import com.cafestory.entity.enums.ReportTargetType;
 import com.cafestory.repository.BlogEventRepository;
 import com.cafestory.repository.ContentReportRepository;
 import com.cafestory.service.serviceInterface.ContentReportService;
+import com.cafestory.service.serviceInterface.ReportModerationService;
 import com.cafestory.service.serviceInterface.ReportReasonService;
 import com.cafestory.validation.BlogValidator;
 import com.cafestory.validation.CafePageValidator;
@@ -48,6 +49,7 @@ public class ContentReportServiceImpl implements ContentReportService {
     private final CafePageValidator cafePageValidator;
     private final UserValidator userValidator;
     private final ReportReasonService reportReasonService;
+    private final ReportModerationService reportModerationService;
 
     public ContentReportServiceImpl(
             ContentReportRepository contentReportRepository,
@@ -56,7 +58,8 @@ public class ContentReportServiceImpl implements ContentReportService {
             CommentValidator commentValidator,
             CafePageValidator cafePageValidator,
             UserValidator userValidator,
-            ReportReasonService reportReasonService) {
+            ReportReasonService reportReasonService,
+            ReportModerationService reportModerationService) {
         this.contentReportRepository = contentReportRepository;
         this.blogEventRepository = blogEventRepository;
         this.blogValidator = blogValidator;
@@ -64,6 +67,7 @@ public class ContentReportServiceImpl implements ContentReportService {
         this.cafePageValidator = cafePageValidator;
         this.userValidator = userValidator;
         this.reportReasonService = reportReasonService;
+        this.reportModerationService = reportModerationService;
     }
 
     @Override
@@ -99,6 +103,7 @@ public class ContentReportServiceImpl implements ContentReportService {
         if (savedReport.getTargetType() == ReportTargetType.BLOG) {
             recordBlogReportEvent(savedReport.getBlog(), reporter);
         }
+        reportModerationService.moderateReport(savedReport);
         return toResponse(savedReport);
     }
 

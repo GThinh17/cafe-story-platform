@@ -5,6 +5,7 @@ import com.cafestory.dto.requestDTO.ContentReportRequestDTO;
 import com.cafestory.dto.responseDTO.ContentReportResponseDTO;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogEvent;
+import com.cafestory.entity.Comment;
 import com.cafestory.entity.ContentReport;
 import com.cafestory.entity.ReportReason;
 import com.cafestory.entity.User;
@@ -14,6 +15,7 @@ import com.cafestory.entity.enums.ReportTargetType;
 import com.cafestory.repository.BlogEventRepository;
 import com.cafestory.repository.ContentReportRepository;
 import com.cafestory.service.serviceImplement.ContentReportServiceImpl;
+import com.cafestory.service.serviceInterface.ReportModerationService;
 import com.cafestory.service.serviceInterface.ReportReasonService;
 import com.cafestory.validation.BlogValidator;
 import com.cafestory.validation.CafePageValidator;
@@ -38,6 +40,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -63,6 +66,9 @@ class ContentReportServiceImplTest {
 
     @Mock
     private ReportReasonService reportReasonService;
+
+    @Mock
+    private ReportModerationService reportModerationService;
 
     @InjectMocks
     private ContentReportServiceImpl contentReportService;
@@ -103,6 +109,7 @@ class ContentReportServiceImplTest {
         assertThat(event.getUser()).isEqualTo(reporter);
         assertThat(event.getEventType()).isEqualTo(BlogEventType.REPORT);
         assertThat(event.getWeight()).isEqualTo(-10.0);
+        verify(reportModerationService).moderateReport(any(ContentReport.class));
     }
 
     @Test
@@ -131,6 +138,7 @@ class ContentReportServiceImplTest {
 
         verify(contentReportRepository, never()).save(any(ContentReport.class));
         verify(blogEventRepository, never()).save(any(BlogEvent.class));
+        verifyNoInteractions(reportModerationService);
     }
 
     @Test
@@ -154,6 +162,7 @@ class ContentReportServiceImplTest {
                 any(UUID.class),
                 any(UUID.class),
                 anyCollection());
+        verifyNoInteractions(reportModerationService);
     }
 
     @Test
@@ -178,6 +187,7 @@ class ContentReportServiceImplTest {
 
         verify(contentReportRepository, never()).save(any(ContentReport.class));
         verify(blogEventRepository, never()).save(any(BlogEvent.class));
+        verifyNoInteractions(reportModerationService);
     }
 
     @Test
@@ -195,6 +205,58 @@ class ContentReportServiceImplTest {
         assertThat(result.getStatus()).isEqualTo(ReportStatus.RESOLVED);
         assertThat(result.getResolvedAt()).isNotNull();
         verify(contentReportRepository).save(report);
+    }
+
+    @Test
+    void createReport_success_userReportDelegatesToModerationGuard_TC006() {
+        UUID reporterId = UUID.randomUUID();
+        UUID reportedUserId = UUID.randomUUID();
+        User reporter = user(reporterId, "reader");
+        User reportedUser = user(reportedUserId, "reported");
+        ContentReportRequestDTO request = request(ReportTargetType.USER, reportedUserId);
+        ReportReason reason = reason(request.getReasonId(), "BULLYING_OR_UNWANTED_CONTACT", "Bullying");
+
+        when(userValidator.validateUserExists(reporterId)).thenReturn(reporter);
+        when(userValidator.validateUserExists(reportedUserId)).thenReturn(reportedUser);
+        when(reportReasonService.validateActiveReportReason(request.getReasonId(), ReportTargetType.USER)).thenReturn(reason);
+        when(contentReportRepository.existsByReporterUserIdAndReportedUserUserIdAndStatusIn(
+                reporterId,
+                reportedUserId,
+                java.util.List.of(ReportStatus.OPEN, ReportStatus.REVIEWING))).thenReturn(false);
+        when(contentReportRepository.save(any(ContentReport.class))).thenAnswer(invocation -> saved(invocation.getArgument(0)));
+
+        ContentReportResponseDTO result = contentReportService.createReport(reporterId, request);
+
+        assertThat(result.getTargetType()).isEqualTo(ReportTargetType.USER);
+        assertThat(result.getReportedUserId()).isEqualTo(reportedUserId);
+        verify(reportModerationService).moderateReport(any(ContentReport.class));
+        verify(blogEventRepository, never()).save(any(BlogEvent.class));
+    }
+
+    @Test
+    void createReport_success_commentReportTriggersModeration_TC007() {
+        UUID reporterId = UUID.randomUUID();
+        UUID commentId = UUID.randomUUID();
+        User reporter = user(reporterId, "reader");
+        Comment comment = comment(commentId, user(UUID.randomUUID(), "author"));
+        ContentReportRequestDTO request = request(ReportTargetType.COMMENT, commentId);
+        ReportReason reason = reason(request.getReasonId(), "SCAM_FRAUD_OR_SPAM", "Spam");
+
+        when(userValidator.validateUserExists(reporterId)).thenReturn(reporter);
+        when(reportReasonService.validateActiveReportReason(request.getReasonId(), ReportTargetType.COMMENT)).thenReturn(reason);
+        when(commentValidator.validateCommentExists(commentId)).thenReturn(comment);
+        when(contentReportRepository.existsByReporterUserIdAndCommentIdAndStatusIn(
+                reporterId,
+                commentId,
+                java.util.List.of(ReportStatus.OPEN, ReportStatus.REVIEWING))).thenReturn(false);
+        when(contentReportRepository.save(any(ContentReport.class))).thenAnswer(invocation -> saved(invocation.getArgument(0)));
+
+        ContentReportResponseDTO result = contentReportService.createReport(reporterId, request);
+
+        assertThat(result.getTargetType()).isEqualTo(ReportTargetType.COMMENT);
+        assertThat(result.getCommentId()).isEqualTo(commentId);
+        verify(reportModerationService).moderateReport(any(ContentReport.class));
+        verify(blogEventRepository, never()).save(any(BlogEvent.class));
     }
 
     private ContentReportRequestDTO request(ReportTargetType targetType, UUID targetId) {
@@ -243,6 +305,15 @@ class ContentReportServiceImplTest {
         blog.setAuthor(author);
         blog.setContent("Blog content");
         return blog;
+    }
+
+    private Comment comment(UUID commentId, User author) {
+        Comment comment = new Comment();
+        comment.setId(commentId);
+        comment.setUser(author);
+        comment.setBlog(blog(UUID.randomUUID(), author));
+        comment.setContent("Comment content");
+        return comment;
     }
 
     private User user(UUID userId, String username) {

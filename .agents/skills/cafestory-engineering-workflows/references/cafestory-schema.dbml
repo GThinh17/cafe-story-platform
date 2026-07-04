@@ -637,6 +637,7 @@ Table notifications {
 Table ai_moderation_results {
   id uuid [pk]
   blog_id uuid
+  comment_id uuid
   caption text
   score decimal(5, 4) [not null]
   decision moderation_decision [not null]
@@ -1119,3 +1120,4 @@ Ref: content_reports.reported_user_id > users.user_id
 Ref: content_reports.cafe_page_id > cafe_pages.id
 Ref: content_reports.reason_id > report_reasons.id
 Ref: ai_moderation_results.blog_id > blogs.id
+Ref: ai_moderation_results.comment_id > comments.id

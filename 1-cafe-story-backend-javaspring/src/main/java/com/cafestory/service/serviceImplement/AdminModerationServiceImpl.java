@@ -4,11 +4,14 @@ import com.cafestory.dto.requestDTO.AdminModerationResolveRequestDTO;
 import com.cafestory.dto.responseDTO.AdminModerationResultResponseDTO;
 import com.cafestory.entity.AiModerationResult;
 import com.cafestory.entity.Blog;
+import com.cafestory.entity.Comment;
 import com.cafestory.entity.enums.ModerationDecision;
 import com.cafestory.entity.enums.ModerationResolveAction;
 import com.cafestory.entity.enums.PostStatus;
+import com.cafestory.entity.enums.ReportTargetType;
 import com.cafestory.repository.AiModerationResultRepository;
 import com.cafestory.repository.BlogRepository;
+import com.cafestory.repository.CommentRepository;
 import com.cafestory.service.serviceInterface.AdminModerationService;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
@@ -32,12 +35,15 @@ public class AdminModerationServiceImpl implements AdminModerationService {
 
     private final AiModerationResultRepository moderationResultRepository;
     private final BlogRepository blogRepository;
+    private final CommentRepository commentRepository;
 
     public AdminModerationServiceImpl(
             AiModerationResultRepository moderationResultRepository,
-            BlogRepository blogRepository) {
+            BlogRepository blogRepository,
+            CommentRepository commentRepository) {
         this.moderationResultRepository = moderationResultRepository;
         this.blogRepository = blogRepository;
+        this.commentRepository = commentRepository;
     }
 
     @Override
@@ -83,12 +89,18 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         AiModerationResult result = findResult(resultId);
         PostStatus targetStatus = targetStatus(request.getAction());
 
+        Comment comment = result.getComment();
         Blog blog = result.getBlog();
-        if (blog == null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Moderation result has no target blog");
+        if (comment == null && blog == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Moderation result has no target content");
         }
-        blog.setStatus(targetStatus);
-        blogRepository.save(blog);
+        if (comment != null) {
+            comment.setStatus(targetStatus);
+            commentRepository.save(comment);
+        } else {
+            blog.setStatus(targetStatus);
+            blogRepository.save(blog);
+        }
 
         result.setDecision(request.getAction() == ModerationResolveAction.APPROVE
                 ? ModerationDecision.SAFE
@@ -118,7 +130,10 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         AdminModerationResultResponseDTO response = new AdminModerationResultResponseDTO();
         response.setId(result.getId());
         Blog blog = result.getBlog();
+        Comment comment = result.getComment();
+        response.setTargetType(comment == null ? ReportTargetType.BLOG : ReportTargetType.COMMENT);
         response.setBlogId(blog == null ? null : blog.getId());
+        response.setCommentId(comment == null ? null : comment.getId());
         if (blog != null) {
             response.setBlogStatus(blog.getStatus());
             if (blog.getAuthor() != null) {
@@ -126,6 +141,18 @@ public class AdminModerationServiceImpl implements AdminModerationService {
                 response.setAuthorUserName(blog.getAuthor().getUserName());
                 response.setAuthorUserFullName(blog.getAuthor().getUserFullName());
                 response.setAuthorUserAvatar(blog.getAuthor().getUserAvatar());
+            }
+        }
+        if (comment != null) {
+            response.setCommentStatus(comment.getStatus());
+            if (blog == null && comment.getBlog() != null) {
+                response.setBlogId(comment.getBlog().getId());
+            }
+            if (comment.getUser() != null) {
+                response.setAuthorUserId(comment.getUser().getUserId());
+                response.setAuthorUserName(comment.getUser().getUserName());
+                response.setAuthorUserFullName(comment.getUser().getUserFullName());
+                response.setAuthorUserAvatar(comment.getUser().getUserAvatar());
             }
         }
         response.setCaption(result.getCaption());
