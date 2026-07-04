@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
   },
   image: {
     backgroundColor: colors.surfaceMuted,
-    borderRadius: 12,
+    borderRadius: 0,
   },
   list: {
     width: "100%",

@@ -78,7 +78,7 @@ export function BlogDetailScreen() {
         ) : error ? (
           <EmptyState description="Pull down to retry." title={error} />
         ) : blog ? (
-          <BlogFeedCard blog={blog} />
+          <BlogFeedCard blog={blog} showFollowButton={false} />
         ) : (
           <EmptyState
             description="This post may have been removed."

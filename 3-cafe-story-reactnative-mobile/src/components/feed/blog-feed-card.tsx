@@ -33,6 +33,7 @@ import type { BlogFeedResponse } from "../../types";
 
 type BlogFeedCardProps = {
   blog: BlogFeedResponse;
+  showFollowButton?: boolean;
 };
 
 function compactCount(value: number | null) {
@@ -115,7 +116,7 @@ function formatTimeAgo(createdAt: string | null) {
   return `${Math.floor(diffHours / 24)} DAYS AGO`;
 }
 
-export function BlogFeedCard({ blog }: BlogFeedCardProps) {
+export function BlogFeedCard({ blog, showFollowButton = true }: BlogFeedCardProps) {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
@@ -138,7 +139,7 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
   ).filter((uri): uri is string => Boolean(uri));
   const isOwnPost = user?.userId === blog.authorUserId;
   const canFollowAuthor = Boolean(blog.authorUserId) && !isOwnPost;
-  const shouldShowFollowButton = canFollowAuthor && !isFollowed;
+  const shouldShowFollowButton = showFollowButton && canFollowAuthor && !isFollowed;
   const isFollowDisabled = !shouldShowFollowButton || isFollowPending;
   const canOpenAuthorProfile =
     blog.displayAuthorType === "CAFE_PAGE"

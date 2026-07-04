@@ -930,6 +930,23 @@ export function ProfileScreen() {
           </Pressable>
         )}
 
+        {shouldShowCafePageAction ? (
+          <Pressable
+            accessibilityLabel="Open owned cafe page"
+            accessibilityRole="button"
+            onPress={openOwnedCafePage}
+            style={({ pressed }) => [
+              styles.cafePageTag,
+              pressed && styles.actionPressed,
+            ]}
+          >
+            <Store color={colors.primary} size={16} strokeWidth={2.5} />
+            <Text numberOfLines={1} style={styles.cafePageTagName}>
+              {ownedCafePage?.name || "View cafe page"}
+            </Text>
+          </Pressable>
+        ) : null}
+
         <View style={styles.profileChips}>
           <View style={styles.profileChip}>
             <AtSign color={colors.foreground} size={16} strokeWidth={2.4} />
@@ -937,24 +954,6 @@ export function ProfileScreen() {
               {userName}
             </Text>
           </View>
-
-          {shouldShowCafePageAction ? (
-            <Pressable
-              accessibilityLabel="Open cafe page"
-              accessibilityRole="button"
-              onPress={openOwnedCafePage}
-              style={({ pressed }) => [
-                styles.profileChip,
-                styles.cafePageChip,
-                pressed && styles.actionPressed,
-              ]}
-            >
-              <Store color={colors.primary} size={16} strokeWidth={2.5} />
-              <Text numberOfLines={1} style={styles.cafePageChipText}>
-                Cafe
-              </Text>
-            </Pressable>
-          ) : null}
 
           {shouldShowReviewerDashboardAction ? (
             <Pressable
@@ -1139,15 +1138,27 @@ const styles = StyleSheet.create({
     width: 104,
   },
 
-  cafePageChip: {
+  cafePageTag: {
+    alignItems: "center",
+    alignSelf: "flex-start",
     backgroundColor: colors.primarySoft,
     borderColor: colors.primary,
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginHorizontal: spacing.lg,
+    maxWidth: "82%",
+    minHeight: 36,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
   },
 
-  cafePageChipText: {
+  cafePageTagName: {
     color: colors.primary,
+    flexShrink: 1,
     fontSize: typography.label,
-    fontWeight: "900",
+    fontWeight: "800",
   },
 
   descriptionPrompt: {
