@@ -13,6 +13,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -49,6 +50,11 @@ public class AdminContentReportController {
             @PathVariable UUID reportId,
             @Valid @RequestBody AdminContentReportStatusUpdateRequestDTO request) {
         return contentReportService.updateStatus(reportId, request);
+    }
+
+    @PostMapping("/{reportId}/resolve")
+    public ContentReportResponseDTO resolveReport(@PathVariable UUID reportId) {
+        return contentReportService.resolveReport(reportId);
     }
 
     private Pageable pageable(int page, int size) {

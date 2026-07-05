@@ -69,6 +69,20 @@ class AdminContentReportControllerTest {
         verify(contentReportService).updateStatus(reportId, request);
     }
 
+    @Test
+    void resolveReport_successDelegatesToContentReportService_TC003() {
+        UUID reportId = UUID.randomUUID();
+        ContentReportResponseDTO response = response();
+        response.setStatus(ReportStatus.RESOLVED);
+
+        when(contentReportService.resolveReport(reportId)).thenReturn(response);
+
+        ContentReportResponseDTO result = adminContentReportController.resolveReport(reportId);
+
+        assertThat(result).isEqualTo(response);
+        verify(contentReportService).resolveReport(reportId);
+    }
+
     private ContentReportResponseDTO response() {
         ContentReportResponseDTO response = new ContentReportResponseDTO();
         response.setId(UUID.randomUUID());

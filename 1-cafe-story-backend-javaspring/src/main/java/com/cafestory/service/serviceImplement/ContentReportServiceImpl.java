@@ -142,6 +142,18 @@ public class ContentReportServiceImpl implements ContentReportService {
         return toResponse(contentReportRepository.save(report));
     }
 
+    @Override
+    @Transactional
+    public ContentReportResponseDTO resolveReport(UUID reportId) {
+        ContentReport report = findReport(reportId);
+        if (report.getStatus() == ReportStatus.RESOLVED) {
+            return toResponse(report);
+        }
+        report.setStatus(ReportStatus.RESOLVED);
+        report.setResolvedAt(LocalDateTime.now());
+        return toResponse(contentReportRepository.save(report));
+    }
+
     private void attachBlogTarget(ContentReport report, UUID reporterUserId, UUID blogId) {
         Blog blog = blogValidator.validateBlogExists(blogId);
         if (blog.getAuthor() != null && reporterUserId.equals(blog.getAuthor().getUserId())) {

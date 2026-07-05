@@ -208,7 +208,72 @@ class ContentReportServiceImplTest {
     }
 
     @Test
-    void createReport_success_userReportDoesNotEnqueueModerationJob_TC006() {
+    void resolveReport_success_openReportGetsResolvedAt_TC006() {
+        UUID reportId = UUID.randomUUID();
+        ContentReport report = report(reportId, user(UUID.randomUUID(), "reader"));
+
+        when(contentReportRepository.findById(reportId)).thenReturn(Optional.of(report));
+        when(contentReportRepository.save(report)).thenReturn(report);
+
+        ContentReportResponseDTO result = contentReportService.resolveReport(reportId);
+
+        assertThat(result.getStatus()).isEqualTo(ReportStatus.RESOLVED);
+        assertThat(result.getResolvedAt()).isNotNull();
+        assertThat(report.getStatus()).isEqualTo(ReportStatus.RESOLVED);
+        verify(contentReportRepository).save(report);
+        verifyNoInteractions(reportModerationService);
+    }
+
+    @Test
+    void resolveReport_success_alreadyResolvedReportIsIdempotent_TC007() {
+        UUID reportId = UUID.randomUUID();
+        ContentReport report = report(reportId, user(UUID.randomUUID(), "reader"));
+        LocalDateTime resolvedAt = LocalDateTime.now().minusDays(1);
+        report.setStatus(ReportStatus.RESOLVED);
+        report.setResolvedAt(resolvedAt);
+
+        when(contentReportRepository.findById(reportId)).thenReturn(Optional.of(report));
+
+        ContentReportResponseDTO result = contentReportService.resolveReport(reportId);
+
+        assertThat(result.getStatus()).isEqualTo(ReportStatus.RESOLVED);
+        assertThat(result.getResolvedAt()).isEqualTo(resolvedAt);
+        verify(contentReportRepository, never()).save(any(ContentReport.class));
+        verifyNoInteractions(reportModerationService);
+    }
+
+    @Test
+    void resolveReport_fail_reportNotFound_TC008() {
+        UUID reportId = UUID.randomUUID();
+        when(contentReportRepository.findById(reportId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> contentReportService.resolveReport(reportId))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.NOT_FOUND))
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getReason())
+                        .isEqualTo("Report not found"));
+
+        verify(contentReportRepository, never()).save(any(ContentReport.class));
+        verifyNoInteractions(reportModerationService);
+    }
+
+    @Test
+    void resolveReport_fail_nullReportId_TC009() {
+        assertThatThrownBy(() -> contentReportService.resolveReport(null))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST))
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getReason())
+                        .isEqualTo("Report id is required"));
+
+        verify(contentReportRepository, never()).findById(any(UUID.class));
+        verify(contentReportRepository, never()).save(any(ContentReport.class));
+        verifyNoInteractions(reportModerationService);
+    }
+
+    @Test
+    void createReport_success_userReportDoesNotEnqueueModerationJob_TC010() {
         UUID reporterId = UUID.randomUUID();
         UUID reportedUserId = UUID.randomUUID();
         User reporter = user(reporterId, "reader");
@@ -234,7 +299,7 @@ class ContentReportServiceImplTest {
     }
 
     @Test
-    void createReport_success_commentReportTriggersModeration_TC007() {
+    void createReport_success_commentReportTriggersModeration_TC011() {
         UUID reporterId = UUID.randomUUID();
         UUID commentId = UUID.randomUUID();
         User reporter = user(reporterId, "reader");
