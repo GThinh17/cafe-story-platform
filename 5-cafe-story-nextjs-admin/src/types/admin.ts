@@ -5,6 +5,18 @@ export type PostStatus = "DRAFT" | "PUBLISHED" | "HIDDEN" | "REMOVED";
 export type PageStatus = "DRAFT" | "ACTIVE" | "SUSPENDED";
 export type ReportStatus = "OPEN" | "REVIEWING" | "RESOLVED" | "REJECTED";
 export type ReportTargetType = "BLOG" | "COMMENT" | "USER" | "CAFE_PAGE";
+export type AdminReportAiReportDecision =
+  | "RESOLVE"
+  | "REJECT"
+  | "NEEDS_MANUAL_REVIEW";
+export type AdminReportAiTargetAction =
+  | "APPROVE"
+  | "HIDE"
+  | "REMOVE"
+  | "KEEP_ACTIVE"
+  | "SUSPEND_USER"
+  | "SUSPEND_PAGE"
+  | "NONE";
 export type PaymentStatus =
   | "PENDING"
   | "PAID"
@@ -157,11 +169,32 @@ export type ContentReport = {
   commentId: UUID | null;
   reportedUserId: UUID | null;
   cafePageId: UUID | null;
+  reasonId: UUID | null;
+  reasonCode: string | null;
   reason: string;
+  reasonLabel: string | null;
+  reasonSeverity: number | null;
   description: string | null;
   status: ReportStatus;
   createdAt: string;
   resolvedAt: string | null;
+};
+
+export type AdminReportAiResolution = {
+  id: UUID;
+  contentReportId: UUID;
+  targetType: ReportTargetType;
+  targetId: UUID;
+  reportDecision: AdminReportAiReportDecision;
+  targetAction: AdminReportAiTargetAction;
+  confidenceScore: number | null;
+  riskScore: number | null;
+  labels: string[];
+  ruleCode: string | null;
+  explanation: string | null;
+  modelName: string | null;
+  rawResponse: Record<string, unknown> | null;
+  createdAt: string;
 };
 
 export type Payment = {

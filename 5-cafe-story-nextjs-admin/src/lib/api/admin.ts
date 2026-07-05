@@ -6,6 +6,7 @@ import type {
   AdminModerationResult,
   AdminPayout,
   AdminPayoutStatus,
+  AdminReportAiResolution,
   AdminUser,
   Blog,
   BlogRankingOverrideRequest,
@@ -289,6 +290,30 @@ export function updateReportStatus(reportId: string, status: ReportStatus) {
     method: "PATCH",
     body: { status },
   });
+}
+
+export function resolveReport(reportId: string) {
+  return apiFetch<ContentReport>(apiEndpoints.admin.reportResolve(reportId), {
+    method: "POST",
+  });
+}
+
+export function createReportAiResolution(reportId: string) {
+  return apiFetch<AdminReportAiResolution>(
+    apiEndpoints.admin.reportAiResolution(reportId),
+    { method: "POST" },
+  );
+}
+
+export function getReportAiResolutions(
+  reportId: string,
+  params: { page: number; size: number },
+  signal?: AbortSignal,
+) {
+  return apiFetch<PageResponse<AdminReportAiResolution>>(
+    withQuery(apiEndpoints.admin.reportAiResolutions(reportId), params),
+    { method: "GET", signal },
+  );
 }
 
 export function getAdminPayments(params: {
