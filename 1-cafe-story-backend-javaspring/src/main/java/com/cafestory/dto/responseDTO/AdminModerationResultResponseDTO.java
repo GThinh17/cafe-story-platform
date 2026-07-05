@@ -15,6 +15,10 @@ public class AdminModerationResultResponseDTO {
 
     private UUID id;
 
+    private UUID contentReportId;
+
+    private UUID moderationJobId;
+
     private UUID blogId;
 
     private UUID commentId;
@@ -50,6 +54,16 @@ public class AdminModerationResultResponseDTO {
     private PostStatus blogStatus;
 
     private PostStatus commentStatus;
+
+    private Double priorityScore;
+
+    private Double riskScore;
+
+    private Double reasonSeveritySignal;
+
+    private Double reportCountSignal;
+
+    private String moderationJobStatus;
 
     private String labels;
 

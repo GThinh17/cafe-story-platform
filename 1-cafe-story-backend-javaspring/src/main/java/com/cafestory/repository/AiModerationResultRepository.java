@@ -18,6 +18,8 @@ public interface AiModerationResultRepository
         JpaSpecificationExecutor<AiModerationResult> {
     boolean existsByBlogIdAndDecision(UUID blogId, ModerationDecision decision);
 
+    boolean existsByContentReportId(UUID contentReportId);
+
     @Query("""
             select distinct result.blog.id
             from AiModerationResult result

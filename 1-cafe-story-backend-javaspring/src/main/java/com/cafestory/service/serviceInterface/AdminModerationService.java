@@ -2,7 +2,9 @@ package com.cafestory.service.serviceInterface;
 
 import com.cafestory.dto.requestDTO.AdminModerationResolveRequestDTO;
 import com.cafestory.dto.responseDTO.AdminModerationResultResponseDTO;
+import com.cafestory.dto.responseDTO.ReportModerationJobResponseDTO;
 import com.cafestory.entity.enums.ModerationDecision;
+import com.cafestory.entity.enums.ReportModerationJobStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -21,4 +23,8 @@ public interface AdminModerationService {
     AdminModerationResultResponseDTO getResult(UUID resultId);
 
     AdminModerationResultResponseDTO resolveResult(UUID resultId, AdminModerationResolveRequestDTO request);
+
+    Page<ReportModerationJobResponseDTO> getJobs(ReportModerationJobStatus status, Pageable pageable);
+
+    ReportModerationJobResponseDTO retryReport(UUID reportId);
 }

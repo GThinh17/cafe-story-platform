@@ -49,6 +49,10 @@ public class AiModerationResult {
     @JoinColumn(name = "comment_id")
     private Comment comment;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "content_report_id")
+    private ContentReport contentReport;
+
     @Column(name = "caption", columnDefinition = "TEXT")
     private String caption;
 
@@ -92,6 +96,18 @@ public class AiModerationResult {
 
     @Column(name = "model_name")
     private String modelName;
+
+    @Column(name = "priority_score")
+    private Double priorityScore;
+
+    @Column(name = "risk_score")
+    private Double riskScore;
+
+    @Column(name = "reason_severity_signal")
+    private Double reasonSeveritySignal;
+
+    @Column(name = "report_count_signal")
+    private Double reportCountSignal;
 
     @NotNull
     @Column(name = "resolved", nullable = false)

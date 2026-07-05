@@ -103,7 +103,10 @@ public class ContentReportServiceImpl implements ContentReportService {
         if (savedReport.getTargetType() == ReportTargetType.BLOG) {
             recordBlogReportEvent(savedReport.getBlog(), reporter);
         }
-        reportModerationService.moderateReport(savedReport);
+        if (savedReport.getTargetType() == ReportTargetType.BLOG
+                || savedReport.getTargetType() == ReportTargetType.COMMENT) {
+            reportModerationService.enqueueReport(savedReport);
+        }
         return toResponse(savedReport);
     }
 

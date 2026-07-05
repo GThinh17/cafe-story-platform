@@ -42,6 +42,14 @@ Enum moderation_decision {
   VIOLATION
 }
 
+Enum report_moderation_job_status {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  DEAD_LETTER
+}
+
 Enum moderation_resolve_action {
   APPROVE
   HIDE
@@ -638,6 +646,7 @@ Table ai_moderation_results {
   id uuid [pk]
   blog_id uuid
   comment_id uuid
+  content_report_id uuid
   caption text
   score decimal(5, 4) [not null]
   decision moderation_decision [not null]
@@ -651,6 +660,10 @@ Table ai_moderation_results {
   ai_status varchar(50)
   raw_response jsonb
   model_name varchar(120)
+  priority_score decimal
+  risk_score decimal
+  reason_severity_signal decimal
+  report_count_signal decimal
   resolved boolean [not null, default: false]
   resolved_action moderation_resolve_action
   resolved_at datetime
@@ -1022,6 +1035,28 @@ Table content_reports {
   Note: "Use target_type with exactly one matching target FK: blog_id, comment_id, reported_user_id, or cafe_page_id. reason stores the label snapshot selected from report_reasons."
 }
 
+Table report_moderation_jobs {
+  id uuid [pk]
+  content_report_id uuid [not null, unique]
+  target_type report_target_type [not null]
+  target_id uuid [not null]
+  status report_moderation_job_status [not null, default: "PENDING"]
+  attempt_count int [not null, default: 0]
+  max_attempts int [not null, default: 3]
+  next_attempt_at datetime [not null]
+  processing_started_at datetime
+  last_error text
+  last_duration_ms bigint
+  priority_score decimal
+  risk_score decimal
+  reason_severity_signal decimal
+  report_count_signal decimal
+  created_at datetime [not null]
+  updated_at datetime
+
+  Note: "DB-backed async worker queue for report-triggered AI moderation. Worker claims due PENDING/FAILED rows with FOR UPDATE SKIP LOCKED and moves exhausted failures to DEAD_LETTER."
+}
+
 Ref: user_roles.user_id > users.user_id
 Ref: user_roles.role_id > roles.id
 Ref: refresh_tokens.user_id > users.user_id
@@ -1121,3 +1156,5 @@ Ref: content_reports.cafe_page_id > cafe_pages.id
 Ref: content_reports.reason_id > report_reasons.id
 Ref: ai_moderation_results.blog_id > blogs.id
 Ref: ai_moderation_results.comment_id > comments.id
+Ref: ai_moderation_results.content_report_id > content_reports.id
+Ref: report_moderation_jobs.content_report_id > content_reports.id

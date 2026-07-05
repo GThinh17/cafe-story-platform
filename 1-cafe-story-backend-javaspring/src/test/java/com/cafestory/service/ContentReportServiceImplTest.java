@@ -109,7 +109,7 @@ class ContentReportServiceImplTest {
         assertThat(event.getUser()).isEqualTo(reporter);
         assertThat(event.getEventType()).isEqualTo(BlogEventType.REPORT);
         assertThat(event.getWeight()).isEqualTo(-10.0);
-        verify(reportModerationService).moderateReport(any(ContentReport.class));
+        verify(reportModerationService).enqueueReport(any(ContentReport.class));
     }
 
     @Test
@@ -208,7 +208,7 @@ class ContentReportServiceImplTest {
     }
 
     @Test
-    void createReport_success_userReportDelegatesToModerationGuard_TC006() {
+    void createReport_success_userReportDoesNotEnqueueModerationJob_TC006() {
         UUID reporterId = UUID.randomUUID();
         UUID reportedUserId = UUID.randomUUID();
         User reporter = user(reporterId, "reader");
@@ -229,7 +229,7 @@ class ContentReportServiceImplTest {
 
         assertThat(result.getTargetType()).isEqualTo(ReportTargetType.USER);
         assertThat(result.getReportedUserId()).isEqualTo(reportedUserId);
-        verify(reportModerationService).moderateReport(any(ContentReport.class));
+        verifyNoInteractions(reportModerationService);
         verify(blogEventRepository, never()).save(any(BlogEvent.class));
     }
 
@@ -255,7 +255,7 @@ class ContentReportServiceImplTest {
 
         assertThat(result.getTargetType()).isEqualTo(ReportTargetType.COMMENT);
         assertThat(result.getCommentId()).isEqualTo(commentId);
-        verify(reportModerationService).moderateReport(any(ContentReport.class));
+        verify(reportModerationService).enqueueReport(any(ContentReport.class));
         verify(blogEventRepository, never()).save(any(BlogEvent.class));
     }
 
