@@ -1,9 +1,11 @@
 package com.cafestory.controller;
 
 import com.cafestory.dto.requestDTO.AdminContentReportStatusUpdateRequestDTO;
+import com.cafestory.dto.responseDTO.AdminReportAiResolutionResponseDTO;
 import com.cafestory.dto.responseDTO.ContentReportResponseDTO;
 import com.cafestory.entity.enums.ReportStatus;
 import com.cafestory.entity.enums.ReportTargetType;
+import com.cafestory.service.serviceInterface.AdminReportAiResolutionService;
 import com.cafestory.service.serviceInterface.ContentReportService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -26,9 +28,13 @@ import java.util.UUID;
 public class AdminContentReportController {
 
     private final ContentReportService contentReportService;
+    private final AdminReportAiResolutionService adminReportAiResolutionService;
 
-    public AdminContentReportController(ContentReportService contentReportService) {
+    public AdminContentReportController(
+            ContentReportService contentReportService,
+            AdminReportAiResolutionService adminReportAiResolutionService) {
         this.contentReportService = contentReportService;
+        this.adminReportAiResolutionService = adminReportAiResolutionService;
     }
 
     @GetMapping
@@ -55,6 +61,19 @@ public class AdminContentReportController {
     @PostMapping("/{reportId}/resolve")
     public ContentReportResponseDTO resolveReport(@PathVariable UUID reportId) {
         return contentReportService.resolveReport(reportId);
+    }
+
+    @PostMapping("/{reportId}/ai-resolution")
+    public AdminReportAiResolutionResponseDTO createAiResolution(@PathVariable UUID reportId) {
+        return adminReportAiResolutionService.createResolution(reportId);
+    }
+
+    @GetMapping("/{reportId}/ai-resolutions")
+    public Page<AdminReportAiResolutionResponseDTO> getAiResolutions(
+            @PathVariable UUID reportId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return adminReportAiResolutionService.getResolutions(reportId, pageable(page, size));
     }
 
     private Pageable pageable(int page, int size) {

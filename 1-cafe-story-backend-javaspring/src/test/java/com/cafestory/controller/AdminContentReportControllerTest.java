@@ -1,9 +1,13 @@
 package com.cafestory.controller;
 
 import com.cafestory.dto.requestDTO.AdminContentReportStatusUpdateRequestDTO;
+import com.cafestory.dto.responseDTO.AdminReportAiResolutionResponseDTO;
 import com.cafestory.dto.responseDTO.ContentReportResponseDTO;
+import com.cafestory.entity.enums.AdminReportAiReportDecision;
+import com.cafestory.entity.enums.AdminReportAiTargetAction;
 import com.cafestory.entity.enums.ReportStatus;
 import com.cafestory.entity.enums.ReportTargetType;
+import com.cafestory.service.serviceInterface.AdminReportAiResolutionService;
 import com.cafestory.service.serviceInterface.ContentReportService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,6 +32,9 @@ class AdminContentReportControllerTest {
 
     @Mock
     private ContentReportService contentReportService;
+
+    @Mock
+    private AdminReportAiResolutionService adminReportAiResolutionService;
 
     @InjectMocks
     private AdminContentReportController adminContentReportController;
@@ -83,10 +90,53 @@ class AdminContentReportControllerTest {
         verify(contentReportService).resolveReport(reportId);
     }
 
+    @Test
+    void createAiResolution_successDelegatesToAiResolutionService_TC004() {
+        UUID reportId = UUID.randomUUID();
+        AdminReportAiResolutionResponseDTO response = aiResolutionResponse(reportId);
+
+        when(adminReportAiResolutionService.createResolution(reportId)).thenReturn(response);
+
+        AdminReportAiResolutionResponseDTO result = adminContentReportController.createAiResolution(reportId);
+
+        assertThat(result).isEqualTo(response);
+        verify(adminReportAiResolutionService).createResolution(reportId);
+    }
+
+    @Test
+    void getAiResolutions_successDelegatesToAiResolutionService_TC005() {
+        UUID reportId = UUID.randomUUID();
+        Page<AdminReportAiResolutionResponseDTO> response = new PageImpl<>(List.of(aiResolutionResponse(reportId)));
+
+        when(adminReportAiResolutionService.getResolutions(eq(reportId), any(Pageable.class))).thenReturn(response);
+
+        Page<AdminReportAiResolutionResponseDTO> result = adminContentReportController.getAiResolutions(
+                reportId,
+                0,
+                20);
+
+        assertThat(result).isEqualTo(response);
+        verify(adminReportAiResolutionService).getResolutions(eq(reportId), any(Pageable.class));
+    }
+
     private ContentReportResponseDTO response() {
         ContentReportResponseDTO response = new ContentReportResponseDTO();
         response.setId(UUID.randomUUID());
         response.setStatus(ReportStatus.OPEN);
+        return response;
+    }
+
+    private AdminReportAiResolutionResponseDTO aiResolutionResponse(UUID reportId) {
+        AdminReportAiResolutionResponseDTO response = new AdminReportAiResolutionResponseDTO();
+        response.setId(UUID.randomUUID());
+        response.setContentReportId(reportId);
+        response.setTargetType(ReportTargetType.BLOG);
+        response.setTargetId(UUID.randomUUID());
+        response.setReportDecision(AdminReportAiReportDecision.NEEDS_MANUAL_REVIEW);
+        response.setTargetAction(AdminReportAiTargetAction.NONE);
+        response.setConfidenceScore(62.0);
+        response.setRiskScore(41.0);
+        response.setModelName("gpt-4o-mini");
         return response;
     }
 }

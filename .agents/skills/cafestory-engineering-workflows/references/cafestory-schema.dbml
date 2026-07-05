@@ -50,6 +50,22 @@ Enum report_moderation_job_status {
   DEAD_LETTER
 }
 
+Enum admin_report_ai_report_decision {
+  RESOLVE
+  REJECT
+  NEEDS_MANUAL_REVIEW
+}
+
+Enum admin_report_ai_target_action {
+  APPROVE
+  HIDE
+  REMOVE
+  KEEP_ACTIVE
+  SUSPEND_USER
+  SUSPEND_PAGE
+  NONE
+}
+
 Enum moderation_resolve_action {
   APPROVE
   HIDE
@@ -1057,6 +1073,30 @@ Table report_moderation_jobs {
   Note: "DB-backed async worker queue for report-triggered AI moderation. Worker claims due PENDING/FAILED rows with FOR UPDATE SKIP LOCKED and moves exhausted failures to DEAD_LETTER."
 }
 
+Table admin_report_ai_resolutions {
+  id uuid [pk]
+  content_report_id uuid [not null]
+  target_type report_target_type [not null]
+  target_id uuid [not null]
+  report_decision admin_report_ai_report_decision [not null]
+  target_action admin_report_ai_target_action [not null]
+  confidence_score decimal
+  risk_score decimal
+  labels jsonb
+  rule_code varchar(120)
+  explanation text
+  model_name varchar(120)
+  raw_response jsonb
+  created_at datetime [not null]
+
+  Indexes {
+    (content_report_id, created_at)
+    (target_type, target_id)
+  }
+
+  Note: "Admin-triggered sync AI recommendation history for resolving reports. Recommendations are advisory only and do not mutate content_reports or target content."
+}
+
 Ref: user_roles.user_id > users.user_id
 Ref: user_roles.role_id > roles.id
 Ref: refresh_tokens.user_id > users.user_id
@@ -1158,3 +1198,4 @@ Ref: ai_moderation_results.blog_id > blogs.id
 Ref: ai_moderation_results.comment_id > comments.id
 Ref: ai_moderation_results.content_report_id > content_reports.id
 Ref: report_moderation_jobs.content_report_id > content_reports.id
+Ref: admin_report_ai_resolutions.content_report_id > content_reports.id
