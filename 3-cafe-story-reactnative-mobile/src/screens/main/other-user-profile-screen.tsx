@@ -5,6 +5,7 @@ import {
   Award,
   MessageCircle,
   MoreVertical,
+  Store,
   UserPlus,
 } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -33,6 +34,8 @@ import {
   createDirectConversation,
   followUser,
   getBlogsByUser,
+  getCafePageById,
+  getCafePagesByOwner,
   getReviewerByUserId,
   getSharedBlogsByUser,
   getTaggedBlogsByUser,
@@ -43,6 +46,7 @@ import {
 import { colors, spacing, typography } from "../../theme";
 import type {
   BlogResponse,
+  CafePageResponse,
   ProfileContentTab,
   ReviewerResponse,
   UserPostPreview,
@@ -132,6 +136,18 @@ function formatRegion(profile: UserResponse | null) {
     .join(", ");
 }
 
+function isOwnedActiveCafePage(page: CafePageResponse) {
+  return page.status === "ACTIVE" && page.pageActive === true;
+}
+
+function selectOwnedCafePage(pages: CafePageResponse[]) {
+  return pages.find(isOwnedActiveCafePage) ?? pages.find((page) => page.id) ?? null;
+}
+
+function linkedCafePageId(profile: UserResponse | null | undefined) {
+  return profile?.pageId ?? profile?.cafePageId ?? null;
+}
+
 export function OtherUserProfileScreen() {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -139,6 +155,7 @@ export function OtherUserProfileScreen() {
   const { user } = useAuth();
   const [profile, setProfile] = useState<UserResponse | null>(null);
   const [reviewer, setReviewer] = useState<ReviewerResponse | null>(null);
+  const [ownedCafePage, setOwnedCafePage] = useState<CafePageResponse | null>(null);
   const [tabPosts, setTabPosts] =
     useState<Record<ProfileContentTab, UserPostPreview[]>>(emptyTabPosts);
   const [loadedTabs, setLoadedTabs] =
@@ -199,14 +216,23 @@ export function OtherUserProfileScreen() {
       setTabPosts(emptyTabPosts);
       setLoadedTabs({});
 
-      const [nextProfile, nextReviewer, userBlogs] = await Promise.all([
+      const [nextProfile, nextReviewer, userBlogs, ownerCafePages] = await Promise.all([
         getUserProfile(targetUserId),
         getReviewerByUserId(targetUserId).catch(() => null),
         getBlogsByUser(targetUserId),
+        getCafePagesByOwner(targetUserId).catch(() => []),
       ]);
+      const selectedCafePage = selectOwnedCafePage(ownerCafePages);
+      const fallbackCafePageId = linkedCafePageId(nextProfile);
+      const nextOwnedCafePage =
+        selectedCafePage ??
+        (fallbackCafePageId
+          ? await getCafePageById(fallbackCafePageId).catch(() => null)
+          : null);
 
       setProfile(nextProfile);
       setReviewer(nextReviewer);
+      setOwnedCafePage(nextOwnedCafePage);
       setTabPosts((currentPosts) => ({
         ...currentPosts,
         posts: userBlogs.map(blogResponseToPostPreview),
@@ -218,6 +244,7 @@ export function OtherUserProfileScreen() {
       setError("");
       setContentError("");
     } catch (nextError) {
+      setOwnedCafePage(null);
       setError(
         nextError instanceof Error
           ? nextError.message
@@ -247,6 +274,7 @@ export function OtherUserProfileScreen() {
   const regionLabel = formatRegion(profile);
   const isOwnProfile = user?.userId === targetUserId;
   const isFollowing = Boolean(profile?.isFollowing);
+  const ownedCafePageId = ownedCafePage?.id ?? linkedCafePageId(profile);
   const visiblePosts = tabPosts[activeTab];
   const emptyCopy = getEmptyCopy(activeTab, userName);
 
@@ -347,6 +375,16 @@ export function OtherUserProfileScreen() {
     profile,
     targetUserId,
   ]);
+
+  const openOwnedCafePage = useCallback(() => {
+    if (!ownedCafePageId) {
+      return;
+    }
+
+    navigation.navigate(routes.cafeDetail, {
+      cafeId: ownedCafePageId,
+    });
+  }, [navigation, ownedCafePageId]);
 
   const openUserPosts = useCallback((post?: UserPostPreview) => {
     navigation.navigate(routes.userPosts, {
@@ -489,6 +527,23 @@ export function OtherUserProfileScreen() {
           <Text style={styles.description}>{userDescription}</Text>
         ) : null}
 
+        {ownedCafePageId ? (
+          <Pressable
+            accessibilityLabel="Open cafe page"
+            accessibilityRole="button"
+            onPress={openOwnedCafePage}
+            style={({ pressed }) => [
+              styles.cafePageTag,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Store color={colors.primary} size={16} strokeWidth={2.5} />
+            <Text numberOfLines={1} style={styles.cafePageTagName}>
+              {ownedCafePage?.name || "View cafe page"}
+            </Text>
+          </Pressable>
+        ) : null}
+
         {!reviewer && regionLabel ? (
           <Text style={styles.location}>{regionLabel}</Text>
         ) : null}
@@ -583,6 +638,27 @@ const styles = StyleSheet.create({
   content: {
     gap: spacing.md,
     paddingBottom: 112,
+  },
+  cafePageTag: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginHorizontal: spacing.lg,
+    maxWidth: "82%",
+    minHeight: 36,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  cafePageTagName: {
+    color: colors.primary,
+    flexShrink: 1,
+    fontSize: typography.label,
+    fontWeight: "800",
   },
   description: {
     color: colors.foreground,

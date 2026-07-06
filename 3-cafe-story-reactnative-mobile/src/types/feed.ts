@@ -178,6 +178,7 @@ export type CreatePostDraft = {
     name: string;
     regionId?: string;
   };
+  mediaAspectRatio: number;
   mediaUrls: string[];
   pinToProfile: boolean;
   taggedUserIds: string[];

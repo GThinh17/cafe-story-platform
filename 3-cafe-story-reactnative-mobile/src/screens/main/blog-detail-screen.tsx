@@ -33,12 +33,8 @@ export function BlogDetailScreen() {
       const response = await getBlogById(blogId);
       setBlog(blogResponseToFeedBlog(response));
       setError("");
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to load this post.",
-      );
+    } catch {
+      setError("Unable to load this post.");
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -82,7 +78,7 @@ export function BlogDetailScreen() {
         ) : error ? (
           <EmptyState description="Pull down to retry." title={error} />
         ) : blog ? (
-          <BlogFeedCard blog={blog} />
+          <BlogFeedCard blog={blog} showFollowButton={false} />
         ) : (
           <EmptyState
             description="This post may have been removed."

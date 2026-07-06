@@ -1,4 +1,4 @@
-import { Award, Coffee, Sparkles, UserRound } from "lucide-react-native";
+import { Award, Sparkles, Store, UserRound } from "lucide-react-native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { colors, spacing, typography } from "../../theme";
@@ -32,7 +32,7 @@ function getReason(item: RecommendationCardResponse) {
 
 function getIcon(item: RecommendationCardResponse) {
   if (item.targetType === "CAFE_PAGE") {
-    return Coffee;
+    return Store;
   }
 
   if (item.targetType === "REVIEWER") {

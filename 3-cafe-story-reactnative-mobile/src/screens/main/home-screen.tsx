@@ -366,11 +366,7 @@ export function HomeScreen() {
       if (append) {
         setLoadMoreError("Unable to load more posts.");
       } else {
-        setError(
-          requestError instanceof Error
-            ? requestError.message
-            : "Unable to load feed.",
-        );
+        setError("Unable to load feed. Pull down to try again.");
       }
     } finally {
       isFetchingRef.current = false;

@@ -216,7 +216,9 @@ export function UserPostsScreen() {
           refreshControl={
             <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
           }
-          renderItem={({ item }) => <BlogFeedCard blog={item} />}
+          renderItem={({ item }) => (
+            <BlogFeedCard blog={item} showFollowButton={false} />
+          )}
           showsVerticalScrollIndicator={false}
         />
       )}

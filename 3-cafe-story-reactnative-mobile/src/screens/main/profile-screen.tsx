@@ -3,6 +3,7 @@ import {
   Award,
   Pencil,
   Plus,
+  Store,
   UserPlus,
 } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -929,6 +930,23 @@ export function ProfileScreen() {
           </Pressable>
         )}
 
+        {shouldShowCafePageAction ? (
+          <Pressable
+            accessibilityLabel="Open owned cafe page"
+            accessibilityRole="button"
+            onPress={openOwnedCafePage}
+            style={({ pressed }) => [
+              styles.cafePageTag,
+              pressed && styles.actionPressed,
+            ]}
+          >
+            <Store color={colors.primary} size={16} strokeWidth={2.5} />
+            <Text numberOfLines={1} style={styles.cafePageTagName}>
+              {ownedCafePage?.name || "View cafe page"}
+            </Text>
+          </Pressable>
+        ) : null}
+
         <View style={styles.profileChips}>
           <View style={styles.profileChip}>
             <AtSign color={colors.foreground} size={16} strokeWidth={2.4} />
@@ -1118,6 +1136,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: spacing.xs,
     width: 104,
+  },
+
+  cafePageTag: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: colors.primarySoft,
+    borderColor: colors.primary,
+    borderRadius: 18,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginHorizontal: spacing.lg,
+    maxWidth: "82%",
+    minHeight: 36,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+
+  cafePageTagName: {
+    color: colors.primary,
+    flexShrink: 1,
+    fontSize: typography.label,
+    fontWeight: "800",
   },
 
   descriptionPrompt: {

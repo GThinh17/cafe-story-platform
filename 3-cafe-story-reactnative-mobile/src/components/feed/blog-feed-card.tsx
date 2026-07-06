@@ -4,6 +4,7 @@ import {
   MessageSquare,
   MoreHorizontal,
   Send,
+  Store,
 } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -32,6 +33,7 @@ import type { BlogFeedResponse } from "../../types";
 
 type BlogFeedCardProps = {
   blog: BlogFeedResponse;
+  showFollowButton?: boolean;
 };
 
 function compactCount(value: number | null) {
@@ -114,7 +116,7 @@ function formatTimeAgo(createdAt: string | null) {
   return `${Math.floor(diffHours / 24)} DAYS AGO`;
 }
 
-export function BlogFeedCard({ blog }: BlogFeedCardProps) {
+export function BlogFeedCard({ blog, showFollowButton = true }: BlogFeedCardProps) {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
@@ -137,7 +139,7 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
   ).filter((uri): uri is string => Boolean(uri));
   const isOwnPost = user?.userId === blog.authorUserId;
   const canFollowAuthor = Boolean(blog.authorUserId) && !isOwnPost;
-  const shouldShowFollowButton = canFollowAuthor && !isFollowed;
+  const shouldShowFollowButton = showFollowButton && canFollowAuthor && !isFollowed;
   const isFollowDisabled = !shouldShowFollowButton || isFollowPending;
   const canOpenAuthorProfile =
     blog.displayAuthorType === "CAFE_PAGE"
@@ -301,9 +303,16 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
             uri={getDisplayAvatar(blog)}
           />
           <View style={styles.authorText}>
-            <Text numberOfLines={1} style={styles.displayName}>
-              {displayName}
-            </Text>
+            <View style={styles.displayNameRow}>
+              <Text numberOfLines={1} style={styles.displayName}>
+                {displayName}
+              </Text>
+              {blog.displayAuthorType === "CAFE_PAGE" ? (
+                <View style={styles.cafeBadge}>
+                  <Store color={colors.primary} size={12} strokeWidth={2.5} />
+                </View>
+              ) : null}
+            </View>
             <Text numberOfLines={1} style={styles.location}>
               {getLocationLabel(blog)}
             </Text>
@@ -343,6 +352,7 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
       <MobilePostCarousel
         imageAccessibilityLabel={`${displayName} post image`}
         imageUrls={images}
+        insetHorizontal={0}
       />
 
       <View style={styles.actionsBlock}>
@@ -413,7 +423,6 @@ export function BlogFeedCard({ blog }: BlogFeedCardProps) {
         <Text style={styles.meta}>
           {formatTimeAgo(blog.createdAt)}
           {shareCount ? ` - ${compactCount(shareCount)} SHARES` : ""}
-          {blog.rankPosition ? ` - #${blog.rankPosition}` : ""}
         </Text>
       </View>
       <CommentModal
@@ -490,9 +499,24 @@ const styles = StyleSheet.create({
   },
   displayName: {
     color: colors.foreground,
+    flexShrink: 1,
     fontSize: typography.label,
     fontWeight: "800",
     lineHeight: 20,
+  },
+  displayNameRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+    minWidth: 0,
+  },
+  cafeBadge: {
+    alignItems: "center",
+    backgroundColor: colors.primarySoft,
+    borderRadius: 9,
+    height: 18,
+    justifyContent: "center",
+    width: 18,
   },
   followButton: {
     alignItems: "center",
