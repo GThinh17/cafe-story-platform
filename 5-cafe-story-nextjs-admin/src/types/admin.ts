@@ -17,6 +17,13 @@ export type AdminReportAiTargetAction =
   | "SUSPEND_USER"
   | "SUSPEND_PAGE"
   | "NONE";
+export type AdminReportAiAutoApplyJobStatus =
+  | "SCHEDULED"
+  | "APPLYING"
+  | "APPLIED"
+  | "CANCELLED"
+  | "FAILED"
+  | "SKIPPED";
 export type PaymentStatus =
   | "PENDING"
   | "PAID"
@@ -195,6 +202,32 @@ export type AdminReportAiResolution = {
   modelName: string | null;
   rawResponse: Record<string, unknown> | null;
   createdAt: string;
+  autoApplyJob?: AdminReportAiAutoApplyJob | null;
+  autoApplyWarning?: string | null;
+};
+
+export type AdminReportAiAutoApplyRequest = {
+  autoApplyEnabled: boolean;
+  autoApplyDelayMinutes?: number | null;
+};
+
+export type AdminReportAiAutoApplyJob = {
+  id: UUID;
+  contentReportId: UUID;
+  aiResolutionId: UUID;
+  targetType: ReportTargetType;
+  targetId: UUID;
+  status: AdminReportAiAutoApplyJobStatus;
+  reportDecision: AdminReportAiReportDecision;
+  targetAction: AdminReportAiTargetAction;
+  confidenceScore: number | null;
+  riskScore: number | null;
+  scheduledAt: string;
+  appliedAt: string | null;
+  cancelledAt: string | null;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string | null;
 };
 
 export type Payment = {

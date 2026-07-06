@@ -1,17 +1,22 @@
 package com.cafestory.controller;
 
 import com.cafestory.dto.requestDTO.AdminContentReportStatusUpdateRequestDTO;
+import com.cafestory.dto.requestDTO.AdminReportAiResolutionCreateRequestDTO;
+import com.cafestory.dto.responseDTO.AdminReportAiAutoApplyJobResponseDTO;
 import com.cafestory.dto.responseDTO.AdminReportAiResolutionResponseDTO;
 import com.cafestory.dto.responseDTO.ContentReportResponseDTO;
 import com.cafestory.entity.enums.ReportStatus;
 import com.cafestory.entity.enums.ReportTargetType;
+import com.cafestory.service.serviceInterface.AdminReportAiAutoApplyJobService;
 import com.cafestory.service.serviceInterface.AdminReportAiResolutionService;
 import com.cafestory.service.serviceInterface.ContentReportService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,18 +28,23 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 
+import static com.cafestory.until.security.AuthenticationPrincipalUtils.requireUserId;
+
 @RestController
 @RequestMapping("/api/admin/reports")
 public class AdminContentReportController {
 
     private final ContentReportService contentReportService;
     private final AdminReportAiResolutionService adminReportAiResolutionService;
+    private final AdminReportAiAutoApplyJobService autoApplyJobService;
 
     public AdminContentReportController(
             ContentReportService contentReportService,
-            AdminReportAiResolutionService adminReportAiResolutionService) {
+            AdminReportAiResolutionService adminReportAiResolutionService,
+            AdminReportAiAutoApplyJobService autoApplyJobService) {
         this.contentReportService = contentReportService;
         this.adminReportAiResolutionService = adminReportAiResolutionService;
+        this.autoApplyJobService = autoApplyJobService;
     }
 
     @GetMapping
@@ -64,8 +74,11 @@ public class AdminContentReportController {
     }
 
     @PostMapping("/{reportId}/ai-resolution")
-    public AdminReportAiResolutionResponseDTO createAiResolution(@PathVariable UUID reportId) {
-        return adminReportAiResolutionService.createResolution(reportId);
+    public AdminReportAiResolutionResponseDTO createAiResolution(
+            @PathVariable UUID reportId,
+            @Valid @RequestBody(required = false) AdminReportAiResolutionCreateRequestDTO request,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return adminReportAiResolutionService.createResolution(reportId, request, requireUserId(principal));
     }
 
     @GetMapping("/{reportId}/ai-resolutions")
@@ -74,6 +87,21 @@ public class AdminContentReportController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return adminReportAiResolutionService.getResolutions(reportId, pageable(page, size));
+    }
+
+    @GetMapping("/{reportId}/ai-auto-resolutions")
+    public Page<AdminReportAiAutoApplyJobResponseDTO> getAiAutoResolutions(
+            @PathVariable UUID reportId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return autoApplyJobService.getJobs(reportId, pageable(page, size));
+    }
+
+    @PostMapping("/ai-auto-resolutions/{jobId}/cancel")
+    public AdminReportAiAutoApplyJobResponseDTO cancelAiAutoResolution(
+            @PathVariable UUID jobId,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return autoApplyJobService.cancelJob(jobId, requireUserId(principal));
     }
 
     private Pageable pageable(int page, int size) {

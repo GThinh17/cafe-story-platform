@@ -1,13 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BotIcon,
   CheckCircle2Icon,
+  ClockIcon,
   EyeIcon,
   LoaderCircleIcon,
   ListChecksIcon,
   SparklesIcon,
+  XCircleIcon,
 } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
 import { UserCell } from "@/components/admin/user-cell";
@@ -43,8 +45,10 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import {
+  cancelReportAiAutoResolution,
   createReportAiResolution,
   getAdminReport,
+  getReportAiAutoResolutions,
   getReportAiResolutions,
   getReports,
   resolveReport,
@@ -52,6 +56,8 @@ import {
 } from "@/lib/api/admin";
 import type { PageResponse } from "@/types/api";
 import type {
+  AdminReportAiAutoApplyJob,
+  AdminReportAiAutoApplyRequest,
   AdminReportAiResolution,
   ContentReport,
   ReportStatus,
@@ -62,6 +68,15 @@ const reportStatuses: ReportStatus[] = ["OPEN", "REVIEWING", "RESOLVED", "REJECT
 const targetTypes: ReportTargetType[] = ["BLOG", "COMMENT", "USER", "CAFE_PAGE"];
 const AI_HISTORY_SIZE = 8;
 const BULK_FETCH_SIZE = 100;
+const AUTO_APPLY_HISTORY_SIZE = 8;
+const AUTO_APPLY_DELAYS = [
+  { label: "15m", value: 15 },
+  { label: "30m", value: 30 },
+  { label: "1h", value: 60 },
+  { label: "2h", value: 120 },
+  { label: "6h", value: 360 },
+  { label: "12h", value: 720 },
+];
 
 const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
   OPEN: "Reopen",
@@ -79,6 +94,8 @@ type BulkAiMode = "filtered" | "selected";
 type BulkAiProgress = {
   done: number;
   failed: number;
+  scheduled: number;
+  skipped: number;
   total: number;
 };
 
@@ -104,6 +121,44 @@ function severityClassName(severity: number | null | undefined) {
 
 function scoreLabel(value: number | null | undefined) {
   return typeof value === "number" ? value.toFixed(1) : "-";
+}
+
+function autoApplyRequest(enabled: boolean, delayMinutes: number): AdminReportAiAutoApplyRequest | undefined {
+  if (!enabled) {
+    return undefined;
+  }
+
+  return {
+    autoApplyEnabled: true,
+    autoApplyDelayMinutes: delayMinutes,
+  };
+}
+
+function activeAutoApplyJob(jobs: AdminReportAiAutoApplyJob[]) {
+  return jobs.find((job) => job.status === "SCHEDULED" || job.status === "APPLYING") ?? null;
+}
+
+function countdownLabel(scheduledAt: string, nowMs: number) {
+  const remainingMs = new Date(scheduledAt).getTime() - nowMs;
+
+  if (remainingMs <= 0) {
+    return "Due now";
+  }
+
+  const totalSeconds = Math.ceil(remainingMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+
+  return `${seconds}s`;
 }
 
 function resolutionSummary(resolution: AdminReportAiResolution) {
@@ -134,8 +189,20 @@ export function AdminReportsPage() {
     useState<PageResponse<AdminReportAiResolution> | null>(null);
   const [aiHistoryLoading, setAiHistoryLoading] = useState(false);
   const [aiHistoryError, setAiHistoryError] = useState<string | null>(null);
+  const [autoApplyJobs, setAutoApplyJobs] = useState<AdminReportAiAutoApplyJob[]>([]);
+  const [autoApplyJobsLoading, setAutoApplyJobsLoading] = useState(false);
+  const [autoApplyJobsError, setAutoApplyJobsError] = useState<string | null>(null);
+  const [autoApplyJobsPage, setAutoApplyJobsPage] =
+    useState<PageResponse<AdminReportAiAutoApplyJob> | null>(null);
+  const [askAiDialogOpen, setAskAiDialogOpen] = useState(false);
+  const [askAiReport, setAskAiReport] = useState<ContentReport | null>(null);
+  const [askAiAutoApplyEnabled, setAskAiAutoApplyEnabled] = useState(false);
+  const [askAiDelayMinutes, setAskAiDelayMinutes] = useState(15);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [bulkMode, setBulkMode] = useState<BulkAiMode>("filtered");
+  const [bulkAutoApplyEnabled, setBulkAutoApplyEnabled] = useState(false);
+  const [bulkDelayMinutes, setBulkDelayMinutes] = useState(15);
+  const [bulkAutoApplyConfirmed, setBulkAutoApplyConfirmed] = useState(false);
   const [selectedBulkReportIds, setSelectedBulkReportIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -144,9 +211,18 @@ export function AdminReportsPage() {
   const [bulkProgress, setBulkProgress] = useState<BulkAiProgress>({
     done: 0,
     failed: 0,
+    scheduled: 0,
+    skipped: 0,
     total: 0,
   });
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const detail = useAdminDetailResource<ContentReport>();
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setNowMs(Date.now()), 1000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   const resource = usePagedAdminResource(
     (page, signal) =>
@@ -169,8 +245,11 @@ export function AdminReportsPage() {
   function openBulkDialog() {
     setBulkDialogOpen(true);
     setBulkMode("filtered");
+    setBulkAutoApplyEnabled(false);
+    setBulkDelayMinutes(15);
+    setBulkAutoApplyConfirmed(false);
     setBulkError(null);
-    setBulkProgress({ done: 0, failed: 0, total: 0 });
+    setBulkProgress({ done: 0, failed: 0, scheduled: 0, skipped: 0, total: 0 });
     setSelectedBulkReportIds(new Set(currentPageReportIds));
   }
 
@@ -228,7 +307,7 @@ export function AdminReportsPage() {
     setBulkRunning(true);
     setBulkError(null);
     setAiActionError(null);
-    setBulkProgress({ done: 0, failed: 0, total: 0 });
+    setBulkProgress({ done: 0, failed: 0, scheduled: 0, skipped: 0, total: 0 });
 
     try {
       const reports =
@@ -243,19 +322,30 @@ export function AdminReportsPage() {
         return;
       }
 
-      setBulkProgress({ done: 0, failed: 0, total: reports.length });
+      setBulkProgress({ done: 0, failed: 0, scheduled: 0, skipped: 0, total: reports.length });
 
       for (const report of reports) {
         try {
-          const createdResolution = await createReportAiResolution(report.id);
+          const createdResolution = await createReportAiResolution(
+            report.id,
+            autoApplyRequest(bulkAutoApplyEnabled, bulkDelayMinutes),
+          );
 
           if (detail.data?.id === report.id) {
             setAiHistory((current) => mergeAiHistory(current, createdResolution));
+            if (createdResolution.autoApplyJob) {
+              setAutoApplyJobs((current) => [
+                createdResolution.autoApplyJob!,
+                ...current.filter((job) => job.id !== createdResolution.autoApplyJob?.id),
+              ].slice(0, AUTO_APPLY_HISTORY_SIZE));
+            }
           }
 
           setBulkProgress((current) => ({
             ...current,
             done: current.done + 1,
+            scheduled: current.scheduled + (createdResolution.autoApplyJob ? 1 : 0),
+            skipped: current.skipped + (createdResolution.autoApplyWarning ? 1 : 0),
           }));
         } catch {
           setBulkProgress((current) => ({
@@ -270,6 +360,7 @@ export function AdminReportsPage() {
 
       if (detail.data) {
         await loadAiHistory(detail.data.id);
+        await loadAutoApplyJobs(detail.data.id);
       }
 
       resource.refetch();
@@ -281,6 +372,37 @@ export function AdminReportsPage() {
       );
     } finally {
       setBulkRunning(false);
+    }
+  }
+
+  async function loadAutoApplyJobs(reportId: string, signal?: AbortSignal) {
+    setAutoApplyJobsLoading(true);
+    setAutoApplyJobsError(null);
+
+    try {
+      const response = await getReportAiAutoResolutions(
+        reportId,
+        { page: 0, size: AUTO_APPLY_HISTORY_SIZE },
+        signal,
+      );
+      setAutoApplyJobsPage(response);
+      setAutoApplyJobs(response.content);
+    } catch (requestError) {
+      if (signal?.aborted) {
+        return;
+      }
+
+      setAutoApplyJobs([]);
+      setAutoApplyJobsPage(null);
+      setAutoApplyJobsError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to load auto apply jobs.",
+      );
+    } finally {
+      if (!signal?.aborted) {
+        setAutoApplyJobsLoading(false);
+      }
     }
   }
 
@@ -319,21 +441,43 @@ export function AdminReportsPage() {
     setAiActionError(null);
     setAiHistory([]);
     setAiHistoryPage(null);
+    setAutoApplyJobs([]);
+    setAutoApplyJobsPage(null);
     void detail.load((signal) => getAdminReport(report.id, signal));
     void loadAiHistory(report.id);
+    void loadAutoApplyJobs(report.id);
   }
 
-  async function handleAskAi(report: ContentReport) {
+  function openAskAiDialog(report: ContentReport) {
+    setAskAiReport(report);
+    setAskAiAutoApplyEnabled(false);
+    setAskAiDelayMinutes(15);
+    setAiActionError(null);
+    setAskAiDialogOpen(true);
+  }
+
+  async function handleAskAi(report: ContentReport, request?: AdminReportAiAutoApplyRequest) {
     setAiLoadingReportId(report.id);
     setAiActionError(null);
 
     try {
-      const createdResolution = await createReportAiResolution(report.id);
+      const createdResolution = await createReportAiResolution(report.id, request);
 
       if (detail.data?.id === report.id) {
         setAiHistory((current) => mergeAiHistory(current, createdResolution));
+        if (createdResolution.autoApplyJob) {
+          setAutoApplyJobs((current) => [
+            createdResolution.autoApplyJob!,
+            ...current.filter((job) => job.id !== createdResolution.autoApplyJob?.id),
+          ].slice(0, AUTO_APPLY_HISTORY_SIZE));
+        }
         await loadAiHistory(report.id);
+        await loadAutoApplyJobs(report.id);
       }
+      if (createdResolution.autoApplyWarning) {
+        setAiActionError(createdResolution.autoApplyWarning);
+      }
+      setAskAiDialogOpen(false);
     } catch (requestError) {
       setAiActionError(
         requestError instanceof Error
@@ -342,6 +486,37 @@ export function AdminReportsPage() {
       );
     } finally {
       setAiLoadingReportId(null);
+    }
+  }
+
+  async function handleAskAiDialogSubmit() {
+    if (!askAiReport) {
+      return;
+    }
+
+    await handleAskAi(
+      askAiReport,
+      autoApplyRequest(askAiAutoApplyEnabled, askAiDelayMinutes),
+    );
+  }
+
+  async function handleCancelAutoApply(job: AdminReportAiAutoApplyJob) {
+    setAiActionError(null);
+
+    try {
+      const cancelledJob = await cancelReportAiAutoResolution(job.id);
+      setAutoApplyJobs((current) =>
+        current.map((item) => (item.id === cancelledJob.id ? cancelledJob : item)),
+      );
+      if (detail.data) {
+        await loadAutoApplyJobs(detail.data.id);
+      }
+    } catch (requestError) {
+      setAiActionError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to cancel auto apply job.",
+      );
     }
   }
 
@@ -422,7 +597,7 @@ export function AdminReportsPage() {
               disabled={aiLoadingReportId === report.id}
               onClick={(event) => {
                 event.stopPropagation();
-                void handleAskAi(report);
+                openAskAiDialog(report);
               }}
             >
               {aiLoadingReportId === report.id ? (
@@ -504,6 +679,7 @@ export function AdminReportsPage() {
     0,
   );
   const bulkSuccess = Math.max(bulkProgress.done - bulkProgress.failed, 0);
+  const currentAutoApplyJob = activeAutoApplyJob(autoApplyJobs);
 
   return (
     <div className="flex flex-col gap-6">
@@ -597,6 +773,59 @@ export function AdminReportsPage() {
               </button>
             </div>
 
+            <div className="mt-5 rounded-md border border-border bg-background p-4">
+              <label className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  className="mt-1 size-4 accent-primary"
+                  checked={bulkAutoApplyEnabled}
+                  disabled={bulkRunning}
+                  onChange={(event) => {
+                    setBulkAutoApplyEnabled(event.target.checked);
+                    setBulkAutoApplyConfirmed(false);
+                  }}
+                />
+                <span>
+                  <span className="block text-sm font-bold text-espresso">
+                    Auto apply after delay
+                  </span>
+                  <span className="mt-1 block text-sm leading-6 text-muted">
+                    Only high-confidence recommendations are scheduled. Admin can cancel before the countdown ends.
+                  </span>
+                </span>
+              </label>
+              {bulkAutoApplyEnabled ? (
+                <div className="mt-4 flex flex-col gap-3">
+                  <div className="flex flex-wrap gap-2">
+                    {AUTO_APPLY_DELAYS.map((option) => (
+                      <Button
+                        type="button"
+                        variant={bulkDelayMinutes === option.value ? "default" : "outline"}
+                        size="sm"
+                        disabled={bulkRunning}
+                        key={option.value}
+                        onClick={() => setBulkDelayMinutes(option.value)}
+                      >
+                        {option.label}
+                      </Button>
+                    ))}
+                  </div>
+                  <label className="flex items-start gap-3 rounded-md border border-accent/20 bg-accent/5 p-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 size-4 accent-primary"
+                      checked={bulkAutoApplyConfirmed}
+                      disabled={bulkRunning}
+                      onChange={(event) => setBulkAutoApplyConfirmed(event.target.checked)}
+                    />
+                    <span className="text-sm leading-6 text-foreground">
+                      I understand this may schedule target actions for every matching report in this bulk run.
+                    </span>
+                  </label>
+                </div>
+              ) : null}
+            </div>
+
             <div className="mt-5 rounded-md border border-border bg-background">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
                 <div>
@@ -654,6 +883,8 @@ export function AdminReportsPage() {
               <div className="mt-5 rounded-md border border-border bg-background p-4">
                 <div className="flex flex-wrap gap-4 text-sm text-muted">
                   <span>Success: {bulkSuccess}</span>
+                  <span>Scheduled: {bulkProgress.scheduled}</span>
+                  <span>Skipped: {bulkProgress.skipped}</span>
                   <span>Failed: {bulkProgress.failed}</span>
                   <span>Remaining: {bulkRemaining}</span>
                   <span>Total: {bulkProgress.total}</span>
@@ -691,7 +922,8 @@ export function AdminReportsPage() {
               type="button"
               disabled={
                 bulkRunning ||
-                (bulkMode === "selected" && selectedBulkReports.length === 0)
+                (bulkMode === "selected" && selectedBulkReports.length === 0) ||
+                (bulkAutoApplyEnabled && !bulkAutoApplyConfirmed)
               }
               onClick={() => void handleBulkAskAi()}
             >
@@ -701,6 +933,101 @@ export function AdminReportsPage() {
                 <SparklesIcon data-icon="inline-start" />
               )}
               {bulkRunning ? "Running..." : "Run AI"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={askAiDialogOpen}
+        onOpenChange={(open) => {
+          if (!aiLoadingReportId) {
+            setAskAiDialogOpen(open);
+          }
+        }}
+      >
+        <DialogContent className="w-[94vw] max-w-xl p-0">
+          <div className="border-b border-border px-5 py-4">
+            <DialogTitle>Ask AI for report resolution</DialogTitle>
+            <DialogDescription className="mt-1">
+              Create a recommendation now. Auto apply is optional and can be cancelled before the scheduled time.
+            </DialogDescription>
+          </div>
+          <div className="px-5 py-4">
+            {askAiReport ? (
+              <div className="rounded-md border border-border bg-surface p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold text-espresso">
+                    {reportReason(askAiReport)}
+                  </span>
+                  <AdminStatusBadge value={askAiReport.status} />
+                  <AdminStatusBadge value={askAiReport.targetType} />
+                </div>
+                <p className="mt-2 text-sm text-muted">
+                  {textPreview(askAiReport.description, 160)}
+                </p>
+              </div>
+            ) : null}
+
+            <div className="mt-4 rounded-md border border-border bg-background p-4">
+              <label className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  className="mt-1 size-4 accent-primary"
+                  checked={askAiAutoApplyEnabled}
+                  disabled={Boolean(aiLoadingReportId)}
+                  onChange={(event) => setAskAiAutoApplyEnabled(event.target.checked)}
+                />
+                <span>
+                  <span className="block text-sm font-bold text-espresso">
+                    Auto apply after delay
+                  </span>
+                  <span className="mt-1 block text-sm leading-6 text-muted">
+                    BE schedules the countdown. Closing this tab will not cancel the job.
+                  </span>
+                </span>
+              </label>
+              {askAiAutoApplyEnabled ? (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {AUTO_APPLY_DELAYS.map((option) => (
+                    <Button
+                      type="button"
+                      variant={askAiDelayMinutes === option.value ? "default" : "outline"}
+                      size="sm"
+                      disabled={Boolean(aiLoadingReportId)}
+                      key={option.value}
+                      onClick={() => setAskAiDelayMinutes(option.value)}
+                    >
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="mt-4 rounded-md border border-dashed border-border p-3 text-sm leading-6 text-muted">
+              Auto apply only schedules high-confidence decisions. Low confidence or manual-review results are saved as recommendations without a scheduled action.
+            </div>
+          </div>
+          <div className="flex flex-wrap justify-end gap-2 border-t border-border px-5 py-4">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={Boolean(aiLoadingReportId)}
+              onClick={() => setAskAiDialogOpen(false)}
+            >
+              Close
+            </Button>
+            <Button
+              type="button"
+              disabled={Boolean(aiLoadingReportId) || !askAiReport}
+              onClick={() => void handleAskAiDialogSubmit()}
+            >
+              {aiLoadingReportId ? (
+                <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />
+              ) : (
+                <SparklesIcon data-icon="inline-start" />
+              )}
+              {aiLoadingReportId ? "Running..." : "Ask AI"}
             </Button>
           </div>
         </DialogContent>
@@ -737,7 +1064,7 @@ export function AdminReportsPage() {
                 variant="outline"
                 size="sm"
                 disabled={aiLoadingReportId === detailReport.id}
-                onClick={() => void handleAskAi(detailReport)}
+              onClick={() => openAskAiDialog(detailReport)}
               >
                 {aiLoadingReportId === detailReport.id ? (
                   <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />
@@ -909,6 +1236,74 @@ export function AdminReportsPage() {
                     resolution workflow.
                   </div>
                 )}
+                <div className="mt-5 rounded-md border border-border bg-surface p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">
+                        Auto apply
+                      </p>
+                      <p className="mt-1 text-sm text-muted">
+                        Scheduled actions run in backend and can be cancelled before they apply.
+                      </p>
+                    </div>
+                    <ClockIcon className="size-5 shrink-0 text-primary" />
+                  </div>
+                  {autoApplyJobsLoading ? (
+                    <div className="mt-4 flex items-center gap-2 text-sm text-muted">
+                      <LoaderCircleIcon className="size-4 animate-spin" />
+                      Loading auto apply jobs...
+                    </div>
+                  ) : autoApplyJobsError ? (
+                    <p className="mt-4 rounded-md border border-accent/30 bg-accent/10 p-3 text-sm text-accent">
+                      {autoApplyJobsError}
+                    </p>
+                  ) : currentAutoApplyJob ? (
+                    <div className="mt-4 rounded-md border border-primary/20 bg-primary/5 p-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <AdminStatusBadge value={currentAutoApplyJob.status} />
+                        <AdminStatusBadge value={currentAutoApplyJob.reportDecision} />
+                        <AdminStatusBadge value={currentAutoApplyJob.targetAction} />
+                      </div>
+                      <p className="mt-3 text-lg font-bold text-espresso">
+                        {currentAutoApplyJob.status === "SCHEDULED"
+                          ? countdownLabel(currentAutoApplyJob.scheduledAt, nowMs)
+                          : "Applying now"}
+                      </p>
+                      <p className="mt-1 text-xs text-muted">
+                        Scheduled at {formatDate(currentAutoApplyJob.scheduledAt)}
+                      </p>
+                      {currentAutoApplyJob.status === "SCHEDULED" ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="mt-3"
+                          onClick={() => void handleCancelAutoApply(currentAutoApplyJob)}
+                        >
+                          <XCircleIcon data-icon="inline-start" />
+                          Cancel auto apply
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : autoApplyJobs.length ? (
+                    <div className="mt-4 rounded-md border border-border bg-background p-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <AdminStatusBadge value={autoApplyJobs[0].status} />
+                        <AdminStatusBadge value={autoApplyJobs[0].targetAction} />
+                      </div>
+                      <p className="mt-2 text-sm text-muted">
+                        Latest job: {formatDate(autoApplyJobs[0].createdAt)}
+                      </p>
+                      {autoApplyJobs[0].lastError ? (
+                        <p className="mt-2 text-sm text-accent">{autoApplyJobs[0].lastError}</p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-md border border-dashed border-border p-3 text-sm text-muted">
+                      No auto apply job has been scheduled for this report.
+                    </div>
+                  )}
+                </div>
                 {aiActionError ? (
                   <p className="mt-4 rounded-md border border-accent/30 bg-accent/10 p-3 text-sm text-accent">
                     {aiActionError}
@@ -934,7 +1329,10 @@ export function AdminReportsPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => void loadAiHistory(detailReport.id)}
+                  onClick={() => {
+                    void loadAiHistory(detailReport.id);
+                    void loadAutoApplyJobs(detailReport.id);
+                  }}
                 >
                   Refresh history
                 </Button>

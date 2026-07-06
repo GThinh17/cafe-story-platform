@@ -1,5 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.dto.requestDTO.AdminReportAiResolutionCreateRequestDTO;
 import com.cafestory.dto.requestDTO.AdminReportAiResolutionRequestDTO;
 import com.cafestory.dto.responseDTO.AdminReportAiResolutionResponseDTO;
 import com.cafestory.dto.responseDTO.AdminReportAiResolutionWebhookResponseDTO;
@@ -17,6 +18,7 @@ import com.cafestory.entity.enums.ReportTargetType;
 import com.cafestory.repository.AdminReportAiResolutionRepository;
 import com.cafestory.repository.AiModerationResultRepository;
 import com.cafestory.repository.ContentReportRepository;
+import com.cafestory.service.serviceInterface.AdminReportAiAutoApplyJobService;
 import com.cafestory.service.serviceInterface.AdminReportAiResolutionService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -53,6 +55,7 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
     private final AdminReportAiResolutionRepository resolutionRepository;
     private final ContentReportRepository contentReportRepository;
     private final AiModerationResultRepository moderationResultRepository;
+    private final AdminReportAiAutoApplyJobService autoApplyJobService;
     private final ObjectMapper objectMapper;
     private final RestClient restClient;
 
@@ -61,6 +64,7 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
             AdminReportAiResolutionRepository resolutionRepository,
             ContentReportRepository contentReportRepository,
             AiModerationResultRepository moderationResultRepository,
+            AdminReportAiAutoApplyJobService autoApplyJobService,
             ObjectMapper objectMapper,
             @Value("${admin.report.ai.webhook-url:http://localhost:5678/webhook-test/cafestory-admin-report-ai-resolution}")
             String webhookUrl,
@@ -69,6 +73,7 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
                 resolutionRepository,
                 contentReportRepository,
                 moderationResultRepository,
+                autoApplyJobService,
                 objectMapper,
                 RestClient.builder()
                         .baseUrl(webhookUrl)
@@ -80,11 +85,13 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
             AdminReportAiResolutionRepository resolutionRepository,
             ContentReportRepository contentReportRepository,
             AiModerationResultRepository moderationResultRepository,
+            AdminReportAiAutoApplyJobService autoApplyJobService,
             ObjectMapper objectMapper,
             RestClient restClient) {
         this.resolutionRepository = resolutionRepository;
         this.contentReportRepository = contentReportRepository;
         this.moderationResultRepository = moderationResultRepository;
+        this.autoApplyJobService = autoApplyJobService;
         this.objectMapper = objectMapper;
         this.restClient = restClient;
     }
@@ -92,12 +99,28 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
     @Override
     @Transactional
     public AdminReportAiResolutionResponseDTO createResolution(UUID reportId) {
+        return createResolution(reportId, null, null);
+    }
+
+    @Override
+    @Transactional
+    public AdminReportAiResolutionResponseDTO createResolution(
+            UUID reportId,
+            AdminReportAiResolutionCreateRequestDTO request,
+            UUID adminUserId) {
         ContentReport report = findReport(reportId);
-        AdminReportAiResolutionRequestDTO request = toWebhookRequest(report);
-        AdminReportAiResolutionWebhookResponseDTO webhookResponse = callWebhook(request);
+        AdminReportAiResolutionRequestDTO webhookRequest = toWebhookRequest(report);
+        AdminReportAiResolutionWebhookResponseDTO webhookResponse = callWebhook(webhookRequest);
         validateWebhookResponse(report.getTargetType(), webhookResponse);
         AdminReportAiResolution savedResolution = resolutionRepository.save(toEntity(report, webhookResponse));
-        return toResponse(savedResolution);
+        AdminReportAiResolutionResponseDTO response = toResponse(savedResolution);
+        if (autoApplyJobService != null && request != null && request.isAutoApplyEnabled()) {
+            AdminReportAiAutoApplyJobService.ScheduleResult scheduleResult =
+                    autoApplyJobService.scheduleIfRequested(report, savedResolution, request, adminUserId);
+            response.setAutoApplyJob(scheduleResult.job());
+            response.setAutoApplyWarning(scheduleResult.warning());
+        }
+        return response;
     }
 
     @Override

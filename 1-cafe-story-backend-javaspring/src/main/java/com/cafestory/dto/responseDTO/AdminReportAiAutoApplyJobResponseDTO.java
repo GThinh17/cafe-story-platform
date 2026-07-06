@@ -1,25 +1,28 @@
 package com.cafestory.dto.responseDTO;
 
+import com.cafestory.entity.enums.AdminReportAiAutoApplyJobStatus;
 import com.cafestory.entity.enums.AdminReportAiReportDecision;
 import com.cafestory.entity.enums.AdminReportAiTargetAction;
 import com.cafestory.entity.enums.ReportTargetType;
 import lombok.Data;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @Data
-public class AdminReportAiResolutionResponseDTO {
+public class AdminReportAiAutoApplyJobResponseDTO {
 
     private UUID id;
 
     private UUID contentReportId;
 
+    private UUID aiResolutionId;
+
     private ReportTargetType targetType;
 
     private UUID targetId;
+
+    private AdminReportAiAutoApplyJobStatus status;
 
     private AdminReportAiReportDecision reportDecision;
 
@@ -29,19 +32,15 @@ public class AdminReportAiResolutionResponseDTO {
 
     private Double riskScore;
 
-    private List<String> labels;
+    private LocalDateTime scheduledAt;
 
-    private String ruleCode;
+    private LocalDateTime appliedAt;
 
-    private String explanation;
+    private LocalDateTime cancelledAt;
 
-    private String modelName;
-
-    private Map<String, Object> rawResponse;
+    private String lastError;
 
     private LocalDateTime createdAt;
 
-    private AdminReportAiAutoApplyJobResponseDTO autoApplyJob;
-
-    private String autoApplyWarning;
+    private LocalDateTime updatedAt;
 }

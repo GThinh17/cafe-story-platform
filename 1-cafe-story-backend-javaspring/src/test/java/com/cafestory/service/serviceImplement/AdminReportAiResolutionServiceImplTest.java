@@ -1,6 +1,7 @@
 package com.cafestory.service.serviceImplement;
 
 import com.cafestory.dto.requestDTO.AdminReportAiResolutionRequestDTO;
+import com.cafestory.dto.responseDTO.AdminReportAiAutoApplyJobResponseDTO;
 import com.cafestory.dto.responseDTO.AdminReportAiResolutionResponseDTO;
 import com.cafestory.dto.responseDTO.AdminReportAiResolutionWebhookResponseDTO;
 import com.cafestory.entity.AdminReportAiResolution;
@@ -19,6 +20,7 @@ import com.cafestory.entity.enums.ReportTargetType;
 import com.cafestory.repository.AdminReportAiResolutionRepository;
 import com.cafestory.repository.AiModerationResultRepository;
 import com.cafestory.repository.ContentReportRepository;
+import com.cafestory.service.serviceInterface.AdminReportAiAutoApplyJobService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,12 +49,14 @@ class AdminReportAiResolutionServiceImplTest {
     private AdminReportAiResolutionRepository resolutionRepository;
     private ContentReportRepository contentReportRepository;
     private AiModerationResultRepository moderationResultRepository;
+    private AdminReportAiAutoApplyJobService autoApplyJobService;
 
     @BeforeEach
     void setUp() {
         resolutionRepository = mock(AdminReportAiResolutionRepository.class);
         contentReportRepository = mock(ContentReportRepository.class);
         moderationResultRepository = mock(AiModerationResultRepository.class);
+        autoApplyJobService = mock(AdminReportAiAutoApplyJobService.class);
     }
 
     @Test
@@ -81,6 +85,38 @@ class AdminReportAiResolutionServiceImplTest {
         assertThat(result.getTargetAction()).isEqualTo(AdminReportAiTargetAction.HIDE);
         assertThat(result.getModelName()).isEqualTo("gpt-4o-mini");
         verify(resolutionRepository).save(any(AdminReportAiResolution.class));
+    }
+
+    @Test
+    void createResolution_success_autoApplyRequestAttachesScheduledJob_TC001_1() {
+        ContentReport report = blogReport();
+        AdminReportAiAutoApplyJobResponseDTO jobResponse = new AdminReportAiAutoApplyJobResponseDTO();
+        jobResponse.setId(UUID.randomUUID());
+        jobResponse.setContentReportId(report.getId());
+        CapturingService service = serviceReturning(response(
+                AdminReportAiReportDecision.RESOLVE,
+                AdminReportAiTargetAction.HIDE));
+        when(contentReportRepository.findById(report.getId())).thenReturn(Optional.of(report));
+        when(moderationResultRepository.findTopByContentReportIdOrderByCreatedAtDesc(report.getId()))
+                .thenReturn(Optional.empty());
+        when(contentReportRepository.countByBlogIdAndStatusIn(any(UUID.class), any())).thenReturn(2L);
+        when(resolutionRepository.save(any(AdminReportAiResolution.class)))
+                .thenAnswer(invocation -> saved(invocation.getArgument(0)));
+        when(autoApplyJobService.scheduleIfRequested(any(), any(), any(), any()))
+                .thenReturn(new AdminReportAiAutoApplyJobService.ScheduleResult(jobResponse, null));
+        com.cafestory.dto.requestDTO.AdminReportAiResolutionCreateRequestDTO request =
+                new com.cafestory.dto.requestDTO.AdminReportAiResolutionCreateRequestDTO();
+        request.setAutoApplyEnabled(true);
+        request.setAutoApplyDelayMinutes(15);
+
+        AdminReportAiResolutionResponseDTO result = service.createResolution(
+                report.getId(),
+                request,
+                UUID.randomUUID());
+
+        assertThat(result.getAutoApplyJob()).isEqualTo(jobResponse);
+        assertThat(result.getAutoApplyWarning()).isNull();
+        verify(autoApplyJobService).scheduleIfRequested(any(), any(), any(), any());
     }
 
     @Test
@@ -318,6 +354,7 @@ class AdminReportAiResolutionServiceImplTest {
                     resolutionRepository,
                     contentReportRepository,
                     moderationResultRepository,
+                    autoApplyJobService,
                     new ObjectMapper(),
                     null);
             this.response = response;

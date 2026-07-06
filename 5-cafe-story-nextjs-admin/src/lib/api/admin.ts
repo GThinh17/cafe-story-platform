@@ -6,6 +6,8 @@ import type {
   AdminModerationResult,
   AdminPayout,
   AdminPayoutStatus,
+  AdminReportAiAutoApplyJob,
+  AdminReportAiAutoApplyRequest,
   AdminReportAiResolution,
   AdminUser,
   Blog,
@@ -298,10 +300,13 @@ export function resolveReport(reportId: string) {
   });
 }
 
-export function createReportAiResolution(reportId: string) {
+export function createReportAiResolution(
+  reportId: string,
+  request?: AdminReportAiAutoApplyRequest,
+) {
   return apiFetch<AdminReportAiResolution>(
     apiEndpoints.admin.reportAiResolution(reportId),
-    { method: "POST" },
+    { method: "POST", body: request ?? null },
   );
 }
 
@@ -313,6 +318,24 @@ export function getReportAiResolutions(
   return apiFetch<PageResponse<AdminReportAiResolution>>(
     withQuery(apiEndpoints.admin.reportAiResolutions(reportId), params),
     { method: "GET", signal },
+  );
+}
+
+export function getReportAiAutoResolutions(
+  reportId: string,
+  params: { page: number; size: number },
+  signal?: AbortSignal,
+) {
+  return apiFetch<PageResponse<AdminReportAiAutoApplyJob>>(
+    withQuery(apiEndpoints.admin.reportAiAutoResolutions(reportId), params),
+    { method: "GET", signal },
+  );
+}
+
+export function cancelReportAiAutoResolution(jobId: string) {
+  return apiFetch<AdminReportAiAutoApplyJob>(
+    apiEndpoints.admin.reportAiAutoResolutionCancel(jobId),
+    { method: "POST" },
   );
 }
 

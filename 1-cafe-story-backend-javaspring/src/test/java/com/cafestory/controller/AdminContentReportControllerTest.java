@@ -1,14 +1,19 @@
 package com.cafestory.controller;
 
 import com.cafestory.dto.requestDTO.AdminContentReportStatusUpdateRequestDTO;
+import com.cafestory.dto.requestDTO.AdminReportAiResolutionCreateRequestDTO;
+import com.cafestory.dto.responseDTO.AdminReportAiAutoApplyJobResponseDTO;
 import com.cafestory.dto.responseDTO.AdminReportAiResolutionResponseDTO;
 import com.cafestory.dto.responseDTO.ContentReportResponseDTO;
+import com.cafestory.entity.enums.AdminReportAiAutoApplyJobStatus;
 import com.cafestory.entity.enums.AdminReportAiReportDecision;
 import com.cafestory.entity.enums.AdminReportAiTargetAction;
 import com.cafestory.entity.enums.ReportStatus;
 import com.cafestory.entity.enums.ReportTargetType;
+import com.cafestory.service.serviceInterface.AdminReportAiAutoApplyJobService;
 import com.cafestory.service.serviceInterface.AdminReportAiResolutionService;
 import com.cafestory.service.serviceInterface.ContentReportService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -35,6 +40,9 @@ class AdminContentReportControllerTest {
 
     @Mock
     private AdminReportAiResolutionService adminReportAiResolutionService;
+
+    @Mock
+    private AdminReportAiAutoApplyJobService autoApplyJobService;
 
     @InjectMocks
     private AdminContentReportController adminContentReportController;
@@ -93,14 +101,19 @@ class AdminContentReportControllerTest {
     @Test
     void createAiResolution_successDelegatesToAiResolutionService_TC004() {
         UUID reportId = UUID.randomUUID();
+        UUID adminUserId = UUID.randomUUID();
+        AdminReportAiResolutionCreateRequestDTO request = new AdminReportAiResolutionCreateRequestDTO();
         AdminReportAiResolutionResponseDTO response = aiResolutionResponse(reportId);
 
-        when(adminReportAiResolutionService.createResolution(reportId)).thenReturn(response);
+        when(adminReportAiResolutionService.createResolution(reportId, request, adminUserId)).thenReturn(response);
 
-        AdminReportAiResolutionResponseDTO result = adminContentReportController.createAiResolution(reportId);
+        AdminReportAiResolutionResponseDTO result = adminContentReportController.createAiResolution(
+                reportId,
+                request,
+                principal(adminUserId));
 
         assertThat(result).isEqualTo(response);
-        verify(adminReportAiResolutionService).createResolution(reportId);
+        verify(adminReportAiResolutionService).createResolution(reportId, request, adminUserId);
     }
 
     @Test
@@ -117,6 +130,35 @@ class AdminContentReportControllerTest {
 
         assertThat(result).isEqualTo(response);
         verify(adminReportAiResolutionService).getResolutions(eq(reportId), any(Pageable.class));
+    }
+
+    @Test
+    void getAiAutoResolutions_successDelegatesToAutoApplyService_TC006() {
+        UUID reportId = UUID.randomUUID();
+        Page<AdminReportAiAutoApplyJobResponseDTO> response = new PageImpl<>(List.of(autoApplyJobResponse(reportId)));
+
+        when(autoApplyJobService.getJobs(eq(reportId), any(Pageable.class))).thenReturn(response);
+
+        Page<AdminReportAiAutoApplyJobResponseDTO> result =
+                adminContentReportController.getAiAutoResolutions(reportId, 0, 20);
+
+        assertThat(result).isEqualTo(response);
+        verify(autoApplyJobService).getJobs(eq(reportId), any(Pageable.class));
+    }
+
+    @Test
+    void cancelAiAutoResolution_successDelegatesToAutoApplyService_TC007() {
+        UUID jobId = UUID.randomUUID();
+        UUID adminUserId = UUID.randomUUID();
+        AdminReportAiAutoApplyJobResponseDTO response = autoApplyJobResponse(UUID.randomUUID());
+
+        when(autoApplyJobService.cancelJob(jobId, adminUserId)).thenReturn(response);
+
+        AdminReportAiAutoApplyJobResponseDTO result =
+                adminContentReportController.cancelAiAutoResolution(jobId, principal(adminUserId));
+
+        assertThat(result).isEqualTo(response);
+        verify(autoApplyJobService).cancelJob(jobId, adminUserId);
     }
 
     private ContentReportResponseDTO response() {
@@ -138,5 +180,22 @@ class AdminContentReportControllerTest {
         response.setRiskScore(41.0);
         response.setModelName("gpt-4o-mini");
         return response;
+    }
+
+    private AdminReportAiAutoApplyJobResponseDTO autoApplyJobResponse(UUID reportId) {
+        AdminReportAiAutoApplyJobResponseDTO response = new AdminReportAiAutoApplyJobResponseDTO();
+        response.setId(UUID.randomUUID());
+        response.setContentReportId(reportId);
+        response.setAiResolutionId(UUID.randomUUID());
+        response.setStatus(AdminReportAiAutoApplyJobStatus.SCHEDULED);
+        response.setReportDecision(AdminReportAiReportDecision.RESOLVE);
+        response.setTargetAction(AdminReportAiTargetAction.HIDE);
+        response.setTargetType(ReportTargetType.BLOG);
+        response.setTargetId(UUID.randomUUID());
+        return response;
+    }
+
+    private AuthenticatedUserPrincipal principal(UUID userId) {
+        return new AuthenticatedUserPrincipal(userId, "admin", List.of("ADMIN"));
     }
 }

@@ -12,12 +12,15 @@ const STATUS_LABELS: Record<string, string> = {
   RESOLVED: "Resolved",
   APPROVE: "Approved",
   APPROVED: "Approved",
+  APPLIED: "Applied",
   PENDING: "Pending",
+  SCHEDULED: "Scheduled",
   OPEN: "Open",
   REVIEWING: "Reviewing",
   NEEDS_REVIEW: "Needs review",
   DRAFT: "Draft",
   PROCESSING: "Processing",
+  APPLYING: "Applying",
   HIDE: "Hidden",
   FAILED: "Failed",
   HIDDEN: "Hidden",
@@ -29,17 +32,18 @@ const STATUS_LABELS: Record<string, string> = {
   EXPIRED: "Expired",
   INACTIVE: "Inactive",
   SUSPENDED: "Suspended",
+  SKIPPED: "Skipped",
 };
 
 function getStatusClassName(normalized: string) {
   if (
-    ["ACTIVE", "PAID", "PUBLISHED", "SAFE", "RESOLVED", "APPROVE", "APPROVED"].includes(normalized)
+    ["ACTIVE", "PAID", "PUBLISHED", "SAFE", "RESOLVED", "APPROVE", "APPROVED", "APPLIED"].includes(normalized)
   ) {
     return "bg-primary/10 text-primary-strong border-transparent";
   }
 
   if (
-    ["PENDING", "OPEN", "REVIEWING", "NEEDS_REVIEW", "DRAFT", "PROCESSING"].includes(normalized)
+    ["PENDING", "OPEN", "REVIEWING", "NEEDS_REVIEW", "DRAFT", "PROCESSING", "SCHEDULED", "APPLYING"].includes(normalized)
   ) {
     return "bg-rating/10 text-rating border-transparent";
   }
@@ -57,6 +61,7 @@ function getStatusClassName(normalized: string) {
       "EXPIRED",
       "INACTIVE",
       "SUSPENDED",
+      "SKIPPED",
     ].includes(normalized)
   ) {
     return "bg-accent/10 text-accent border-transparent";

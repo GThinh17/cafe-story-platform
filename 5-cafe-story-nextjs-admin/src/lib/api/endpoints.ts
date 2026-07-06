@@ -42,6 +42,10 @@ export const apiEndpoints = {
       `/api/admin/reports/${pathId(reportId)}/ai-resolution`,
     reportAiResolutions: (reportId: string) =>
       `/api/admin/reports/${pathId(reportId)}/ai-resolutions`,
+    reportAiAutoResolutions: (reportId: string) =>
+      `/api/admin/reports/${pathId(reportId)}/ai-auto-resolutions`,
+    reportAiAutoResolutionCancel: (jobId: string) =>
+      `/api/admin/reports/ai-auto-resolutions/${pathId(jobId)}/cancel`,
     payments: "/api/admin/payments",
     payment: (paymentId: string) => `/api/admin/payments/${pathId(paymentId)}`,
     markBankTransferPaid: (paymentId: string) =>
