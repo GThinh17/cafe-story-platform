@@ -2,14 +2,21 @@ package com.cafestory.service.serviceImplement;
 
 import com.cafestory.dto.requestDTO.AdminModerationResolveRequestDTO;
 import com.cafestory.dto.responseDTO.AdminModerationResultResponseDTO;
+import com.cafestory.dto.responseDTO.ReportModerationJobResponseDTO;
 import com.cafestory.entity.AiModerationResult;
 import com.cafestory.entity.Blog;
+import com.cafestory.entity.Comment;
 import com.cafestory.entity.enums.ModerationDecision;
 import com.cafestory.entity.enums.ModerationResolveAction;
 import com.cafestory.entity.enums.PostStatus;
+import com.cafestory.entity.enums.ReportModerationJobStatus;
+import com.cafestory.entity.enums.ReportTargetType;
 import com.cafestory.repository.AiModerationResultRepository;
 import com.cafestory.repository.BlogRepository;
+import com.cafestory.repository.CommentRepository;
+import com.cafestory.repository.ReportModerationJobRepository;
 import com.cafestory.service.serviceInterface.AdminModerationService;
+import com.cafestory.service.serviceInterface.ReportModerationService;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,12 +39,21 @@ public class AdminModerationServiceImpl implements AdminModerationService {
 
     private final AiModerationResultRepository moderationResultRepository;
     private final BlogRepository blogRepository;
+    private final CommentRepository commentRepository;
+    private final ReportModerationJobRepository reportModerationJobRepository;
+    private final ReportModerationService reportModerationService;
 
     public AdminModerationServiceImpl(
             AiModerationResultRepository moderationResultRepository,
-            BlogRepository blogRepository) {
+            BlogRepository blogRepository,
+            CommentRepository commentRepository,
+            ReportModerationJobRepository reportModerationJobRepository,
+            ReportModerationService reportModerationService) {
         this.moderationResultRepository = moderationResultRepository;
         this.blogRepository = blogRepository;
+        this.commentRepository = commentRepository;
+        this.reportModerationJobRepository = reportModerationJobRepository;
+        this.reportModerationService = reportModerationService;
     }
 
     @Override
@@ -83,12 +99,18 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         AiModerationResult result = findResult(resultId);
         PostStatus targetStatus = targetStatus(request.getAction());
 
+        Comment comment = result.getComment();
         Blog blog = result.getBlog();
-        if (blog == null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Moderation result has no target blog");
+        if (comment == null && blog == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Moderation result has no target content");
         }
-        blog.setStatus(targetStatus);
-        blogRepository.save(blog);
+        if (comment != null) {
+            comment.setStatus(targetStatus);
+            commentRepository.save(comment);
+        } else {
+            blog.setStatus(targetStatus);
+            blogRepository.save(blog);
+        }
 
         result.setDecision(request.getAction() == ModerationResolveAction.APPROVE
                 ? ModerationDecision.SAFE
@@ -97,6 +119,18 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         result.setResolvedAction(request.getAction());
         result.setResolvedAt(LocalDateTime.now());
         return toResponse(moderationResultRepository.save(result));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ReportModerationJobResponseDTO> getJobs(ReportModerationJobStatus status, Pageable pageable) {
+        return reportModerationService.getJobs(status, pageable);
+    }
+
+    @Override
+    @Transactional
+    public ReportModerationJobResponseDTO retryReport(UUID reportId) {
+        return reportModerationService.retryReport(reportId);
     }
 
     private AiModerationResult findResult(UUID resultId) {
@@ -117,8 +151,19 @@ public class AdminModerationServiceImpl implements AdminModerationService {
     private AdminModerationResultResponseDTO toResponse(AiModerationResult result) {
         AdminModerationResultResponseDTO response = new AdminModerationResultResponseDTO();
         response.setId(result.getId());
+        response.setContentReportId(result.getContentReport() == null ? null : result.getContentReport().getId());
+        if (result.getContentReport() != null) {
+            reportModerationJobRepository.findByContentReportId(result.getContentReport().getId())
+                    .ifPresent(job -> {
+                        response.setModerationJobId(job.getId());
+                        response.setModerationJobStatus(job.getStatus().name());
+                    });
+        }
         Blog blog = result.getBlog();
+        Comment comment = result.getComment();
+        response.setTargetType(comment == null ? ReportTargetType.BLOG : ReportTargetType.COMMENT);
         response.setBlogId(blog == null ? null : blog.getId());
+        response.setCommentId(comment == null ? null : comment.getId());
         if (blog != null) {
             response.setBlogStatus(blog.getStatus());
             if (blog.getAuthor() != null) {
@@ -126,6 +171,18 @@ public class AdminModerationServiceImpl implements AdminModerationService {
                 response.setAuthorUserName(blog.getAuthor().getUserName());
                 response.setAuthorUserFullName(blog.getAuthor().getUserFullName());
                 response.setAuthorUserAvatar(blog.getAuthor().getUserAvatar());
+            }
+        }
+        if (comment != null) {
+            response.setCommentStatus(comment.getStatus());
+            if (blog == null && comment.getBlog() != null) {
+                response.setBlogId(comment.getBlog().getId());
+            }
+            if (comment.getUser() != null) {
+                response.setAuthorUserId(comment.getUser().getUserId());
+                response.setAuthorUserName(comment.getUser().getUserName());
+                response.setAuthorUserFullName(comment.getUser().getUserFullName());
+                response.setAuthorUserAvatar(comment.getUser().getUserAvatar());
             }
         }
         response.setCaption(result.getCaption());
@@ -140,6 +197,10 @@ public class AdminModerationServiceImpl implements AdminModerationService {
         response.setLabels(result.getLabels());
         response.setExplanation(result.getExplanation());
         response.setModelName(result.getModelName());
+        response.setPriorityScore(result.getPriorityScore());
+        response.setRiskScore(result.getRiskScore());
+        response.setReasonSeveritySignal(result.getReasonSeveritySignal());
+        response.setReportCountSignal(result.getReportCountSignal());
         response.setResolved(result.getResolved());
         response.setResolvedAction(result.getResolvedAction());
         response.setResolvedAt(result.getResolvedAt());

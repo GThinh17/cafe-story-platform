@@ -1,7 +1,9 @@
 package com.cafestory.controller;
 
 import com.cafestory.dto.responseDTO.AdminModerationResultResponseDTO;
+import com.cafestory.dto.responseDTO.ReportModerationJobResponseDTO;
 import com.cafestory.entity.enums.ModerationDecision;
+import com.cafestory.entity.enums.ReportModerationJobStatus;
 import com.cafestory.service.serviceInterface.AdminModerationService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -71,12 +73,47 @@ class AdminModerationControllerTest {
                 any(Pageable.class));
     }
 
+    @Test
+    void getJobs_successDelegatesToAdminService_TC003() {
+        Page<ReportModerationJobResponseDTO> response = new PageImpl<>(List.of(jobResponse()));
+
+        when(adminModerationService.getJobs(eq(ReportModerationJobStatus.FAILED), any(Pageable.class)))
+                .thenReturn(response);
+
+        Page<ReportModerationJobResponseDTO> result =
+                adminModerationController.getJobs(ReportModerationJobStatus.FAILED, 0, 20);
+
+        assertThat(result).isEqualTo(response);
+        verify(adminModerationService).getJobs(eq(ReportModerationJobStatus.FAILED), any(Pageable.class));
+    }
+
+    @Test
+    void retryReport_successDelegatesToAdminService_TC004() {
+        UUID reportId = UUID.randomUUID();
+        ReportModerationJobResponseDTO response = jobResponse();
+
+        when(adminModerationService.retryReport(reportId)).thenReturn(response);
+
+        ReportModerationJobResponseDTO result = adminModerationController.retryReport(reportId);
+
+        assertThat(result).isEqualTo(response);
+        verify(adminModerationService).retryReport(reportId);
+    }
+
     private AdminModerationResultResponseDTO resultResponse() {
         AdminModerationResultResponseDTO response = new AdminModerationResultResponseDTO();
         response.setId(UUID.randomUUID());
         response.setBlogId(UUID.randomUUID());
         response.setCaptionScore(12);
         response.setImageScore(86);
+        return response;
+    }
+
+    private ReportModerationJobResponseDTO jobResponse() {
+        ReportModerationJobResponseDTO response = new ReportModerationJobResponseDTO();
+        response.setId(UUID.randomUUID());
+        response.setContentReportId(UUID.randomUUID());
+        response.setStatus(ReportModerationJobStatus.FAILED);
         return response;
     }
 }

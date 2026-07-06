@@ -11,12 +11,17 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface AiModerationResultRepository
         extends JpaRepository<AiModerationResult, UUID>,
         JpaSpecificationExecutor<AiModerationResult> {
     boolean existsByBlogIdAndDecision(UUID blogId, ModerationDecision decision);
+
+    boolean existsByContentReportId(UUID contentReportId);
+
+    Optional<AiModerationResult> findTopByContentReportIdOrderByCreatedAtDesc(UUID contentReportId);
 
     @Query("""
             select distinct result.blog.id

@@ -2,7 +2,9 @@ package com.cafestory.controller;
 
 import com.cafestory.dto.requestDTO.AdminModerationResolveRequestDTO;
 import com.cafestory.dto.responseDTO.AdminModerationResultResponseDTO;
+import com.cafestory.dto.responseDTO.ReportModerationJobResponseDTO;
 import com.cafestory.entity.enums.ModerationDecision;
+import com.cafestory.entity.enums.ReportModerationJobStatus;
 import com.cafestory.service.serviceInterface.AdminModerationService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -57,6 +59,19 @@ public class AdminModerationController {
             @PathVariable UUID resultId,
             @Valid @RequestBody AdminModerationResolveRequestDTO request) {
         return adminModerationService.resolveResult(resultId, request);
+    }
+
+    @GetMapping("/jobs")
+    public Page<ReportModerationJobResponseDTO> getJobs(
+            @RequestParam(required = false) ReportModerationJobStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return adminModerationService.getJobs(status, pageable(page, size));
+    }
+
+    @PostMapping("/reports/{reportId}/retry")
+    public ReportModerationJobResponseDTO retryReport(@PathVariable UUID reportId) {
+        return adminModerationService.retryReport(reportId);
     }
 
     private Pageable pageable(int page, int size) {

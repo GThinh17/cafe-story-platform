@@ -6,6 +6,9 @@ import type {
   AdminModerationResult,
   AdminPayout,
   AdminPayoutStatus,
+  AdminReportAiAutoApplyJob,
+  AdminReportAiAutoApplyRequest,
+  AdminReportAiResolution,
   AdminUser,
   Blog,
   BlogRankingOverrideRequest,
@@ -289,6 +292,51 @@ export function updateReportStatus(reportId: string, status: ReportStatus) {
     method: "PATCH",
     body: { status },
   });
+}
+
+export function resolveReport(reportId: string) {
+  return apiFetch<ContentReport>(apiEndpoints.admin.reportResolve(reportId), {
+    method: "POST",
+  });
+}
+
+export function createReportAiResolution(
+  reportId: string,
+  request?: AdminReportAiAutoApplyRequest,
+) {
+  return apiFetch<AdminReportAiResolution>(
+    apiEndpoints.admin.reportAiResolution(reportId),
+    { method: "POST", body: request ?? null },
+  );
+}
+
+export function getReportAiResolutions(
+  reportId: string,
+  params: { page: number; size: number },
+  signal?: AbortSignal,
+) {
+  return apiFetch<PageResponse<AdminReportAiResolution>>(
+    withQuery(apiEndpoints.admin.reportAiResolutions(reportId), params),
+    { method: "GET", signal },
+  );
+}
+
+export function getReportAiAutoResolutions(
+  reportId: string,
+  params: { page: number; size: number },
+  signal?: AbortSignal,
+) {
+  return apiFetch<PageResponse<AdminReportAiAutoApplyJob>>(
+    withQuery(apiEndpoints.admin.reportAiAutoResolutions(reportId), params),
+    { method: "GET", signal },
+  );
+}
+
+export function cancelReportAiAutoResolution(jobId: string) {
+  return apiFetch<AdminReportAiAutoApplyJob>(
+    apiEndpoints.admin.reportAiAutoResolutionCancel(jobId),
+    { method: "POST" },
+  );
 }
 
 export function getAdminPayments(params: {

@@ -5,6 +5,25 @@ export type PostStatus = "DRAFT" | "PUBLISHED" | "HIDDEN" | "REMOVED";
 export type PageStatus = "DRAFT" | "ACTIVE" | "SUSPENDED";
 export type ReportStatus = "OPEN" | "REVIEWING" | "RESOLVED" | "REJECTED";
 export type ReportTargetType = "BLOG" | "COMMENT" | "USER" | "CAFE_PAGE";
+export type AdminReportAiReportDecision =
+  | "RESOLVE"
+  | "REJECT"
+  | "NEEDS_MANUAL_REVIEW";
+export type AdminReportAiTargetAction =
+  | "APPROVE"
+  | "HIDE"
+  | "REMOVE"
+  | "KEEP_ACTIVE"
+  | "SUSPEND_USER"
+  | "SUSPEND_PAGE"
+  | "NONE";
+export type AdminReportAiAutoApplyJobStatus =
+  | "SCHEDULED"
+  | "APPLYING"
+  | "APPLIED"
+  | "CANCELLED"
+  | "FAILED"
+  | "SKIPPED";
 export type PaymentStatus =
   | "PENDING"
   | "PAID"
@@ -157,11 +176,58 @@ export type ContentReport = {
   commentId: UUID | null;
   reportedUserId: UUID | null;
   cafePageId: UUID | null;
+  reasonId: UUID | null;
+  reasonCode: string | null;
   reason: string;
+  reasonLabel: string | null;
+  reasonSeverity: number | null;
   description: string | null;
   status: ReportStatus;
   createdAt: string;
   resolvedAt: string | null;
+};
+
+export type AdminReportAiResolution = {
+  id: UUID;
+  contentReportId: UUID;
+  targetType: ReportTargetType;
+  targetId: UUID;
+  reportDecision: AdminReportAiReportDecision;
+  targetAction: AdminReportAiTargetAction;
+  confidenceScore: number | null;
+  riskScore: number | null;
+  labels: string[];
+  ruleCode: string | null;
+  explanation: string | null;
+  modelName: string | null;
+  rawResponse: Record<string, unknown> | null;
+  createdAt: string;
+  autoApplyJob?: AdminReportAiAutoApplyJob | null;
+  autoApplyWarning?: string | null;
+};
+
+export type AdminReportAiAutoApplyRequest = {
+  autoApplyEnabled: boolean;
+  autoApplyDelayMinutes?: number | null;
+};
+
+export type AdminReportAiAutoApplyJob = {
+  id: UUID;
+  contentReportId: UUID;
+  aiResolutionId: UUID;
+  targetType: ReportTargetType;
+  targetId: UUID;
+  status: AdminReportAiAutoApplyJobStatus;
+  reportDecision: AdminReportAiReportDecision;
+  targetAction: AdminReportAiTargetAction;
+  confidenceScore: number | null;
+  riskScore: number | null;
+  scheduledAt: string;
+  appliedAt: string | null;
+  cancelledAt: string | null;
+  lastError: string | null;
+  createdAt: string;
+  updatedAt: string | null;
 };
 
 export type Payment = {

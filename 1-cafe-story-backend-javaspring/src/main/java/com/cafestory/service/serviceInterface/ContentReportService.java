@@ -18,4 +18,6 @@ public interface ContentReportService {
     ContentReportResponseDTO getReport(UUID reportId);
 
     ContentReportResponseDTO updateStatus(UUID reportId, AdminContentReportStatusUpdateRequestDTO request);
+
+    ContentReportResponseDTO resolveReport(UUID reportId);
 }
