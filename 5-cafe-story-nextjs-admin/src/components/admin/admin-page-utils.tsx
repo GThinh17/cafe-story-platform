@@ -316,16 +316,19 @@ export function FilterInput({
 
 export function Toolbar({
   children,
+  actions,
   onRefresh,
 }: {
   children: React.ReactNode;
+  actions?: React.ReactNode;
   onRefresh: () => void;
 }) {
   return (
     <div className="flex flex-col gap-3 rounded-md border border-border bg-surface p-3 sm:flex-row sm:flex-wrap sm:items-end">
       {children}
+      {actions ? <div className="flex flex-wrap gap-2 sm:ml-auto">{actions}</div> : null}
       <Button
-        className="sm:ml-auto"
+        className={actions ? undefined : "sm:ml-auto"}
         type="button"
         variant="outline"
         size="sm"

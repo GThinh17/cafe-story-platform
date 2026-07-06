@@ -6,6 +6,7 @@ import {
   CheckCircle2Icon,
   EyeIcon,
   LoaderCircleIcon,
+  ListChecksIcon,
   SparklesIcon,
 } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
@@ -34,6 +35,12 @@ import {
 } from "@/components/admin/admin-page-utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import {
   createReportAiResolution,
@@ -54,6 +61,7 @@ import type {
 const reportStatuses: ReportStatus[] = ["OPEN", "REVIEWING", "RESOLVED", "REJECTED"];
 const targetTypes: ReportTargetType[] = ["BLOG", "COMMENT", "USER", "CAFE_PAGE"];
 const AI_HISTORY_SIZE = 8;
+const BULK_FETCH_SIZE = 100;
 
 const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
   OPEN: "Reopen",
@@ -65,6 +73,14 @@ const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
 type PendingReportAction =
   | { kind: "resolve"; report: ContentReport }
   | { kind: "status"; report: ContentReport; status: ReportStatus };
+
+type BulkAiMode = "filtered" | "selected";
+
+type BulkAiProgress = {
+  done: number;
+  failed: number;
+  total: number;
+};
 
 function reportReason(report: ContentReport) {
   return report.reasonLabel || report.reason || report.reasonCode || "Report";
@@ -101,6 +117,10 @@ function mergeAiHistory(
   return [created, ...current.filter((item) => item.id !== created.id)].slice(0, AI_HISTORY_SIZE);
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
 export function AdminReportsPage() {
   const [status, setStatus] = useState<ReportStatus | "">("");
   const [targetType, setTargetType] = useState<ReportTargetType | "">("");
@@ -114,6 +134,18 @@ export function AdminReportsPage() {
     useState<PageResponse<AdminReportAiResolution> | null>(null);
   const [aiHistoryLoading, setAiHistoryLoading] = useState(false);
   const [aiHistoryError, setAiHistoryError] = useState<string | null>(null);
+  const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+  const [bulkMode, setBulkMode] = useState<BulkAiMode>("filtered");
+  const [selectedBulkReportIds, setSelectedBulkReportIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState<BulkAiProgress>({
+    done: 0,
+    failed: 0,
+    total: 0,
+  });
   const detail = useAdminDetailResource<ContentReport>();
 
   const resource = usePagedAdminResource(
@@ -121,6 +153,136 @@ export function AdminReportsPage() {
       getReports({ status, targetType, page, size: PAGE_SIZE }, signal),
     [status, targetType],
   );
+
+  const currentPageReportIds = useMemo(
+    () => resource.rows.map((report) => report.id),
+    [resource.rows],
+  );
+  const selectedBulkReports = useMemo(
+    () => resource.rows.filter((report) => selectedBulkReportIds.has(report.id)),
+    [resource.rows, selectedBulkReportIds],
+  );
+  const allCurrentPageSelected =
+    currentPageReportIds.length > 0 &&
+    currentPageReportIds.every((reportId) => selectedBulkReportIds.has(reportId));
+
+  function openBulkDialog() {
+    setBulkDialogOpen(true);
+    setBulkMode("filtered");
+    setBulkError(null);
+    setBulkProgress({ done: 0, failed: 0, total: 0 });
+    setSelectedBulkReportIds(new Set(currentPageReportIds));
+  }
+
+  function toggleBulkReport(reportId: string) {
+    setSelectedBulkReportIds((current) => {
+      const next = new Set(current);
+
+      if (next.has(reportId)) {
+        next.delete(reportId);
+      } else {
+        next.add(reportId);
+      }
+
+      return next;
+    });
+  }
+
+  function toggleCurrentPageSelection() {
+    setSelectedBulkReportIds((current) => {
+      const next = new Set(current);
+
+      if (allCurrentPageSelected) {
+        currentPageReportIds.forEach((reportId) => next.delete(reportId));
+      } else {
+        currentPageReportIds.forEach((reportId) => next.add(reportId));
+      }
+
+      return next;
+    });
+  }
+
+  async function getAllFilteredReports() {
+    const firstPage = await getReports({
+      status,
+      targetType,
+      page: 0,
+      size: BULK_FETCH_SIZE,
+    });
+    const reports = [...firstPage.content];
+
+    for (let page = 1; page < firstPage.totalPages; page += 1) {
+      const nextPage = await getReports({
+        status,
+        targetType,
+        page,
+        size: BULK_FETCH_SIZE,
+      });
+      reports.push(...nextPage.content);
+    }
+
+    return reports;
+  }
+
+  async function handleBulkAskAi() {
+    setBulkRunning(true);
+    setBulkError(null);
+    setAiActionError(null);
+    setBulkProgress({ done: 0, failed: 0, total: 0 });
+
+    try {
+      const reports =
+        bulkMode === "filtered" ? await getAllFilteredReports() : selectedBulkReports;
+
+      if (!reports.length) {
+        setBulkError(
+          bulkMode === "filtered"
+            ? "No reports match the current filters."
+            : "Select at least one report.",
+        );
+        return;
+      }
+
+      setBulkProgress({ done: 0, failed: 0, total: reports.length });
+
+      for (const report of reports) {
+        try {
+          const createdResolution = await createReportAiResolution(report.id);
+
+          if (detail.data?.id === report.id) {
+            setAiHistory((current) => mergeAiHistory(current, createdResolution));
+          }
+
+          setBulkProgress((current) => ({
+            ...current,
+            done: current.done + 1,
+          }));
+        } catch {
+          setBulkProgress((current) => ({
+            ...current,
+            done: current.done + 1,
+            failed: current.failed + 1,
+          }));
+        }
+
+        await sleep(250);
+      }
+
+      if (detail.data) {
+        await loadAiHistory(detail.data.id);
+      }
+
+      resource.refetch();
+    } catch (requestError) {
+      setBulkError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Bulk AI recommendation failed.",
+      );
+    } finally {
+      setBulkRunning(false);
+    }
+  }
 
   async function loadAiHistory(reportId: string, signal?: AbortSignal) {
     setAiHistoryLoading(true);
@@ -337,6 +499,11 @@ export function AdminReportsPage() {
       : pendingAction
         ? REPORT_STATUS_LABELS[pendingAction.status]
         : "Confirm";
+  const bulkRemaining = Math.max(
+    bulkProgress.total - bulkProgress.done,
+    0,
+  );
+  const bulkSuccess = Math.max(bulkProgress.done - bulkProgress.failed, 0);
 
   return (
     <div className="flex flex-col gap-6">
@@ -344,7 +511,21 @@ export function AdminReportsPage() {
         title="Reports"
         description="Review user reports, request AI recommendations, and resolve reports separately from moderation actions."
       />
-      <Toolbar onRefresh={resource.refetch}>
+      <Toolbar
+        onRefresh={resource.refetch}
+        actions={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={resource.isLoading || !resource.rows.length}
+            onClick={openBulkDialog}
+          >
+            <ListChecksIcon data-icon="inline-start" />
+            AI resolve all
+          </Button>
+        }
+      >
         <FilterSelect
           label="Status"
           value={status}
@@ -360,6 +541,170 @@ export function AdminReportsPage() {
           onChange={setTargetType}
         />
       </Toolbar>
+      <Dialog open={bulkDialogOpen} onOpenChange={(open) => {
+        if (!bulkRunning) {
+          setBulkDialogOpen(open);
+        }
+      }}>
+        <DialogContent className="max-h-[86vh] w-[94vw] max-w-3xl grid-rows-[auto_minmax(0,1fr)_auto] p-0">
+          <div className="border-b border-border px-5 py-4">
+            <DialogTitle>AI resolve reports</DialogTitle>
+            <DialogDescription className="mt-1">
+              Create AI recommendations in bulk. This does not resolve reports or change target content.
+            </DialogDescription>
+          </div>
+          <div className="overflow-y-auto px-5 py-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                className={`rounded-md border p-4 text-left transition ${
+                  bulkMode === "filtered"
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-background hover:border-primary/60"
+                }`}
+                disabled={bulkRunning}
+                onClick={() => setBulkMode("filtered")}
+              >
+                <span className="text-sm font-bold text-espresso">
+                  All matching filters
+                </span>
+                <span className="mt-2 block text-sm leading-6 text-muted">
+                  Run AI for every report matching status and target filters, across all pages.
+                </span>
+                <span className="mt-3 block text-xs text-muted">
+                  Current filters: {status || "all statuses"} / {targetType || "all targets"}
+                </span>
+              </button>
+              <button
+                type="button"
+                className={`rounded-md border p-4 text-left transition ${
+                  bulkMode === "selected"
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-background hover:border-primary/60"
+                }`}
+                disabled={bulkRunning}
+                onClick={() => setBulkMode("selected")}
+              >
+                <span className="text-sm font-bold text-espresso">
+                  Selected reports
+                </span>
+                <span className="mt-2 block text-sm leading-6 text-muted">
+                  Run AI only for reports selected from the current page.
+                </span>
+                <span className="mt-3 block text-xs text-muted">
+                  Selected: {selectedBulkReports.length} of {resource.rows.length}
+                </span>
+              </button>
+            </div>
+
+            <div className="mt-5 rounded-md border border-border bg-background">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+                <div>
+                  <p className="text-sm font-bold text-espresso">Current page selection</p>
+                  <p className="mt-1 text-xs text-muted">
+                    Selection is used when the Selected reports mode is active.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={bulkRunning || !resource.rows.length}
+                  onClick={toggleCurrentPageSelection}
+                >
+                  {allCurrentPageSelected ? "Clear page" : "Select page"}
+                </Button>
+              </div>
+              <div className="max-h-72 overflow-y-auto">
+                {resource.rows.map((report) => (
+                  <label
+                    className="flex cursor-pointer items-start gap-3 border-b border-border px-4 py-3 last:border-b-0 hover:bg-surface-muted/40"
+                    key={report.id}
+                  >
+                    <input
+                      type="checkbox"
+                      className="mt-1 size-4 accent-primary"
+                      checked={selectedBulkReportIds.has(report.id)}
+                      disabled={bulkRunning}
+                      onChange={() => toggleBulkReport(report.id)}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold text-espresso">
+                          {reportReason(report)}
+                        </span>
+                        <AdminStatusBadge value={report.status} />
+                        <AdminStatusBadge value={report.targetType} />
+                      </span>
+                      <span className="mt-1 block truncate text-sm text-muted">
+                        {textPreview(report.description, 140)}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+                {!resource.rows.length ? (
+                  <div className="p-4 text-sm text-muted">
+                    No reports on this page.
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            {bulkProgress.total > 0 ? (
+              <div className="mt-5 rounded-md border border-border bg-background p-4">
+                <div className="flex flex-wrap gap-4 text-sm text-muted">
+                  <span>Success: {bulkSuccess}</span>
+                  <span>Failed: {bulkProgress.failed}</span>
+                  <span>Remaining: {bulkRemaining}</span>
+                  <span>Total: {bulkProgress.total}</span>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-muted">
+                  <div
+                    className="h-full bg-primary transition-all"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        Math.round((bulkProgress.done / bulkProgress.total) * 100),
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            {bulkError ? (
+              <p className="mt-4 rounded-md border border-accent/30 bg-accent/10 p-3 text-sm text-accent">
+                {bulkError}
+              </p>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap justify-end gap-2 border-t border-border px-5 py-4">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={bulkRunning}
+              onClick={() => setBulkDialogOpen(false)}
+            >
+              Close
+            </Button>
+            <Button
+              type="button"
+              disabled={
+                bulkRunning ||
+                (bulkMode === "selected" && selectedBulkReports.length === 0)
+              }
+              onClick={() => void handleBulkAskAi()}
+            >
+              {bulkRunning ? (
+                <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />
+              ) : (
+                <SparklesIcon data-icon="inline-start" />
+              )}
+              {bulkRunning ? "Running..." : "Run AI"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {aiActionError ? (
         <div className="rounded-md border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-accent">
           {aiActionError}
