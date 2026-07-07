@@ -15,8 +15,20 @@ logger = logging.getLogger("cafestory-ai")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     get_rules()
-    logger.info("AI backend startup complete")
+    scheduler_started = False
+    try:
+        from app.services.ingest.ingest_scheduler import start_ingest_scheduler
+
+        start_ingest_scheduler()
+        scheduler_started = True
+    except Exception:
+        logger.exception("ingest scheduler failed to start — RAG ingest disabled")
+    logger.info("AI backend startup complete (ingest scheduler=%s)", scheduler_started)
     yield
+    if scheduler_started:
+        from app.services.ingest.ingest_scheduler import shutdown_ingest_scheduler
+
+        shutdown_ingest_scheduler()
 
 
 app = FastAPI(

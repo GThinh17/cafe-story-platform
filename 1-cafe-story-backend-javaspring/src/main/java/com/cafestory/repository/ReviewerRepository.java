@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -57,6 +58,35 @@ public interface ReviewerRepository extends JpaRepository<Reviewer, UUID> {
             and r.reviewerActive = true
             """)
     List<Reviewer> findAllActiveReviewers();
+
+    @Query("""
+            select r
+            from Reviewer r
+            left join fetch r.user u
+            where r.reviewerActive = true
+            and u.accountStatus = true
+            and coalesce(r.updatedAt, r.createdAt) >= :since
+            order by coalesce(r.updatedAt, r.createdAt) asc
+            """)
+    List<Reviewer> findRagSnapshotReviewers(@Param("since") LocalDateTime since, Pageable pageable);
+
+    @Query("""
+            select r.reviewerId
+            from Reviewer r
+            left join r.user u
+            where (r.reviewerActive = false or u.accountStatus = false)
+            and coalesce(r.updatedAt, r.createdAt) >= :since
+            """)
+    List<UUID> findRagTombstoneReviewerIds(@Param("since") LocalDateTime since);
+
+    @Query("""
+            select r from Reviewer r
+            left join fetch r.user u
+            where r.reviewerActive = true
+            and u.accountStatus = true
+            order by coalesce(u.userFollower, 0) desc, coalesce(u.userLike, 0) desc
+            """)
+    List<Reviewer> findRagTopReviewers(Pageable pageable);
 
     @Query("""
             select r from Reviewer r

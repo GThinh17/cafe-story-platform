@@ -17,6 +17,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.cafestory.until.security.JwtAuthenticationFilter;
+import com.cafestory.until.security.RagHmacAuthFilter;
 
 import java.util.List;
 
@@ -25,9 +26,11 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RagHmacAuthFilter ragHmacAuthFilter;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter, RagHmacAuthFilter ragHmacAuthFilter) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.ragHmacAuthFilter = ragHmacAuthFilter;
     }
 
     @Bean
@@ -50,11 +53,13 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/api/internal/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/reviewers/payouts/**", "/api/reviewers/badges/**").hasRole("ADMIN")
                         .requestMatchers("/api/reviewers/connect/**").hasRole("REVIEWER")
                         .anyRequest().authenticated())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(ragHmacAuthFilter, JwtAuthenticationFilter.class);
         return http.build();
     }
 

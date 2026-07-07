@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -52,6 +53,35 @@ public interface CafePageRepository extends JpaRepository<CafePage, UUID> {
 
     @Query("select p from CafePage p where p.status = com.cafestory.entity.enums.PageStatus.ACTIVE")
     List<CafePage> findAllActiveCafePages();
+
+    @Query("""
+            select p
+            from CafePage p
+            left join fetch p.region r
+            where p.status = com.cafestory.entity.enums.PageStatus.ACTIVE
+            and coalesce(p.updatedAt, p.createdAt) >= :since
+            order by coalesce(p.updatedAt, p.createdAt) asc
+            """)
+    List<CafePage> findRagSnapshotCafePages(@Param("since") LocalDateTime since, Pageable pageable);
+
+    @Query("""
+            select p.id
+            from CafePage p
+            where p.status <> com.cafestory.entity.enums.PageStatus.ACTIVE
+            and coalesce(p.updatedAt, p.createdAt) >= :since
+            """)
+    List<UUID> findRagTombstoneCafePageIds(@Param("since") LocalDateTime since);
+
+    @Query("""
+            select p
+            from CafePage p
+            left join fetch p.region r
+            where p.status = com.cafestory.entity.enums.PageStatus.ACTIVE
+            and (cast(:province as string) is null
+                or lower(r.province) like lower(concat('%', cast(:province as string), '%')))
+            order by coalesce(p.followerCount, 0) desc, coalesce(p.likeCount, 0) desc
+            """)
+    List<CafePage> findRagTrendingCafePages(@Param("province") String province, Pageable pageable);
 
     @Query("""
             select p
