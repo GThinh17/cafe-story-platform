@@ -68,6 +68,13 @@ export type SendChatMessageRequest = {
   stickerId?: string;
 };
 
+export type ChatMessageSource = {
+  sourceType: string;
+  sourceId: string;
+  title: string;
+  imageUrls: string[];
+};
+
 export type ChatMessage = {
   id: string;
   serverId?: string;
@@ -80,6 +87,8 @@ export type ChatMessage = {
   time: string;
   timestamp?: number;
   localStatus?: LocalMessageStatus;
+  // Chỉ có ở assistant reply (plan §15.8) — render dưới bubble dạng chip.
+  sources?: ChatMessageSource[];
 };
 
 export type Conversation = {
@@ -98,6 +107,7 @@ export type Conversation = {
   localStatus?: LocalConversationStatus;
   initials?: string;
   status?: string;
+  isAssistant?: boolean;
 };
 
 export type MessageThread = {
