@@ -93,9 +93,9 @@ public class AdminAssistantServiceImpl implements AdminAssistantService {
             ObjectMapper objectMapper,
             @Value("${admin.assistant.webhook-url:http://localhost:5678/webhook/cafestory-admin-assistant-chat}")
             String webhookUrl,
-            @Value("${admin.assistant.timeout-ms:30000}") int timeoutMs,
+            @Value("${admin.assistant.timeout-ms:90000}") int timeoutMs,
             @Value("${admin.assistant.model:gpt-4o-mini}") String assistantModel,
-            @Value("${admin.assistant.tool-base-url:http://localhost:8080/api/admin/assistant/tools}") String toolBaseUrl,
+            @Value("${admin.assistant.tool-base-url:http://host.docker.internal:8080/api/admin/assistant/tools}") String toolBaseUrl,
             @Value("${admin.assistant.tool-token:cafestory-dev-assistant-tool-token}") String toolToken) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
@@ -194,7 +194,7 @@ public class AdminAssistantServiceImpl implements AdminAssistantService {
                 } catch (IOException ignored) {
                     // The client disconnected; complete below.
                 }
-                emitter.completeWithError(exception);
+                emitter.complete();
             }
         });
         return emitter;
@@ -254,8 +254,9 @@ public class AdminAssistantServiceImpl implements AdminAssistantService {
                 "tokenHeader", "X-Admin-Assistant-Tool-Token",
                 "token", toolToken));
 
+        AdminAssistantWebhookResponseDTO response;
         try {
-            return restClient.post()
+            response = restClient.post()
                     .uri("")
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON)
@@ -265,6 +266,10 @@ public class AdminAssistantServiceImpl implements AdminAssistantService {
         } catch (RuntimeException exception) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Admin assistant AI service unavailable");
         }
+        if (response == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Admin assistant AI service returned an empty response");
+        }
+        return response;
     }
 
     private List<Map<String, Object>> history(UUID conversationId) {
