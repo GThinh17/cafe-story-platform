@@ -9,6 +9,15 @@ export const apiEndpoints = {
   },
   admin: {
     dashboardSummary: "/api/admin/dashboard/summary",
+    assistantConversations: "/api/admin/assistant/conversations",
+    assistantConversationMessages: (conversationId: string) =>
+      `/api/admin/assistant/conversations/${pathId(conversationId)}/messages`,
+    assistantConversationMessagesStream: (conversationId: string) =>
+      `/api/admin/assistant/conversations/${pathId(conversationId)}/messages/stream`,
+    assistantDraftAction: (draftActionId: string) =>
+      `/api/admin/assistant/draft-actions/${pathId(draftActionId)}`,
+    assistantDraftActionExecute: (draftActionId: string) =>
+      `/api/admin/assistant/draft-actions/${pathId(draftActionId)}/execute`,
     users: "/api/admin/users",
     user: (userId: string) => `/api/admin/users/${pathId(userId)}`,
     userStatus: (userId: string) => `/api/admin/users/${pathId(userId)}/status`,

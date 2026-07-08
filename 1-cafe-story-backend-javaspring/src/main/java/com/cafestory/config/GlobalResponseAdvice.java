@@ -21,6 +21,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.stream.Collectors;
 
@@ -44,6 +45,9 @@ public class GlobalResponseAdvice implements ResponseBodyAdvice<Object> {
             ServerHttpRequest request, ServerHttpResponse response) {
 
         if (isOpenApiRequest(request)) {
+            return body;
+        }
+        if (body instanceof SseEmitter || MediaType.TEXT_EVENT_STREAM.includes(selectedContentType)) {
             return body;
         }
 
