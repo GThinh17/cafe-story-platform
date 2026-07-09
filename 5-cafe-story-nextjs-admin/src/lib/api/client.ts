@@ -19,7 +19,7 @@ export class ApiError extends Error {
   }
 }
 
-function buildUrl(path: string) {
+export function buildApiUrl(path: string) {
   if (path.startsWith("http://") || path.startsWith("https://")) {
     return path;
   }
@@ -102,7 +102,7 @@ export async function apiFetch<T>(
     ? JSON.stringify(body)
     : (body as BodyInit | null | undefined);
 
-  const response = await fetch(buildUrl(path), {
+  const response = await fetch(buildApiUrl(path), {
     cache: "no-store",
     credentials: "include",
     ...restOptions,

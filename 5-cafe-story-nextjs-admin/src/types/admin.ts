@@ -38,6 +38,24 @@ export type ModerationResolveAction = "APPROVE" | "HIDE" | "REMOVE";
 export type AiStatus = "SEND_ADMIN" | "APPROVE" | "DENY";
 export type RankingPeriodType = "DAILY" | "WEEKLY" | "MONTHLY";
 export type ReviewerBadge = "IRON" | "BRONZE" | "SILVER" | "GOLD" | "DIAMOND";
+export type AdminAssistantMessageRole = "USER" | "ASSISTANT" | "SYSTEM";
+export type AdminAssistantDraftActionType =
+  | "REPORT_RESOLVE"
+  | "REPORT_REJECT"
+  | "REPORT_ASK_AI_RESOLUTION"
+  | "REPORT_CANCEL_AUTO_APPLY"
+  | "BLOG_HIDE"
+  | "BLOG_REMOVE"
+  | "COMMENT_HIDE"
+  | "COMMENT_REMOVE"
+  | "USER_DEACTIVATE"
+  | "CAFE_PAGE_SUSPEND";
+export type AdminAssistantDraftActionStatus =
+  | "PENDING"
+  | "EXECUTED"
+  | "CANCELLED"
+  | "EXPIRED"
+  | "FAILED";
 
 export type AdminDashboardSummary = {
   totalUsers: number;
@@ -54,6 +72,52 @@ export type AdminDashboardSummary = {
   failedPayments: number;
   totalReviewers: number;
   pendingModerationItems: number;
+};
+
+export type AdminAssistantConversation = {
+  id: UUID;
+  adminUserId: UUID;
+  title: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+};
+
+export type AdminAssistantMessage = {
+  id: UUID;
+  conversationId: UUID;
+  role: AdminAssistantMessageRole;
+  content: string;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+};
+
+export type AdminAssistantDraftAction = {
+  id: UUID;
+  conversationId: UUID;
+  messageId: UUID | null;
+  actionType: AdminAssistantDraftActionType;
+  payload: Record<string, unknown> | null;
+  explanation: string | null;
+  sourceRefs: Array<Record<string, unknown>> | null;
+  status: AdminAssistantDraftActionStatus;
+  expiresAt: string;
+  executedAt: string | null;
+  executionResult: Record<string, unknown> | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string | null;
+};
+
+export type AdminAssistantChatResponse = {
+  message: AdminAssistantMessage;
+  draftAction: AdminAssistantDraftAction | null;
+  citations: Array<Record<string, unknown>>;
+  toolCalls: Array<Record<string, unknown>>;
+};
+
+export type AdminAssistantMessageRequest = {
+  message: string;
+  pageContext?: Record<string, unknown>;
 };
 
 export type AdminUser = {

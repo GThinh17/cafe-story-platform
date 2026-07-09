@@ -1,8 +1,13 @@
-import { apiFetch } from "@/lib/api/client";
+import { apiFetch, buildApiUrl } from "@/lib/api/client";
 import { apiEndpoints } from "@/lib/api/endpoints";
 import type { PageResponse } from "@/types/api";
 import type {
   AdminDashboardSummary,
+  AdminAssistantChatResponse,
+  AdminAssistantConversation,
+  AdminAssistantDraftAction,
+  AdminAssistantMessage,
+  AdminAssistantMessageRequest,
   AdminModerationResult,
   AdminPayout,
   AdminPayoutStatus,
@@ -56,6 +61,122 @@ export function getAdminDashboardSummary(signal?: AbortSignal) {
 }
 
 export const getDashboardSummary = getAdminDashboardSummary;
+
+export function createAssistantConversation(request?: { title?: string | null }) {
+  return apiFetch<AdminAssistantConversation>(apiEndpoints.admin.assistantConversations, {
+    method: "POST",
+    body: request ?? null,
+  });
+}
+
+export function getAssistantConversations(
+  params: { page: number; size: number },
+  signal?: AbortSignal,
+) {
+  return apiFetch<PageResponse<AdminAssistantConversation>>(
+    withQuery(apiEndpoints.admin.assistantConversations, params),
+    { method: "GET", signal },
+  );
+}
+
+export function getAssistantMessages(
+  conversationId: string,
+  params: { page: number; size: number },
+  signal?: AbortSignal,
+) {
+  return apiFetch<PageResponse<AdminAssistantMessage>>(
+    withQuery(apiEndpoints.admin.assistantConversationMessages(conversationId), params),
+    { method: "GET", signal },
+  );
+}
+
+export function sendAssistantMessage(
+  conversationId: string,
+  request: AdminAssistantMessageRequest,
+) {
+  return apiFetch<AdminAssistantChatResponse>(
+    apiEndpoints.admin.assistantConversationMessages(conversationId),
+    { method: "POST", body: request },
+  );
+}
+
+type AssistantStreamHandlers = {
+  onProgress?: (payload: Record<string, unknown>) => void;
+  onMessage?: (payload: AdminAssistantChatResponse) => void;
+  onError?: (payload: Record<string, unknown>) => void;
+  onDone?: () => void;
+};
+
+export async function streamAssistantMessage(
+  conversationId: string,
+  request: AdminAssistantMessageRequest,
+  handlers: AssistantStreamHandlers,
+) {
+  const response = await fetch(
+    buildApiUrl(apiEndpoints.admin.assistantConversationMessagesStream(conversationId)),
+    {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        Accept: "text/event-stream",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(request),
+    },
+  );
+
+  if (!response.ok || !response.body) {
+    throw new Error("Admin assistant stream failed.");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  function handleEvent(rawEvent: string) {
+    const lines = rawEvent.split(/\r?\n/);
+    const eventName =
+      lines.find((line) => line.startsWith("event:"))?.slice("event:".length).trim() ??
+      "message";
+    const data = lines
+      .filter((line) => line.startsWith("data:"))
+      .map((line) => line.slice("data:".length).trim())
+      .join("\n");
+    const payload = data ? (JSON.parse(data) as Record<string, unknown>) : {};
+
+    if (eventName === "progress") handlers.onProgress?.(payload);
+    if (eventName === "message") handlers.onMessage?.(payload as AdminAssistantChatResponse);
+    if (eventName === "error") handlers.onError?.(payload);
+    if (eventName === "done") handlers.onDone?.();
+  }
+
+  while (true) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+    const events = buffer.split(/\r?\n\r?\n/);
+    buffer = events.pop() ?? "";
+    events.filter(Boolean).forEach(handleEvent);
+    if (done) break;
+  }
+
+  if (buffer.trim()) {
+    handleEvent(buffer.trim());
+  }
+}
+
+export function getAssistantDraftAction(draftActionId: string, signal?: AbortSignal) {
+  return apiFetch<AdminAssistantDraftAction>(
+    apiEndpoints.admin.assistantDraftAction(draftActionId),
+    { method: "GET", signal },
+  );
+}
+
+export function executeAssistantDraftAction(draftActionId: string) {
+  return apiFetch<AdminAssistantDraftAction>(
+    apiEndpoints.admin.assistantDraftActionExecute(draftActionId),
+    { method: "POST" },
+  );
+}
 
 export function getAdminUsers(params: {
   search?: string;
