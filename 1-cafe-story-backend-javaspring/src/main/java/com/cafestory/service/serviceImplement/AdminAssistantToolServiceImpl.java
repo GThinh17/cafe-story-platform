@@ -31,15 +31,27 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.text.Normalizer;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Service
 public class AdminAssistantToolServiceImpl implements AdminAssistantToolService {
+
+    private static final Pattern DIACRITICS_PATTERN = Pattern.compile("\\p{M}+");
+    private static final Set<String> GENERIC_SEARCH_TERMS = Set.of(
+            "bao", "cao", "report", "reports", "kiem", "duyet", "moderation", "hang", "doi",
+            "bai", "viet", "blog", "blogs", "binh", "luan", "comment", "comments", "nguoi",
+            "dung", "user", "users", "quan", "cafe", "page", "pages", "cho", "toi", "xem",
+            "tim", "gan", "day", "moi", "nhat", "dang", "da", "bi", "co", "khoa", "vi");
 
     private final AdminDashboardService adminDashboardService;
     private final ContentReportService contentReportService;
@@ -85,13 +97,15 @@ public class AdminAssistantToolServiceImpl implements AdminAssistantToolService 
             AdminAssistantToolRequestDTO request,
             UUID fallbackAdminUserId) {
         String normalizedToolName = normalizeToolName(toolName);
-        Map<String, Object> input = request == null || request.getInput() == null ? Map.of() : request.getInput();
         UUID adminUserId = request == null || request.getAdminUserId() == null
                 ? fallbackAdminUserId
                 : request.getAdminUserId();
         AdminAssistantConversation conversation = findConversation(request == null ? null : request.getConversationId(), adminUserId);
         AdminAssistantMessage message = findMessage(request == null ? null : request.getMessageId());
         long started = System.currentTimeMillis();
+        Map<String, Object> input = normalizeInput(
+                normalizedToolName,
+                request == null || request.getInput() == null ? Map.of() : request.getInput());
 
         try {
             Object data = dispatch(normalizedToolName, input);
@@ -193,6 +207,178 @@ public class AdminAssistantToolServiceImpl implements AdminAssistantToolService 
         response.setSourceRefs(List.of(Map.of("type", "tool", "toolName", toolName)));
         response.setGeneratedAt(LocalDateTime.now());
         return response;
+    }
+
+    private Map<String, Object> normalizeInput(String toolName, Map<String, Object> input) {
+        Map<String, Object> normalizedInput = new LinkedHashMap<>(input);
+        String query = firstText(input, "query", "search", "message");
+        String normalizedQuery = normalizeText(query);
+        if (!query.isBlank()) {
+            normalizedInput.putIfAbsent("query", query);
+            normalizedInput.putIfAbsent("normalizedQuery", normalizedQuery);
+            normalizedInput.putIfAbsent("queryVariants", queryVariants(query));
+        }
+
+        switch (toolName) {
+            case "search_reports" -> {
+                putIfAbsent(normalizedInput, "status", inferReportStatus(normalizedQuery));
+                putIfAbsent(normalizedInput, "targetType", inferTargetType(normalizedQuery));
+            }
+            case "search_users" -> {
+                if (!normalizedInput.containsKey("search") && !query.isBlank()) {
+                    putIfAbsent(normalizedInput, "search", compactSearchQuery(normalizedQuery));
+                }
+                putIfAbsent(normalizedInput, "accountStatus", inferAccountStatus(normalizedQuery));
+            }
+            case "search_blogs" -> putIfAbsent(normalizedInput, "status", inferPostStatus(normalizedQuery));
+            case "search_comments" -> putIfAbsent(normalizedInput, "status", inferPostStatus(normalizedQuery));
+            case "search_cafe_pages" -> putIfAbsent(normalizedInput, "status", inferPageStatus(normalizedQuery));
+            default -> {
+            }
+        }
+        return normalizedInput;
+    }
+
+    private String firstText(Map<String, Object> input, String... keys) {
+        for (String key : keys) {
+            Object value = input.get(key);
+            if (value != null && !String.valueOf(value).isBlank()) {
+                return String.valueOf(value).trim();
+            }
+        }
+        return "";
+    }
+
+    private Set<String> queryVariants(String query) {
+        Set<String> variants = new LinkedHashSet<>();
+        if (query == null || query.isBlank()) {
+            return variants;
+        }
+        variants.add(query.trim());
+        String normalized = normalizeText(query);
+        variants.add(normalized);
+        variants.add(normalized.replace('-', ' '));
+        variants.add(normalized.replace("bao cao", "report"));
+        variants.add(normalized.replace("bai viet", "blog"));
+        variants.add(normalized.replace("binh luan", "comment"));
+        variants.add(normalized.replace("nguoi dung", "user"));
+        variants.add(normalized.replace("kiem duyet", "moderation"));
+        return variants;
+    }
+
+    private String normalizeText(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        String lower = value.toLowerCase(Locale.ROOT).replace('đ', 'd');
+        String decomposed = Normalizer.normalize(lower, Normalizer.Form.NFD);
+        return DIACRITICS_PATTERN.matcher(decomposed)
+                .replaceAll("")
+                .replaceAll("[^a-z0-9\\s_/-]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private String compactSearchQuery(String normalizedQuery) {
+        if (normalizedQuery.isBlank()) {
+            return null;
+        }
+        List<String> tokens = new ArrayList<>();
+        for (String token : normalizedQuery.split("\\s+")) {
+            if (!GENERIC_SEARCH_TERMS.contains(token)) {
+                tokens.add(token);
+            }
+        }
+        return tokens.isEmpty() ? normalizedQuery : String.join(" ", tokens);
+    }
+
+    private void putIfAbsent(Map<String, Object> input, String key, Object value) {
+        if (value != null && !input.containsKey(key)) {
+            input.put(key, value);
+        }
+    }
+
+    private ReportStatus inferReportStatus(String normalizedQuery) {
+        if (containsAny(normalizedQuery, "reviewing", "review", "dang review", "can xem", "can duyet", "kiem tra")) {
+            return ReportStatus.REVIEWING;
+        }
+        if (containsAny(normalizedQuery, "resolved", "da xu ly", "da giai quyet", "closed", "dong")) {
+            return ReportStatus.RESOLVED;
+        }
+        if (containsAny(normalizedQuery, "rejected", "tu choi", "false report", "sai", "khong hop le")) {
+            return ReportStatus.REJECTED;
+        }
+        if (containsAny(normalizedQuery, "open", "chua xu ly", "moi", "dang mo")) {
+            return ReportStatus.OPEN;
+        }
+        return null;
+    }
+
+    private ReportTargetType inferTargetType(String normalizedQuery) {
+        if (containsAny(normalizedQuery, "bai viet", "blog", "post")) {
+            return ReportTargetType.BLOG;
+        }
+        if (containsAny(normalizedQuery, "binh luan", "comment")) {
+            return ReportTargetType.COMMENT;
+        }
+        if (containsAny(normalizedQuery, "nguoi dung", "user", "tai khoan", "account")) {
+            return ReportTargetType.USER;
+        }
+        if (containsAny(normalizedQuery, "cafe page", "trang quan", "quan", "page")) {
+            return ReportTargetType.CAFE_PAGE;
+        }
+        return null;
+    }
+
+    private PostStatus inferPostStatus(String normalizedQuery) {
+        if (containsAny(normalizedQuery, "hidden", "hide", "an", "bi an")) {
+            return PostStatus.HIDDEN;
+        }
+        if (containsAny(normalizedQuery, "removed", "remove", "xoa", "go bo")) {
+            return PostStatus.REMOVED;
+        }
+        if (containsAny(normalizedQuery, "draft", "nhap")) {
+            return PostStatus.DRAFT;
+        }
+        if (containsAny(normalizedQuery, "published", "dang", "cong khai", "hien thi")) {
+            return PostStatus.PUBLISHED;
+        }
+        return null;
+    }
+
+    private PageStatus inferPageStatus(String normalizedQuery) {
+        if (containsAny(normalizedQuery, "suspended", "tam khoa", "dinh chi", "bi khoa")) {
+            return PageStatus.SUSPENDED;
+        }
+        if (containsAny(normalizedQuery, "draft", "nhap")) {
+            return PageStatus.DRAFT;
+        }
+        if (containsAny(normalizedQuery, "active", "dang hoat dong", "hoat dong", "kich hoat")) {
+            return PageStatus.ACTIVE;
+        }
+        return null;
+    }
+
+    private Boolean inferAccountStatus(String normalizedQuery) {
+        if (containsAny(normalizedQuery, "inactive", "disabled", "deactivated", "suspended", "tam khoa", "bi khoa", "khoa")) {
+            return false;
+        }
+        if (containsAny(normalizedQuery, "active", "dang hoat dong", "hoat dong", "kich hoat")) {
+            return true;
+        }
+        return null;
+    }
+
+    private boolean containsAny(String value, String... needles) {
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+        for (String needle : needles) {
+            if (value.contains(needle)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @SuppressWarnings("unchecked")

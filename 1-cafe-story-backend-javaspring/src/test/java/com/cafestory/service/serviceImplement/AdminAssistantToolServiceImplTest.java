@@ -4,6 +4,9 @@ import com.cafestory.dto.requestDTO.AdminAssistantToolRequestDTO;
 import com.cafestory.dto.responseDTO.AdminAssistantToolResponseDTO;
 import com.cafestory.dto.responseDTO.AdminUserResponseDTO;
 import com.cafestory.entity.AdminAssistantConversation;
+import com.cafestory.entity.enums.PostStatus;
+import com.cafestory.entity.enums.ReportStatus;
+import com.cafestory.entity.enums.ReportTargetType;
 import com.cafestory.repository.AdminAssistantConversationRepository;
 import com.cafestory.repository.AdminAssistantMessageRepository;
 import com.cafestory.repository.AdminAssistantToolCallRepository;
@@ -17,13 +20,19 @@ import com.cafestory.service.serviceInterface.ContentReportService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -98,5 +107,66 @@ class AdminAssistantToolServiceImplTest {
         assertThat(response.getMaskedFields()).anyMatch(field -> field.contains("userPhone"));
         assertThat(response.getData().toString()).doesNotContain("target@example.com");
         verify(toolCallRepository).save(any());
+    }
+
+    @Test
+    void executeTool_searchReports_infersVietnameseStatusAndTargetType_TC002() {
+        UUID adminUserId = UUID.randomUUID();
+        AdminAssistantToolRequestDTO request = new AdminAssistantToolRequestDTO();
+        request.setAdminUserId(adminUserId);
+        request.setInput(Map.of("query", "Cho tôi xem báo cáo bài viết đang review"));
+
+        when(contentReportService.getReports(any(), any(), any())).thenReturn(emptyPage());
+
+        AdminAssistantToolResponseDTO response = service.executeTool("search_reports", request, adminUserId);
+
+        assertThat(response.getToolName()).isEqualTo("search_reports");
+        verify(contentReportService).getReports(
+                eq(ReportStatus.REVIEWING),
+                eq(ReportTargetType.BLOG),
+                any());
+    }
+
+    @Test
+    void executeTool_searchUsers_infersVietnameseInactiveAccount_TC003() {
+        UUID adminUserId = UUID.randomUUID();
+        AdminAssistantToolRequestDTO request = new AdminAssistantToolRequestDTO();
+        request.setAdminUserId(adminUserId);
+        request.setInput(Map.of("query", "người dùng bị khóa vì spam"));
+
+        when(adminUserService.getUsers(any(), any(), any(), any())).thenReturn(emptyPage());
+
+        AdminAssistantToolResponseDTO response = service.executeTool("search_users", request, adminUserId);
+
+        assertThat(response.getToolName()).isEqualTo("search_users");
+        verify(adminUserService).getUsers(
+                eq("spam"),
+                eq(false),
+                isNull(),
+                any());
+    }
+
+    @Test
+    void executeTool_searchBlogs_infersVietnameseHiddenStatus_TC004() {
+        UUID adminUserId = UUID.randomUUID();
+        AdminAssistantToolRequestDTO request = new AdminAssistantToolRequestDTO();
+        request.setAdminUserId(adminUserId);
+        request.setInput(Map.of("query", "bài viết đã ẩn"));
+
+        when(adminBlogService.getBlogs(any(), any(), any(), any())).thenReturn(emptyPage());
+
+        AdminAssistantToolResponseDTO response = service.executeTool("search_blogs", request, adminUserId);
+
+        assertThat(response.getToolName()).isEqualTo("search_blogs");
+        verify(adminBlogService).getBlogs(
+                eq(PostStatus.HIDDEN),
+                isNull(),
+                isNull(),
+                any());
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private Page emptyPage() {
+        return new PageImpl(List.of(), PageRequest.of(0, 5), 0);
     }
 }
