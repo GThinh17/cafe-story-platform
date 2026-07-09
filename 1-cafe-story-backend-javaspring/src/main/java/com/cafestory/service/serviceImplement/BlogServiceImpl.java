@@ -11,6 +11,7 @@ import com.cafestory.entity.BlogTaggedUser;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
+import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.entity.enums.RegionRequirement;
 import com.cafestory.mapper.BlogMapper;
 import com.cafestory.repository.BlogLikeRepository;
@@ -190,8 +191,35 @@ public class BlogServiceImpl implements BlogService {
             cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE,
             key = "'posts:' + #p0 + ':' + (#p1 == null ? 'anon' : #p1)")
     public List<BlogResponseDTO> getAllBlogsByUserId(UUID userId, UUID viewerUserId) {
+        return getAllBlogsByUserId(userId, viewerUserId, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE,
+            key = "'posts:' + #p0 + ':' + (#p1 == null ? 'anon' : #p1) + ':' + (#p2 == null ? 'all' : #p2)")
+    public List<BlogResponseDTO> getAllBlogsByUserId(UUID userId, UUID viewerUserId, PostStatus status) {
         userValidator.validateUserExists(userId);
-        return toBlogResponseDTOs(blogRepository.findByAuthorUserId(userId), viewerUserId);
+
+        boolean isOwner = viewerUserId != null && viewerUserId.equals(userId);
+        if (status != null && status != PostStatus.PUBLISHED && !isOwner) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "Only the author can view non-published blogs");
+        }
+
+        List<Blog> blogs = status != null
+                ? blogRepository.findByAuthorUserIdAndStatus(userId, status)
+                : blogRepository.findByAuthorUserId(userId);
+
+        if (status == null && !isOwner) {
+            blogs = blogs.stream()
+                    .filter(b -> b.getStatus() == PostStatus.PUBLISHED)
+                    .collect(Collectors.toList());
+        }
+
+        return toBlogResponseDTOs(blogs, viewerUserId);
     }
 
     @Override

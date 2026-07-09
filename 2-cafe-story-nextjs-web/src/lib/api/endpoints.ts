@@ -127,6 +127,9 @@ export const apiEndpoints = {
     users: (page = 0, size = 20) =>
       `/api/recommendations/users?page=${page}&size=${size}`,
   },
+  aiChat: {
+    ask: "/api/ai/chat/ask",
+  },
   chat: {
     conversations: "/api/chat/conversations",
     directConversation: "/api/chat/conversations/direct",

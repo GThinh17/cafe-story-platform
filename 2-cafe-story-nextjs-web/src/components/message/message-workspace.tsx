@@ -10,6 +10,7 @@ import {
   getMessageUserInitials,
 } from "@/components/message/message-user-utils";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { askAssistant, AiChatError } from "@/lib/api/ai-chat";
 import {
   createDirectConversation,
   getConversationMessages,
@@ -27,10 +28,59 @@ import type {
   ConversationResponse,
   SendMessageDraft,
 } from "@/types/message";
+import type { AiChatHistoryItem } from "@/types/ai-chat";
 import type { UserResponse } from "@/types/user";
 import type { Client, StompSubscription } from "@stomp/stompjs";
 import { createStompClient } from "@/lib/api/websocket";
 import type { SocketEvent } from "@/types/message";
+
+// Trợ lý AI luôn pinned top của conversation list (plan §15.8).
+// ID trùng cho id/serverId/participantUserId để canSend=true và không gọi Cloudinary.
+const ASSISTANT_CONVERSATION_ID = "__cafestory_assistant__";
+const ASSISTANT_HISTORY_LIMIT = 10;
+const ASSISTANT_WELCOME_MESSAGE_ID = "assistant-welcome";
+
+function createAssistantConversation(): Conversation {
+  return {
+    id: ASSISTANT_CONVERSATION_ID,
+    serverId: ASSISTANT_CONVERSATION_ID,
+    participantUserId: ASSISTANT_CONVERSATION_ID,
+    name: "Trợ lý CafeStory",
+    username: "cafestory_ai",
+    avatarImage: "",
+    initials: "AI",
+    preview: "Hỏi bất kỳ điều gì về CafeStory",
+    time: "",
+    hasMessages: true,
+    localStatus: "ready",
+    isAssistant: true,
+  };
+}
+
+function createAssistantWelcomeMessage(): ChatMessage {
+  return {
+    id: ASSISTANT_WELCOME_MESSAGE_ID,
+    author: "them",
+    body:
+      "Chào bạn! Mình là trợ lý CafeStory. Bạn có thể hỏi mình về quán cafe, reviewer, gói dịch vụ, hoặc cách dùng ứng dụng nhé.",
+    type: "TEXT",
+    time: "",
+    localStatus: "sent",
+  };
+}
+
+function buildAssistantHistory(messages: ChatMessage[]): AiChatHistoryItem[] {
+  return messages
+    .filter((message) => message.id !== ASSISTANT_WELCOME_MESSAGE_ID)
+    .filter((message) => Boolean(message.body?.trim()))
+    .filter((message) => message.localStatus !== "sending")
+    .filter((message) => message.localStatus !== "error")
+    .slice(-ASSISTANT_HISTORY_LIMIT)
+    .map((message) => ({
+      role: message.author === "me" ? "user" : "assistant",
+      content: message.body!.trim(),
+    }));
+}
 
 function formatTime(value: string | null | undefined) {
   const date = value ? new Date(value) : new Date();
@@ -270,11 +320,24 @@ export function MessageWorkspace() {
     }
   }, [activeConversationId, queryConversationId]);
 
+  const seedAssistantMessagesIfEmpty = useCallback(() => {
+    setMessagesByConversationId((current) => {
+      if (current[ASSISTANT_CONVERSATION_ID]?.length) {
+        return current;
+      }
+      return {
+        ...current,
+        [ASSISTANT_CONVERSATION_ID]: [createAssistantWelcomeMessage()],
+      };
+    });
+  }, []);
+
   const loadWorkspace = useCallback(async () => {
     if (!currentUser?.userId) {
-      setConversations([]);
-      setMessagesByConversationId({});
-      setLoadedConversationIds({});
+      // Assistant conv hoạt động cả khi chưa login (route C/D dùng docs public).
+      setConversations([createAssistantConversation()]);
+      setLoadedConversationIds({ [ASSISTANT_CONVERSATION_ID]: true });
+      seedAssistantMessagesIfEmpty();
       setIsInitialLoading(false);
       return;
     }
@@ -332,16 +395,28 @@ export function MessageWorkspace() {
         .filter((userId) => !seenUserIds.has(userId) && userDetails[userId])
         .map((userId) => mapUserToConversation(userDetails[userId]));
 
-      setConversations([...conversationItems, ...followedItems]);
+      setConversations([
+        createAssistantConversation(),
+        ...conversationItems,
+        ...followedItems,
+      ]);
+      setLoadedConversationIds((current) => ({
+        ...current,
+        [ASSISTANT_CONVERSATION_ID]: true,
+      }));
+      seedAssistantMessagesIfEmpty();
     } catch (requestError) {
-      setConversations([]);
+      // Vẫn để assistant conv chạy được ngay cả khi backend messages lỗi.
+      setConversations([createAssistantConversation()]);
+      setLoadedConversationIds({ [ASSISTANT_CONVERSATION_ID]: true });
+      seedAssistantMessagesIfEmpty();
       setConversationErrorMessage(
         getApiErrorMessage(requestError, "Unable to load messages."),
       );
     } finally {
       setIsInitialLoading(false);
     }
-  }, [currentUser?.userId]);
+  }, [currentUser?.userId, seedAssistantMessagesIfEmpty]);
 
   useEffect(() => {
     if (isCurrentUserLoading) {
@@ -366,6 +441,10 @@ export function MessageWorkspace() {
 
   const loadMessagesForConversation = useCallback(
     async (conversation: Conversation, force = false) => {
+      // Assistant conv KHÔNG có API messages — messages sống local state.
+      if (conversation.isAssistant) {
+        return;
+      }
       if (!currentUser?.userId || !conversation.serverId) {
         return;
       }
@@ -435,6 +514,11 @@ export function MessageWorkspace() {
     if (stompSubscriptionRef.current) {
       stompSubscriptionRef.current.unsubscribe();
       stompSubscriptionRef.current = null;
+    }
+
+    // Assistant conv KHÔNG cần STOMP — trả lời qua HTTP proxy.
+    if (activeConversation?.isAssistant) {
+      return;
     }
 
     if (!conversationId || !conversationKey || !userId) {
@@ -534,6 +618,12 @@ export function MessageWorkspace() {
 
   function handleSelectConversation(conversation: Conversation) {
     setConversationErrorMessage(null);
+
+    if (conversation.isAssistant) {
+      setActiveConversationId(conversation.id);
+      router.push(`/messages?conversationId=${conversation.id}`);
+      return;
+    }
 
     if (conversation.serverId) {
       setActiveConversationId(conversation.id);
@@ -646,11 +736,123 @@ export function MessageWorkspace() {
     });
   }
 
+  function handleSendAssistantMessage(conversation: Conversation, text: string) {
+    if (!text) {
+      return false;
+    }
+
+    const conversationKey = conversation.id;
+    const userMessageId = createLocalId("assistant-user");
+    const assistantMessageId = createLocalId("assistant-reply");
+    const createdAt = new Date();
+    const userMessage: ChatMessage = {
+      id: userMessageId,
+      author: "me",
+      body: text,
+      type: "TEXT",
+      time: formatTime(createdAt.toISOString()),
+      timestamp: createdAt.getTime(),
+      localStatus: "sent",
+    };
+    const pendingAssistantMessage: ChatMessage = {
+      id: assistantMessageId,
+      author: "them",
+      body: "",
+      type: "TEXT",
+      time: formatTime(createdAt.toISOString()),
+      timestamp: createdAt.getTime(),
+      localStatus: "sending",
+    };
+
+    setSendErrors((currentErrors) => ({
+      ...currentErrors,
+      [conversationKey]: null,
+    }));
+    setMessagesByConversationId((currentMessages) => ({
+      ...currentMessages,
+      [conversationKey]: [
+        ...(currentMessages[conversationKey] ?? []),
+        userMessage,
+        pendingAssistantMessage,
+      ],
+    }));
+    updateConversationPreview(conversationKey, text, userMessage.time);
+
+    void (async () => {
+      const priorMessages =
+        messagesByConversationId[conversationKey] ?? [];
+      const history = buildAssistantHistory([...priorMessages, userMessage]);
+
+      try {
+        const response = await askAssistant({
+          query: text,
+          platform: "web",
+          history,
+        });
+        const answeredAt = new Date();
+        const finalMessage: ChatMessage = {
+          ...pendingAssistantMessage,
+          body: response.answer,
+          time: formatTime(answeredAt.toISOString()),
+          timestamp: answeredAt.getTime(),
+          localStatus: "sent",
+          sources: response.sources,
+        };
+
+        setMessagesByConversationId((currentMessages) => ({
+          ...currentMessages,
+          [conversationKey]: (currentMessages[conversationKey] ?? []).map(
+            (message) =>
+              message.id === assistantMessageId ? finalMessage : message,
+          ),
+        }));
+        updateConversationPreview(
+          conversationKey,
+          response.answer.slice(0, 80),
+          finalMessage.time,
+        );
+      } catch (requestError) {
+        const errorMessage =
+          requestError instanceof AiChatError
+            ? requestError.message
+            : "Unable to reach assistant.";
+        setSendErrors((currentErrors) => ({
+          ...currentErrors,
+          [conversationKey]: errorMessage,
+        }));
+        setMessagesByConversationId((currentMessages) => ({
+          ...currentMessages,
+          [conversationKey]: (currentMessages[conversationKey] ?? []).map(
+            (message) =>
+              message.id === assistantMessageId
+                ? {
+                    ...message,
+                    body: errorMessage,
+                    localStatus: "error",
+                  }
+                : message,
+          ),
+        }));
+      }
+    })();
+
+    return true;
+  }
+
   function handleSendMessage(draft: SendMessageDraft) {
     const conversation = activeConversation;
     const text = draft.text.trim();
 
-    if (!currentUser?.userId || !conversation?.serverId || (!text && !draft.file)) {
+    if (!conversation || (!text && !draft.file)) {
+      return false;
+    }
+
+    // Assistant conv — branch riêng (không dùng Cloudinary, không sendChatMessage).
+    if (conversation.isAssistant) {
+      return handleSendAssistantMessage(conversation, text);
+    }
+
+    if (!currentUser?.userId || !conversation.serverId) {
       return false;
     }
 
@@ -760,13 +962,18 @@ export function MessageWorkspace() {
   }
 
   const currentUsername = currentUser?.userName || "cafestory_user";
-  const visibleConversations = useMemo(
-    () =>
-      conversations.filter((conversation) =>
+  const visibleConversations = useMemo(() => {
+    // Assistant luôn hiển thị top; human conv chỉ hiện khi đã có messages.
+    const assistantConversations = conversations.filter(
+      (conversation) => conversation.isAssistant,
+    );
+    const humanConversations = conversations
+      .filter((conversation) => !conversation.isAssistant)
+      .filter((conversation) =>
         hasVisibleMessages(conversation, messagesByConversationId),
-      ),
-    [conversations, messagesByConversationId],
-  );
+      );
+    return [...assistantConversations, ...humanConversations];
+  }, [conversations, messagesByConversationId]);
   const activeMessages = activeConversation
     ? messagesByConversationId[activeConversation.id] ?? []
     : [];
@@ -777,7 +984,8 @@ export function MessageWorkspace() {
     ? sendErrors[activeConversation.id] ?? null
     : null;
   const canSend = Boolean(
-    activeConversation?.serverId &&
+    activeConversation &&
+      (activeConversation.isAssistant || activeConversation.serverId) &&
       activeConversation.localStatus !== "creating" &&
       activeConversation.localStatus !== "error",
   );

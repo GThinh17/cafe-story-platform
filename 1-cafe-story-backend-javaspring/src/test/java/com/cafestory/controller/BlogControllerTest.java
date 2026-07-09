@@ -91,12 +91,12 @@ class BlogControllerTest {
         UUID viewerUserId = UUID.randomUUID();
         List<BlogResponseDTO> response = List.of(blogResponse());
 
-        when(blogService.getAllBlogsByUserId(userId, viewerUserId)).thenReturn(response);
+        when(blogService.getAllBlogsByUserId(userId, viewerUserId, null)).thenReturn(response);
 
-        List<BlogResponseDTO> result = blogController.getAllBlogsByUserId(userId, principal(viewerUserId));
+        List<BlogResponseDTO> result = blogController.getAllBlogsByUserId(userId, null, principal(viewerUserId));
 
         assertThat(result).isEqualTo(response);
-        verify(blogService).getAllBlogsByUserId(userId, viewerUserId);
+        verify(blogService).getAllBlogsByUserId(userId, viewerUserId, null);
     }
 
     @Test

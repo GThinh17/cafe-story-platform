@@ -352,6 +352,22 @@ export function ProfileReviewGrid({
                 </p>
               </div>
             </div>
+          ) : shouldShowEmptyState && activeTab === "shared" ? (
+            <div className="grid min-h-[360px] place-items-center px-6 py-12 text-center">
+              <div className="flex max-w-[360px] flex-col items-center">
+                <div className="grid size-20 place-items-center rounded-full border-2 border-foreground text-foreground">
+                  <CameraIcon className="size-10" strokeWidth={1.8} />
+                </div>
+                <h2 className="mt-5 text-3xl font-black text-foreground">
+                  {isOwnProfile ? "No shared posts yet" : "Nothing shared yet"}
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-muted">
+                  {isOwnProfile
+                    ? "Posts you share will show up here."
+                    : "When this user shares posts, they will appear here."}
+                </p>
+              </div>
+            </div>
           ) : shouldShowEmptyState ? (
             <div className="grid min-h-[360px] place-items-center px-6 py-12 text-center">
               <div className="flex max-w-[360px] flex-col items-center">
@@ -359,12 +375,14 @@ export function ProfileReviewGrid({
                   <CameraIcon className="size-10" strokeWidth={1.8} />
                 </div>
                 <h2 className="mt-5 text-3xl font-black text-foreground">
-                  Share Photos
+                  {isOwnProfile ? "Share Photos" : "No posts yet"}
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-muted">
-                  When you share photos, they will appear on your profile.
+                  {isOwnProfile
+                    ? "When you share photos, they will appear on your profile."
+                    : "This user hasn't shared any posts yet."}
                 </p>
-                {canCreatePost ? (
+                {isOwnProfile && canCreatePost ? (
                   <Button
                     className="mt-5 h-auto p-0 text-sm font-black text-primary hover:bg-transparent hover:text-primary-strong"
                     onClick={onCreatePostClick}

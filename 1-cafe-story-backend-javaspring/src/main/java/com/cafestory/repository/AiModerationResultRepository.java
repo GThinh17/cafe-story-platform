@@ -35,5 +35,24 @@ public interface AiModerationResultRepository
 
     Page<AiModerationResult> findByDecisionInAndResolvedFalse(Collection<ModerationDecision> decisions, Pageable pageable);
 
+    @Query("""
+            select result
+            from AiModerationResult result
+            where result.blog.id in :blogIds
+            and result.tags is not null
+            order by result.blog.id, result.createdAt desc
+            """)
+    List<AiModerationResult> findWithTagsByBlogIds(@Param("blogIds") Collection<UUID> blogIds);
+
+    @Query("""
+            select result
+            from AiModerationResult result
+            join fetch result.blog b
+            where b.author.userId = :userId
+            order by result.createdAt desc
+            """)
+    List<AiModerationResult> findRagUserModerationResults(
+            @Param("userId") UUID userId, org.springframework.data.domain.Pageable pageable);
+
     long countByDecisionInAndResolvedFalse(Collection<ModerationDecision> decisions);
 }

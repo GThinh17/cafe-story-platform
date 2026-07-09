@@ -5,6 +5,7 @@ import type {
   BlogFeedParams,
   BlogFeedResponse,
   BlogLikeResponse,
+  BlogPostStatus,
   BlogResponse,
   BlogSaveResponse,
   BlogTrendingResponse,
@@ -87,11 +88,18 @@ export function getBlogById(blogId: string, options: ApiRequestOptions = {}) {
   });
 }
 
-export function getBlogsByUser(userId: string, options: ApiRequestOptions = {}) {
-  return apiFetch<BlogResponse[]>(apiEndpoints.blogs.byUser(userId), {
-    headers: options.headers,
-    method: "GET",
-  });
+export function getBlogsByUser(
+  userId: string,
+  status?: BlogPostStatus,
+  options: ApiRequestOptions = {},
+) {
+  return apiFetch<BlogResponse[]>(
+    withQuery(apiEndpoints.blogs.byUser(userId), { status }),
+    {
+      headers: options.headers,
+      method: "GET",
+    },
+  );
 }
 
 export function getTrendingBlogs(

@@ -11,6 +11,9 @@ export function ChatBubble({ message }: ChatBubbleProps) {
   const hasText = Boolean(message.body?.trim());
   const isSending = message.localStatus === "sending";
   const isError = message.localStatus === "error";
+  const sources = message.sources ?? [];
+  // Assistant reply với localStatus="sending" và body rỗng → chấm loading.
+  const showThinkingIndicator = !isMine && isSending && !hasText;
 
   return (
     <div className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
@@ -34,7 +37,16 @@ export function ChatBubble({ message }: ChatBubbleProps) {
               ))}
             </div>
           ) : null}
-          {hasText ? (
+          {showThinkingIndicator ? (
+            <p
+              aria-label="Assistant is thinking"
+              className="flex items-center gap-1 px-4 pt-3"
+            >
+              <span className="size-1.5 animate-bounce rounded-full bg-muted [animation-delay:-0.3s]" />
+              <span className="size-1.5 animate-bounce rounded-full bg-muted [animation-delay:-0.15s]" />
+              <span className="size-1.5 animate-bounce rounded-full bg-muted" />
+            </p>
+          ) : hasText ? (
             <p className="whitespace-pre-wrap break-words px-4 pt-2.5">
               {message.body}
             </p>
@@ -58,9 +70,26 @@ export function ChatBubble({ message }: ChatBubbleProps) {
             ) : null}
           </p>
         </div>
-        {isError ? (
+        {sources.length > 0 ? (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {sources.map((source) => (
+              <span
+                className="rounded-md bg-surface-muted px-2.5 py-1 text-[11px] font-medium text-primary-strong"
+                key={`${source.sourceType}:${source.sourceId}`}
+              >
+                {source.title}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        {isError && isMine ? (
           <p className="mt-1 text-right text-xs font-semibold text-destructive">
             Unable to send message.
+          </p>
+        ) : null}
+        {isError && !isMine ? (
+          <p className="mt-1 text-left text-xs font-semibold text-destructive">
+            {message.body || "Assistant reply failed."}
           </p>
         ) : null}
       </div>
