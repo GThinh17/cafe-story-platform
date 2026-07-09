@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { PostCard } from "@/components/feed/post-card";
 import { PostCommentsModal } from "@/components/feed/post-comments-modal";
+import { ReportPostModal } from "@/components/feed/report-post-modal";
 import { mapBlogFeedToFeedPosts } from "@/features/blogs/blog-feed-adapter";
 import {
   getBlogFeed,
@@ -54,6 +55,7 @@ export function FeedPostList({
   const [shareModalPost, setShareModalPost] = useState<FeedPost | null>(null);
   const [unshareConfirmPost, setUnshareConfirmPost] = useState<FeedPost | null>(null);
   const [isSharePending, setIsSharePending] = useState(false);
+  const [reportingPost, setReportingPost] = useState<FeedPost | null>(null);
   const { user } = useCurrentUser();
 
   const selectedPost = useMemo(
@@ -438,6 +440,7 @@ export function FeedPostList({
               }
             }}
             onLikeClick={handleLikeClick}
+            onReportClick={setReportingPost}
             onSaveClick={handleSaveClick}
             onShareClick={handleShareClick}
             post={post}
@@ -465,6 +468,16 @@ export function FeedPostList({
           <AlertDescription>{loadMoreError}</AlertDescription>
         </Alert>
       ) : null}
+
+      <ReportPostModal
+        blogId={reportingPost?.id ?? ""}
+        onOpenChange={(open) => {
+          if (!open) {
+            setReportingPost(null);
+          }
+        }}
+        open={Boolean(reportingPost?.id)}
+      />
 
       <PostCommentsModal
         currentUser={user}

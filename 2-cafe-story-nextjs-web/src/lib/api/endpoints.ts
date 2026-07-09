@@ -46,6 +46,15 @@ export const apiEndpoints = {
     pendingMembers: (cafePageId: string) =>
       `/api/cafe-pages/${pathId(cafePageId)}/members/pending`,
   },
+  reportReasons: {
+    list: (targetType?: string) =>
+      targetType
+        ? `/api/report-reasons?targetType=${encodeURIComponent(targetType)}`
+        : "/api/report-reasons",
+  },
+  reports: {
+    list: "/api/reports",
+  },
   payments: {
     list: "/api/payments",
     byId: (paymentId: string) => `/api/payments/${pathId(paymentId)}`,
