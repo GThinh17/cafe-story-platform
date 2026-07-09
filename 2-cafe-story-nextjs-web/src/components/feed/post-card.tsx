@@ -1,11 +1,19 @@
 import {
+  FlagIcon,
   HeartIcon,
   MessageCircleIcon,
+  MoreHorizontalIcon,
   Repeat2Icon,
 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { FollowButton } from "@/components/ui/follow-button";
 import { ReviewerBadgeChip } from "@/components/ui/reviewer-badge-chip";
 import {
@@ -30,6 +38,7 @@ type PostCardProps = {
   currentUserId?: string;
   onCommentClick?: (post: FeedPost) => void;
   onLikeClick?: (post: FeedPost) => void;
+  onReportClick?: (post: FeedPost) => void;
   onSaveClick?: (post: FeedPost) => void;
   onShareClick?: (post: FeedPost) => void;
   post: FeedPost;
@@ -72,7 +81,7 @@ function formatPostLikeCount(post: FeedPost) {
   return typeof post.likeCount === "number" ? formatCount(post.likeCount) : post.likes;
 }
 
-export function PostCard({ currentUserId, onCommentClick, onLikeClick, onSaveClick, onShareClick, post }: PostCardProps) {
+export function PostCard({ currentUserId, onCommentClick, onLikeClick, onReportClick, onSaveClick, onShareClick, post }: PostCardProps) {
   const identity = getPostIdentity(post);
   const locationLabel = post.locationLabel?.trim() || post.location?.trim();
   const commentCount = formatPostCommentCount(post);
@@ -132,6 +141,28 @@ export function PostCard({ currentUserId, onCommentClick, onLikeClick, onSaveCli
             ) : null}
           </div>
         </div>
+        {!isOwnPost && post.id ? (
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <button
+                aria-label="More options"
+                className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-full text-foreground outline-none"
+                type="button"
+              >
+                <MoreHorizontalIcon className="size-5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="!cursor-pointer focus:!bg-transparent focus:!text-inherit"
+                onClick={() => onReportClick?.(post)}
+              >
+                <FlagIcon className="size-4" />
+                <span>Report</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
       </CardHeader>
 
       {media.length > 0 ? (
