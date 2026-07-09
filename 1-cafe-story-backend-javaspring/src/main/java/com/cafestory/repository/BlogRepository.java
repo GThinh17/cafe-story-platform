@@ -22,6 +22,28 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
     List<Blog> findByAuthorUserId(UUID authorUserId);
 
     @Query("""
+            select b
+            from Blog b
+            left join fetch b.author a
+            left join fetch b.page p
+            where b.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
+            and coalesce(b.updatedAt, b.createdAt) >= :since
+            order by coalesce(b.updatedAt, b.createdAt) asc
+            """)
+    List<Blog> findRagSnapshotBlogs(@Param("since") LocalDateTime since, Pageable pageable);
+
+    @Query("""
+            select b.id
+            from Blog b
+            where b.status in (com.cafestory.entity.enums.PostStatus.HIDDEN, com.cafestory.entity.enums.PostStatus.REMOVED)
+            and coalesce(b.updatedAt, b.createdAt) >= :since
+            """)
+    List<UUID> findRagTombstoneBlogIds(@Param("since") LocalDateTime since);
+
+    @EntityGraph(attributePaths = {"author", "page"})
+    List<Blog> findByAuthorUserIdAndStatus(UUID authorUserId, PostStatus status);
+
+    @Query("""
             select save.blog
             from BlogSave save
             where save.user.userId = :userId

@@ -36,6 +36,7 @@ import {
 } from "@/lib/avatar";
 import { mockReviewComposer, mockReviewDraftHints } from "@/mocks/reviews";
 import type { AuthUser } from "@/types/auth";
+import { isCurrentUserProfile } from "@/lib/profile/is-current-user-profile";
 import type { CafePageResponse } from "@/types/cafe";
 import type { FeedPost } from "@/types/feed";
 import type { UserProfile, UserResponse } from "@/types/user";
@@ -122,22 +123,6 @@ function getInitials(source: string) {
         .join("")
         .toUpperCase()
     : "CS";
-}
-
-function normalizeUsername(username: string | null | undefined) {
-  return username?.trim().toLowerCase() ?? "";
-}
-
-function isCurrentUserProfile(routeUsername: string, user: AuthUser | null) {
-  const normalizedRouteUsername = normalizeUsername(routeUsername);
-
-  return Boolean(
-    normalizedRouteUsername &&
-      [
-        user?.userName,
-        user?.userEmail,
-      ].some((value) => normalizeUsername(value) === normalizedRouteUsername),
-  );
 }
 
 function getUsernameFromPathname(pathname: string | null) {
@@ -279,7 +264,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
 
     try {
       const [ownBlogsRes, sharedBlogsRes] = await Promise.allSettled([
-        getBlogsByUser(userId),
+        getBlogsByUser(userId, "PUBLISHED"),
         getSharedBlogsByUser(userId),
       ]);
 
@@ -292,7 +277,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
       }
 
       const nextOwnPosts = mapBlogResponsesToFeedPosts(
-        ownBlogsRes.value.filter((b) => !b.pageId && b.status !== "REMOVED"),
+        ownBlogsRes.value.filter((b) => !b.pageId),
       );
       const nextSharedPosts =
         sharedBlogsRes.status === "fulfilled"
@@ -496,6 +481,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
         }
         onMessageClick={handleMessageClick}
         profile={profile}
+        routeUsername={routeUsername}
       />
       {profileUserId && activeUserListModal ? (
         <ProfileUserListModal

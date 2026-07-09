@@ -38,3 +38,35 @@ class BlogEvaluateResponse(BaseModel):
     imageReason: str
     tags: list[str] = Field(min_length=0, max_length=3)
     status: Status
+
+
+class ChatHistoryMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(..., max_length=2000)
+
+
+class ChatAskRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=1000)
+    platform: Literal["web", "mobile"] | None = None
+    history: list[ChatHistoryMessage] = Field(default_factory=list, max_length=10)
+
+    @field_validator("query")
+    @classmethod
+    def validate_query(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("query must not be empty")
+        return value
+
+
+class ChatSource(BaseModel):
+    source_type: str
+    source_id: str
+    title: str
+    image_urls: list[str] = Field(default_factory=list)
+
+
+class ChatAskResponse(BaseModel):
+    answer: str
+    sources: list[ChatSource] = Field(default_factory=list)
+    cached: bool = False

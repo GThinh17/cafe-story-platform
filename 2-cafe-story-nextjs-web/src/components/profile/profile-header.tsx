@@ -4,6 +4,7 @@ import type { ProfileHighlight, UserProfile } from "@/types/user";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
 import { MoreHorizontal } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { FollowButton } from "@/components/ui/follow-button";
 import { ReviewerBadgeChip } from "@/components/ui/reviewer-badge-chip";
@@ -26,6 +27,7 @@ type ProfileHeaderProps = {
   onFollowingClick?: () => void;
   onMessageClick?: () => void;
   profile: UserProfile;
+  routeUsername?: string;
 };
 
 const statLabels: Record<keyof UserProfile["stats"], string> = {
@@ -49,8 +51,11 @@ export function ProfileHeader({
   onFollowingClick,
   onMessageClick,
   profile,
+  routeUsername,
 }: ProfileHeaderProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const router = useRouter();
+  const ownerUsername = routeUsername ?? profile.username;
 
   return (
     <>
@@ -89,29 +94,6 @@ export function ProfileHeader({
                 </Button>
               ) : null}
             </div>
-
-            {areActionsLoading ? null : !isOwnProfile ? (
-              <div className="flex flex-wrap gap-2 w-full">
-                {profileUserId ? (
-                  <FollowButton
-                    className="flex-1"
-                    isFollowing={isFollowing}
-                    targetId={profileUserId}
-                    targetType="user"
-                    onToggle={onFollowToggle}
-                  />
-                ) : null}
-                <Button
-                  className="h-8 flex-1 text-sm font-black"
-                  disabled={isMessageLoading}
-                  onClick={onMessageClick}
-                  type="button"
-                  variant="secondary"
-                >
-                  {isMessageLoading ? "Opening" : "Message"}
-                </Button>
-              </div>
-            ) : null}
 
             <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-sm">
               {Object.entries(profile.stats).map(([label, value]) => {
@@ -159,6 +141,56 @@ export function ProfileHeader({
             </div>
           </div>
         </div>
+
+        {areActionsLoading ? null : (
+          <div className="mt-4 flex flex-wrap gap-2 w-full">
+            {!isOwnProfile ? (
+              <>
+                {profileUserId ? (
+                  <FollowButton
+                    className="h-10 flex-1 py-2"
+                    isFollowing={isFollowing}
+                    targetId={profileUserId}
+                    targetType="user"
+                    onToggle={onFollowToggle}
+                  />
+                ) : null}
+                <Button
+                  className="h-10 flex-1 py-2 text-sm font-black"
+                  disabled={isMessageLoading}
+                  onClick={onMessageClick}
+                  type="button"
+                  variant="secondary"
+                >
+                  {isMessageLoading ? "Opening" : "Message"}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  className="h-10 flex-1 py-2 text-sm font-black"
+                  onClick={() =>
+                    router.push(`/${encodeURIComponent(ownerUsername)}/edit`)
+                  }
+                  type="button"
+                  variant="secondary"
+                >
+                  Edit Profile
+                </Button>
+                <Button
+                  className="h-10 flex-1 py-2 text-sm font-black"
+                  onClick={() =>
+                    router.push(`/${encodeURIComponent(ownerUsername)}/archive`)
+                  }
+                  type="button"
+                  variant="secondary"
+                >
+                  View Archive
+                </Button>
+              </>
+            )}
+          </div>
+        )}
 
         <div className="mt-6 grid grid-cols-4 justify-items-center gap-4 sm:flex sm:justify-start sm:gap-8">
           {highlights.map((highlight) => (

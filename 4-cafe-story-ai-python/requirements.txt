@@ -8,5 +8,9 @@ transformers
 google-genai
 openai
 python-dotenv
-chromadb
 jinja2
+psycopg[binary,pool]
+pgvector
+apscheduler
+python-frontmatter
+markdown-it-py

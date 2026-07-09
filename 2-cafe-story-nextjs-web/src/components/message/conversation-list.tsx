@@ -109,20 +109,45 @@ export function ConversationList({
                 onClick={() => onSelectConversation(conversation)}
                 type="button"
               >
-                <Avatar className="size-[68px]">
+                <Avatar
+                  className={`size-[68px] ${
+                    conversation.isAssistant
+                      ? "bg-primary text-primary-foreground"
+                      : ""
+                  }`}
+                >
                   <AvatarImage alt="" src={conversation.avatarImage} />
-                  <AvatarFallback>
+                  <AvatarFallback
+                    className={
+                      conversation.isAssistant
+                        ? "bg-primary text-primary-foreground font-semibold"
+                        : undefined
+                    }
+                  >
                     {conversation.initials ?? conversation.name.slice(0, 1)}
                   </AvatarFallback>
-                  {conversation.serverId || conversation.isTemporary ? (
-                    <AvatarBadge className="size-3.5 border-2 border-surface" />
+                  {conversation.isAssistant ||
+                  conversation.serverId ||
+                  conversation.isTemporary ? (
+                    <AvatarBadge
+                      className={`size-3.5 border-2 border-surface ${
+                        conversation.isAssistant ? "bg-primary" : ""
+                      }`}
+                    />
                   ) : null}
                 </Avatar>
 
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center justify-between gap-2">
-                    <span className="truncate text-base font-medium">
-                      {conversation.name}
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <span className="truncate text-base font-medium">
+                        {conversation.name}
+                      </span>
+                      {conversation.isAssistant ? (
+                        <span className="shrink-0 rounded-md bg-surface-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-strong">
+                          AI
+                        </span>
+                      ) : null}
                     </span>
                     <span className="shrink-0 text-xs text-muted">
                       {conversation.time}

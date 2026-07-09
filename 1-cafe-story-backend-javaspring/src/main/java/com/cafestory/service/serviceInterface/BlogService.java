@@ -4,6 +4,7 @@ import com.cafestory.dto.requestDTO.BlogCreateDTO;
 import com.cafestory.dto.requestDTO.BlogUpdateDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
 import com.cafestory.dto.responseDTO.BlogTaggedUserResponseDTO;
+import com.cafestory.entity.enums.PostStatus;
 
 import java.util.List;
 import java.util.UUID;
@@ -22,6 +23,8 @@ public interface BlogService {
     List<BlogResponseDTO> getAllBlogsByUserId(UUID userId);
 
     List<BlogResponseDTO> getAllBlogsByUserId(UUID userId, UUID viewerUserId);
+
+    List<BlogResponseDTO> getAllBlogsByUserId(UUID userId, UUID viewerUserId, PostStatus status);
 
     List<BlogResponseDTO> getSavedBlogsByUserId(UUID userId, UUID viewerUserId);
 

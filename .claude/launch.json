@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "nextjs-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "2-cafe-story-nextjs-web"],
+      "port": 3000,
+      "autoPort": false
+    }
+  ]
+}
