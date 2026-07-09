@@ -194,6 +194,12 @@ def _chunk_sources(chunks: list[RetrievedChunk]) -> list[dict[str, Any]]:
                 "title": chunk.metadata.get("name")
                 or chunk.metadata.get("doc_title")
                 or chunk.metadata.get("page_name")
+                or chunk.metadata.get("user_full_name")
+                or (
+                    f"@{chunk.metadata.get('user_name')}"
+                    if chunk.metadata.get("user_name")
+                    else None
+                )
                 or (
                     f"Bài viết của @{chunk.metadata.get('author_user_name')}"
                     if chunk.metadata.get("author_user_name")

@@ -7,9 +7,15 @@ import com.cafestory.entity.Blog;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.Reviewer;
+import com.cafestory.entity.ReviewerBadgeHistory;
+import com.cafestory.entity.ReviewerFormula;
+import com.cafestory.entity.User;
+import com.cafestory.entity.enums.ReviewerBadge;
 import com.cafestory.repository.AiModerationResultRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.CafePageRepository;
+import com.cafestory.repository.ReviewerBadgeHistoryRepository;
+import com.cafestory.repository.ReviewerFormulaRepository;
 import com.cafestory.repository.ReviewerRepository;
 import com.cafestory.service.serviceInterface.RagSnapshotService;
 import org.springframework.data.domain.PageRequest;
@@ -39,16 +45,22 @@ public class RagSnapshotServiceImpl implements RagSnapshotService {
     private final CafePageRepository cafePageRepository;
     private final ReviewerRepository reviewerRepository;
     private final AiModerationResultRepository aiModerationResultRepository;
+    private final ReviewerBadgeHistoryRepository reviewerBadgeHistoryRepository;
+    private final ReviewerFormulaRepository reviewerFormulaRepository;
 
     public RagSnapshotServiceImpl(
             BlogRepository blogRepository,
             CafePageRepository cafePageRepository,
             ReviewerRepository reviewerRepository,
-            AiModerationResultRepository aiModerationResultRepository) {
+            AiModerationResultRepository aiModerationResultRepository,
+            ReviewerBadgeHistoryRepository reviewerBadgeHistoryRepository,
+            ReviewerFormulaRepository reviewerFormulaRepository) {
         this.blogRepository = blogRepository;
         this.cafePageRepository = cafePageRepository;
         this.reviewerRepository = reviewerRepository;
         this.aiModerationResultRepository = aiModerationResultRepository;
+        this.reviewerBadgeHistoryRepository = reviewerBadgeHistoryRepository;
+        this.reviewerFormulaRepository = reviewerFormulaRepository;
     }
 
     @Override
@@ -157,11 +169,51 @@ public class RagSnapshotServiceImpl implements RagSnapshotService {
     }
 
     private Map<String, Object> reviewerData(Reviewer reviewer) {
+        User user = reviewer.getUser();
+        Region region = user == null ? null : user.getRegion();
+
         Map<String, Object> data = new HashMap<>();
-        data.put("userName", reviewer.getUser().getUserName());
-        data.put("userFullName", reviewer.getUser().getUserFullName());
-        data.put("userAvatar", reviewer.getUser().getUserAvatar());
+        data.put("userName", user == null ? null : user.getUserName());
+        data.put("userFullName", user == null ? null : user.getUserFullName());
+        data.put("userAvatar", user == null ? null : user.getUserAvatar());
         data.put("createdAt", reviewer.getCreatedAt());
+
+        // Public region info — cho câu "reviewer nào ở Cần Thơ"
+        data.put("regionId", region == null ? null : region.getRegionId().toString());
+        data.put("province", region == null ? null : region.getProvince());
+        data.put("city", region == null ? null : region.getCity());
+        data.put("area", region == null ? null : region.getArea());
+
+        // Public engagement counters (đã hiển thị công khai trên profile)
+        data.put("followerCount", user == null ? 0 : user.getUserFollower());
+        data.put("likeCount", user == null ? 0 : user.getUserLike());
+
+        // Latest badge — cho câu "reviewer nào nổi bật" (badge = huy hiệu công khai)
+        var latestBadgeOpt = reviewerBadgeHistoryRepository
+                .findTopByReviewerReviewerIdOrderByMonthDesc(reviewer.getReviewerId());
+        if (latestBadgeOpt.isPresent()) {
+            ReviewerBadgeHistory latest = latestBadgeOpt.get();
+            data.put("latestBadge", latest.getBadge().name());
+            data.put("latestBadgeMonth", latest.getMonth());
+            data.put("latestBadgeScore", latest.getScore());
+        }
+
+        // Badge history summary (đếm mỗi loại đã đạt bao nhiêu tháng)
+        List<ReviewerBadgeHistory> history = reviewerBadgeHistoryRepository
+                .findByReviewerReviewerIdOrderByMonthDesc(reviewer.getReviewerId());
+        Map<String, Long> badgeCounts = new HashMap<>();
+        for (ReviewerBadgeHistory h : history) {
+            badgeCounts.merge(h.getBadge().name(), 1L, Long::sum);
+        }
+        data.put("badgeCounts", badgeCounts);
+        data.put("badgeTotalMonths", (long) history.size());
+
+        // Formula tier hiện tại (nếu có active formula và reviewer có badge)
+        ReviewerFormula activeFormula = reviewerFormulaRepository.findByActiveTrue().orElse(null);
+        if (activeFormula != null && latestBadgeOpt.isPresent()) {
+            data.put("formulaMultiplier",
+                    activeFormula.getMultiplierForBadge(latestBadgeOpt.get().getBadge()));
+        }
         return data;
     }
 

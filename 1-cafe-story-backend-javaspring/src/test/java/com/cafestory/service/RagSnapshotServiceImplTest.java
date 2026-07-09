@@ -37,13 +37,18 @@ class RagSnapshotServiceImplTest {
     private ReviewerRepository reviewerRepository;
     @Mock
     private AiModerationResultRepository aiModerationResultRepository;
+    @Mock
+    private com.cafestory.repository.ReviewerBadgeHistoryRepository reviewerBadgeHistoryRepository;
+    @Mock
+    private com.cafestory.repository.ReviewerFormulaRepository reviewerFormulaRepository;
 
     private RagSnapshotServiceImpl service;
 
     @BeforeEach
     void setUp() {
         service = new RagSnapshotServiceImpl(
-                blogRepository, cafePageRepository, reviewerRepository, aiModerationResultRepository);
+                blogRepository, cafePageRepository, reviewerRepository, aiModerationResultRepository,
+                reviewerBadgeHistoryRepository, reviewerFormulaRepository);
     }
 
     @Test

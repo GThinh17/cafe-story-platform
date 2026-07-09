@@ -48,6 +48,16 @@ def chunk_cafe_page(source_id: str, data: dict[str, Any]) -> list[RagChunk]:
     ]
     if data.get("description"):
         lines.append(f"Mô tả: {sanitize_text(data['description'])}")
+
+    # Lớp 3 fix (plan §16): thêm dòng "Từ khóa tìm kiếm" giúp BM25 và vector
+    # dễ match với các biến thể user hay dùng ("quán cafe", "cà phê") và địa danh
+    # (nhiều name gốc chỉ có "icafe" — BM25 không match "cafe" trực tiếp).
+    search_keywords = ["quán cafe", "cà phê"]
+    for value in (data.get("province"), data.get("city"), data.get("area"), data.get("ward")):
+        if value and value not in search_keywords:
+            search_keywords.append(value)
+    lines.append(f"Từ khóa tìm kiếm: {', '.join(search_keywords)}")
+
     body = "\n".join(lines)
 
     metadata = {
@@ -122,19 +132,70 @@ def chunk_blog(source_id: str, data: dict[str, Any]) -> list[RagChunk]:
 
 
 def chunk_reviewer(source_id: str, data: dict[str, Any]) -> list[RagChunk]:
-    """Document-based: 1 reviewer = 1 chunk. Chỉ field public (không email/phone/stripe)."""
-    body = "\n".join(
-        line
-        for line in [
-            f"Reviewer: {data.get('userFullName') or data.get('userName') or ''}",
-            f"Tên tài khoản: {data.get('userName') or ''}",
-        ]
-        if line.split(": ", 1)[-1]
-    )
+    """Document-based: 1 reviewer = 1 chunk. Chỉ field public (không email/phone/stripe).
+
+    Nội dung gồm: tên + username + khu vực + badge hiện tại + tổng số huy hiệu
+    theo loại + số follower/like. Giúp match câu hỏi kiểu "reviewer nào ở Cần Thơ"
+    (region) hoặc "reviewer nào nổi bật" (badge + follower).
+    """
+    full_name = data.get("userFullName") or data.get("userName") or ""
+    user_name = data.get("userName") or ""
+
+    lines: list[str] = []
+    lines.append(f"Reviewer: {full_name}")
+    if user_name:
+        lines.append(f"Tên tài khoản: @{user_name}")
+
+    region_parts = [data.get("area"), data.get("city"), data.get("province")]
+    region_text = ", ".join(p for p in region_parts if p)
+    if region_text:
+        lines.append(f"Khu vực: {region_text}")
+
+    latest_badge = data.get("latestBadge")
+    latest_month = data.get("latestBadgeMonth")
+    latest_score = data.get("latestBadgeScore")
+    if latest_badge:
+        badge_line = f"Huy hiệu gần nhất: {latest_badge}"
+        if latest_month:
+            badge_line += f" (tháng {latest_month})"
+        if latest_score is not None:
+            badge_line += f", điểm {latest_score}"
+        lines.append(badge_line)
+
+    badge_counts = data.get("badgeCounts") or {}
+    if badge_counts:
+        summary = ", ".join(f"{name} x{count} tháng" for name, count in badge_counts.items())
+        lines.append(f"Lịch sử huy hiệu: {summary}")
+    total_months = data.get("badgeTotalMonths")
+    if total_months:
+        lines.append(f"Tổng số tháng đạt huy hiệu: {total_months}")
+
+    follower_count = data.get("followerCount") or 0
+    like_count = data.get("likeCount") or 0
+    if follower_count or like_count:
+        lines.append(f"Số người theo dõi: {follower_count} | Lượt thích: {like_count}")
+
+    # Lớp 3 (giống cafe_page): keyword line cho BM25 dễ match biến thể user hay dùng.
+    search_keywords = ["reviewer", "người đánh giá", "người review"]
+    for value in (data.get("province"), data.get("city"), data.get("area")):
+        if value and value not in search_keywords:
+            search_keywords.append(value)
+    if latest_badge:
+        search_keywords.append(f"huy hiệu {latest_badge}")
+    lines.append(f"Từ khóa tìm kiếm: {', '.join(search_keywords)}")
+
+    body = "\n".join(lines)
     metadata = {
-        "user_name": data.get("userName"),
-        "user_full_name": data.get("userFullName"),
+        "user_name": user_name,
+        "user_full_name": full_name,
         "user_avatar": data.get("userAvatar"),
+        "province": data.get("province"),
+        "city": data.get("city"),
+        "area": data.get("area"),
+        "region_id": data.get("regionId"),
+        "latest_badge": latest_badge,
+        "follower_count": follower_count,
+        "like_count": like_count,
     }
     return [
         RagChunk(

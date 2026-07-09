@@ -13,7 +13,7 @@
   },
   "retrieval": {
     "top_k": 5,
-    "candidate_k": 20,
+    "candidate_k": 50,
     "rrf_k": 60
   },
   "ingest": {

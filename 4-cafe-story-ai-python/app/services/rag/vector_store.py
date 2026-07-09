@@ -19,6 +19,26 @@ def content_hash(body: str) -> str:
     return hashlib.sha256(body.encode("utf-8")).hexdigest()[:16]
 
 
+# Hư từ / nghi vấn tiếng Việt không mang nội dung tìm kiếm — cần strip khỏi
+# tsquery vì `plainto_tsquery` nối AND: 1 hư từ vắng trong chunk là fail toàn
+# bộ match. Chỉ dùng cho BM25; KHÔNG strip khỏi text embed (mất ngữ cảnh).
+_VI_STOPWORDS = {
+    "la", "nao", "gi", "o", "co", "nhung", "cac", "de", "trong", "voi",
+    "cho", "ve", "khi", "mot", "cai", "nay", "do", "duoc", "va", "hoac",
+    "the", "hay", "ma", "thi", "ai", "sao", "bao", "nhu", "ra", "vao",
+}
+
+
+def _normalize_ts_query(text: str) -> str:
+    """Lowercase + bỏ dấu + strip hư từ tiếng Việt trước khi build tsquery."""
+    import unicodedata
+    normalized = unicodedata.normalize("NFD", text.lower())
+    ascii_text = "".join(c for c in normalized if unicodedata.category(c) != "Mn")
+    ascii_text = ascii_text.replace("đ", "d")
+    tokens = [t for t in ascii_text.split() if t and t not in _VI_STOPWORDS]
+    return " ".join(tokens) or text  # fallback về text gốc nếu strip hết
+
+
 @dataclass
 class RagChunk:
     source_type: str
@@ -240,13 +260,17 @@ class VectorStore:
             ORDER BY f.rrf_score DESC
             LIMIT %s
         """
+        # Lớp 1 fix (plan §16): strip hư từ tiếng Việt trước khi build tsquery.
+        # Nếu không, `plainto_tsquery` AND các từ (kể cả "nào", "ở", "là") làm
+        # match fail khi chunk thiếu bất kỳ hư từ nào trong câu hỏi.
+        ts_query_text = _normalize_ts_query(query_text)
         query_params = (
             [query_embedding]
             + params
             + [query_embedding, candidate_k]
-            + [query_text]
+            + [ts_query_text]
             + params
-            + [query_text, candidate_k, rrf_k, rrf_k, top_k]
+            + [ts_query_text, candidate_k, rrf_k, rrf_k, top_k]
         )
 
         with self._pool.connection() as conn:
