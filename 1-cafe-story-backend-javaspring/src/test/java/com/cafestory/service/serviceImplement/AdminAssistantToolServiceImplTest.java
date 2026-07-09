@@ -114,7 +114,7 @@ class AdminAssistantToolServiceImplTest {
         UUID adminUserId = UUID.randomUUID();
         AdminAssistantToolRequestDTO request = new AdminAssistantToolRequestDTO();
         request.setAdminUserId(adminUserId);
-        request.setInput(Map.of("query", "Cho tôi xem báo cáo bài viết đang review"));
+        request.setInput(Map.of("query", "Cho t\u00f4i xem b\u00e1o c\u00e1o b\u00e0i vi\u1ebft \u0111ang review"));
 
         when(contentReportService.getReports(any(), any(), any())).thenReturn(emptyPage());
 
@@ -132,7 +132,7 @@ class AdminAssistantToolServiceImplTest {
         UUID adminUserId = UUID.randomUUID();
         AdminAssistantToolRequestDTO request = new AdminAssistantToolRequestDTO();
         request.setAdminUserId(adminUserId);
-        request.setInput(Map.of("query", "người dùng bị khóa vì spam"));
+        request.setInput(Map.of("query", "ng\u01b0\u1eddi d\u00f9ng b\u1ecb kh\u00f3a v\u00ec spam"));
 
         when(adminUserService.getUsers(any(), any(), any(), any())).thenReturn(emptyPage());
 
@@ -151,7 +151,7 @@ class AdminAssistantToolServiceImplTest {
         UUID adminUserId = UUID.randomUUID();
         AdminAssistantToolRequestDTO request = new AdminAssistantToolRequestDTO();
         request.setAdminUserId(adminUserId);
-        request.setInput(Map.of("query", "bài viết đã ẩn"));
+        request.setInput(Map.of("query", "b\u00e0i vi\u1ebft \u0111\u00e3 \u1ea9n"));
 
         when(adminBlogService.getBlogs(any(), any(), any(), any())).thenReturn(emptyPage());
 
@@ -160,6 +160,25 @@ class AdminAssistantToolServiceImplTest {
         assertThat(response.getToolName()).isEqualTo("search_blogs");
         verify(adminBlogService).getBlogs(
                 eq(PostStatus.HIDDEN),
+                isNull(),
+                isNull(),
+                any());
+    }
+
+    @Test
+    void executeTool_searchComments_infersVietnameseRemovedStatus_TC005() {
+        UUID adminUserId = UUID.randomUUID();
+        AdminAssistantToolRequestDTO request = new AdminAssistantToolRequestDTO();
+        request.setAdminUserId(adminUserId);
+        request.setInput(Map.of("query", "b\u00ecnh lu\u1eadn b\u1ecb x\u00f3a"));
+
+        when(adminCommentService.getComments(any(), any(), any(), any())).thenReturn(emptyPage());
+
+        AdminAssistantToolResponseDTO response = service.executeTool("search_comments", request, adminUserId);
+
+        assertThat(response.getToolName()).isEqualTo("search_comments");
+        verify(adminCommentService).getComments(
+                eq(PostStatus.REMOVED),
                 isNull(),
                 isNull(),
                 any());

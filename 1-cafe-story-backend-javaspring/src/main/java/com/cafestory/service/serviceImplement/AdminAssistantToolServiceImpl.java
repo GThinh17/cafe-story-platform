@@ -331,11 +331,11 @@ public class AdminAssistantToolServiceImpl implements AdminAssistantToolService 
     }
 
     private PostStatus inferPostStatus(String normalizedQuery) {
-        if (containsAny(normalizedQuery, "hidden", "hide", "an", "bi an")) {
-            return PostStatus.HIDDEN;
-        }
         if (containsAny(normalizedQuery, "removed", "remove", "xoa", "go bo")) {
             return PostStatus.REMOVED;
+        }
+        if (containsAny(normalizedQuery, "hidden", "hide", "bi an") || containsWord(normalizedQuery, "an")) {
+            return PostStatus.HIDDEN;
         }
         if (containsAny(normalizedQuery, "draft", "nhap")) {
             return PostStatus.DRAFT;
@@ -379,6 +379,13 @@ public class AdminAssistantToolServiceImpl implements AdminAssistantToolService 
             }
         }
         return false;
+    }
+
+    private boolean containsWord(String value, String word) {
+        if (value == null || value.isBlank() || word == null || word.isBlank()) {
+            return false;
+        }
+        return Pattern.compile("(^|\\s)" + Pattern.quote(word) + "(\\s|$)").matcher(value).find();
     }
 
     @SuppressWarnings("unchecked")
