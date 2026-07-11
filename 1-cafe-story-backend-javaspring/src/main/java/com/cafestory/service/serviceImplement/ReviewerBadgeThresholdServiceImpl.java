@@ -26,14 +26,17 @@ public class ReviewerBadgeThresholdServiceImpl implements ReviewerBadgeThreshold
     private final ReviewerBadgeThresholdRepository thresholdRepository;
     private final ReviewerFormulaRepository formulaRepository;
     private final ReviewerFormulaService formulaService;
+    private final RagReindexClient ragReindexClient;
 
     public ReviewerBadgeThresholdServiceImpl(
             ReviewerBadgeThresholdRepository thresholdRepository,
             ReviewerFormulaRepository formulaRepository,
-            ReviewerFormulaService formulaService) {
+            ReviewerFormulaService formulaService,
+            RagReindexClient ragReindexClient) {
         this.thresholdRepository = thresholdRepository;
         this.formulaRepository = formulaRepository;
         this.formulaService = formulaService;
+        this.ragReindexClient = ragReindexClient;
     }
 
     @Override
@@ -92,6 +95,9 @@ public class ReviewerBadgeThresholdServiceImpl implements ReviewerBadgeThreshold
                     return thresholdRepository.save(threshold);
                 })
                 .toList();
+        // Threshold vừa đổi ảnh hưởng ngưỡng lên hạng → reindex để chatbot trả về
+        // số điểm mới cho câu "bao nhiêu điểm để đạt Bạc".
+        ragReindexClient.triggerDbReindex();
         return saved.stream().map(this::toResponseDTO).toList();
     }
 
