@@ -25,7 +25,8 @@ public class RagSnapshotController {
             @RequestParam("sourceType") String sourceType,
             @RequestParam(value = "since", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime since,
+            @RequestParam(value = "cursorId", required = false) String cursorId,
             @RequestParam(value = "limit", required = false, defaultValue = "200") int limit) {
-        return ragSnapshotService.getSnapshot(sourceType, since, limit);
+        return ragSnapshotService.getSnapshot(sourceType, since, cursorId, limit);
     }
 }

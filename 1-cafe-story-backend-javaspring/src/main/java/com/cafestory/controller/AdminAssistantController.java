@@ -1,5 +1,6 @@
 package com.cafestory.controller;
 
+import com.cafestory.config.AdminAssistantSecurityProperties;
 import com.cafestory.dto.requestDTO.AdminAssistantConversationCreateRequestDTO;
 import com.cafestory.dto.requestDTO.AdminAssistantMessageRequestDTO;
 import com.cafestory.dto.requestDTO.AdminAssistantToolRequestDTO;
@@ -12,7 +13,6 @@ import com.cafestory.service.serviceInterface.AdminAssistantService;
 import com.cafestory.service.serviceInterface.AdminAssistantToolService;
 import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -46,10 +46,10 @@ public class AdminAssistantController {
     public AdminAssistantController(
             AdminAssistantService assistantService,
             AdminAssistantToolService toolService,
-            @Value("${admin.assistant.tool-token:cafestory-dev-assistant-tool-token}") String toolToken) {
+            AdminAssistantSecurityProperties securityProperties) {
         this.assistantService = assistantService;
         this.toolService = toolService;
-        this.toolToken = toolToken;
+        this.toolToken = securityProperties.getToolToken();
     }
 
     @PostMapping("/conversations")

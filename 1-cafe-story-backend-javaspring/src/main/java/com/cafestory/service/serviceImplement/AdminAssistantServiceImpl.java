@@ -1,5 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.AdminAssistantSecurityProperties;
 import com.cafestory.dto.requestDTO.AdminAssistantConversationCreateRequestDTO;
 import com.cafestory.dto.requestDTO.AdminAssistantMessageRequestDTO;
 import com.cafestory.dto.requestDTO.AdminCafePageStatusUpdateRequestDTO;
@@ -96,7 +97,7 @@ public class AdminAssistantServiceImpl implements AdminAssistantService {
             @Value("${admin.assistant.timeout-ms:90000}") int timeoutMs,
             @Value("${admin.assistant.model:gpt-4o-mini}") String assistantModel,
             @Value("${admin.assistant.tool-base-url:http://host.docker.internal:8080/api/admin/assistant/tools}") String toolBaseUrl,
-            @Value("${admin.assistant.tool-token:cafestory-dev-assistant-tool-token}") String toolToken) {
+            AdminAssistantSecurityProperties securityProperties) {
         this.conversationRepository = conversationRepository;
         this.messageRepository = messageRepository;
         this.draftActionRepository = draftActionRepository;
@@ -114,7 +115,7 @@ public class AdminAssistantServiceImpl implements AdminAssistantService {
                 .build();
         this.assistantModel = assistantModel;
         this.toolBaseUrl = toolBaseUrl;
-        this.toolToken = toolToken;
+        this.toolToken = securityProperties.getToolToken();
     }
 
     @Override
