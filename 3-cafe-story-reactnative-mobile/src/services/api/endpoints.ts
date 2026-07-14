@@ -34,6 +34,7 @@ export const apiEndpoints = {
     byUser: (userId: string) => `/api/blogs/users/${pathId(userId)}`,
     feed: "/api/blogs/feed",
     list: "/api/blogs",
+    moderated: "/api/blogs/moderated",
     likes: (blogId: string) => `/api/blogs/${pathId(blogId)}/likes`,
     likesByUser: (userId: string) => `/api/blogs/likes/users/${pathId(userId)}`,
     saves: (blogId: string) => `/api/blogs/${pathId(blogId)}/saves`,

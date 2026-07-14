@@ -323,8 +323,9 @@ def answer_query_stream(
 ) -> Iterator[str]:
     """SSE stream (plan §7 Phase 4). Yield từng event `data: {...}\n\n`.
 
-    Event: {"delta": "..."} cho từng token, cuối cùng {"done": true, "sources": [...]}.
-    Lưu ý: PII redaction trên stream áp dụng ở bản final (delta đã redact theo chunk).
+    Event: {"delta": "..."} sau khi answer đã được sanitize, cuối cùng
+    {"done": true, "sources": [...]}. Không stream từng token thô vì PII có
+    thể bị split qua nhiều chunk và lọt qua regex redaction theo delta.
     """
     prepared = _prepare(query, platform, history, user_jwt)
     if prepared.early_answer:
@@ -347,7 +348,6 @@ def answer_query_stream(
         delta = event.choices[0].delta.content if event.choices else None
         if delta:
             collected.append(delta)
-            yield _sse({"delta": sanitize_text(delta)})
 
     raw_answer = "".join(collected) or NO_CONTEXT_MESSAGE
     result = _finalize(
@@ -356,6 +356,7 @@ def answer_query_stream(
         estimate_tokens(prepared.prompt or ""),
         estimate_tokens(raw_answer),
     )
+    yield _sse({"delta": result.answer})
     yield _sse({"done": True, "sources": result.sources, "route": result.route})
 
 

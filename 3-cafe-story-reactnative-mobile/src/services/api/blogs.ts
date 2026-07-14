@@ -53,6 +53,18 @@ export async function createBlog(request: BlogCreateRequest) {
   return response;
 }
 
+export async function createModeratedBlog(request: BlogCreateRequest) {
+  const response = await apiFetch<BlogResponse>(apiEndpoints.blogs.moderated, {
+    body: request,
+    method: "POST",
+  });
+  invalidateApiCache("feed:");
+  invalidateApiCache("blogs:");
+  invalidateApiCache("cafe-pages:");
+  invalidateApiCache("recommendations:");
+  return response;
+}
+
 export function getBlogs() {
   return cachedApiCall("blogs:list", apiCacheTtl.dynamic, () =>
     apiFetch<BlogResponse[]>(apiEndpoints.blogs.list, {

@@ -17,7 +17,7 @@ import { useAuth } from "../../features/auth";
 import { routes } from "../../navigation";
 import type { MainTabParamList } from "../../navigation";
 import {
-  createBlog,
+  createModeratedBlog,
   getMyProfile,
   isRemoteImageUrl,
   uploadPostImageToCloudinary,
@@ -279,7 +279,7 @@ export function CreateScreen() {
         ),
       );
 
-      await createBlog({
+      await createModeratedBlog({
         allowComment: draft.allowComments,
         content: draft.caption.trim(),
         imageUrls,
