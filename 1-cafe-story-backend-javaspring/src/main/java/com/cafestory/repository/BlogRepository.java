@@ -27,10 +27,19 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
             left join fetch b.author a
             left join fetch b.page p
             where b.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
-            and coalesce(b.updatedAt, b.createdAt) >= :since
-            order by coalesce(b.updatedAt, b.createdAt) asc
+            and (
+                (:cursorId is null and coalesce(b.updatedAt, b.createdAt) >= :since)
+                or (:cursorId is not null and (
+                    coalesce(b.updatedAt, b.createdAt) > :since
+                    or (coalesce(b.updatedAt, b.createdAt) = :since and b.id > :cursorId)
+                ))
+            )
+            order by coalesce(b.updatedAt, b.createdAt) asc, b.id asc
             """)
-    List<Blog> findRagSnapshotBlogs(@Param("since") LocalDateTime since, Pageable pageable);
+    List<Blog> findRagSnapshotBlogs(
+            @Param("since") LocalDateTime since,
+            @Param("cursorId") UUID cursorId,
+            Pageable pageable);
 
     @Query("""
             select b.id

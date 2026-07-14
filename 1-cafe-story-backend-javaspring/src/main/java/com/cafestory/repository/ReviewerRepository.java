@@ -65,10 +65,19 @@ public interface ReviewerRepository extends JpaRepository<Reviewer, UUID> {
             left join fetch r.user u
             where r.reviewerActive = true
             and u.accountStatus = true
-            and coalesce(r.updatedAt, r.createdAt) >= :since
-            order by coalesce(r.updatedAt, r.createdAt) asc
+            and (
+                (:cursorId is null and coalesce(r.updatedAt, r.createdAt) >= :since)
+                or (:cursorId is not null and (
+                    coalesce(r.updatedAt, r.createdAt) > :since
+                    or (coalesce(r.updatedAt, r.createdAt) = :since and r.reviewerId > :cursorId)
+                ))
+            )
+            order by coalesce(r.updatedAt, r.createdAt) asc, r.reviewerId asc
             """)
-    List<Reviewer> findRagSnapshotReviewers(@Param("since") LocalDateTime since, Pageable pageable);
+    List<Reviewer> findRagSnapshotReviewers(
+            @Param("since") LocalDateTime since,
+            @Param("cursorId") UUID cursorId,
+            Pageable pageable);
 
     @Query("""
             select r.reviewerId

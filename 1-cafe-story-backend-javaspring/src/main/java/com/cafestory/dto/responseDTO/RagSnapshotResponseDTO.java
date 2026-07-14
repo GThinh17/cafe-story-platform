@@ -15,5 +15,6 @@ public class RagSnapshotResponseDTO {
     private List<RagSnapshotItemResponseDTO> items;
     private List<String> tombstones;
     private LocalDateTime nextSince;
+    private String nextSourceId;
     private boolean hasMore;
 }

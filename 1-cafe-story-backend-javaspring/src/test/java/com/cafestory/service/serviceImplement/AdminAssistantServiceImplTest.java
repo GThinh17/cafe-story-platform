@@ -1,5 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.AdminAssistantSecurityProperties;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
 import com.cafestory.entity.AdminAssistantConversation;
 import com.cafestory.entity.AdminAssistantDraftAction;
@@ -67,7 +68,7 @@ class AdminAssistantServiceImplTest {
                 1000,
                 "gpt-4o-mini",
                 "http://localhost:8080/api/admin/assistant/tools",
-                "test-token");
+                new AdminAssistantSecurityProperties("test-token"));
     }
 
     @Test

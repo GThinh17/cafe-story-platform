@@ -53,22 +53,23 @@ public class RagSnapshotServiceImpl implements RagSnapshotService {
 
     @Override
     @Transactional(readOnly = true)
-    public RagSnapshotResponseDTO getSnapshot(String sourceType, LocalDateTime since, int limit) {
+    public RagSnapshotResponseDTO getSnapshot(String sourceType, LocalDateTime since, String cursorId, int limit) {
         int normalizedLimit = normalizeLimit(limit);
         LocalDateTime normalizedSince = since == null ? LocalDateTime.of(1970, 1, 1, 0, 0) : since;
-        Pageable pageable = PageRequest.of(0, normalizedLimit);
+        UUID normalizedCursorId = normalizeCursorId(cursorId);
+        Pageable pageable = PageRequest.of(0, normalizedLimit + 1);
 
         return switch (sourceType) {
-            case SOURCE_TYPE_BLOG -> blogSnapshot(normalizedSince, normalizedLimit, pageable);
-            case SOURCE_TYPE_CAFE_PAGE -> cafePageSnapshot(normalizedSince, normalizedLimit, pageable);
-            case SOURCE_TYPE_REVIEWER -> reviewerSnapshot(normalizedSince, normalizedLimit, pageable);
+            case SOURCE_TYPE_BLOG -> blogSnapshot(normalizedSince, normalizedCursorId, normalizedLimit, pageable);
+            case SOURCE_TYPE_CAFE_PAGE -> cafePageSnapshot(normalizedSince, normalizedCursorId, normalizedLimit, pageable);
+            case SOURCE_TYPE_REVIEWER -> reviewerSnapshot(normalizedSince, normalizedCursorId, normalizedLimit, pageable);
             default -> throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST, "Unsupported sourceType: " + sourceType);
         };
     }
 
-    private RagSnapshotResponseDTO blogSnapshot(LocalDateTime since, int limit, Pageable pageable) {
-        List<Blog> blogs = blogRepository.findRagSnapshotBlogs(since, pageable);
+    private RagSnapshotResponseDTO blogSnapshot(LocalDateTime since, UUID cursorId, int limit, Pageable pageable) {
+        List<Blog> blogs = blogRepository.findRagSnapshotBlogs(since, cursorId, pageable);
         Map<UUID, List<String>> tagsByBlogId = loadTagsByBlogId(blogs);
 
         List<RagSnapshotItemResponseDTO> items = blogs.stream()
@@ -86,8 +87,8 @@ public class RagSnapshotServiceImpl implements RagSnapshotService {
         return buildResponse(items, tombstones, limit);
     }
 
-    private RagSnapshotResponseDTO cafePageSnapshot(LocalDateTime since, int limit, Pageable pageable) {
-        List<CafePage> pages = cafePageRepository.findRagSnapshotCafePages(since, pageable);
+    private RagSnapshotResponseDTO cafePageSnapshot(LocalDateTime since, UUID cursorId, int limit, Pageable pageable) {
+        List<CafePage> pages = cafePageRepository.findRagSnapshotCafePages(since, cursorId, pageable);
 
         List<RagSnapshotItemResponseDTO> items = pages.stream()
                 .map(page -> new RagSnapshotItemResponseDTO(
@@ -104,8 +105,8 @@ public class RagSnapshotServiceImpl implements RagSnapshotService {
         return buildResponse(items, tombstones, limit);
     }
 
-    private RagSnapshotResponseDTO reviewerSnapshot(LocalDateTime since, int limit, Pageable pageable) {
-        List<Reviewer> reviewers = reviewerRepository.findRagSnapshotReviewers(since, pageable);
+    private RagSnapshotResponseDTO reviewerSnapshot(LocalDateTime since, UUID cursorId, int limit, Pageable pageable) {
+        List<Reviewer> reviewers = reviewerRepository.findRagSnapshotReviewers(since, cursorId, pageable);
 
         List<RagSnapshotItemResponseDTO> items = reviewers.stream()
                 .map(reviewer -> new RagSnapshotItemResponseDTO(
@@ -180,9 +181,12 @@ public class RagSnapshotServiceImpl implements RagSnapshotService {
 
     private RagSnapshotResponseDTO buildResponse(
             List<RagSnapshotItemResponseDTO> items, List<String> tombstones, int limit) {
-        LocalDateTime nextSince = items.isEmpty() ? null : items.get(items.size() - 1).getUpdatedAt();
-        boolean hasMore = items.size() >= limit;
-        return new RagSnapshotResponseDTO(items, tombstones, nextSince, hasMore);
+        boolean hasMore = items.size() > limit;
+        List<RagSnapshotItemResponseDTO> pageItems = hasMore ? items.subList(0, limit) : items;
+        RagSnapshotItemResponseDTO lastItem = pageItems.isEmpty() ? null : pageItems.get(pageItems.size() - 1);
+        LocalDateTime nextSince = lastItem == null ? null : lastItem.getUpdatedAt();
+        String nextSourceId = lastItem == null ? null : lastItem.getSourceId();
+        return new RagSnapshotResponseDTO(pageItems, tombstones, nextSince, nextSourceId, hasMore);
     }
 
     private LocalDateTime effectiveTimestamp(LocalDateTime updatedAt, LocalDateTime createdAt) {
@@ -194,5 +198,16 @@ public class RagSnapshotServiceImpl implements RagSnapshotService {
             return DEFAULT_LIMIT;
         }
         return Math.min(limit, MAX_LIMIT);
+    }
+
+    private UUID normalizeCursorId(String cursorId) {
+        if (cursorId == null || cursorId.isBlank()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(cursorId);
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "cursorId must be a valid UUID");
+        }
     }
 }

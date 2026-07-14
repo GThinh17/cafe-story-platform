@@ -48,7 +48,7 @@ class RagSnapshotServiceImplTest {
 
     @Test
     void unsupportedSourceTypeThrowsBadRequest() {
-        assertThatThrownBy(() -> service.getSnapshot("payments", null, 10))
+        assertThatThrownBy(() -> service.getSnapshot("payments", null, null, 10))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("Unsupported sourceType");
     }
@@ -56,14 +56,14 @@ class RagSnapshotServiceImplTest {
     @Test
     void blogSnapshotMapsPublicFieldsOnly() {
         Blog blog = buildBlog();
-        when(blogRepository.findRagSnapshotBlogs(any(LocalDateTime.class), any(Pageable.class)))
+        when(blogRepository.findRagSnapshotBlogs(any(LocalDateTime.class), any(), any(Pageable.class)))
                 .thenReturn(List.of(blog));
         when(blogRepository.findRagTombstoneBlogIds(any(LocalDateTime.class)))
                 .thenReturn(List.of());
         when(aiModerationResultRepository.findWithTagsByBlogIds(any()))
                 .thenReturn(List.of());
 
-        RagSnapshotResponseDTO response = service.getSnapshot("blog", null, 10);
+        RagSnapshotResponseDTO response = service.getSnapshot("blog", null, null, 10);
 
         assertThat(response.getItems()).hasSize(1);
         var data = response.getItems().get(0).getData();
@@ -75,12 +75,12 @@ class RagSnapshotServiceImplTest {
     @Test
     void cafePageTombstonesAreReturned() {
         UUID suspendedPageId = UUID.randomUUID();
-        when(cafePageRepository.findRagSnapshotCafePages(any(LocalDateTime.class), any(Pageable.class)))
+        when(cafePageRepository.findRagSnapshotCafePages(any(LocalDateTime.class), any(), any(Pageable.class)))
                 .thenReturn(List.of());
         when(cafePageRepository.findRagTombstoneCafePageIds(any(LocalDateTime.class)))
                 .thenReturn(List.of(suspendedPageId));
 
-        RagSnapshotResponseDTO response = service.getSnapshot("cafe_page", LocalDateTime.now(), 10);
+        RagSnapshotResponseDTO response = service.getSnapshot("cafe_page", LocalDateTime.now(), null, 10);
 
         assertThat(response.getItems()).isEmpty();
         assertThat(response.getTombstones()).containsExactly(suspendedPageId.toString());
@@ -88,19 +88,31 @@ class RagSnapshotServiceImplTest {
     }
 
     @Test
-    void hasMoreIsTrueWhenPageIsFull() {
+    void hasMoreIsTrueWhenLimitPlusOneRowExists() {
         Blog blog = buildBlog();
-        when(blogRepository.findRagSnapshotBlogs(any(LocalDateTime.class), any(Pageable.class)))
-                .thenReturn(List.of(blog));
+        Blog nextBlog = buildBlog();
+        nextBlog.setId(UUID.randomUUID());
+        nextBlog.setCreatedAt(blog.getCreatedAt().plusSeconds(1));
+        when(blogRepository.findRagSnapshotBlogs(any(LocalDateTime.class), any(), any(Pageable.class)))
+                .thenReturn(List.of(blog, nextBlog));
         when(blogRepository.findRagTombstoneBlogIds(any(LocalDateTime.class)))
                 .thenReturn(List.of());
         when(aiModerationResultRepository.findWithTagsByBlogIds(any()))
                 .thenReturn(List.of());
 
-        RagSnapshotResponseDTO response = service.getSnapshot("blog", null, 1);
+        RagSnapshotResponseDTO response = service.getSnapshot("blog", null, null, 1);
 
         assertThat(response.isHasMore()).isTrue();
+        assertThat(response.getItems()).hasSize(1);
         assertThat(response.getNextSince()).isEqualTo(blog.getCreatedAt());
+        assertThat(response.getNextSourceId()).isEqualTo(blog.getId().toString());
+    }
+
+    @Test
+    void invalidCursorIdThrowsBadRequest() {
+        assertThatThrownBy(() -> service.getSnapshot("blog", null, "not-a-uuid", 10))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("cursorId");
     }
 
     private Blog buildBlog() {

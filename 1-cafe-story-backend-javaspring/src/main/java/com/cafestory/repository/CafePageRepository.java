@@ -59,10 +59,19 @@ public interface CafePageRepository extends JpaRepository<CafePage, UUID> {
             from CafePage p
             left join fetch p.region r
             where p.status = com.cafestory.entity.enums.PageStatus.ACTIVE
-            and coalesce(p.updatedAt, p.createdAt) >= :since
-            order by coalesce(p.updatedAt, p.createdAt) asc
+            and (
+                (:cursorId is null and coalesce(p.updatedAt, p.createdAt) >= :since)
+                or (:cursorId is not null and (
+                    coalesce(p.updatedAt, p.createdAt) > :since
+                    or (coalesce(p.updatedAt, p.createdAt) = :since and p.id > :cursorId)
+                ))
+            )
+            order by coalesce(p.updatedAt, p.createdAt) asc, p.id asc
             """)
-    List<CafePage> findRagSnapshotCafePages(@Param("since") LocalDateTime since, Pageable pageable);
+    List<CafePage> findRagSnapshotCafePages(
+            @Param("since") LocalDateTime since,
+            @Param("cursorId") UUID cursorId,
+            Pageable pageable);
 
     @Query("""
             select p.id
