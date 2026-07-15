@@ -62,11 +62,11 @@ export function CoOwnerSection({ cafePageId, currentUserId, maxMembers }: CoOwne
     setRemovingUserId(userId);
     try {
       await updatePageMemberStatus(cafePageId, userId, "REJECTED");
-      toast.success(`Đã gỡ ${displayName} khỏi cộng sự.`);
+      toast.success(`Removed ${displayName} from co-owners.`);
       setConfirmingUserId(null);
       await refresh();
     } catch (err) {
-      const msg = err instanceof ApiError || err instanceof Error ? err.message : "Không gỡ được cộng sự.";
+      const msg = err instanceof ApiError || err instanceof Error ? err.message : "Unable to remove co-owner.";
       toast.error(msg);
     } finally {
       setRemovingUserId(null);
@@ -78,9 +78,9 @@ export function CoOwnerSection({ cafePageId, currentUserId, maxMembers }: CoOwne
       <div className="overflow-hidden rounded-md border border-border bg-surface">
         <div className="flex items-start justify-between gap-3 border-b border-border p-4 sm:p-5">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted">Cộng sự quản lý trang</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted">Co-owners</p>
             <p className="mt-1 text-sm text-muted">
-              Người bạn tin tưởng để cùng quản lý trang quán.
+              People you trust to help manage this cafe page.
             </p>
           </div>
           <span className="shrink-0 rounded-md bg-surface-muted px-2 py-1 text-xs font-semibold text-primary-strong">
@@ -96,10 +96,10 @@ export function CoOwnerSection({ cafePageId, currentUserId, maxMembers }: CoOwne
           ) : null}
 
           {isLoading ? (
-            <p className="text-sm text-muted">Đang tải...</p>
+            <p className="text-sm text-muted">Loading...</p>
           ) : coOwners.length === 0 ? (
             <p className="text-sm text-muted">
-              Chưa có cộng sự nào. Thêm người từ danh sách theo dõi để giúp bạn quản lý trang.
+              No co-owners yet. Add someone from your followers or following to help manage this page.
             </p>
           ) : (
             <ul className="flex flex-col divide-y divide-border">
@@ -119,7 +119,7 @@ export function CoOwnerSection({ cafePageId, currentUserId, maxMembers }: CoOwne
                     </div>
                     {isConfirming ? (
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted">Gỡ khỏi cộng sự?</span>
+                        <span className="text-xs text-muted">Remove?</span>
                         <Button
                           disabled={isRemoving}
                           onClick={() => void handleRemove(user.userId, displayName)}
@@ -127,7 +127,7 @@ export function CoOwnerSection({ cafePageId, currentUserId, maxMembers }: CoOwne
                           type="button"
                           variant="destructive"
                         >
-                          {isRemoving ? "Đang gỡ..." : "Xác nhận"}
+                          {isRemoving ? "Removing..." : "Confirm"}
                         </Button>
                         <Button
                           disabled={isRemoving}
@@ -136,12 +136,12 @@ export function CoOwnerSection({ cafePageId, currentUserId, maxMembers }: CoOwne
                           type="button"
                           variant="ghost"
                         >
-                          Huỷ
+                          Cancel
                         </Button>
                       </div>
                     ) : (
                       <Button
-                        aria-label={`Gỡ ${displayName}`}
+                        aria-label={`Remove ${displayName}`}
                         className={cn("shrink-0")}
                         onClick={() => setConfirmingUserId(user.userId)}
                         size="sm"
@@ -164,7 +164,7 @@ export function CoOwnerSection({ cafePageId, currentUserId, maxMembers }: CoOwne
             variant="outline"
           >
             <UserPlus data-icon="inline-start" />
-            {isFull ? "Đã đạt tối đa cộng sự" : "Thêm cộng sự"}
+            {isFull ? "Co-owner limit reached" : "Add co-owner"}
           </Button>
         </div>
       </div>

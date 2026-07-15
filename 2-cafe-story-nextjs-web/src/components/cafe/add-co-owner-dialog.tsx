@@ -136,7 +136,7 @@ function UserListPanel({
   if (filtered.length === 0) {
     return (
       <p className="p-6 text-center text-sm font-semibold text-muted">
-        Không tìm thấy người phù hợp.
+        No matching users.
       </p>
     );
   }
@@ -167,7 +167,7 @@ function UserListPanel({
                 type="button"
                 variant="outline"
               >
-                {isPending ? "Đang thêm..." : "Thêm"}
+                {isPending ? "Adding..." : "Add"}
               </Button>
             </li>
           );
@@ -233,11 +233,11 @@ export function AddCoOwnerDialog({
     setPendingUserId(user.userId);
     try {
       await addPageMember(cafePageId, { userId: user.userId, roleName: "CO_OWNER" });
-      toast.success(`Đã thêm ${getDisplayName(user)} làm cộng sự.`);
+      toast.success(`Added ${getDisplayName(user)} as co-owner.`);
       onAdded();
       onOpenChange(false);
     } catch (err) {
-      const msg = err instanceof ApiError || err instanceof Error ? err.message : "Không thêm được cộng sự.";
+      const msg = err instanceof ApiError || err instanceof Error ? err.message : "Unable to add co-owner.";
       toast.error(msg);
     } finally {
       setPendingUserId(null);
@@ -248,18 +248,18 @@ export function AddCoOwnerDialog({
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="flex h-[min(560px,calc(100vh-48px))] w-[min(460px,calc(100vw-32px))] flex-col p-0">
         <div className="border-b border-border px-5 py-4">
-          <DialogTitle className="text-lg font-black text-foreground">Thêm cộng sự quản lý</DialogTitle>
+          <DialogTitle className="text-lg font-black text-foreground">Add co-owner</DialogTitle>
           <DialogDescription className="mt-1 text-sm text-muted">
-            Chọn từ danh sách bạn đang theo dõi hoặc người theo dõi bạn.
+            Choose someone you follow or who follows you.
           </DialogDescription>
         </div>
 
         <div className="px-4 pt-3">
           <Input
-            aria-label="Tìm kiếm người dùng"
+            aria-label="Search users"
             className="h-9"
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm theo tên hoặc username"
+            placeholder="Search by name or username"
             value={searchQuery}
           />
         </div>
@@ -270,14 +270,14 @@ export function AddCoOwnerDialog({
           value={activeTab}
         >
           <TabsList className="w-full" variant="line">
-            <TabsTrigger value="following">Đang theo dõi</TabsTrigger>
-            <TabsTrigger value="followers">Người theo dõi</TabsTrigger>
+            <TabsTrigger value="following">Following</TabsTrigger>
+            <TabsTrigger value="followers">Followers</TabsTrigger>
           </TabsList>
 
           <TabsContent className="mt-0 min-h-0 flex-1" value="following">
             <UserListPanel
               disabled={pendingUserId !== null}
-              emptyLabel="Bạn chưa theo dõi ai để mời."
+              emptyLabel="You are not following anyone yet."
               errorMessage={loadError}
               isLoading={isLoading}
               onAdd={handleAdd}
@@ -290,7 +290,7 @@ export function AddCoOwnerDialog({
           <TabsContent className="mt-0 min-h-0 flex-1" value="followers">
             <UserListPanel
               disabled={pendingUserId !== null}
-              emptyLabel="Chưa có ai theo dõi bạn."
+              emptyLabel="No followers yet."
               errorMessage={loadError}
               isLoading={isLoading}
               onAdd={handleAdd}

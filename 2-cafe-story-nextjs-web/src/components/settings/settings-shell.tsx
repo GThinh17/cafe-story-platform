@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 type SettingsTab = {
   key: "profile" | "cafe";
   label: string;
-  description: string;
   href: string | null;
   icon: typeof User;
   disabled?: boolean;
@@ -24,17 +23,15 @@ function useSettingsTabs(): SettingsTab[] {
   return [
     {
       key: "profile",
-      label: "Profile",
-      description: "Chỉnh sửa hồ sơ cá nhân",
+      label: "Profile settings",
       href: username ? `/${encodeURIComponent(username)}/edit` : null,
       icon: User,
       disabled: !username && !isLoading,
-      disabledReason: "Bạn cần đăng nhập",
+      disabledReason: "Sign in required",
     },
     {
       key: "cafe",
-      label: "Trang quán",
-      description: "Chỉnh sửa cafe page & cộng sự",
+      label: "Cafe page settings",
       href: "/cafes/edit",
       icon: Store,
     },
@@ -57,10 +54,10 @@ export function SettingsShell({ children }: SettingsShellProps) {
   const tabs = useSettingsTabs();
 
   return (
-    <main className="grid w-full max-w-[1120px] touch-pan-y grid-cols-1 gap-6 overflow-x-clip px-4 py-6 sm:px-8 md:grid-cols-[220px_minmax(0,1fr)] md:gap-10 md:py-8 xl:ml-12 xl:px-0 2xl:ml-20">
+    <main className="grid w-full touch-pan-y grid-cols-1 gap-4 overflow-x-clip px-4 py-6 sm:px-6 md:grid-cols-[220px_minmax(0,1fr)_220px] md:gap-8 md:py-8">
       <aside className="md:sticky md:top-6 md:h-fit">
         <p className="hidden text-xs font-semibold uppercase tracking-wider text-muted md:block">
-          Cài đặt
+          Settings
         </p>
         <nav
           aria-label="Settings sections"
@@ -70,7 +67,7 @@ export function SettingsShell({ children }: SettingsShellProps) {
             const active = isTabActive(tab, pathname);
             const Icon = tab.icon;
             const commonClass = cn(
-              "group inline-flex shrink-0 items-center gap-3 rounded-md border border-transparent px-3 py-2 text-left text-sm transition-colors md:w-full",
+              "group inline-flex shrink-0 items-center gap-3 rounded-md border border-transparent px-3 py-2 text-left text-sm font-semibold transition-colors md:w-full",
               active
                 ? "border-border bg-surface text-primary-strong"
                 : "text-foreground hover:bg-surface-muted",
@@ -88,12 +85,7 @@ export function SettingsShell({ children }: SettingsShellProps) {
                   type="button"
                 >
                   <Icon className="size-4 shrink-0" />
-                  <span className="min-w-0">
-                    <span className={cn("block font-semibold", active && "text-primary-strong")}>
-                      {tab.label}
-                    </span>
-                    <span className="hidden text-xs text-muted md:block">{tab.description}</span>
-                  </span>
+                  <span className="min-w-0 truncate">{tab.label}</span>
                 </button>
               );
             }
@@ -111,19 +103,15 @@ export function SettingsShell({ children }: SettingsShellProps) {
                     active ? "text-primary-strong" : "text-muted group-hover:text-foreground",
                   )}
                 />
-                <span className="min-w-0">
-                  <span className={cn("block font-semibold", active && "text-primary-strong")}>
-                    {tab.label}
-                  </span>
-                  <span className="hidden text-xs text-muted md:block">{tab.description}</span>
-                </span>
+                <span className="min-w-0 truncate">{tab.label}</span>
               </Link>
             );
           })}
         </nav>
       </aside>
 
-      <section className="min-w-0 space-y-6">{children}</section>
+      <section className="mx-auto w-full min-w-0 max-w-[720px] space-y-6">{children}</section>
+      <div aria-hidden className="hidden md:block" />
     </main>
   );
 }
