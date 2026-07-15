@@ -225,8 +225,10 @@ export function HomeScreen() {
   const fetchFeedPage = useCallback(async (
     cursorToLoad: string | null,
     pageSize: number,
+    bypassCache = false,
   ) => {
     const response = await getMixedFeed({
+      bypassCache,
       cursor: cursorToLoad,
       size: pageSize,
     });
@@ -344,7 +346,7 @@ export function HomeScreen() {
 
     try {
       const pageSize = append ? LOAD_MORE_FEED_PAGE_SIZE : INITIAL_FEED_PAGE_SIZE;
-      const response = await fetchFeedPage(cursorToLoad, pageSize);
+      const response = await fetchFeedPage(cursorToLoad, pageSize, refreshing);
       const responseItems = response.items ?? [];
       recordVisibleFeedImpressions(responseItems);
 

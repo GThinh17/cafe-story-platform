@@ -10,7 +10,6 @@ export type PaymentStatus =
   | string;
 
 export type CreatePaymentRequest = {
-  buyerId?: string;
   extraFeeId?: string;
   adFeeId?: string;
   cafePageId?: string;

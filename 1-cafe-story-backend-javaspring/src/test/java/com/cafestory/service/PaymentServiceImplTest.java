@@ -212,7 +212,6 @@ class PaymentServiceImplTest {
     void createPayment_fail_requiresExactlyOneFee_TC022() {
         when(userRepository.findById(buyerId)).thenReturn(Optional.of(user()));
         CreatePaymentRequestDTO noFeeRequest = new CreatePaymentRequestDTO();
-        noFeeRequest.setBuyerId(buyerId);
         noFeeRequest.setPaymentMethod(PaymentMethod.BANK_TRANSFER);
 
         assertThatThrownBy(() -> paymentService.createPayment(buyerId, noFeeRequest))
@@ -834,7 +833,6 @@ class PaymentServiceImplTest {
 
     private CreatePaymentRequestDTO adFeeRequest(PaymentMethod method) {
         CreatePaymentRequestDTO request = new CreatePaymentRequestDTO();
-        request.setBuyerId(buyerId);
         request.setAdFeeId(adFeeId);
         request.setPaymentMethod(method);
         return request;

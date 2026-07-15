@@ -23,6 +23,9 @@ export type MainTabParamList = {
 };
 
 export type RootStackParamList = {
+  [routes.adsManager]: {
+    paymentId?: string;
+  } | undefined;
   [routes.auth]: NavigatorScreenParams<AuthStackParamList>;
   [routes.main]: NavigatorScreenParams<MainTabParamList>;
   [routes.createPostModal]: undefined;

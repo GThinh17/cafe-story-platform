@@ -2,12 +2,14 @@ package com.cafestory.service;
 
 import com.cafestory.dto.responseDTO.SponsoredCafeResponseDTO;
 import com.cafestory.entity.AdCampaign;
+import com.cafestory.entity.AdDailyStat;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.AdStatus;
 import com.cafestory.entity.enums.PageStatus;
 import com.cafestory.repository.AdCampaignRepository;
+import com.cafestory.repository.AdDailyStatRepository;
 import com.cafestory.repository.AdImpressionRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceImplement.SponsoredCafeCandidateServiceImpl;
@@ -18,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -26,6 +29,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
+import org.mockito.ArgumentCaptor;
 
 @ExtendWith(MockitoExtension.class)
 class SponsoredCafeCandidateServiceImplTest {
@@ -41,6 +47,9 @@ class SponsoredCafeCandidateServiceImplTest {
     private AdImpressionRepository adImpressionRepository;
 
     @Mock
+    private AdDailyStatRepository adDailyStatRepository;
+
+    @Mock
     private UserRepository userRepository;
 
     private SponsoredCafeCandidateServiceImpl sponsoredCafeCandidateService;
@@ -50,6 +59,7 @@ class SponsoredCafeCandidateServiceImplTest {
         sponsoredCafeCandidateService = new SponsoredCafeCandidateServiceImpl(
                 adCampaignRepository,
                 adImpressionRepository,
+                adDailyStatRepository,
                 userRepository);
     }
 
@@ -82,6 +92,7 @@ class SponsoredCafeCandidateServiceImplTest {
         assertThat(response.getCafeName()).isEqualTo("Bean House");
         assertThat(response.getCafeAvatarUrl()).isEqualTo("https://cdn.example.com/bean-house-avatar.jpg");
         assertThat(response.getCafeCoverUrl()).isEqualTo("https://cdn.example.com/bean-house-cover.jpg");
+        assertThat(response.getImageUrl()).isEqualTo("https://cdn.example.com/sponsored.jpg");
         assertThat(response.getHeadline()).isEqualTo("Sponsored Bean House");
         assertThat(response.getDescription()).isEqualTo("Try our signature coffee.");
         assertThat(response.getCtaLabel()).isEqualTo("View cafe");
@@ -171,6 +182,140 @@ class SponsoredCafeCandidateServiceImplTest {
                 .doesNotHaveDuplicates();
     }
 
+    @Test
+    void recordServedImpressions_success_recordsActualDeliveryAndExpiresAtCap_TC005() {
+        CafePage cafePage = cafePage(
+                UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                "Bean House",
+                region("Ho Chi Minh"),
+                PageStatus.ACTIVE,
+                true);
+        AdCampaign campaign = campaign(VALID_CAMPAIGN_ID, cafePage, AdStatus.ACTIVE, 1);
+        campaign.setServedImpressions(9999);
+        AdDailyStat stat = new AdDailyStat();
+        stat.setAdCampaign(campaign);
+        stat.setStatDate(LocalDate.now());
+        stat.setImpressions(4);
+        stat.setClicks(2);
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user(cafePage.getRegion())));
+        when(adCampaignRepository.findByIdWithLock(VALID_CAMPAIGN_ID)).thenReturn(Optional.of(campaign));
+        when(adDailyStatRepository.findByAdCampaignAdCampaignIdAndStatDate(VALID_CAMPAIGN_ID, LocalDate.now()))
+                .thenReturn(Optional.of(stat));
+
+        sponsoredCafeCandidateService.recordServedImpressions(USER_ID, List.of(VALID_CAMPAIGN_ID));
+
+        assertThat(campaign.getServedImpressions()).isEqualTo(10000);
+        assertThat(campaign.getStatus()).isEqualTo(AdStatus.EXPIRED);
+        assertThat(stat.getImpressions()).isEqualTo(5);
+        ArgumentCaptor<com.cafestory.entity.AdImpression> impressionCaptor =
+                ArgumentCaptor.forClass(com.cafestory.entity.AdImpression.class);
+        verify(adImpressionRepository).save(impressionCaptor.capture());
+        assertThat(impressionCaptor.getValue().getUser().getUserId()).isEqualTo(USER_ID);
+        verify(adDailyStatRepository).save(stat);
+    }
+
+    @Test
+    void recordServedImpressions_success_handlesEmptyMissingAndExpiredCampaigns_TC006() {
+        sponsoredCafeCandidateService.recordServedImpressions(USER_ID, List.of());
+        verify(adCampaignRepository, never()).findByIdWithLock(any());
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
+        when(adCampaignRepository.findByIdWithLock(VALID_CAMPAIGN_ID)).thenReturn(Optional.empty());
+        sponsoredCafeCandidateService.recordServedImpressions(USER_ID, List.of(VALID_CAMPAIGN_ID));
+        verify(adImpressionRepository, never()).save(any());
+
+        AdCampaign expired = campaign(VALID_CAMPAIGN_ID, cafePage(
+                UUID.randomUUID(), "Expired", region("Da Nang"), PageStatus.ACTIVE, true), AdStatus.ACTIVE, 1);
+        expired.setEndAt(LocalDateTime.now().minusMinutes(1));
+        when(adCampaignRepository.findByIdWithLock(VALID_CAMPAIGN_ID)).thenReturn(Optional.of(expired));
+        sponsoredCafeCandidateService.recordServedImpressions(null, List.of(VALID_CAMPAIGN_ID));
+        assertThat(expired.getStatus()).isEqualTo(AdStatus.EXPIRED);
+    }
+
+    @Test
+    void recordServedImpressions_success_createsDailyStatForAnonymousViewer_TC007() {
+        CafePage cafePage = cafePage(UUID.randomUUID(), "Anonymous", region("Hue"), PageStatus.ACTIVE, true);
+        AdCampaign campaign = campaign(VALID_CAMPAIGN_ID, cafePage, AdStatus.ACTIVE, 1);
+        when(adCampaignRepository.findByIdWithLock(VALID_CAMPAIGN_ID)).thenReturn(Optional.of(campaign));
+        when(adDailyStatRepository.findByAdCampaignAdCampaignIdAndStatDate(VALID_CAMPAIGN_ID, LocalDate.now()))
+                .thenReturn(Optional.empty());
+
+        sponsoredCafeCandidateService.recordServedImpressions(null, List.of(VALID_CAMPAIGN_ID));
+
+        ArgumentCaptor<AdDailyStat> statCaptor = ArgumentCaptor.forClass(AdDailyStat.class);
+        verify(adDailyStatRepository).save(statCaptor.capture());
+        assertThat(statCaptor.getValue().getImpressions()).isEqualTo(1);
+        assertThat(statCaptor.getValue().getAdCampaign()).isEqualTo(campaign);
+    }
+
+    @Test
+    void getCandidates_success_handlesDefaultsNullScoringAndComparatorTies_TC008() {
+        Region userRegion = region("Hue");
+        User user = user(userRegion);
+        CafePage regionlessPage = cafePage(UUID.randomUUID(), "Regionless", null, PageStatus.ACTIVE, true);
+        AdCampaign regionless = campaign(UUID.randomUUID(), regionlessPage, AdStatus.ACTIVE, 1);
+        regionless.setPriority(null);
+        regionless.setCreatedAt(null);
+        regionless.setStartAt(null);
+        regionless.setEndAt(null);
+
+        LocalDateTime sharedCreatedAt = LocalDateTime.now().minusDays(2);
+        CafePage blankCityPage = cafePage(UUID.randomUUID(), "Blank City", region("  "), PageStatus.ACTIVE, true);
+        AdCampaign firstTie = campaign(UUID.fromString("aaaaaaaa-0000-0000-0000-000000000001"), blankCityPage, AdStatus.ACTIVE, 2);
+        firstTie.setCreatedAt(sharedCreatedAt);
+        AdCampaign secondTie = campaign(UUID.fromString("aaaaaaaa-0000-0000-0000-000000000002"), blankCityPage, AdStatus.ACTIVE, 2);
+        secondTie.setCreatedAt(sharedCreatedAt);
+
+        AdCampaign future = campaign(UUID.randomUUID(), blankCityPage, AdStatus.ACTIVE, 10);
+        future.setStartAt(LocalDateTime.now().plusDays(1));
+
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
+        when(adCampaignRepository.findActiveCandidates(eq(AdStatus.ACTIVE), any(LocalDateTime.class)))
+                .thenReturn(List.of(regionless, firstTie, secondTie, future));
+        when(adImpressionRepository.countByUserUserIdAndAdCampaignAdCampaignIdAndShownAtGreaterThanEqualAndShownAtLessThan(
+                eq(USER_ID), any(UUID.class), any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(0L);
+
+        List<SponsoredCafeResponseDTO> result = sponsoredCafeCandidateService.getCandidates(USER_ID, 100, 0);
+
+        assertThat(result).hasSize(2);
+        assertThat(result).extracting(SponsoredCafeResponseDTO::getCampaignId)
+                .doesNotContain(future.getAdCampaignId());
+    }
+
+    @Test
+    void getCandidates_success_emptyListUsesDefaultLimitAndRecordNullListIsNoop_TC009() {
+        when(adCampaignRepository.findActiveCandidates(eq(AdStatus.ACTIVE), any(LocalDateTime.class)))
+                .thenReturn(List.of());
+
+        assertThat(sponsoredCafeCandidateService.getCandidates(null, 0, 0)).isEmpty();
+        sponsoredCafeCandidateService.recordServedImpressions(USER_ID, null);
+
+        verify(userRepository, never()).findById(USER_ID);
+        verify(adCampaignRepository, never()).findByIdWithLock(any());
+    }
+
+    @Test
+    void recordServedImpressions_success_handlesNullDailyCounterAndInactiveCampaign_TC010() {
+        CafePage cafePage = cafePage(UUID.randomUUID(), "Null Counter", region("Hue"), PageStatus.ACTIVE, true);
+        AdCampaign active = campaign(VALID_CAMPAIGN_ID, cafePage, AdStatus.ACTIVE, 1);
+        AdDailyStat stat = new AdDailyStat();
+        stat.setAdCampaign(active);
+        stat.setStatDate(LocalDate.now());
+        stat.setImpressions(null);
+        when(adCampaignRepository.findByIdWithLock(VALID_CAMPAIGN_ID)).thenReturn(Optional.of(active));
+        when(adDailyStatRepository.findByAdCampaignAdCampaignIdAndStatDate(VALID_CAMPAIGN_ID, LocalDate.now()))
+                .thenReturn(Optional.of(stat));
+
+        sponsoredCafeCandidateService.recordServedImpressions(null, List.of(VALID_CAMPAIGN_ID));
+
+        assertThat(stat.getImpressions()).isEqualTo(1);
+
+        AdCampaign paused = campaign(CAPPED_CAMPAIGN_ID, cafePage, AdStatus.PAUSED, 1);
+        when(adCampaignRepository.findByIdWithLock(CAPPED_CAMPAIGN_ID)).thenReturn(Optional.of(paused));
+        sponsoredCafeCandidateService.recordServedImpressions(null, List.of(CAPPED_CAMPAIGN_ID));
+        assertThat(paused.getStatus()).isEqualTo(AdStatus.PAUSED);
+    }
+
     private User user(Region region) {
         User user = new User();
         user.setUserId(USER_ID);
@@ -202,6 +347,7 @@ class SponsoredCafeCandidateServiceImplTest {
         campaign.setCafePage(cafePage);
         campaign.setTitle("Sponsored " + cafePage.getName());
         campaign.setDescription("Try our signature coffee.");
+        campaign.setImageUrl("https://cdn.example.com/sponsored.jpg");
         campaign.setTargetUrl("/cafes/" + cafePage.getId());
         campaign.setStatus(status);
         campaign.setStartAt(LocalDateTime.now().minusDays(1));

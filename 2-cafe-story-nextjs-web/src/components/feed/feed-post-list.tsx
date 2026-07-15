@@ -11,9 +11,9 @@ import {
 import { PostCard } from "@/components/feed/post-card";
 import { PostCommentsModal } from "@/components/feed/post-comments-modal";
 import { ReportPostModal } from "@/components/feed/report-post-modal";
-import { mapBlogFeedToFeedPosts } from "@/features/blogs/blog-feed-adapter";
+import { SponsoredCafeCard } from "@/components/feed/sponsored-cafe-card";
+import { mapMixedFeedToRenderableItems } from "@/features/blogs/blog-feed-adapter";
 import {
-  getBlogFeed,
   getBlogLikesByUser,
   getBlogSavesByUser,
   likeBlog,
@@ -23,29 +23,33 @@ import {
   unsaveBlog,
   unshareBlog,
 } from "@/lib/api/blogs";
+import { getMixedFeed } from "@/lib/api/feed";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import type { TrendWindowType } from "@/types/blog";
-import type { FeedPost } from "@/types/feed";
+import type { FeedPost, FeedRenderableItem } from "@/types/feed";
 
 type FeedPostListProps = {
   errorMessage?: string;
+  initialHasMore?: boolean;
+  initialNextCursor?: string | null;
   initialPage?: number;
   pageSize?: number;
-  posts: FeedPost[];
-  windowType?: TrendWindowType;
+  items: FeedRenderableItem[];
 };
 
 export function FeedPostList({
   errorMessage,
+  initialHasMore,
+  initialNextCursor = null,
   initialPage = 0,
   pageSize = 20,
-  posts,
-  windowType = "HOUR_24",
+  items,
 }: FeedPostListProps) {
-  const [feedPosts, setFeedPosts] = useState(posts);
-  const [nextPage, setNextPage] = useState(initialPage + 1);
+  const [feedItems, setFeedItems] = useState(items);
+  const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(posts.length >= pageSize);
+  const [hasMore, setHasMore] = useState(
+    initialHasMore ?? items.length >= pageSize,
+  );
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [likedPostIds, setLikedPostIds] = useState<Set<string> | null>(null);
   const [savedPostIds, setSavedPostIds] = useState<Set<string> | null>(null);
@@ -59,14 +63,21 @@ export function FeedPostList({
   const { user } = useCurrentUser();
 
   const selectedPost = useMemo(
-    () => feedPosts.find((post) => post.id === selectedPostId) ?? null,
-    [feedPosts, selectedPostId],
+    () => feedItems.find(
+      (item): item is Extract<FeedRenderableItem, { kind: "post" }> =>
+        item.kind === "post" && item.post.id === selectedPostId,
+    )?.post ?? null,
+    [feedItems, selectedPostId],
   );
 
   const updatePost = useCallback(
     (postId: string, updater: (post: FeedPost) => FeedPost) => {
-      setFeedPosts((currentPosts) =>
-        currentPosts.map((post) => (post.id === postId ? updater(post) : post)),
+      setFeedItems((currentItems) =>
+        currentItems.map((item) =>
+          item.kind === "post" && item.post.id === postId
+            ? { ...item, post: updater(item.post) }
+            : item,
+        ),
       );
     },
     [],
@@ -119,28 +130,42 @@ export function FeedPostList({
   );
 
   const applyLikedState = useCallback(
-    (nextPosts: FeedPost[]) => {
+    (nextItems: FeedRenderableItem[]) => {
       if (!likedPostIds) {
-        return nextPosts;
+        return nextItems;
       }
 
-      return nextPosts.map((post) => ({
-        ...post,
-        isLiked: post.id ? likedPostIds.has(post.id) : false,
-      }));
+      return nextItems.map((item) =>
+        item.kind === "post"
+          ? {
+              ...item,
+              post: {
+                ...item.post,
+                isLiked: item.post.id ? likedPostIds.has(item.post.id) : false,
+              },
+            }
+          : item,
+      );
     },
     [likedPostIds],
   );
 
   const applySavedState = useCallback(
-    (nextPosts: FeedPost[]) => {
+    (nextItems: FeedRenderableItem[]) => {
       if (!savedPostIds) {
-        return nextPosts;
+        return nextItems;
       }
-      return nextPosts.map((post) => ({
-        ...post,
-        isSaved: post.id ? savedPostIds.has(post.id) : false,
-      }));
+      return nextItems.map((item) =>
+        item.kind === "post"
+          ? {
+              ...item,
+              post: {
+                ...item.post,
+                isSaved: item.post.id ? savedPostIds.has(item.post.id) : false,
+              },
+            }
+          : item,
+      );
     },
     [savedPostIds],
   );
@@ -202,34 +227,33 @@ export function FeedPostList({
     setLoadMoreError(null);
 
     try {
-      const response = await getBlogFeed({
-        page: nextPage,
+      const response = await getMixedFeed({
+        cursor: nextCursor,
         size: pageSize,
-        windowType,
       });
-      const nextPosts = applySavedState(
-        applyLikedState(mapBlogFeedToFeedPosts(response)),
+      const nextItems = applySavedState(
+        applyLikedState(mapMixedFeedToRenderableItems(response)),
       );
 
-      setFeedPosts((currentPosts) => [...currentPosts, ...nextPosts]);
-      setNextPage((currentPage) => currentPage + 1);
-      setHasMore(response.length >= pageSize);
+      setFeedItems((currentItems) => [...currentItems, ...nextItems]);
+      setNextCursor(response.nextCursor ?? null);
+      setHasMore(Boolean(response.hasMore && response.nextCursor));
     } catch {
       setLoadMoreError("Unable to load more posts.");
     } finally {
       isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [applyLikedState, applySavedState, hasMore, nextPage, pageSize, windowType]);
+  }, [applyLikedState, applySavedState, hasMore, nextCursor, pageSize]);
 
   useEffect(() => {
-    setFeedPosts(posts);
-    setNextPage(initialPage + 1);
-    setHasMore(posts.length >= pageSize);
+    setFeedItems(items);
+    setNextCursor(initialNextCursor);
+    setHasMore(initialHasMore ?? items.length >= pageSize);
     setLoadMoreError(null);
     isLoadingMoreRef.current = false;
     setIsLoadingMore(false);
-  }, [initialPage, pageSize, posts]);
+  }, [initialHasMore, initialNextCursor, initialPage, items, pageSize]);
 
   useEffect(() => {
     if (!user?.userId) {
@@ -249,22 +273,33 @@ export function FeedPostList({
         }
 
         setLikedPostIds(nextLikedPostIds);
-        setFeedPosts((currentPosts) =>
-          currentPosts.map((post) => ({
-            ...post,
-            isLiked: post.id ? nextLikedPostIds.has(post.id) : false,
-          })),
+        setFeedItems((currentItems) =>
+          currentItems.map((item) =>
+            item.kind === "post"
+              ? {
+                  ...item,
+                  post: {
+                    ...item.post,
+                    isLiked: item.post.id ? nextLikedPostIds.has(item.post.id) : false,
+                  },
+                }
+              : item,
+          ),
         );
       } catch {
         if (!isActive) {
           return;
         }
 
-        setFeedPosts((currentPosts) =>
-          currentPosts.map((post) => ({
-            ...post,
-            isLiked: post.isLiked ?? false,
-          })),
+        setFeedItems((currentItems) =>
+          currentItems.map((item) =>
+            item.kind === "post"
+              ? {
+                  ...item,
+                  post: { ...item.post, isLiked: item.post.isLiked ?? false },
+                }
+              : item,
+          ),
         );
       }
     }
@@ -294,11 +329,18 @@ export function FeedPostList({
         if (!isActive) return;
         const nextIds = new Set(saves.map((s) => s.blogId));
         setSavedPostIds(nextIds);
-        setFeedPosts((currentPosts) =>
-          currentPosts.map((post) => ({
-            ...post,
-            isSaved: post.id ? nextIds.has(post.id) : false,
-          })),
+        setFeedItems((currentItems) =>
+          currentItems.map((item) =>
+            item.kind === "post"
+              ? {
+                  ...item,
+                  post: {
+                    ...item.post,
+                    isSaved: item.post.id ? nextIds.has(item.post.id) : false,
+                  },
+                }
+              : item,
+          ),
         );
       } catch {
         if (!isActive) return;
@@ -415,7 +457,7 @@ export function FeedPostList({
     );
   }
 
-  if (posts.length === 0) {
+  if (items.length === 0) {
     return (
       <Alert>
         <AlertTitle>No posts yet</AlertTitle>
@@ -430,22 +472,26 @@ export function FeedPostList({
   return (
     <>
       <div className="flex flex-col gap-6">
-        {feedPosts.map((post) => (
-          <PostCard
-            key={post.id ?? post.cafe}
-            currentUserId={user?.userId}
-            onCommentClick={(selectedPost) => {
-              if (selectedPost.id) {
-                setSelectedPostId(selectedPost.id);
-              }
-            }}
-            onLikeClick={handleLikeClick}
-            onReportClick={setReportingPost}
-            onSaveClick={handleSaveClick}
-            onShareClick={handleShareClick}
-            post={post}
-          />
-        ))}
+        {feedItems.map((item) =>
+          item.kind === "ad" ? (
+            <SponsoredCafeCard ad={item.ad} key={item.id} />
+          ) : (
+            <PostCard
+              key={item.id}
+              currentUserId={user?.userId}
+              onCommentClick={(selectedPost) => {
+                if (selectedPost.id) {
+                  setSelectedPostId(selectedPost.id);
+                }
+              }}
+              onLikeClick={handleLikeClick}
+              onReportClick={setReportingPost}
+              onSaveClick={handleSaveClick}
+              onShareClick={handleShareClick}
+              post={item.post}
+            />
+          ),
+        )}
 
         {hasMore ? (
           <div

@@ -28,6 +28,12 @@ export function getMixedFeed(params: FeedParams = {}) {
     size: params.size,
   });
 
+  if (params.bypassCache) {
+    return apiFetch<FeedResponse>(path, {
+      method: "GET",
+    });
+  }
+
   return cachedApiCall(`feed:mixed:${path}`, apiCacheTtl.dynamic, () =>
     apiFetch<FeedResponse>(path, {
       method: "GET",

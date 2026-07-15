@@ -8,8 +8,11 @@ export const apiEndpoints = {
   },
   adCampaigns: {
     byId: (adCampaignId: string) => `/api/ad-campaigns/${pathId(adCampaignId)}`,
+    activate: (adCampaignId: string) => `/api/ad-campaigns/${pathId(adCampaignId)}/activate`,
     clicks: (adCampaignId: string) => `/api/ad-campaigns/${pathId(adCampaignId)}/clicks`,
     list: "/api/ad-campaigns",
+    pause: (adCampaignId: string) => `/api/ad-campaigns/${pathId(adCampaignId)}/pause`,
+    stats: (adCampaignId: string) => `/api/ad-campaigns/${pathId(adCampaignId)}/stats`,
   },
   auth: {
     login: "/api/auth/login",
@@ -76,6 +79,7 @@ export const apiEndpoints = {
   payments: {
     byId: (paymentId: string) => `/api/payments/${pathId(paymentId)}`,
     list: "/api/payments",
+    stripeSync: (paymentId: string) => `/api/payments/${pathId(paymentId)}/stripe/sync`,
     vnpayReturn: "/api/payments/vnpay/return",
   },
   reportReasons: {

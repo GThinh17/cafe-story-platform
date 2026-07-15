@@ -1,8 +1,14 @@
 import { CafePageContent } from "@/components/cafe/cafe-page-content";
 
+type CafeDetailPageProps = {
+  params: Promise<{
+    id: string;
+  }>;
+};
+
 export default async function CafeDetailPage({
   params,
-}: PageProps<"/cafes/[id]">) {
+}: CafeDetailPageProps) {
   const { id } = await params;
 
   return (

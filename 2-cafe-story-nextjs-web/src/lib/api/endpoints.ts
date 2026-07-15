@@ -29,6 +29,22 @@ export const apiEndpoints = {
     savesByUser: (userId: string) => `/api/blogs/saves/users/${pathId(userId)}`,
     savedByUser: (userId: string) => `/api/blogs/users/${pathId(userId)}/saved`,
   },
+  feed: {
+    list: "/api/feed",
+    organic: "/api/feed/organic",
+    impressions: "/api/feed/impressions",
+  },
+  adFees: {
+    list: "/api/ad-fees",
+  },
+  adCampaigns: {
+    list: "/api/ad-campaigns",
+    byId: (campaignId: string) => `/api/ad-campaigns/${pathId(campaignId)}`,
+    pause: (campaignId: string) => `/api/ad-campaigns/${pathId(campaignId)}/pause`,
+    activate: (campaignId: string) => `/api/ad-campaigns/${pathId(campaignId)}/activate`,
+    clicks: (campaignId: string) => `/api/ad-campaigns/${pathId(campaignId)}/clicks`,
+    stats: (campaignId: string) => `/api/ad-campaigns/${pathId(campaignId)}/stats`,
+  },
   cafes: {
     list: "/api/cafe-pages",
     top: "/api/cafe-pages/top",

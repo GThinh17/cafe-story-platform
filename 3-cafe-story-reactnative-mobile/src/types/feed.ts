@@ -51,6 +51,7 @@ export type SponsoredCafeResponse = {
   campaignId: string;
   cafeAvatarUrl: string | null;
   cafeCoverUrl: string | null;
+  imageUrl: string | null;
   cafeName: string | null;
   cafePageId: string;
   ctaLabel: string | null;
@@ -75,6 +76,7 @@ export type FeedResponse = {
 };
 
 export type FeedParams = {
+  bypassCache?: boolean;
   cursor?: string | null;
   size?: number;
 };

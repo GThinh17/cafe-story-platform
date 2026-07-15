@@ -2,12 +2,15 @@ package com.cafestory.service.serviceImplement;
 
 import com.cafestory.dto.responseDTO.SponsoredCafeResponseDTO;
 import com.cafestory.entity.AdCampaign;
+import com.cafestory.entity.AdDailyStat;
+import com.cafestory.entity.AdImpression;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.AdStatus;
 import com.cafestory.entity.enums.PageStatus;
 import com.cafestory.repository.AdCampaignRepository;
+import com.cafestory.repository.AdDailyStatRepository;
 import com.cafestory.repository.AdImpressionRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.SponsoredCafeCandidateService;
@@ -15,6 +18,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -32,14 +36,17 @@ public class SponsoredCafeCandidateServiceImpl implements SponsoredCafeCandidate
 
     private final AdCampaignRepository adCampaignRepository;
     private final AdImpressionRepository adImpressionRepository;
+    private final AdDailyStatRepository adDailyStatRepository;
     private final UserRepository userRepository;
 
     public SponsoredCafeCandidateServiceImpl(
             AdCampaignRepository adCampaignRepository,
             AdImpressionRepository adImpressionRepository,
+            AdDailyStatRepository adDailyStatRepository,
             UserRepository userRepository) {
         this.adCampaignRepository = adCampaignRepository;
         this.adImpressionRepository = adImpressionRepository;
+        this.adDailyStatRepository = adDailyStatRepository;
         this.userRepository = userRepository;
     }
 
@@ -56,7 +63,6 @@ public class SponsoredCafeCandidateServiceImpl implements SponsoredCafeCandidate
                 .filter(campaign -> isActiveCafePage(campaign.getCafePage()))
                 .filter(campaign -> !exceedsFrequencyCap(userId, campaign, now))
                 .map(campaign -> new ScoredSponsoredCafe(campaign, calculateAdScore(campaign, userRegion, now)))
-                .filter(candidate -> candidate.score() > 0)
                 .sorted(candidateComparator())
                 .toList();
 
@@ -66,6 +72,59 @@ public class SponsoredCafeCandidateServiceImpl implements SponsoredCafeCandidate
                 .limit(limit)
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public void recordServedImpressions(UUID userId, List<UUID> campaignIds) {
+        if (campaignIds == null || campaignIds.isEmpty()) {
+            return;
+        }
+        User user = userId == null ? null : userRepository.findById(userId).orElse(null);
+        LocalDateTime shownAt = LocalDateTime.now();
+        campaignIds.stream().distinct().forEach(campaignId -> recordServedImpression(campaignId, user, shownAt));
+    }
+
+    private void recordServedImpression(UUID campaignId, User user, LocalDateTime shownAt) {
+        AdCampaign campaign = adCampaignRepository.findByIdWithLock(campaignId).orElse(null);
+        if (!isEligibleCampaign(campaign, shownAt)) {
+            expireIfNeeded(campaign, shownAt);
+            return;
+        }
+
+        AdImpression impression = new AdImpression();
+        impression.setAdCampaign(campaign);
+        impression.setUser(user);
+        impression.setShownAt(shownAt);
+        adImpressionRepository.save(impression);
+
+        campaign.setServedImpressions(valueOrZero(campaign.getServedImpressions()) + 1);
+        expireIfNeeded(campaign, shownAt);
+        adCampaignRepository.save(campaign);
+        incrementDailyImpressions(campaign, shownAt.toLocalDate());
+    }
+
+    private void expireIfNeeded(AdCampaign campaign, LocalDateTime now) {
+        if (campaign != null && campaign.getStatus() == AdStatus.ACTIVE
+                && (valueOrZero(campaign.getServedImpressions()) >= valueOrZero(campaign.getMaxImpressions())
+                || (campaign.getEndAt() != null && !now.isBefore(campaign.getEndAt())))) {
+            campaign.setStatus(AdStatus.EXPIRED);
+            adCampaignRepository.save(campaign);
+        }
+    }
+
+    private void incrementDailyImpressions(AdCampaign campaign, LocalDate statDate) {
+        AdDailyStat stat = adDailyStatRepository.findByAdCampaignAdCampaignIdAndStatDate(
+                        campaign.getAdCampaignId(),
+                        statDate)
+                .orElseGet(() -> {
+                    AdDailyStat created = new AdDailyStat();
+                    created.setAdCampaign(campaign);
+                    created.setStatDate(statDate);
+                    return created;
+                });
+        stat.setImpressions(valueOrZero(stat.getImpressions()) + 1);
+        adDailyStatRepository.save(stat);
     }
 
     private int normalizeRequestedCount(int requestedCount) {
@@ -186,6 +245,7 @@ public class SponsoredCafeCandidateServiceImpl implements SponsoredCafeCandidate
         response.setCafeName(cafePage.getName());
         response.setCafeAvatarUrl(cafePage.getAvatarUrl());
         response.setCafeCoverUrl(cafePage.getCoverUrl());
+        response.setImageUrl(campaign.getImageUrl());
         response.setHeadline(campaign.getTitle());
         response.setDescription(campaign.getDescription());
         response.setCtaLabel(DEFAULT_CTA_LABEL);

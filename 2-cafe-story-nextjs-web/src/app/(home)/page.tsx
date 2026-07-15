@@ -4,10 +4,10 @@ import { FeedPostList } from "@/components/feed/feed-post-list";
 import { StoryRail } from "@/components/feed/story-rail";
 import { TopCafesNearby } from "@/components/feed/top-cafes-nearby";
 import { MessageDock } from "@/components/message/message-dock";
-import { mapBlogFeedToFeedPosts } from "@/features/blogs/blog-feed-adapter";
+import { mapMixedFeedToRenderableItems } from "@/features/blogs/blog-feed-adapter";
 import { ApiError } from "@/lib/api/client";
 import { getMe } from "@/lib/api/auth";
-import { getBlogFeed } from "@/lib/api/blogs";
+import { getMixedFeed } from "@/lib/api/feed";
 import {
   getCafePageById,
   getFollowedCafePagesByUserId,
@@ -17,14 +17,16 @@ import { getConversations } from "@/lib/api/chat";
 import { getFollowingByUserId, getUserById } from "@/lib/api/users";
 import { DEFAULT_AVATAR_IMAGE } from "@/lib/avatar";
 import { ACCESS_TOKEN_COOKIE } from "@/lib/routes";
-import type { FeedPost, StoryItem, TopCafe } from "@/types/feed";
+import type { FeedRenderableItem, StoryItem, TopCafe } from "@/types/feed";
 import type { MessageContact, MessageDockData } from "@/types/message";
 
 export const dynamic = "force-dynamic";
 
 type HomeFeedState = {
   errorMessage?: string;
-  posts: FeedPost[];
+  hasMore: boolean;
+  nextCursor: string | null;
+  items: FeedRenderableItem[];
 };
 
 async function loadTopCafes(): Promise<TopCafe[]> {
@@ -199,16 +201,16 @@ async function loadHomeFeed(): Promise<HomeFeedState> {
   if (!cookieStore.has(ACCESS_TOKEN_COOKIE)) {
     return {
       errorMessage: "Sign in to view your personalized feed.",
-      posts: [],
+      hasMore: false,
+      nextCursor: null,
+      items: [],
     };
   }
 
   try {
-    const feed = await getBlogFeed(
+    const feed = await getMixedFeed(
       {
-        page: 0,
         size: 20,
-        windowType: "HOUR_24",
       },
       {
         headers: {
@@ -218,7 +220,9 @@ async function loadHomeFeed(): Promise<HomeFeedState> {
     );
 
     return {
-      posts: mapBlogFeedToFeedPosts(feed),
+      hasMore: Boolean(feed.hasMore && feed.nextCursor),
+      nextCursor: feed.nextCursor,
+      items: mapMixedFeedToRenderableItems(feed),
     };
   } catch (error) {
     return {
@@ -226,7 +230,9 @@ async function loadHomeFeed(): Promise<HomeFeedState> {
         error instanceof ApiError
           ? error.message
           : "Unable to load your feed right now.",
-      posts: [],
+      hasMore: false,
+      nextCursor: null,
+      items: [],
     };
   }
 }
@@ -265,10 +271,11 @@ export default async function Home() {
           {hasSession ? <StoryRail stories={storyItems} /> : null}
           <FeedPostList
             errorMessage={feedState.errorMessage}
+            initialHasMore={feedState.hasMore}
+            initialNextCursor={feedState.nextCursor}
             initialPage={0}
             pageSize={20}
-            posts={feedState.posts}
-            windowType="HOUR_24"
+            items={feedState.items}
           />
         </section>
 

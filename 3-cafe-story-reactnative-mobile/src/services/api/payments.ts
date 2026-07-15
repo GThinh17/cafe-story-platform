@@ -28,6 +28,20 @@ export function getPayment(paymentId: string) {
   });
 }
 
+export function getPayments(paymentStatus?: string) {
+  const query = new URLSearchParams();
+  if (paymentStatus) query.set("paymentStatus", paymentStatus);
+  const queryString = query.toString();
+  const path = queryString ? `${apiEndpoints.payments.list}?${queryString}` : apiEndpoints.payments.list;
+  return apiFetch<PaymentResponse[]>(path, { method: "GET" });
+}
+
+export function syncStripePayment(paymentId: string) {
+  return apiFetch<PaymentResponse>(apiEndpoints.payments.stripeSync(paymentId), {
+    method: "POST",
+  });
+}
+
 export function handleVnpayReturn(params: URLSearchParams) {
   return apiFetch<VnpayReturnResponse>(
     withSearchParams(apiEndpoints.payments.vnpayReturn, params),

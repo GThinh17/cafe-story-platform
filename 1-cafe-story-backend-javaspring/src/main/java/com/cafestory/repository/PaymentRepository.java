@@ -22,6 +22,10 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
 
     List<Payment> findByPaymentStatusOrderByCreatedAtDesc(PaymentStatus paymentStatus);
 
+    List<Payment> findByBuyerUserIdOrderByCreatedAtDesc(UUID buyerId);
+
+    List<Payment> findByBuyerUserIdAndPaymentStatusOrderByCreatedAtDesc(UUID buyerId, PaymentStatus paymentStatus);
+
     long countByPaymentStatus(PaymentStatus paymentStatus);
 
     @Query("""
