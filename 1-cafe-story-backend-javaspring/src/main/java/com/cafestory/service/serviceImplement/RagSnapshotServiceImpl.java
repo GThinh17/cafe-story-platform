@@ -11,10 +11,12 @@ import com.cafestory.entity.ReviewerBadgeHistory;
 import com.cafestory.entity.ReviewerFormula;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.ReviewerBadge;
+import com.cafestory.entity.ReviewerBadgeThreshold;
 import com.cafestory.repository.AiModerationResultRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.CafePageRepository;
 import com.cafestory.repository.ReviewerBadgeHistoryRepository;
+import com.cafestory.repository.ReviewerBadgeThresholdRepository;
 import com.cafestory.repository.ReviewerFormulaRepository;
 import com.cafestory.repository.ReviewerRepository;
 import com.cafestory.service.serviceInterface.RagSnapshotService;
@@ -27,6 +29,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -47,6 +50,7 @@ public class RagSnapshotServiceImpl implements RagSnapshotService {
     private final AiModerationResultRepository aiModerationResultRepository;
     private final ReviewerBadgeHistoryRepository reviewerBadgeHistoryRepository;
     private final ReviewerFormulaRepository reviewerFormulaRepository;
+    private final ReviewerBadgeThresholdRepository reviewerBadgeThresholdRepository;
 
     public RagSnapshotServiceImpl(
             BlogRepository blogRepository,
@@ -54,13 +58,15 @@ public class RagSnapshotServiceImpl implements RagSnapshotService {
             ReviewerRepository reviewerRepository,
             AiModerationResultRepository aiModerationResultRepository,
             ReviewerBadgeHistoryRepository reviewerBadgeHistoryRepository,
-            ReviewerFormulaRepository reviewerFormulaRepository) {
+            ReviewerFormulaRepository reviewerFormulaRepository,
+            ReviewerBadgeThresholdRepository reviewerBadgeThresholdRepository) {
         this.blogRepository = blogRepository;
         this.cafePageRepository = cafePageRepository;
         this.reviewerRepository = reviewerRepository;
         this.aiModerationResultRepository = aiModerationResultRepository;
         this.reviewerBadgeHistoryRepository = reviewerBadgeHistoryRepository;
         this.reviewerFormulaRepository = reviewerFormulaRepository;
+        this.reviewerBadgeThresholdRepository = reviewerBadgeThresholdRepository;
     }
 
     @Override
@@ -133,6 +139,41 @@ public class RagSnapshotServiceImpl implements RagSnapshotService {
                 .toList();
 
         return buildResponse(items, tombstones, limit);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> formulaData() {
+        ReviewerFormula active = reviewerFormulaRepository.findByActiveTrue().orElse(null);
+        if (active == null) {
+            return Map.of("empty", true);
+        }
+
+        // LinkedHashMap để giữ thứ tự IRON→DIAMOND khi serialize JSON, giúp text sinh ra
+        // trong chunk_formula() ổn định — hash không đổi giữa 2 lần ingest cùng data.
+        Map<String, Object> multipliers = new LinkedHashMap<>();
+        for (ReviewerBadge badge : ReviewerBadge.values()) {
+            multipliers.put(badge.name(), active.getMultiplierForBadge(badge).toPlainString());
+        }
+
+        Map<String, Long> thresholds = new LinkedHashMap<>();
+        for (ReviewerBadgeThreshold t : reviewerBadgeThresholdRepository
+                .findByFormulaIdOrderByMinScoreAsc(active.getId())) {
+            thresholds.put(t.getBadge().name(), t.getMinScore());
+        }
+
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("formulaId", active.getId().toString());
+        data.put("likeWeight", active.getLikeWeight());
+        data.put("commentWeight", active.getCommentWeight());
+        data.put("shareWeight", active.getShareWeight());
+        data.put("likePayoutAmount", active.getLikePayoutAmount());
+        data.put("commentPayoutAmount", active.getCommentPayoutAmount());
+        data.put("sharePayoutAmount", active.getSharePayoutAmount());
+        data.put("multipliers", multipliers);
+        data.put("thresholds", thresholds);
+        data.put("updatedAt", active.getUpdatedAt());
+        return data;
     }
 
     private Map<String, Object> blogData(Blog blog, List<String> tags) {
