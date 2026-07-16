@@ -3,6 +3,7 @@ import { apiEndpoints } from "@/lib/api/endpoints";
 import type {
   CreatePaymentRequest,
   PaymentResponse,
+  PaymentStatus,
   VnpayReturnResponse,
 } from "@/types/payment";
 
@@ -23,6 +24,13 @@ export function getPayment(paymentId: string) {
   return apiFetch<PaymentResponse>(apiEndpoints.payments.byId(paymentId), {
     method: "GET",
   });
+}
+
+export function getMyPayments(paymentStatus?: PaymentStatus) {
+  const path = paymentStatus
+    ? `${apiEndpoints.payments.list}?paymentStatus=${encodeURIComponent(String(paymentStatus))}`
+    : apiEndpoints.payments.list;
+  return apiFetch<PaymentResponse[]>(path, { method: "GET" });
 }
 
 export function syncStripePayment(paymentId: string) {

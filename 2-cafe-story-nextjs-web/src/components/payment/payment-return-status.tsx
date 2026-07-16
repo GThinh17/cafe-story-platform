@@ -76,6 +76,10 @@ function toUrlSearchParams(params: Record<string, SearchParamsValue>) {
 }
 
 async function resolveRedirectPath(payment: PaymentResponse, userId: string): Promise<string> {
+  if (payment.adFeeId) {
+    return `/cafes/campaigns/new?paymentId=${encodeURIComponent(payment.paymentId)}`;
+  }
+
   if (payment.extraFeeType === "REVIEWER_REGISTRATION") {
     return "/reviewer-dashboard";
   }

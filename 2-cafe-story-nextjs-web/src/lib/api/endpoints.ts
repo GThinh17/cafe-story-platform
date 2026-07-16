@@ -79,6 +79,19 @@ export const apiEndpoints = {
   extraFees: {
     list: "/api/extra-fees",
   },
+  adFees: {
+    list: "/api/ad-fees",
+  },
+  adCampaigns: {
+    list: "/api/ad-campaigns",
+    byId: (adCampaignId: string) => `/api/ad-campaigns/${pathId(adCampaignId)}`,
+    pause: (adCampaignId: string) =>
+      `/api/ad-campaigns/${pathId(adCampaignId)}/pause`,
+    activate: (adCampaignId: string) =>
+      `/api/ad-campaigns/${pathId(adCampaignId)}/activate`,
+    clicks: (adCampaignId: string) =>
+      `/api/ad-campaigns/${pathId(adCampaignId)}/clicks`,
+  },
   comments: {
     list: "/api/comments",
     byId: (commentId: string) => `/api/comments/${pathId(commentId)}`,

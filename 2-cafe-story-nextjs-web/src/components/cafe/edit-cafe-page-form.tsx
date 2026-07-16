@@ -11,6 +11,7 @@ import { Camera, ChevronDownIcon, ImagePlus } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AvatarImage } from "@/components/ui/avatar-image";
 import { Button } from "@/components/ui/button";
+import { AdCampaignsSection } from "@/components/cafe/ad-campaigns-section";
 import { CoOwnerSection } from "@/components/cafe/co-owner-section";
 import {
   Field,
@@ -891,6 +892,11 @@ export function EditCafePageForm() {
           maxMembers={ownedCafePage!.maxMembers}
         />
       )}
+
+      {/* ── Section 6: Ad campaigns ───────────────────────────────────────── */}
+      {editMode && ownedCafePage ? (
+        <AdCampaignsSection cafePageId={ownedCafePage.id} />
+      ) : null}
 
       {/* ── Create mode submit ─────────────────────────────────────────────── */}
       {!editMode && (
