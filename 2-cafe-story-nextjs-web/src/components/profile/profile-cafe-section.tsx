@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PricingPlanModal } from "@/components/layout/pricing-plan-modal";
-import { useCafePageMembers } from "@/hooks/use-cafe-page-members";
 import { getCafePagesByOwnerId } from "@/lib/api/cafes";
 import { DEFAULT_AVATAR_IMAGE } from "@/lib/avatar";
 import type { CafePageResponse } from "@/types/cafe";
@@ -24,8 +23,6 @@ export function ProfileCafeSection({
   isOwnProfile,
   currentUserId,
 }: ProfileCafeSectionProps) {
-  const { coOwners } = useCafePageMembers(cafe?.id);
-
   if (!cafe) {
     if (!isOwnProfile || !currentUserId) {
       return null;
@@ -58,36 +55,6 @@ export function ProfileCafeSection({
           {cafe.name}
         </span>
       </Link>
-
-      {coOwners.length > 0 ? (
-        <span
-          aria-hidden="true"
-          className="mx-1 mt-4 h-16 w-px shrink-0 bg-border sm:h-20"
-        />
-      ) : null}
-
-      {coOwners.map(({ member, user }) => {
-        const handle = user.userName || "user";
-        const avatarSrc = user.userAvatar?.trim() || DEFAULT_AVATAR_IMAGE;
-
-        return (
-          <Link
-            className="grid w-20 shrink-0 justify-items-center gap-2"
-            href={`/${handle}`}
-            key={member.userId}
-          >
-            <span className="grid size-16 place-items-center overflow-hidden rounded-full border border-border bg-surface p-1 sm:size-20">
-              <Avatar className="size-full">
-                <AvatarImage alt="" src={avatarSrc} />
-                <AvatarFallback>{handle.slice(0, 1).toUpperCase()}</AvatarFallback>
-              </Avatar>
-            </span>
-            <span className="block w-20 truncate text-center text-xs font-medium text-muted">
-              @{handle}
-            </span>
-          </Link>
-        );
-      })}
     </section>
   );
 }

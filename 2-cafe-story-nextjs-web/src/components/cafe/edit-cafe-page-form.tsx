@@ -12,7 +12,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AvatarImage } from "@/components/ui/avatar-image";
 import { Button } from "@/components/ui/button";
 import { AdCampaignsSection } from "@/components/cafe/ad-campaigns-section";
-import { CoOwnerSection } from "@/components/cafe/co-owner-section";
 import {
   Field,
   FieldDescription,
@@ -884,16 +883,7 @@ export function EditCafePageForm() {
         </div>
       </SectionCard>
 
-      {/* ── Section 5: Co-owners ──────────────────────────────────────────── */}
-      {editMode && user && (
-        <CoOwnerSection
-          cafePageId={ownedCafePage!.id}
-          currentUserId={user.userId}
-          maxMembers={ownedCafePage!.maxMembers}
-        />
-      )}
-
-      {/* ── Section 6: Ad campaigns ───────────────────────────────────────── */}
+      {/* ── Section 5: Ad campaigns ───────────────────────────────────────── */}
       {editMode && ownedCafePage ? (
         <AdCampaignsSection cafePageId={ownedCafePage.id} />
       ) : null}

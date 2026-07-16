@@ -562,8 +562,8 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
               Hide cafe page on my profile
             </span>
             <span className="text-xs text-muted">
-              When on, visitors won&apos;t see your cafe page or co-owners on your
-              public profile, and the app skips loading that data.
+              When on, visitors won&apos;t see your cafe page on your public
+              profile, and the app skips loading that data.
               {isSavingDisplay ? " Saving..." : null}
             </span>
           </span>
