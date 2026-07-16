@@ -17,6 +17,10 @@ type CampaignFilter = "ALL" | "DRAFT" | "ACTIVE" | "PAUSED" | "EXPIRED";
 
 const filters: CampaignFilter[] = ["ALL", "DRAFT", "ACTIVE", "PAUSED", "EXPIRED"];
 
+function isActiveCafePage(page: CafePageResponse) {
+  return page.status === "ACTIVE" && page.pageActive === true;
+}
+
 export function AdsManagerScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<AdsManagerRouteProp>();
@@ -42,7 +46,7 @@ export function AdsManagerScreen() {
         getPayments("PAID"),
       ]);
       const campaignGroups = await Promise.all(ownedPages.map((page) => getAdCampaigns(page.id)));
-      setCafePages(ownedPages.filter((page) => page.pageActive !== false));
+      setCafePages(ownedPages.filter(isActiveCafePage));
       setPayments(paidPayments.filter((payment) => Boolean(payment.adFeeId)));
       setCampaigns(campaignGroups.flat());
     } catch (loadError) {

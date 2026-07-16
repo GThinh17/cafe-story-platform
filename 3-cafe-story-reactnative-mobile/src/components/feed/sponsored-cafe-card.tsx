@@ -52,15 +52,25 @@ export function SponsoredCafeCard({ ad, onOpenCafePage }: SponsoredCafeCardProps
   }
 
   return (
-    <Pressable
-      accessibilityLabel={`Open sponsored cafe ${ad.cafeName ?? title}`}
-      accessibilityRole="button"
-      onPress={handlePress}
-      style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-    >
-      <View style={styles.badgeRow}>
-        <Megaphone color={colors.primary} size={16} strokeWidth={2.5} />
-        <Text style={styles.badgeText}>Sponsored</Text>
+    <View style={styles.card}>
+      <View style={styles.header}>
+        <View style={styles.author}>
+          <Avatar initials={getInitials(ad.cafeName)} size={36} uri={ad.cafeAvatarUrl} />
+          <View style={styles.authorCopy}>
+            <View style={styles.displayNameRow}>
+              <Text numberOfLines={1} style={styles.displayName}>
+                {ad.cafeName || "Sponsored cafe"}
+              </Text>
+              <View style={styles.cafeBadge}>
+                <Store color={colors.primary} size={12} strokeWidth={2.5} />
+              </View>
+            </View>
+            <View style={styles.sponsoredRow}>
+              <Megaphone color={colors.primary} size={13} strokeWidth={2.5} />
+              <Text style={styles.sponsoredText}>Sponsored</Text>
+            </View>
+          </View>
+        </View>
       </View>
 
       {coverUrl ? (
@@ -80,71 +90,60 @@ export function SponsoredCafeCard({ ad, onOpenCafePage }: SponsoredCafeCardProps
       )}
 
       <View style={styles.body}>
-        <Avatar initials={getInitials(ad.cafeName)} size={42} uri={ad.cafeAvatarUrl} />
-        <View style={styles.copy}>
-          <Text numberOfLines={1} style={styles.title}>
-            {title}
-          </Text>
-          <Text numberOfLines={2} style={styles.description}>
-            {ad.description || ad.cafeName || "Discover this cafe on CafeStory."}
-          </Text>
-        </View>
+        <Text numberOfLines={2} style={styles.title}>
+          {title}
+        </Text>
+        <Text numberOfLines={3} style={styles.description}>
+          {ad.description || "Explore this sponsored cafe on CafeStory."}
+        </Text>
+        <Pressable
+          accessibilityLabel={`${ctaLabel}: ${ad.cafeName || "Sponsored cafe"}`}
+          accessibilityRole="button"
+          disabled={isClickPending}
+          onPress={() => void handlePress()}
+          style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
+        >
+          <Text style={styles.ctaText}>{isClickPending ? "Opening..." : ctaLabel}</Text>
+        </Pressable>
       </View>
-
-      <View style={styles.cta}>
-        <Text style={styles.ctaText}>{isClickPending ? "Opening..." : ctaLabel}</Text>
-      </View>
-    </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  badgeRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.xs,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-  },
-  badgeText: {
-    color: colors.primary,
-    fontSize: typography.caption,
-    fontWeight: "900",
-    letterSpacing: 0.4,
-    textTransform: "uppercase",
-  },
-  body: {
+  author: {
     alignItems: "center",
     flexDirection: "row",
     gap: spacing.md,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
+    minWidth: 0,
+  },
+  authorCopy: {
+    flex: 1,
+    minWidth: 0,
   },
   card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderRadius: 18,
-    borderWidth: 1,
-    marginHorizontal: 0,
-    overflow: "hidden",
+    backgroundColor: colors.background,
+    paddingBottom: spacing.xl,
     width: "100%",
   },
-  copy: {
-    flex: 1,
-    gap: spacing.xs,
+  cafeBadge: {
+    alignItems: "center",
+    backgroundColor: colors.primarySoft,
+    borderRadius: 9,
+    height: 18,
+    justifyContent: "center",
+    width: 18,
   },
   cover: {
     aspectRatio: 1,
-    marginTop: spacing.sm,
     width: "100%",
   },
   coverFallback: {
     alignItems: "center",
     aspectRatio: 1,
-    backgroundColor: colors.primarySoft,
+    backgroundColor: colors.surfaceMuted,
     gap: spacing.sm,
     justifyContent: "center",
-    marginTop: spacing.sm,
     paddingHorizontal: spacing.lg,
     width: "100%",
   },
@@ -154,30 +153,68 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     textAlign: "center",
   },
+  description: {
+    color: colors.secondaryStrong,
+    fontSize: typography.label,
+    lineHeight: 20,
+  },
   cta: {
     alignItems: "center",
     backgroundColor: colors.primary,
     borderRadius: 14,
     justifyContent: "center",
-    margin: spacing.lg,
+    marginTop: spacing.md,
     minHeight: 46,
+    paddingHorizontal: spacing.lg,
+    width: "100%",
   },
   ctaText: {
     color: colors.white,
     fontSize: typography.label,
     fontWeight: "900",
   },
-  description: {
-    color: colors.secondaryStrong,
+  body: {
+    gap: spacing.xs,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+  },
+  displayName: {
+    color: colors.foreground,
+    flexShrink: 1,
     fontSize: typography.label,
+    fontWeight: "800",
     lineHeight: 20,
   },
-  pressed: {
-    opacity: 0.78,
+  displayNameRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+    minWidth: 0,
+  },
+  header: {
+    alignItems: "center",
+    flexDirection: "row",
+    minHeight: 60,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: 2,
+  },
+  sponsoredRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
+  sponsoredText: {
+    color: colors.primary,
+    fontSize: typography.label,
+    fontWeight: "800",
   },
   title: {
     color: colors.foreground,
     fontSize: typography.body,
     fontWeight: "900",
+    lineHeight: 22,
+  },
+  pressed: {
+    opacity: 0.72,
   },
 });

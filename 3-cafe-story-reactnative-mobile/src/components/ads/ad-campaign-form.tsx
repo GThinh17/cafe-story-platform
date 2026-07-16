@@ -147,7 +147,7 @@ export function AdCampaignForm({ cafePages, initialPaymentId, onCreated, payment
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       allowsEditing: true,
-      aspect: [16, 9],
+      aspect: [1, 1],
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.85,
     });
@@ -283,7 +283,7 @@ export function AdCampaignForm({ cafePages, initialPaymentId, onCreated, payment
         {imageUrl ? <Image source={{ uri: imageUrl }} style={styles.preview} /> : <ImagePlus color={colors.secondary} size={30} />}
         <View style={styles.creativeCopy}>
           <Text style={styles.fieldLabel}>CREATIVE IMAGE</Text>
-          <Text style={styles.helper}>16:9 works best in both feeds.</Text>
+          <Text style={styles.helper}>Use a square 1:1 image for a consistent feed card.</Text>
         </View>
         <Button isLoading={isUploading} label={imageUrl ? "Replace" : "Upload"} onPress={chooseImage} variant="outlined" />
       </View>
