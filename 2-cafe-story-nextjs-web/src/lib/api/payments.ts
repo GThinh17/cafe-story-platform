@@ -28,8 +28,8 @@ export function getPayment(paymentId: string) {
 
 export function getMyPayments(paymentStatus?: PaymentStatus) {
   const path = paymentStatus
-    ? `${apiEndpoints.payments.list}?paymentStatus=${encodeURIComponent(String(paymentStatus))}`
-    : apiEndpoints.payments.list;
+    ? `${apiEndpoints.payments.mine}?paymentStatus=${encodeURIComponent(String(paymentStatus))}`
+    : apiEndpoints.payments.mine;
   return apiFetch<PaymentResponse[]>(path, { method: "GET" });
 }
 

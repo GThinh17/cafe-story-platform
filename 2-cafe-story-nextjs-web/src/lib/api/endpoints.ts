@@ -57,6 +57,7 @@ export const apiEndpoints = {
   },
   payments: {
     list: "/api/payments",
+    mine: "/api/payments/me",
     byId: (paymentId: string) => `/api/payments/${pathId(paymentId)}`,
     stripeSync: (paymentId: string) => `/api/payments/${pathId(paymentId)}/stripe/sync`,
     vnpayReturn: "/api/payments/vnpay/return",
