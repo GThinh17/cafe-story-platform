@@ -74,6 +74,7 @@ export type UserResponse = {
   userFollower: number | null;
   followingCount: number | null;
   accountStatus: boolean | null;
+  hideCafePageOnProfile?: boolean | null;
   regionId: string | null;
   regionCityCode?: string | null;
   regionCity: string | null;

@@ -12,6 +12,7 @@ export type UpdateMeRequest = {
   userEmail?: string;
   userPhone?: number;
   userAvatar?: string;
+  hideCafePageOnProfile?: boolean;
 };
 
 export type UpdateMeRegionRequest = {

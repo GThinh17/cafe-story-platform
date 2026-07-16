@@ -17,6 +17,7 @@ public class UserResponseDTO {
     private Integer userFollower;
     private Integer followingCount;
     private Boolean accountStatus;
+    private Boolean hideCafePageOnProfile;
     private UUID regionId;
     private String regionCityCode;
     private String regionCity;

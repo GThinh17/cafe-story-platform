@@ -28,6 +28,7 @@ export type AuthUser = {
   userDescription?: string | null;
   followingCount?: number | null;
   accountStatus: boolean;
+  hideCafePageOnProfile?: boolean | null;
   regionCityCode?: string | null;
   regionCity?: string | null;
   regionProvinceCode?: string | null;

@@ -70,6 +70,11 @@ public class User {
     @ColumnDefault("true")
     private Boolean accountStatus = true;
 
+    @NotNull
+    @Column(name = "hide_cafe_page_on_profile", nullable = false)
+    @ColumnDefault("false")
+    private Boolean hideCafePageOnProfile = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "region_id")
     private Region region;
