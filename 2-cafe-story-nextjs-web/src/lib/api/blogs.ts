@@ -1,3 +1,8 @@
+import {
+  apiCacheTtl,
+  cachedApiCall,
+  invalidateApiCache,
+} from "@/lib/api/api-cache";
 import { apiFetch } from "@/lib/api/client";
 import { apiEndpoints } from "@/lib/api/endpoints";
 import type {
@@ -59,26 +64,30 @@ export function getBlogs(options: ApiRequestOptions = {}) {
   });
 }
 
-export function createBlog(
+export async function createBlog(
   request: BlogCreateRequest,
   options: ApiRequestOptions = {},
 ) {
-  return apiFetch<BlogResponse>(apiEndpoints.blogs.list, {
+  const response = await apiFetch<BlogResponse>(apiEndpoints.blogs.list, {
     body: request,
     headers: options.headers,
     method: "POST",
   });
+  invalidateApiCache("blogs:by-user:");
+  return response;
 }
 
-export function createModeratedBlog(
+export async function createModeratedBlog(
   request: BlogCreateRequest,
   options: ApiRequestOptions = {},
 ) {
-  return apiFetch<BlogResponse>(apiEndpoints.blogs.moderated, {
+  const response = await apiFetch<BlogResponse>(apiEndpoints.blogs.moderated, {
     body: request,
     headers: options.headers,
     method: "POST",
   });
+  invalidateApiCache("blogs:by-user:");
+  return response;
 }
 
 export function getBlogById(blogId: string, options: ApiRequestOptions = {}) {
@@ -93,12 +102,17 @@ export function getBlogsByUser(
   status?: BlogPostStatus,
   options: ApiRequestOptions = {},
 ) {
-  return apiFetch<BlogResponse[]>(
-    withQuery(apiEndpoints.blogs.byUser(userId), { status }),
-    {
-      headers: options.headers,
-      method: "GET",
-    },
+  return cachedApiCall(
+    `blogs:by-user:${userId}:${status ?? "ALL"}`,
+    apiCacheTtl.dynamic,
+    () =>
+      apiFetch<BlogResponse[]>(
+        withQuery(apiEndpoints.blogs.byUser(userId), { status }),
+        {
+          headers: options.headers,
+          method: "GET",
+        },
+      ),
   );
 }
 
@@ -119,8 +133,8 @@ export function getTrendingBlogs(
   );
 }
 
-export function likeBlog(blogId: string, options: ActorContextOptions = {}) {
-  return apiFetch<BlogLikeResponse>(
+export async function likeBlog(blogId: string, options: ActorContextOptions = {}) {
+  const response = await apiFetch<BlogLikeResponse>(
     withQuery(apiEndpoints.blogs.likes(blogId), {
       actorCafePageId: options.actorCafePageId,
       actorContextType: options.actorContextType,
@@ -130,29 +144,42 @@ export function likeBlog(blogId: string, options: ActorContextOptions = {}) {
     method: "POST",
     },
   );
+  invalidateApiCache("blogs:likes-by-user:");
+  return response;
 }
 
-export function unlikeBlog(blogId: string, options: ActorContextOptions = {}) {
-  return apiFetch<void>(withQuery(apiEndpoints.blogs.likes(blogId), {
+export async function unlikeBlog(blogId: string, options: ActorContextOptions = {}) {
+  await apiFetch<void>(withQuery(apiEndpoints.blogs.likes(blogId), {
     actorCafePageId: options.actorCafePageId,
     actorContextType: options.actorContextType,
   }), {
     headers: options.headers,
     method: "DELETE",
   });
+  invalidateApiCache("blogs:likes-by-user:");
 }
 
 export function getBlogLikesByUser(userId: string, options: ApiRequestOptions = {}) {
-  return apiFetch<BlogLikeResponse[]>(apiEndpoints.blogs.likesByUser(userId), {
-    headers: options.headers,
-    method: "GET",
-  });
+  return cachedApiCall(
+    `blogs:likes-by-user:${userId}`,
+    apiCacheTtl.dynamic,
+    () =>
+      apiFetch<BlogLikeResponse[]>(apiEndpoints.blogs.likesByUser(userId), {
+        headers: options.headers,
+        method: "GET",
+      }),
+  );
 }
 export function getSharedBlogsByUser(userId: string, options: ApiRequestOptions = {}) {
-  return apiFetch<BlogResponse[]>(apiEndpoints.blogs.sharedByUser(userId), {
-    headers: options.headers,
-    method: "GET",
-  });
+  return cachedApiCall(
+    `blogs:shared-by-user:${userId}`,
+    apiCacheTtl.dynamic,
+    () =>
+      apiFetch<BlogResponse[]>(apiEndpoints.blogs.sharedByUser(userId), {
+        headers: options.headers,
+        method: "GET",
+      }),
+  );
 }
 
 export type BlogShareRequest = {
@@ -173,52 +200,79 @@ export type BlogShareResponse = {
   createdAt: string | null;
 };
 
-export function shareBlog(
+export async function shareBlog(
   blogId: string,
   request: BlogShareRequest = { shareType: "PUBLIC" },
 ) {
-  return apiFetch<BlogShareResponse>(apiEndpoints.blogs.shares(blogId), {
-    body: request,
-    method: "POST",
-  });
+  const response = await apiFetch<BlogShareResponse>(
+    apiEndpoints.blogs.shares(blogId),
+    {
+      body: request,
+      method: "POST",
+    },
+  );
+  invalidateApiCache("blogs:shared-by-user:");
+  return response;
 }
 
-export function unshareBlog(blogId: string) {
-  return apiFetch<void>(apiEndpoints.blogs.shares(blogId), {
+export async function unshareBlog(blogId: string) {
+  await apiFetch<void>(apiEndpoints.blogs.shares(blogId), {
     method: "DELETE",
   });
+  invalidateApiCache("blogs:shared-by-user:");
 }
 
-export function saveBlog(blogId: string, options: ApiRequestOptions = {}) {
-  return apiFetch<BlogSaveResponse>(apiEndpoints.blogs.saves(blogId), {
-    headers: options.headers,
-    method: "POST",
-  });
+export async function saveBlog(blogId: string, options: ApiRequestOptions = {}) {
+  const response = await apiFetch<BlogSaveResponse>(
+    apiEndpoints.blogs.saves(blogId),
+    {
+      headers: options.headers,
+      method: "POST",
+    },
+  );
+  invalidateBlogSaveCache();
+  return response;
 }
 
-export function unsaveBlog(blogId: string, options: ApiRequestOptions = {}) {
-  return apiFetch<void>(apiEndpoints.blogs.saves(blogId), {
+export async function unsaveBlog(blogId: string, options: ApiRequestOptions = {}) {
+  await apiFetch<void>(apiEndpoints.blogs.saves(blogId), {
     headers: options.headers,
     method: "DELETE",
   });
+  invalidateBlogSaveCache();
+}
+
+function invalidateBlogSaveCache() {
+  invalidateApiCache("blogs:saves-by-user:");
+  invalidateApiCache("blogs:saved-by-user:");
 }
 
 export function getBlogSavesByUser(
   userId: string,
   options: ApiRequestOptions = {},
 ) {
-  return apiFetch<BlogSaveResponse[]>(apiEndpoints.blogs.savesByUser(userId), {
-    headers: options.headers,
-    method: "GET",
-  });
+  return cachedApiCall(
+    `blogs:saves-by-user:${userId}`,
+    apiCacheTtl.dynamic,
+    () =>
+      apiFetch<BlogSaveResponse[]>(apiEndpoints.blogs.savesByUser(userId), {
+        headers: options.headers,
+        method: "GET",
+      }),
+  );
 }
 
 export function getSavedBlogsByUserId(
   userId: string,
   options: ApiRequestOptions = {},
 ) {
-  return apiFetch<BlogResponse[]>(apiEndpoints.blogs.savedByUser(userId), {
-    headers: options.headers,
-    method: "GET",
-  });
+  return cachedApiCall(
+    `blogs:saved-by-user:${userId}`,
+    apiCacheTtl.dynamic,
+    () =>
+      apiFetch<BlogResponse[]>(apiEndpoints.blogs.savedByUser(userId), {
+        headers: options.headers,
+        method: "GET",
+      }),
+  );
 }

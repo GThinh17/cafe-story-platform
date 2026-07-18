@@ -13,6 +13,7 @@ export type BlogFeedResponse = {
   commentCount: number | null;
   shareCount: number | null;
   saveCount?: number | null;
+  isLike?: boolean | null;
   isSave?: boolean | null;
   authorUserId: string;
   authorUserName: string | null;

@@ -14,8 +14,6 @@ import { ReportPostModal } from "@/components/feed/report-post-modal";
 import { mapBlogFeedToFeedPosts } from "@/features/blogs/blog-feed-adapter";
 import {
   getBlogFeed,
-  getBlogLikesByUser,
-  getBlogSavesByUser,
   likeBlog,
   saveBlog,
   shareBlog,
@@ -47,8 +45,6 @@ export function FeedPostList({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(posts.length >= pageSize);
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
-  const [likedPostIds, setLikedPostIds] = useState<Set<string> | null>(null);
-  const [savedPostIds, setSavedPostIds] = useState<Set<string> | null>(null);
   const isLoadingMoreRef = useRef(false);
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
@@ -118,33 +114,6 @@ export function FeedPostList({
     [updatePost],
   );
 
-  const applyLikedState = useCallback(
-    (nextPosts: FeedPost[]) => {
-      if (!likedPostIds) {
-        return nextPosts;
-      }
-
-      return nextPosts.map((post) => ({
-        ...post,
-        isLiked: post.id ? likedPostIds.has(post.id) : false,
-      }));
-    },
-    [likedPostIds],
-  );
-
-  const applySavedState = useCallback(
-    (nextPosts: FeedPost[]) => {
-      if (!savedPostIds) {
-        return nextPosts;
-      }
-      return nextPosts.map((post) => ({
-        ...post,
-        isSaved: post.id ? savedPostIds.has(post.id) : false,
-      }));
-    },
-    [savedPostIds],
-  );
-
   const handleSaveClick = useCallback(
     async (post: FeedPost) => {
       if (!post.id) return;
@@ -154,17 +123,6 @@ export function FeedPostList({
         ...currentPost,
         isSaved: !wasSaved,
       }));
-
-      setSavedPostIds((current) => {
-        if (!current) return current;
-        const next = new Set(current);
-        if (wasSaved) {
-          next.delete(post.id!);
-        } else {
-          next.add(post.id!);
-        }
-        return next;
-      });
 
       try {
         if (wasSaved) {
@@ -177,16 +135,6 @@ export function FeedPostList({
           ...currentPost,
           isSaved: wasSaved,
         }));
-        setSavedPostIds((current) => {
-          if (!current) return current;
-          const next = new Set(current);
-          if (wasSaved) {
-            next.add(post.id!);
-          } else {
-            next.delete(post.id!);
-          }
-          return next;
-        });
       }
     },
     [updatePost],
@@ -207,9 +155,7 @@ export function FeedPostList({
         size: pageSize,
         windowType,
       });
-      const nextPosts = applySavedState(
-        applyLikedState(mapBlogFeedToFeedPosts(response)),
-      );
+      const nextPosts = mapBlogFeedToFeedPosts(response);
 
       setFeedPosts((currentPosts) => [...currentPosts, ...nextPosts]);
       setNextPage((currentPage) => currentPage + 1);
@@ -220,7 +166,7 @@ export function FeedPostList({
       isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [applyLikedState, applySavedState, hasMore, nextPage, pageSize, windowType]);
+  }, [hasMore, nextPage, pageSize, windowType]);
 
   useEffect(() => {
     setFeedPosts(posts);
@@ -230,87 +176,6 @@ export function FeedPostList({
     isLoadingMoreRef.current = false;
     setIsLoadingMore(false);
   }, [initialPage, pageSize, posts]);
-
-  useEffect(() => {
-    if (!user?.userId) {
-      return;
-    }
-
-    let isActive = true;
-    const userId = user.userId;
-
-    async function syncLikedPosts() {
-      try {
-        const likes = await getBlogLikesByUser(userId);
-        const nextLikedPostIds = new Set(likes.map((like) => like.blogId));
-
-        if (!isActive) {
-          return;
-        }
-
-        setLikedPostIds(nextLikedPostIds);
-        setFeedPosts((currentPosts) =>
-          currentPosts.map((post) => ({
-            ...post,
-            isLiked: post.id ? nextLikedPostIds.has(post.id) : false,
-          })),
-        );
-      } catch {
-        if (!isActive) {
-          return;
-        }
-
-        setFeedPosts((currentPosts) =>
-          currentPosts.map((post) => ({
-            ...post,
-            isLiked: post.isLiked ?? false,
-          })),
-        );
-      }
-    }
-
-    void syncLikedPosts();
-
-    return () => {
-      isActive = false;
-    };
-  }, [user?.userId]);
-
-  useEffect(() => {
-    if (!user?.userId) {
-      setLikedPostIds(null);
-      setSavedPostIds(null);
-    }
-  }, [user?.userId]);
-
-  useEffect(() => {
-    if (!user?.userId) return;
-    let isActive = true;
-    const userId = user.userId;
-
-    async function syncSavedPosts() {
-      try {
-        const saves = await getBlogSavesByUser(userId);
-        if (!isActive) return;
-        const nextIds = new Set(saves.map((s) => s.blogId));
-        setSavedPostIds(nextIds);
-        setFeedPosts((currentPosts) =>
-          currentPosts.map((post) => ({
-            ...post,
-            isSaved: post.id ? nextIds.has(post.id) : false,
-          })),
-        );
-      } catch {
-        if (!isActive) return;
-        setSavedPostIds(new Set());
-      }
-    }
-
-    void syncSavedPosts();
-    return () => {
-      isActive = false;
-    };
-  }, [user?.userId]);
 
   useEffect(() => {
     const sentinel = loadMoreSentinelRef.current;
@@ -430,10 +295,11 @@ export function FeedPostList({
   return (
     <>
       <div className="flex flex-col gap-6">
-        {feedPosts.map((post) => (
+        {feedPosts.map((post, index) => (
           <PostCard
             key={post.id ?? post.cafe}
             currentUserId={user?.userId}
+            eagerMedia={index === 0}
             onCommentClick={(selectedPost) => {
               if (selectedPost.id) {
                 setSelectedPostId(selectedPost.id);

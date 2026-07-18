@@ -87,6 +87,26 @@ export type UserResponse = {
   isFollowing: boolean | null;
 };
 
+export type FollowTargetType = "USER" | "CAFE_PAGE" | string;
+
+export type FollowTargetResponse = {
+  avatar: string | null;
+  cafePageId: string | null;
+  city: string | null;
+  displayName: string | null;
+  followedAt: string | null;
+  followId: string;
+  ownerUserId: string | null;
+  pageActive: boolean | null;
+  pageName: string | null;
+  pageStatus: string | null;
+  targetId: string | null;
+  targetType: FollowTargetType;
+  userFullName: string | null;
+  userId: string | null;
+  username: string | null;
+};
+
 export type UserFollowResponse = {
   id: string;
   followerUserId: string;

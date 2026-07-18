@@ -7,6 +7,13 @@
       "runtimeArgs": ["run", "dev", "--prefix", "2-cafe-story-nextjs-web"],
       "port": 3000,
       "autoPort": false
+    },
+    {
+      "name": "nextjs-web-prod",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start", "--prefix", "2-cafe-story-nextjs-web"],
+      "port": 3000,
+      "autoPort": false
     }
   ]
 }

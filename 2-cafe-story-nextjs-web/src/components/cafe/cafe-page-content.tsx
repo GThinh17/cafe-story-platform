@@ -11,6 +11,7 @@ import { useBfcacheRestoreEffect } from "@/hooks/use-bfcache-restore";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { ApiError } from "@/lib/api/client";
 import { getBlogsByCafePageId, getCafePageById } from "@/lib/api/cafes";
+import { imageWidths, optimizeImageUrl } from "@/lib/image-optimizer";
 import { mockCafeMenu } from "@/mocks/cafes";
 import type { CafePageResponse, CafeSummary } from "@/types/cafe";
 import type { FeedPost } from "@/types/feed";
@@ -84,12 +85,15 @@ function buildCafeTags(cafe: CafePageResponse) {
 }
 
 function mapCafePageResponseToCafeSummary(cafe: CafePageResponse): CafeSummary {
-  const avatarImage = firstNonEmpty([
-    cafe.avatarUrl,
-    cafe.coverUrl,
-    DEFAULT_CAFE_IMAGE,
-  ]) ?? DEFAULT_CAFE_IMAGE;
-  const coverImage = firstNonEmpty([cafe.coverUrl, cafe.avatarUrl]);
+  const avatarImage = optimizeImageUrl(
+    firstNonEmpty([cafe.avatarUrl, cafe.coverUrl, DEFAULT_CAFE_IMAGE]) ??
+      DEFAULT_CAFE_IMAGE,
+    { width: imageWidths.cafeAvatar },
+  );
+  const coverImage =
+    optimizeImageUrl(firstNonEmpty([cafe.coverUrl, cafe.avatarUrl]), {
+      width: imageWidths.cover,
+    }) || undefined;
   const rating =
     typeof cafe.ratingScore === "number" ? cafe.ratingScore.toFixed(1) : "New";
   const tags = buildCafeTags(cafe);

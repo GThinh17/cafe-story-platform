@@ -21,6 +21,7 @@ import {
 import { getCafePagesByOwnerId } from "@/lib/api/cafes";
 import { createDirectConversation } from "@/lib/api/chat";
 import { ApiError } from "@/lib/api/client";
+import { imageWidths, optimizeImageUrl } from "@/lib/image-optimizer";
 import { getReviewerByUserId } from "@/lib/api/reviewers";
 import { getUserByUsername } from "@/lib/api/users";
 import {
@@ -91,12 +92,17 @@ function mapUserResponseToProfile(user: UserResponse): UserProfile {
 }
 
 function getProfileAvatarImage(user: UserResponse) {
-  return firstNonEmpty([
-    user.userAvatar,
-    user.avatar,
-    user.profileImage,
-    user.imageUrl,
-  ]) ?? DEFAULT_AVATAR_IMAGE;
+  return (
+    optimizeImageUrl(
+      firstNonEmpty([
+        user.userAvatar,
+        user.avatar,
+        user.profileImage,
+        user.imageUrl,
+      ]),
+      { width: imageWidths.cafeAvatar },
+    ) || DEFAULT_AVATAR_IMAGE
+  );
 }
 
 function firstNonEmpty(values: Array<string | null | undefined>) {
@@ -199,8 +205,6 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
       setIsProfileLoading(false);
       return;
     }
-
-    console.log("[profile] fetch", usernameToFetch);
 
     try {
       const response = await getUserByUsername(usernameToFetch);

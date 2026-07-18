@@ -1,3 +1,8 @@
+import {
+  apiCacheTtl,
+  cachedApiCall,
+  invalidateApiCache,
+} from "@/lib/api/api-cache";
 import { apiFetch } from "@/lib/api/client";
 import { apiEndpoints } from "@/lib/api/endpoints";
 import type {
@@ -57,18 +62,19 @@ export function getTopCafePages(
   params: CafeTopParams = {},
   options: ApiRequestOptions = {},
 ) {
-  return apiFetch<CafePageRankingResponse[]>(
-    withQuery(apiEndpoints.cafes.top, {
-      city: params.city,
-      area: params.area,
-      province: params.province,
-      regionId: params.regionId,
-      size: params.size,
-    }),
-    {
+  const path = withQuery(apiEndpoints.cafes.top, {
+    city: params.city,
+    area: params.area,
+    province: params.province,
+    regionId: params.regionId,
+    size: params.size,
+  });
+
+  return cachedApiCall(`cafes:top:${path}`, apiCacheTtl.dynamic, () =>
+    apiFetch<CafePageRankingResponse[]>(path, {
       headers: options.headers,
       method: "GET",
-    },
+    }),
   );
 }
 
@@ -76,49 +82,72 @@ export function getFollowedCafePagesByUserId(
   userId: string,
   options: ApiRequestOptions = {},
 ) {
-  return apiFetch<CafePageFollowResponse[]>(
-    apiEndpoints.cafes.followsByUser(userId),
-    {
-      headers: options.headers,
-      method: "GET",
-    },
+  return cachedApiCall(
+    `cafes:follows-by-user:${userId}`,
+    apiCacheTtl.dynamic,
+    () =>
+      apiFetch<CafePageFollowResponse[]>(
+        apiEndpoints.cafes.followsByUser(userId),
+        {
+          headers: options.headers,
+          method: "GET",
+        },
+      ),
   );
 }
 
-export function followCafePage(cafePageId: string) {
-  return apiFetch<void>(apiEndpoints.cafes.follows(cafePageId), {
+export async function followCafePage(cafePageId: string) {
+  await apiFetch<void>(apiEndpoints.cafes.follows(cafePageId), {
     method: "POST",
   });
+  invalidateCafeFollowCache(cafePageId);
 }
 
-export function unfollowCafePage(cafePageId: string) {
-  return apiFetch<void>(apiEndpoints.cafes.follows(cafePageId), {
+export async function unfollowCafePage(cafePageId: string) {
+  await apiFetch<void>(apiEndpoints.cafes.follows(cafePageId), {
     method: "DELETE",
   });
+  invalidateCafeFollowCache(cafePageId);
+}
+
+function invalidateCafeFollowCache(cafePageId: string) {
+  invalidateApiCache(`cafes:detail:${cafePageId}`);
+  invalidateApiCache("cafes:follows-by-user:");
+  invalidateApiCache("users:following-targets:");
 }
 
 export function getCafePageById(
   cafePageId: string,
   options: ApiRequestOptions = {},
 ) {
-  return apiFetch<CafePageResponse>(apiEndpoints.cafes.byId(cafePageId), {
-    headers: options.headers,
-    method: "GET",
-  });
+  return cachedApiCall(
+    `cafes:detail:${cafePageId}`,
+    apiCacheTtl.dynamic,
+    () =>
+      apiFetch<CafePageResponse>(apiEndpoints.cafes.byId(cafePageId), {
+        headers: options.headers,
+        method: "GET",
+      }),
+  );
 }
 
 export function getCafePagesByOwnerId(
   ownerUserId: string,
   options: ApiRequestOptions = {},
 ) {
-  return apiFetch<CafePageResponse[]>(
-    withQuery(apiEndpoints.cafes.list, {
-      ownerUserId,
-    }),
-    {
-      headers: options.headers,
-      method: "GET",
-    },
+  return cachedApiCall(
+    `cafes:by-owner:${ownerUserId}`,
+    apiCacheTtl.dynamic,
+    () =>
+      apiFetch<CafePageResponse[]>(
+        withQuery(apiEndpoints.cafes.list, {
+          ownerUserId,
+        }),
+        {
+          headers: options.headers,
+          method: "GET",
+        },
+      ),
   );
 }
 
@@ -129,14 +158,20 @@ export function createCafePage(request: CafePageCreateRequest) {
   });
 }
 
-export function updateCafePage(
+export async function updateCafePage(
   cafePageId: string,
   request: CafePageUpdateRequest,
 ) {
-  return apiFetch<CafePageResponse>(apiEndpoints.cafes.byId(cafePageId), {
-    method: "PATCH",
-    body: request,
-  });
+  const response = await apiFetch<CafePageResponse>(
+    apiEndpoints.cafes.byId(cafePageId),
+    {
+      method: "PATCH",
+      body: request,
+    },
+  );
+  invalidateApiCache(`cafes:detail:${cafePageId}`);
+  invalidateApiCache("cafes:by-owner:");
+  return response;
 }
 
 export function getBlogsByCafePageId(
@@ -156,24 +191,30 @@ export function getBlogsByCafePageId(
   );
 }
 
-export function likeCafePage(
+export async function likeCafePage(
   cafePageId: string,
   options: ApiRequestOptions = {},
 ) {
-  return apiFetch<CafePageLikeResponse>(apiEndpoints.cafes.likes(cafePageId), {
-    headers: options.headers,
-    method: "POST",
-  });
+  const response = await apiFetch<CafePageLikeResponse>(
+    apiEndpoints.cafes.likes(cafePageId),
+    {
+      headers: options.headers,
+      method: "POST",
+    },
+  );
+  invalidateApiCache(`cafes:detail:${cafePageId}`);
+  return response;
 }
 
-export function unlikeCafePage(
+export async function unlikeCafePage(
   cafePageId: string,
   options: ApiRequestOptions = {},
 ) {
-  return apiFetch<void>(apiEndpoints.cafes.likes(cafePageId), {
+  await apiFetch<void>(apiEndpoints.cafes.likes(cafePageId), {
     headers: options.headers,
     method: "DELETE",
   });
+  invalidateApiCache(`cafes:detail:${cafePageId}`);
 }
 
 export function getPageMembers(

@@ -712,10 +712,54 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         Map<UUID, Region> regionsById = regionRepository.findAllById(regionIds)
                 .stream()
                 .collect(Collectors.toMap(Region::getRegionId, Function.identity()));
+        ViewerFeedContext viewerContext = buildViewerFeedContext(viewerUserId, scores, pageIds, blogIds);
 
         return scores.stream()
-                .map(score -> toFeedResponse(score, cafePagesById, regionsById, imageUrlsByBlogId, viewerUserId))
+                .map(score -> toFeedResponse(score, cafePagesById, regionsById, imageUrlsByBlogId, viewerContext))
                 .toList();
+    }
+
+    private ViewerFeedContext buildViewerFeedContext(
+            UUID viewerUserId,
+            List<BlogRecommendationScore> scores,
+            List<UUID> pageIds,
+            List<UUID> blogIds) {
+        if (viewerUserId == null) {
+            return ViewerFeedContext.anonymous();
+        }
+
+        List<UUID> authorUserIds = scores.stream()
+                .map(score -> score.getBlog().getAuthor())
+                .filter(author -> author != null && author.getUserId() != null)
+                .map(User::getUserId)
+                .distinct()
+                .toList();
+        Set<UUID> followedUserIds = authorUserIds.isEmpty()
+                ? Set.of()
+                : Set.copyOf(userFollowRepository.findFollowedUserIds(viewerUserId, authorUserIds));
+        Set<UUID> followedPageIds = pageIds.isEmpty()
+                ? Set.of()
+                : Set.copyOf(pageFollowRepository.findFollowedCafePageIds(viewerUserId, pageIds));
+        Set<UUID> likedBlogIds = blogIds.isEmpty()
+                ? Set.of()
+                : Set.copyOf(blogLikeRepository.findLikedBlogIdsByUserIdAndBlogIds(viewerUserId, blogIds));
+        Set<UUID> savedBlogIds = blogIds.isEmpty()
+                ? Set.of()
+                : Set.copyOf(blogSaveRepository.findSavedBlogIdsByUserIdAndBlogIds(viewerUserId, blogIds));
+
+        return new ViewerFeedContext(viewerUserId, followedUserIds, followedPageIds, likedBlogIds, savedBlogIds);
+    }
+
+    private record ViewerFeedContext(
+            UUID viewerUserId,
+            Set<UUID> followedUserIds,
+            Set<UUID> followedPageIds,
+            Set<UUID> likedBlogIds,
+            Set<UUID> savedBlogIds) {
+
+        static ViewerFeedContext anonymous() {
+            return new ViewerFeedContext(null, Set.of(), Set.of(), Set.of(), Set.of());
+        }
     }
 
     private Map<UUID, List<String>> imageUrlsByBlogId(List<UUID> blogIds) {
@@ -735,7 +779,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             Map<UUID, CafePage> cafePagesById,
             Map<UUID, Region> regionsById,
             Map<UUID, List<String>> imageUrlsByBlogId,
-            UUID viewerUserId) {
+            ViewerFeedContext viewerContext) {
         Blog blog = score.getBlog();
         User author = blog.getAuthor();
         CafePage cafePage = blog.getPageId() == null ? null : cafePagesById.get(blog.getPageId());
@@ -767,14 +811,17 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             response.setRegionArea(region.getArea());
         }
         response.setRankPosition(score.getRankPosition());
+        UUID viewerUserId = viewerContext.viewerUserId();
         UUID authorUserId = author.getUserId();
         response.setIsAuthorFollowing(viewerUserId != null
                 && authorUserId != null
                 && !viewerUserId.equals(authorUserId)
-                && userFollowRepository.existsByFollowerUserIdAndFollowingUserId(viewerUserId, authorUserId));
+                && viewerContext.followedUserIds().contains(authorUserId));
         UUID pageId = blog.getPageId();
         response.setIsPageFollowing(viewerUserId != null && pageId != null
-                && pageFollowRepository.existsByUserUserIdAndCafePageId(viewerUserId, pageId));
+                && viewerContext.followedPageIds().contains(pageId));
+        response.setIsLike(viewerUserId != null && viewerContext.likedBlogIds().contains(blog.getId()));
+        response.setIsSave(viewerUserId != null && viewerContext.savedBlogIds().contains(blog.getId()));
         response.setCreatedAt(blog.getCreatedAt());
         return response;
     }

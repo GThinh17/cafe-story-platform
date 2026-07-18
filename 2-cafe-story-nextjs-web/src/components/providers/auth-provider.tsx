@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { invalidateApiCache } from "@/lib/api/api-cache";
 import { ApiError } from "@/lib/api/client";
 import { getMe } from "@/lib/api/auth";
 import { followRegistry } from "@/lib/follow-registry";
@@ -33,6 +34,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const applyUser = useCallback((nextUser: AuthUser | null) => {
     if (nextUser?.userId !== userRef.current?.userId) {
       followRegistry.clear();
+      invalidateApiCache();
     }
     userRef.current = nextUser;
     setUser(nextUser);
@@ -97,7 +99,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [applyUser]);
 
-  const refetch = useCallback(() => refreshAuth(), [refreshAuth]);
+  const refetch = useCallback(() => {
+    invalidateApiCache("auth:me");
+    return refreshAuth();
+  }, [refreshAuth]);
 
   useEffect(() => {
     void refreshAuth();

@@ -1,7 +1,8 @@
 -- Seed 100 demo users (50 male + 50 female) for CafeStory.
 -- Full names generated from Vietnamese family + middle + first name lists.
--- Addresses: random Phường in Thành phố Cần Thơ (province_code 92,
--- city_code 92). No street/area — user requested ward-level only.
+-- Addresses: random Phường in Thành phố Cần Thơ (province_code
+-- 92, city_code 92). No street/area —
+-- user requested ward-level only.
 -- Avatars: DiceBear avataaars seeded by username → each user gets a stable
 -- unique avatar URL.
 -- Password '123456' hashed via pgcrypto.crypt(...gen_salt('bf', 10)) at INSERT

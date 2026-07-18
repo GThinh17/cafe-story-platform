@@ -108,6 +108,8 @@ export const apiEndpoints = {
     meRegion: "/api/users/me/region",
     followers: (userId: string) => `/api/users/${pathId(userId)}/followers`,
     following: (userId: string) => `/api/users/${pathId(userId)}/following`,
+    followingTargets: (userId: string, type = "ALL") =>
+      `/api/users/${pathId(userId)}/following-targets?type=${pathId(type)}`,
     follow: (followingUserId: string) =>
       `/api/users/${pathId(followingUserId)}/followers`,
   },
