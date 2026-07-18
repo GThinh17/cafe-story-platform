@@ -1,0 +1,10 @@
+Command: npm run typecheck
+Result: FAIL
+
+RangeError: Maximum call stack size exceeded
+The stack originates in TypeScript checkExpression/checkIdentifier while checking the mobile project.
+Node.js: v20.17.0
+
+The full local stack contained no secrets. It was summarized here because repeated TypeScript internal frames do not add diagnostic value.
+
+Follow-up diagnosis: the unchanged Git baseline fails with the same error, so this is not caused by the remote-image changes.

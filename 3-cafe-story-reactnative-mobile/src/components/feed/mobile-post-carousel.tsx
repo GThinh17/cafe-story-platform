@@ -1,13 +1,16 @@
+import { ImageOff } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import {
   FlatList,
   Image,
+  type ImageStyle,
   NativeScrollEvent,
   NativeSyntheticEvent,
   StyleSheet,
   View,
 } from "react-native";
 
+import { useMobileImageSource } from "../../hooks/use-mobile-image-source";
 import { colors, spacing } from "../../theme";
 
 type MobilePostCarouselProps = {
@@ -16,6 +19,54 @@ type MobilePostCarouselProps = {
   imageUrls: string[];
   insetHorizontal?: number;
 };
+
+type PostImageProps = {
+  accessibilityLabel: string;
+  aspectRatio: number;
+  uri: string;
+  width: number;
+};
+
+function PostImage({
+  accessibilityLabel,
+  aspectRatio,
+  uri,
+  width,
+}: PostImageProps) {
+  const { failed, markFailed, source } = useMobileImageSource(uri);
+
+  const imageStyle: ImageStyle = {
+    aspectRatio,
+    width,
+  };
+
+  if (failed) {
+    return (
+      <View
+        accessibilityLabel={`${accessibilityLabel} unavailable`}
+        accessibilityRole="image"
+        style={[styles.image, styles.imageFallback, imageStyle]}
+      >
+        <ImageOff color={colors.muted} size={34} strokeWidth={1.8} />
+      </View>
+    );
+  }
+
+  if (!source) {
+    return <View style={[styles.image, imageStyle]} />;
+  }
+
+  return (
+    <Image
+      accessibilityLabel={accessibilityLabel}
+      onError={markFailed}
+      resizeMethod="resize"
+      resizeMode="cover"
+      source={source}
+      style={[styles.image, imageStyle]}
+    />
+  );
+}
 
 export function MobilePostCarousel({
   aspectRatio = 1,
@@ -62,17 +113,11 @@ export function MobilePostCarousel({
           pagingEnabled
           renderItem={({ index, item }) => (
             <View style={[styles.slide, { paddingHorizontal: insetHorizontal, width: itemWidth }]}>
-              <Image
+              <PostImage
                 accessibilityLabel={`${imageAccessibilityLabel} ${index + 1}`}
-                resizeMode="cover"
-                source={{ uri: item }}
-                style={[
-                  styles.image,
-                  {
-                    aspectRatio,
-                    width: imageWidth,
-                  },
-                ]}
+                aspectRatio={aspectRatio}
+                uri={item}
+                width={imageWidth}
               />
             </View>
           )}
@@ -118,6 +163,10 @@ const styles = StyleSheet.create({
   image: {
     backgroundColor: colors.surfaceMuted,
     borderRadius: 0,
+  },
+  imageFallback: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   list: {
     width: "100%",

@@ -1,0 +1,37 @@
+{
+  "featureSlug": "mobile-remote-image-delivery",
+  "result": "pass_with_limitations",
+  "phase1": {
+    "status": "pass",
+    "databaseChanged": false,
+    "backendChanged": false,
+    "diceBearPngCheck": "pass",
+    "wikimediaUserAgentCheck": "pass"
+  },
+  "phase2": {
+    "status": "pass",
+    "strategy": "wikimedia_standard_thumbnail_1280_with_native_file_cache",
+    "cacheModule": "expo-file-system@19.0.23",
+    "renderSource": "local_file_uri",
+    "originalUrlFallback": true,
+    "databaseChanged": false,
+    "affectedOriginalBytes": 11096171,
+    "affectedThumbnailBytes": 267088,
+    "ngoDucThumbnailBytes": 121710,
+    "cloudinaryFetch": "restricted_not_used"
+  },
+  "validation": {
+    "standardTypecheck": "baseline_stack_overflow",
+    "expandedStackTypecheck": "pass",
+    "helperSmoke": "pass",
+    "dependencyTree": "pass",
+    "androidExport": "pass_2808_modules_temp_cleaned",
+    "expoDoctor": "16_of_17_existing_patch_mismatch",
+    "projectStructure": "pass",
+    "representativeThumbnailGet": "pass_after_retry",
+    "gitDiffCheck": "pass",
+    "postFixDeviceRuntime": "not_run_adb_unavailable",
+    "coverage": "unavailable_no_tooling"
+  },
+  "cleanup": "not_required"
+}

@@ -1,0 +1,21 @@
+Validation date: 2026-07-18
+
+1. npm run typecheck
+FAIL - existing Node/TypeScript stack overflow (MRI-003).
+
+2. node --stack_size=8192 node_modules/typescript/bin/tsc --noEmit
+First run: FAIL - TS2345 URI narrowing inside async closure (MRI-008).
+After focused fix: PASS.
+
+3. npm --prefix 3-cafe-story-reactnative-mobile ls expo-file-system --depth=1
+PASS - expo-file-system@19.0.23 installed and deduplicated.
+
+4. npx expo-doctor
+16/17 checks PASS. Existing expo 54.0.34 versus expected ~54.0.36 recorded as MRI-009.
+
+5. git diff --check
+PASS.
+
+6. npx expo export --platform android --output-dir <temporary-path>
+PASS - Metro bundled 2808 modules and produced 26 files.
+Cleanup: PASS - verified temporary output removed.

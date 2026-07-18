@@ -1,0 +1,5 @@
+Result: FAIL
+Classification: TEST_BUG
+
+The read-only bulk thumbnail script was launched from the repository root and could not resolve the mobile-local `typescript` package.
+No production request, database write, or Cloudinary mutation occurred.

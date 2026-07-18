@@ -1,0 +1,15 @@
+Affected original:
+https://upload.wikimedia.org/wikipedia/commons/d/df/Manual_drip_%28pour-over%29_coffee.jpg
+
+Generated thumbnail:
+https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Manual_drip_%28pour-over%29_coffee.jpg/1280px-Manual_drip_%28pour-over%29_coffee.jpg
+
+HTTP results:
+- Android-generic okhttp/4.12.0 User-Agent: 403 text/plain
+- CafeStoryMobile/1.0 ReactNative/0.81 User-Agent: 200 image/jpeg, 121710 bytes
+
+Pure helper assertions:
+- DiceBear SVG to PNG normalization: PASS
+- Wikimedia 1280px thumbnail generation: PASS
+- Thumbnail plus original fallback ordering: PASS
+- CafeStory User-Agent attachment: PASS

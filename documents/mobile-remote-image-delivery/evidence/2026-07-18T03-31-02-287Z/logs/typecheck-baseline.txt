@@ -1,0 +1,10 @@
+Command: npm run typecheck
+Scope: unchanged Git baseline after temporarily removing all task production changes
+Result: FAIL
+
+RangeError: Maximum call stack size exceeded
+Node.js: v20.17.0
+
+Control check:
+node --stack_size=8192 node_modules/typescript/bin/tsc --noEmit
+Result: PASS

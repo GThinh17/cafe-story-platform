@@ -1,6 +1,6 @@
 import { UserRound } from "lucide-react-native";
-import { useEffect, useState } from "react";
 import { Image, StyleSheet, View } from "react-native";
+import { useMobileImageSource } from "../../hooks/use-mobile-image-source";
 import { colors } from "../../theme";
 
 type AvatarProps = {
@@ -10,23 +10,20 @@ type AvatarProps = {
 };
 
 export function Avatar({ size = 48, uri }: AvatarProps) {
-  const [imageFailed, setImageFailed] = useState(false);
   const sourceUri = uri?.trim() ? uri : null;
+  const { failed, markFailed, source } = useMobileImageSource(sourceUri);
   const avatarStyle = {
     borderRadius: size / 2,
     height: size,
     width: size,
   };
 
-  useEffect(() => {
-    setImageFailed(false);
-  }, [sourceUri]);
-
-  if (sourceUri && !imageFailed) {
+  if (sourceUri && source && !failed) {
     return (
       <Image
-        onError={() => setImageFailed(true)}
-        source={{ uri: sourceUri }}
+        onError={markFailed}
+        resizeMethod="resize"
+        source={source}
         style={[styles.avatar, avatarStyle]}
       />
     );

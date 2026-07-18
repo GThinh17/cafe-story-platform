@@ -1,0 +1,6 @@
+Command: node --stack_size=8192 node_modules/typescript/bin/tsc --noEmit
+Working directory: 3-cafe-story-reactnative-mobile
+Result: PASS after the final Wikimedia thumbnail fallback implementation
+Duration: approximately 19 seconds
+
+This uses the same installed TypeScript compiler and project configuration as `npm run typecheck`; only the Node process stack limit differs.

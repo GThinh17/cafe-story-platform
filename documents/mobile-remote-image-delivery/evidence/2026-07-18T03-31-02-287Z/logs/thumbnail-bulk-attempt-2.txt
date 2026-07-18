@@ -1,0 +1,5 @@
+Result: BLOCKED
+Classification: TEST_DATA
+
+The corrected read-only script ran from the mobile directory, but no `personalizedFeedRankings::*` Redis key remained because the earlier cache entry had expired.
+No cache warm-up, login, database write, or test-data mutation was performed.

@@ -1,0 +1,6 @@
+The Expo mobile package exposes only the following validation scripts: start, android, ios, web, and typecheck.
+No unit-test or coverage runner is configured.
+
+Changed-file coverage result: unavailable.
+Classification: FRONTEND_COVERAGE_TOOLING_MISSING / CONFIG_ENV.
+No test framework was added because that would broaden this image-delivery fix beyond the requested scope.

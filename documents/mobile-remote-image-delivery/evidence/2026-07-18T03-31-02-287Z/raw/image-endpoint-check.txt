@@ -1,0 +1,28 @@
+DiceBear normalized PNG:
+- HTTP status: 200
+- Content-Type: image/png
+- Response size observed: 7417 bytes
+
+Wikimedia original with CafeStory mobile User-Agent and a 1024-byte range request:
+- HTTP status: 206
+- Content-Type: image/jpeg
+- Response bytes observed: 1024
+
+Affected Wikimedia 1280px standard thumbnail:
+- HTTP status: 200
+- Content-Type: image/jpeg
+- Full response size: 267088 bytes
+- Original full response size: 11096171 bytes
+- Approximate transfer reduction: 97.6%
+
+Representative thumbnail check:
+- Five previously observed seed image URLs checked.
+- First HEAD pass: three `200`, two transient `429`.
+- Immediate sequential full GET retry: five `200`.
+- Combined five-thumbnail response size: 1241519 bytes.
+
+Cloudinary Fetch:
+- HTTP status: 401
+- X-Cld-Error: Images of type fetch are restricted in this account
+
+No credentials or complete Cloudinary delivery URL are stored in this file.
