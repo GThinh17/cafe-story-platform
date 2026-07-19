@@ -215,7 +215,7 @@ export function FilterSelect<T extends string>({
       value={value || "all"}
       onValueChange={(nextValue) => onChange(nextValue === "all" ? "" : (nextValue as T))}
     >
-      <SelectTrigger size="lg" className="rounded-md w-full bg-surface sm:w-44">
+      <SelectTrigger className="rounded-md w-full bg-surface sm:w-40">
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
@@ -261,7 +261,7 @@ export function BooleanFilterSelect({
         onChange(nextValue === "all" ? null : nextValue === "true")
       }
     >
-      <SelectTrigger size="lg" className="rounded-md w-full bg-surface sm:w-44">
+      <SelectTrigger className="rounded-md w-full bg-surface sm:w-40">
         <SelectValue placeholder="Status" />
       </SelectTrigger>
       <SelectContent>
@@ -297,7 +297,7 @@ export function FilterInput({
 }) {
   const input = (
     <Input
-      className="h-10 bg-surface sm:w-44"
+      className="bg-surface sm:w-40"
       value={value}
       placeholder={placeholder}
       onChange={(event) => onChange(event.target.value)}
@@ -324,7 +324,7 @@ export function Toolbar({
   onRefresh: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-md border border-border bg-surface p-3 sm:flex-row sm:flex-wrap sm:items-end">
+    <div className="flex flex-col gap-2 rounded-md border border-border bg-surface p-2.5 sm:flex-row sm:flex-wrap sm:items-end">
       {children}
       {actions ? <div className="flex flex-wrap gap-2 sm:ml-auto">{actions}</div> : null}
       <Button

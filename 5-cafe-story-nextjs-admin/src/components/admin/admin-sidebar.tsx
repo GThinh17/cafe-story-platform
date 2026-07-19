@@ -12,6 +12,7 @@ import {
   FlaskConicalIcon,
   LayoutDashboardIcon,
   LogOutIcon,
+  MapIcon,
   MenuIcon,
   MessageSquareIcon,
   ShieldCheckIcon,
@@ -53,6 +54,7 @@ const NAV_GROUPS: Array<{
       { href: "/reports", icon: FlagIcon, label: "Reports" },
       { href: "/ranking", icon: TrophyIcon, label: "Ranking" },
       { href: "/users", icon: UsersIcon, label: "Users" },
+      { href: "/regions", icon: MapIcon, label: "Regions" },
     ],
   },
   {
@@ -81,11 +83,11 @@ function NavContent({
   onNavigate?: () => void;
 }) {
   return (
-    <nav className="flex flex-col gap-5">
+    <nav className="flex flex-col gap-4">
       {NAV_GROUPS.map((group, index) => (
-        <div key={index} className="flex flex-col gap-1">
+        <div key={index} className="flex flex-col gap-0.5">
           {group.label ? (
-            <p className="px-3 pb-0.5 text-[11px] font-semibold uppercase tracking-widest text-muted/50">
+            <p className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted/60">
               {group.label}
             </p>
           ) : null}
@@ -95,10 +97,10 @@ function NavContent({
               <Link
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "flex min-h-10 items-center gap-3 rounded-md px-3 text-sm font-semibold no-underline transition",
+                  "relative flex h-9 items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium no-underline transition",
                   isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted hover:bg-surface-muted hover:text-foreground",
+                    ? "bg-sidebar-accent text-sidebar-accent-foreground before:absolute before:inset-y-1.5 before:left-0 before:w-0.5 before:rounded-full before:bg-primary"
+                    : "text-sidebar-foreground hover:bg-surface-muted hover:text-foreground",
                 )}
                 href={href}
                 key={label}
@@ -118,18 +120,14 @@ function NavContent({
 function BrandBlock({ user }: { user: AuthUser }) {
   return (
     <>
-      <div className="flex items-center gap-3">
-        <BrandIcon className="size-11 shadow-sm" />
+      <div className="flex items-center gap-2.5">
+        <BrandIcon className="size-8" />
         <div className="min-w-0">
-          <p className="text-sm font-black text-espresso">CafeStory Admin</p>
-          <p className="text-xs font-semibold text-muted">Operations workspace</p>
+          <p className="text-sm font-semibold text-espresso">CafeStory Admin</p>
+          <p className="truncate text-[11px] text-muted">
+            {user.userFullName || user.userName}
+          </p>
         </div>
-      </div>
-      <div className="rounded-md border border-line-soft bg-background p-3">
-        <p className="truncate text-sm font-bold text-espresso">
-          {user.userFullName || user.userName}
-        </p>
-        <p className="truncate text-xs font-semibold text-muted">{user.userEmail}</p>
       </div>
     </>
   );
@@ -139,7 +137,7 @@ function SignOutButton({ onSignOut }: { onSignOut: () => void }) {
   return (
     <button
       type="button"
-      className="flex w-full min-h-10 items-center gap-3 rounded-md px-3 text-sm font-semibold text-muted transition hover:bg-surface-muted hover:text-foreground"
+      className="flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-[13px] font-medium text-sidebar-foreground transition hover:bg-surface-muted hover:text-foreground"
       onClick={onSignOut}
     >
       <LogOutIcon className="size-4 shrink-0" />
@@ -172,8 +170,8 @@ export function AdminSidebar({ user }: { user: AuthUser }) {
         >
           <MenuIcon />
         </Button>
-        <BrandIcon className="size-7 shadow-sm" />
-        <p className="text-sm font-black text-espresso">CafeStory Admin</p>
+        <BrandIcon className="size-7" />
+        <p className="text-sm font-semibold text-espresso">CafeStory Admin</p>
       </div>
 
       {/* Mobile drawer */}
@@ -193,8 +191,8 @@ export function AdminSidebar({ user }: { user: AuthUser }) {
       </Sheet>
 
       {/* Desktop sidebar */}
-      <aside className="hidden border-r border-border bg-surface px-4 py-5 lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-72 lg:flex-col">
-        <div className="flex h-full flex-col gap-5 overflow-y-auto">
+      <aside className="hidden border-r border-sidebar-border bg-sidebar px-3 py-4 lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:w-60 lg:flex-col">
+        <div className="flex h-full flex-col gap-4 overflow-y-auto">
           <BrandBlock user={user} />
           <NavContent pathname={pathname} />
           <div className="mt-auto border-t border-border pt-3">

@@ -5,6 +5,7 @@ import { FlaskConicalIcon, PlusIcon } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
 import {
   AdminDataTable,
+  AdminRowActions,
   type AdminTableColumn,
 } from "@/components/admin/admin-data-table";
 import {
@@ -201,25 +202,26 @@ export function AdminFormulasPage() {
       },
       { header: "Created", cell: (row) => formatDate(row.createdAt) },
       {
-        header: "Actions",
-        className: "w-48",
+        header: "",
+        className: "w-12 text-right",
         cell: (row) => (
-          <div className="flex gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => openThresholds(row)}>
-              Thresholds
-            </Button>
-            {!row.active && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={activatingId === row.id}
-                onClick={() => handleActivate(row.id)}
-              >
-                Activate
-              </Button>
-            )}
-          </div>
+          <AdminRowActions
+            actions={[
+              {
+                label: "Thresholds",
+                onSelect: () => openThresholds(row),
+              },
+              ...(row.active
+                ? []
+                : [
+                    {
+                      label: "Activate",
+                      disabled: activatingId === row.id,
+                      onSelect: () => handleActivate(row.id),
+                    },
+                  ]),
+            ]}
+          />
         ),
       },
     ],
@@ -227,7 +229,7 @@ export function AdminFormulasPage() {
   );
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <AdminPageHeader
         title="Formulas"
         description="Quản lý scoring weights, payout amounts và badge multipliers trong một chỗ. Chỉ một formula được active tại một thời điểm."
@@ -247,6 +249,7 @@ export function AdminFormulasPage() {
         getRowKey={(row) => row.id}
         isLoading={isLoading}
         error={error}
+        onRowClick={openThresholds}
         emptyTitle="No formulas"
         emptyDescription="Tạo formula đầu tiên để cấu hình scoring và payout cho reviewer."
       />

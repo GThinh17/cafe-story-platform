@@ -38,7 +38,7 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         className={cn(
-          "fixed left-1/2 top-1/2 z-[70] grid max-h-[80vh] w-[80vw] max-w-[672px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-md border border-line-soft bg-surface shadow-[0_26px_80px_rgba(39,19,16,0.22)] outline-none",
+          "fixed left-1/2 top-1/2 z-[70] grid max-h-[80vh] w-[80vw] max-w-[672px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-md border border-line-soft bg-surface shadow-[0_26px_80px_rgba(15,23,42,0.18)] outline-none",
           className,
         )}
         {...props}
@@ -72,7 +72,7 @@ function DialogTitle({
 }: React.ComponentProps<typeof DialogPrimitive.Title>) {
   return (
     <DialogPrimitive.Title
-      className={cn("text-lg font-semibold", className)}
+      className={cn("text-base font-semibold", className)}
       {...props}
     />
   );

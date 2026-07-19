@@ -3,6 +3,8 @@ import { apiEndpoints } from "@/lib/api/endpoints";
 import type { PageResponse } from "@/types/api";
 import type {
   AdminDashboardSummary,
+  AdminRegionAnalytics,
+  AdminRevenueAnalytics,
   AdminAssistantChatResponse,
   AdminAssistantConversation,
   AdminAssistantDraftAction,
@@ -61,6 +63,23 @@ export function getAdminDashboardSummary(signal?: AbortSignal) {
 }
 
 export const getDashboardSummary = getAdminDashboardSummary;
+
+export function getRegionAnalytics(signal?: AbortSignal) {
+  return apiFetch<AdminRegionAnalytics[]>(apiEndpoints.admin.analyticsRegions, {
+    method: "GET",
+    signal,
+  });
+}
+
+export function getRevenueAnalytics(days = 30, signal?: AbortSignal) {
+  return apiFetch<AdminRevenueAnalytics>(
+    withQuery(apiEndpoints.admin.analyticsRevenue, { days }),
+    {
+      method: "GET",
+      signal,
+    },
+  );
+}
 
 export function createAssistantConversation(request?: { title?: string | null }) {
   return apiFetch<AdminAssistantConversation>(apiEndpoints.admin.assistantConversations, {

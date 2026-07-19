@@ -195,7 +195,7 @@ export function AdminRankingPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <AdminPageHeader
         title="Reviewer Ranking"
         description="Browse reviewer ranking snapshots by period and generate new ones."

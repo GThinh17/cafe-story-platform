@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { EyeIcon } from "lucide-react";
+import { EyeIcon, ShieldOffIcon } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
 import {
   AdminDataTable,
   AdminPagination,
+  AdminRowActions,
   type AdminTableColumn,
 } from "@/components/admin/admin-data-table";
 import {
@@ -24,9 +25,7 @@ import {
   useAdminDetailResource,
   usePagedAdminResource,
 } from "@/components/admin/admin-page-utils";
-import { Button } from "@/components/ui/button";
 import {
-  deleteCafePage,
   getAdminCafePage,
   getCafePages,
   updateCafePageStatus,
@@ -35,9 +34,7 @@ import type { CafePage, PageStatus } from "@/types/admin";
 
 const pageStatuses: PageStatus[] = ["DRAFT", "ACTIVE", "SUSPENDED"];
 
-type PendingCafeAction =
-  | { type: "status"; cafe: CafePage; status: PageStatus }
-  | { type: "delete"; cafe: CafePage };
+type PendingCafeAction = { type: "status"; cafe: CafePage; status: PageStatus };
 
 export function AdminCafePagesPage() {
   const [status, setStatus] = useState<PageStatus | "">("");
@@ -77,41 +74,28 @@ export function AdminCafePagesPage() {
       { header: "Rating", cell: (cafe) => cafe.ratingScore ?? "—" },
       { header: "Created", cell: (cafe) => formatDate(cafe.createdAt) },
       {
-        header: "Actions",
-        className: "w-80",
+        header: "",
+        className: "w-12 text-right",
         cell: (cafe) => (
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => detail.load((signal) => getAdminCafePage(cafe.id, signal))}
-            >
-              <EyeIcon data-icon="inline-start" />
-              View
-            </Button>
-            {pageStatuses
-              .filter((nextStatus) => nextStatus !== cafe.status)
-              .map((nextStatus) => (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  key={nextStatus}
-                  onClick={() => setPendingAction({ type: "status", cafe, status: nextStatus })}
-                >
-                  {nextStatus}
-                </Button>
-              ))}
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              onClick={() => setPendingAction({ type: "delete", cafe })}
-            >
-              Delete
-            </Button>
-          </div>
+          <AdminRowActions
+            actions={[
+              {
+                label: "View detail",
+                icon: EyeIcon,
+                onSelect: () =>
+                  detail.load((signal) => getAdminCafePage(cafe.id, signal)),
+              },
+              ...pageStatuses
+                .filter((nextStatus) => nextStatus !== cafe.status)
+                .map((nextStatus) => ({
+                  label: `Set status: ${nextStatus}`,
+                  icon: nextStatus === "SUSPENDED" ? ShieldOffIcon : undefined,
+                  destructive: nextStatus === "SUSPENDED",
+                  onSelect: () =>
+                    setPendingAction({ type: "status", cafe, status: nextStatus }),
+                })),
+            ]}
+          />
         ),
       },
     ],
@@ -127,20 +111,12 @@ export function AdminCafePagesPage() {
     setActionError(null);
 
     try {
-      if (pendingAction.type === "status") {
-        const updatedCafe = await updateCafePageStatus(
-          pendingAction.cafe.id,
-          pendingAction.status,
-        );
-        if (detail.data?.id === updatedCafe.id) {
-          detail.setData(updatedCafe);
-        }
-      } else {
-        await deleteCafePage(pendingAction.cafe.id);
-        if (detail.data?.id === pendingAction.cafe.id) {
-          detail.setOpen(false);
-          detail.setData(null);
-        }
+      const updatedCafe = await updateCafePageStatus(
+        pendingAction.cafe.id,
+        pendingAction.status,
+      );
+      if (detail.data?.id === updatedCafe.id) {
+        detail.setData(updatedCafe);
       }
 
       setPendingAction(null);
@@ -155,7 +131,7 @@ export function AdminCafePagesPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <AdminPageHeader
         title="Cafe Pages"
         description="Manage cafe page status, active packages, audience signals, and removals."
@@ -176,6 +152,9 @@ export function AdminCafePagesPage() {
         getRowKey={(cafe) => cafe.id}
         isLoading={resource.isLoading}
         error={resource.error}
+        onRowClick={(cafe) =>
+          detail.load((signal) => getAdminCafePage(cafe.id, signal))
+        }
       />
       <AdminPagination page={resource.data} onPageChange={resource.setPageNumber} />
       <AdminDetailDialog

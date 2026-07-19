@@ -12,6 +12,7 @@ import { UserCell } from "@/components/admin/user-cell";
 import {
   AdminDataTable,
   AdminPagination,
+  AdminRowActions,
   type AdminTableColumn,
 } from "@/components/admin/admin-data-table";
 import {
@@ -197,38 +198,31 @@ export function AdminBlogsPage() {
       },
       { header: "Created", cell: (blog) => formatDate(blog.createdAt) },
       {
-        header: "Actions",
-        className: "w-96",
+        header: "",
+        className: "w-12 text-right",
         cell: (blog) => (
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => openDetail(blog)}>
-              <EyeIcon data-icon="inline-start" />
-              View
-            </Button>
-            {detailStatuses
-              .filter((nextStatus) => nextStatus !== blog.status)
-              .slice(0, 2)
-              .map((nextStatus) => (
-                <Button
-                  type="button"
-                  variant={nextStatus === "REMOVED" ? "destructive" : "outline"}
-                  size="sm"
-                  key={nextStatus}
-                  onClick={() => setPendingAction({ type: "status", blog, status: nextStatus })}
-                >
-                  {nextStatus}
-                </Button>
-              ))}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setPendingAction({ type: "rank", blog })}
-            >
-              <PinIcon data-icon="inline-start" />
-              Boost
-            </Button>
-          </div>
+          <AdminRowActions
+            actions={[
+              {
+                label: "View detail",
+                icon: EyeIcon,
+                onSelect: () => openDetail(blog),
+              },
+              ...detailStatuses
+                .filter((nextStatus) => nextStatus !== blog.status)
+                .map((nextStatus) => ({
+                  label: `Set status: ${nextStatus}`,
+                  destructive: nextStatus === "REMOVED",
+                  onSelect: () =>
+                    setPendingAction({ type: "status", blog, status: nextStatus }),
+                })),
+              {
+                label: "Boost",
+                icon: PinIcon,
+                onSelect: () => setPendingAction({ type: "rank", blog }),
+              },
+            ]}
+          />
         ),
       },
     ],
@@ -273,7 +267,7 @@ export function AdminBlogsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <AdminPageHeader
         title="Blogs"
         description="Moderate blog content, update post status, delete abusive content, and apply ranking overrides."
@@ -295,6 +289,7 @@ export function AdminBlogsPage() {
         getRowKey={(blog) => blog.id}
         isLoading={resource.isLoading}
         error={resource.error}
+        onRowClick={openDetail}
       />
       <AdminPagination page={resource.data} onPageChange={resource.setPageNumber} />
 
@@ -331,7 +326,7 @@ export function AdminBlogsPage() {
             <BlogImages imageUrls={detailBlog.imageUrls ?? []} />
             <div className="flex flex-col gap-4">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted">
                   Caption
                 </p>
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">

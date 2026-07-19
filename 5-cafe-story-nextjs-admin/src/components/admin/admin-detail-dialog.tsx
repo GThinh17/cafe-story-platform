@@ -43,7 +43,7 @@ export function AdminDetailDialog({
           className,
         )}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-border px-5 py-4">
+        <div className="flex items-start justify-between gap-4 border-b border-border px-4 py-3">
           <div className="min-w-0">
             <DialogTitle className="truncate">{title}</DialogTitle>
             {description ? (
@@ -60,7 +60,7 @@ export function AdminDetailDialog({
             <XIcon />
           </Button>
         </div>
-        <div className="overflow-y-auto px-5 py-4">
+        <div className="overflow-y-auto px-4 py-3">
           {isLoading ? (
             <div className="flex flex-col gap-3">
               {Array.from({ length: 5 }).map((_, index) => (
@@ -77,7 +77,7 @@ export function AdminDetailDialog({
           )}
         </div>
         {footer ? (
-          <div className="border-t border-border px-5 py-4">{footer}</div>
+          <div className="border-t border-border px-4 py-3">{footer}</div>
         ) : null}
       </DialogContent>
     </Dialog>
@@ -98,8 +98,8 @@ export function AdminDetailField({
   className?: string;
 }) {
   return (
-    <div className={cn("min-w-0 rounded-md border border-border bg-background p-3", className)}>
-      <dt className="text-xs font-black uppercase tracking-[0.08em] text-muted">
+    <div className={cn("min-w-0 rounded-md border border-border bg-background p-2.5", className)}>
+      <dt className="text-[11px] font-medium uppercase tracking-wide text-muted">
         {label}
       </dt>
       <dd className="mt-1 break-words text-sm text-foreground">{children}</dd>

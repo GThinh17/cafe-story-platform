@@ -45,4 +45,14 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Payment p where p.paymentId = :id")
     Optional<Payment> findByIdWithLock(@Param("id") UUID id);
+
+    @Query("""
+            select coalesce(p.paidAt, p.createdAt), ef.feeType, af.adFeeId, p.amount
+            from Payment p
+            left join p.extraFee ef
+            left join p.adFee af
+            where p.paymentStatus = com.cafestory.entity.enums.PaymentStatus.PAID
+            and coalesce(p.paidAt, p.createdAt) >= :start
+            """)
+    List<Object[]> findPaidRevenueRows(@Param("start") LocalDateTime start);
 }

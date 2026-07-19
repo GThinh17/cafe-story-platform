@@ -16,6 +16,7 @@ import { UserCell } from "@/components/admin/user-cell";
 import {
   AdminDataTable,
   AdminPagination,
+  AdminRowActions,
   type AdminTableColumn,
 } from "@/components/admin/admin-data-table";
 import {
@@ -574,54 +575,34 @@ export function AdminReportsPage() {
       { header: "Status", cell: (report) => <AdminStatusBadge value={report.status} /> },
       { header: "Created", cell: (report) => formatDate(report.createdAt) },
       {
-        header: "Actions",
-        className: "w-72",
+        header: "",
+        className: "w-12 text-right",
         cell: (report) => (
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={(event) => {
-                event.stopPropagation();
-                openReportDetail(report);
-              }}
-            >
-              <EyeIcon data-icon="inline-start" />
-              View
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={aiLoadingReportId === report.id}
-              onClick={(event) => {
-                event.stopPropagation();
-                openAskAiDialog(report);
-              }}
-            >
-              {aiLoadingReportId === report.id ? (
-                <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />
-              ) : (
-                <SparklesIcon data-icon="inline-start" />
-              )}
-              Ask AI
-            </Button>
-            {report.status !== "RESOLVED" ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setPendingAction({ kind: "resolve", report });
-                }}
-              >
-                <CheckCircle2Icon data-icon="inline-start" />
-                Resolve
-              </Button>
-            ) : null}
-          </div>
+          <AdminRowActions
+            actions={[
+              {
+                label: "View detail",
+                icon: EyeIcon,
+                onSelect: () => openReportDetail(report),
+              },
+              {
+                label: "Ask AI",
+                icon: SparklesIcon,
+                disabled: aiLoadingReportId === report.id,
+                onSelect: () => openAskAiDialog(report),
+              },
+              ...(report.status !== "RESOLVED"
+                ? [
+                    {
+                      label: "Resolve",
+                      icon: CheckCircle2Icon,
+                      onSelect: () =>
+                        setPendingAction({ kind: "resolve", report }),
+                    },
+                  ]
+                : []),
+            ]}
+          />
         ),
       },
     ],
@@ -682,7 +663,7 @@ export function AdminReportsPage() {
   const currentAutoApplyJob = activeAutoApplyJob(autoApplyJobs);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <AdminPageHeader
         title="Reports"
         description="Review user reports, request AI recommendations, and resolve reports separately from moderation actions."

@@ -12,7 +12,7 @@ function Card({
   return (
     <Comp
       className={cn(
-        "rounded-md border border-border bg-surface text-foreground shadow-sm",
+        "rounded-md border border-border bg-surface text-foreground shadow-xs",
         className,
       )}
       {...props}
@@ -21,13 +21,13 @@ function Card({
 }
 
 function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
-  return <div className={cn("p-6", className)} {...props} />;
+  return <div className={cn("p-4", className)} {...props} />;
 }
 
 function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
-      className={cn("text-lg font-semibold leading-none", className)}
+      className={cn("text-base font-semibold leading-none", className)}
       {...props}
     />
   );
@@ -43,11 +43,11 @@ function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 function CardContent({ className, ...props }: React.ComponentProps<"div">) {
-  return <div className={cn("p-6 pt-0", className)} {...props} />;
+  return <div className={cn("p-4 pt-0", className)} {...props} />;
 }
 
 function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
-  return <div className={cn("p-6 pt-0", className)} {...props} />;
+  return <div className={cn("p-4 pt-0", className)} {...props} />;
 }
 
 export {

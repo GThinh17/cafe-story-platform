@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { EyeIcon } from "lucide-react";
+import { CheckCircle2Icon, EyeIcon, RotateCcwIcon } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
 import { UserCell } from "@/components/admin/user-cell";
 import {
   AdminDataTable,
   AdminPagination,
+  AdminRowActions,
   type AdminTableColumn,
 } from "@/components/admin/admin-data-table";
 import {
@@ -25,7 +26,6 @@ import {
   useAdminDetailResource,
   usePagedAdminResource,
 } from "@/components/admin/admin-page-utils";
-import { Button } from "@/components/ui/button";
 import {
   getAdminPayment,
   getPayments,
@@ -79,38 +79,35 @@ export function AdminPaymentsPage() {
       { header: "Status", cell: (payment) => <AdminStatusBadge value={payment.paymentStatus} /> },
       { header: "Created", cell: (payment) => formatDate(payment.createdAt) },
       {
-        header: "Actions",
-        className: "w-72",
+        header: "",
+        className: "w-12 text-right",
         cell: (payment) => (
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => detail.load((signal) => getAdminPayment(payment.paymentId, signal))}
-            >
-              <EyeIcon data-icon="inline-start" />
-              View
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={payment.paymentStatus === "PAID"}
-              onClick={() => setPendingAction({ type: "markPaid", payment })}
-            >
-              Mark paid
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              disabled={payment.paymentStatus !== "PAID"}
-              onClick={() => setPendingAction({ type: "refund", payment })}
-            >
-              Refund
-            </Button>
-          </div>
+          <AdminRowActions
+            actions={[
+              {
+                label: "View detail",
+                icon: EyeIcon,
+                onSelect: () =>
+                  detail.load((signal) =>
+                    getAdminPayment(payment.paymentId, signal),
+                  ),
+              },
+              {
+                label: "Mark paid",
+                icon: CheckCircle2Icon,
+                disabled: payment.paymentStatus === "PAID",
+                onSelect: () =>
+                  setPendingAction({ type: "markPaid", payment }),
+              },
+              {
+                label: "Refund",
+                icon: RotateCcwIcon,
+                destructive: true,
+                disabled: payment.paymentStatus !== "PAID",
+                onSelect: () => setPendingAction({ type: "refund", payment }),
+              },
+            ]}
+          />
         ),
       },
     ],
@@ -150,7 +147,7 @@ export function AdminPaymentsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <AdminPageHeader
         title="Payments"
         description="Audit payment status, mark bank transfers paid, and issue refunds."
@@ -171,6 +168,9 @@ export function AdminPaymentsPage() {
         getRowKey={(payment) => payment.paymentId}
         isLoading={resource.isLoading}
         error={resource.error}
+        onRowClick={(payment) =>
+          detail.load((signal) => getAdminPayment(payment.paymentId, signal))
+        }
       />
       <AdminPagination page={resource.data} onPageChange={resource.setPageNumber} />
       <AdminDetailDialog

@@ -82,8 +82,8 @@ function AdminDashboardContent({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <AdminSidebar user={user} />
-      <div className="min-h-screen lg:pl-72">
-        <main className="px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+      <div className="min-h-screen lg:pl-60">
+        <main className="px-4 py-5 sm:px-5 lg:px-6">{children}</main>
       </div>
     </div>
   );

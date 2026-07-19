@@ -7,6 +7,7 @@ import { UserCell } from "@/components/admin/user-cell";
 import {
   AdminDataTable,
   AdminPagination,
+  AdminRowActions,
   type AdminTableColumn,
 } from "@/components/admin/admin-data-table";
 import {
@@ -143,29 +144,23 @@ export function AdminModerationPage() {
       { header: "Resolved", cell: (result) => <AdminStatusBadge value={result.resolved} /> },
       { header: "Created", cell: (result) => formatDate(result.createdAt) },
       {
-        header: "Actions",
-        className: "w-64",
+        header: "",
+        className: "w-12 text-right",
         cell: (result) => (
-          <div className="flex flex-nowrap gap-2 whitespace-nowrap">
-            <Button type="button" variant="outline" size="sm" onClick={() => openDetail(result)}>
-              <EyeIcon data-icon="inline-start" />
-              View
-            </Button>
-            {resolveActions.map((action) => (
-              <Button
-                type="button"
-                variant={action === "REMOVE" ? "destructive" : "outline"}
-                size="sm"
-                key={action}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPendingAction({ result, action });
-                }}
-              >
-                {ACTION_LABELS[action]}
-              </Button>
-            ))}
-          </div>
+          <AdminRowActions
+            actions={[
+              {
+                label: "View detail",
+                icon: EyeIcon,
+                onSelect: () => openDetail(result),
+              },
+              ...resolveActions.map((action) => ({
+                label: ACTION_LABELS[action],
+                destructive: action === "REMOVE",
+                onSelect: () => setPendingAction({ result, action }),
+              })),
+            ]}
+          />
         ),
       },
     ],
@@ -221,7 +216,7 @@ export function AdminModerationPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <AdminPageHeader
         title="AI Moderation"
         description="Review AI moderation results and resolve flagged content."

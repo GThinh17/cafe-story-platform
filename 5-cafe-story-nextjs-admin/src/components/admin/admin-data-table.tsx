@@ -1,9 +1,24 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { MoreHorizontalIcon, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { PageResponse } from "@/types/api";
 
@@ -37,9 +52,9 @@ export function AdminDataTable<T>({
   if (isLoading) {
     return (
       <Card className="overflow-hidden">
-        <div className="flex flex-col gap-3 p-4">
+        <div className="flex flex-col gap-2 p-3">
           {Array.from({ length: 6 }).map((_, index) => (
-            <Skeleton className="h-12 w-full" key={index} />
+            <Skeleton className="h-10 w-full" key={index} />
           ))}
         </div>
       </Card>
@@ -48,18 +63,18 @@ export function AdminDataTable<T>({
 
   if (error) {
     return (
-      <Card className="p-5">
-        <p className="text-sm font-bold text-accent">Request failed</p>
-        <p className="mt-2 text-sm text-muted">{error}</p>
+      <Card className="p-4">
+        <p className="text-sm font-semibold text-accent">Request failed</p>
+        <p className="mt-1 text-sm text-muted">{error}</p>
       </Card>
     );
   }
 
   if (!rows.length) {
     return (
-      <Card className="p-6">
-        <p className="text-sm font-black text-espresso">{emptyTitle}</p>
-        <p className="mt-2 text-sm text-muted">{emptyDescription}</p>
+      <Card className="p-5">
+        <p className="text-sm font-semibold text-espresso">{emptyTitle}</p>
+        <p className="mt-1 text-sm text-muted">{emptyDescription}</p>
       </Card>
     );
   }
@@ -67,40 +82,109 @@ export function AdminDataTable<T>({
   return (
     <Card className="overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[880px] border-collapse text-sm">
-          <thead className="bg-surface-muted/70 text-left text-xs font-black uppercase tracking-[0.1em] text-muted">
-            <tr>
+        <Table className="min-w-[720px]">
+          <TableHeader className="bg-surface-muted/70">
+            <TableRow className="hover:bg-transparent">
               {columns.map((column) => (
-                <th className={cn("px-4 py-3", column.className)} key={column.header}>
+                <TableHead
+                  className={cn(
+                    "h-9 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted",
+                    column.className,
+                  )}
+                  key={column.header}
+                >
                   {column.header}
-                </th>
+                </TableHead>
               ))}
-            </tr>
-          </thead>
-          <tbody>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {rows.map((row) => (
-              <tr
+              <TableRow
                 className={cn(
                   "border-t border-border",
-                  onRowClick && "cursor-pointer hover:bg-surface-muted/50",
+                  onRowClick &&
+                    "cursor-pointer transition-colors hover:bg-surface-muted/50 focus-visible:bg-surface-muted/50 focus-visible:outline-none",
                 )}
                 key={getRowKey(row)}
+                tabIndex={onRowClick ? 0 : undefined}
                 onClick={onRowClick ? () => onRowClick(row) : undefined}
+                onKeyDown={
+                  onRowClick
+                    ? (event) => {
+                        if (
+                          (event.key === "Enter" || event.key === " ") &&
+                          event.target === event.currentTarget
+                        ) {
+                          event.preventDefault();
+                          onRowClick(row);
+                        }
+                      }
+                    : undefined
+                }
               >
                 {columns.map((column) => (
-                  <td
-                    className={cn("px-4 py-3 align-top", column.className)}
+                  <TableCell
+                    className={cn("px-3 py-2 align-middle", column.className)}
                     key={column.header}
                   >
                     {column.cell(row)}
-                  </td>
+                  </TableCell>
                 ))}
-              </tr>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </Card>
+  );
+}
+
+export type AdminRowAction = {
+  label: string;
+  icon?: LucideIcon;
+  destructive?: boolean;
+  disabled?: boolean;
+  onSelect: () => void;
+};
+
+export function AdminRowActions({ actions }: { actions: AdminRowAction[] }) {
+  if (!actions.length) {
+    return null;
+  }
+
+  return (
+    <div
+      className="flex justify-end"
+      onClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => event.stopPropagation()}
+    >
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Row actions"
+          >
+            <MoreHorizontalIcon />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="min-w-44">
+          {actions.map((action) => (
+            <DropdownMenuItem
+              key={action.label}
+              disabled={action.disabled}
+              variant={action.destructive ? "destructive" : "default"}
+              onSelect={() => action.onSelect()}
+            >
+              {action.icon ? <action.icon className="size-3.5" /> : null}
+              {action.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }
 
@@ -115,7 +199,7 @@ export function AdminPagination<T>({ page, onPageChange }: AdminPaginationProps<
   }
 
   return (
-    <div className="flex flex-col gap-3 rounded-md border border-border bg-surface px-4 py-3 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-2 rounded-md border border-border bg-surface px-3 py-2 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
       <span>
         Page {page.number + 1} of {Math.max(page.totalPages, 1)} ·{" "}
         {page.totalElements} records
@@ -124,7 +208,7 @@ export function AdminPagination<T>({ page, onPageChange }: AdminPaginationProps<
         <Button
           type="button"
           variant="outline"
-          size="sm"
+          size="xs"
           disabled={page.first}
           onClick={() => onPageChange(Math.max(page.number - 1, 0))}
         >
@@ -133,7 +217,7 @@ export function AdminPagination<T>({ page, onPageChange }: AdminPaginationProps<
         <Button
           type="button"
           variant="outline"
-          size="sm"
+          size="xs"
           disabled={page.last}
           onClick={() => onPageChange(page.number + 1)}
         >
