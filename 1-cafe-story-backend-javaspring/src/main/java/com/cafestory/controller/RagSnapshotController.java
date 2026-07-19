@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/internal/rag")
@@ -28,5 +29,12 @@ public class RagSnapshotController {
             @RequestParam(value = "cursorId", required = false) String cursorId,
             @RequestParam(value = "limit", required = false, defaultValue = "200") int limit) {
         return ragSnapshotService.getSnapshot(sourceType, since, cursorId, limit);
+    }
+
+    // Snapshot single-object cho formula động: đơn giá + hệ số badge + ngưỡng điểm.
+    // Trả về active formula hiện tại; nếu không có → {empty: true}.
+    @GetMapping("/snapshots/formula")
+    public Map<String, Object> getFormulaSnapshot() {
+        return ragSnapshotService.formulaData();
     }
 }

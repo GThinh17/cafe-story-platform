@@ -1,4 +1,4 @@
-import { PageShell } from "@/components/layout/page-shell";
+import { SettingsShell } from "@/components/settings/settings-shell";
 import { EditProfileForm } from "@/components/profile/edit-profile-form";
 
 export default async function EditProfilePage({
@@ -9,8 +9,8 @@ export default async function EditProfilePage({
   const { username } = await params;
 
   return (
-    <PageShell>
+    <SettingsShell>
       <EditProfileForm routeUsername={username} />
-    </PageShell>
+    </SettingsShell>
   );
 }

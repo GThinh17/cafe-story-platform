@@ -21,11 +21,14 @@ public class ReviewerFormulaServiceImpl implements ReviewerFormulaService {
 
     private final ReviewerFormulaRepository formulaRepository;
     private final UserRepository userRepository;
+    private final RagReindexClient ragReindexClient;
 
     public ReviewerFormulaServiceImpl(ReviewerFormulaRepository formulaRepository,
-                                      UserRepository userRepository) {
+                                      UserRepository userRepository,
+                                      RagReindexClient ragReindexClient) {
         this.formulaRepository = formulaRepository;
         this.userRepository = userRepository;
+        this.ragReindexClient = ragReindexClient;
     }
 
     @Override
@@ -58,7 +61,11 @@ public class ReviewerFormulaServiceImpl implements ReviewerFormulaService {
             }
         });
         target.setActive(true);
-        return toResponseDTO(formulaRepository.save(target));
+        ReviewerFormulaResponseDTO response = toResponseDTO(formulaRepository.save(target));
+        // Formula động vừa đổi → nhắc Python reindex chunk _system/reviewer-formula
+        // để chatbot trả về đơn giá/hệ số mới ngay (không phải chờ scheduler).
+        ragReindexClient.triggerDbReindex();
+        return response;
     }
 
     @Override

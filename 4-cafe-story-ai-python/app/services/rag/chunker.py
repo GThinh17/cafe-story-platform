@@ -209,5 +209,83 @@ def chunk_reviewer(source_id: str, data: dict[str, Any]) -> list[RagChunk]:
     ]
 
 
+FORMULA_SOURCE_ID = "_system/reviewer-formula"
+
+
+def chunk_formula(data: dict[str, Any]) -> list[RagChunk]:
+    """Sinh 1 chunk 'doc' từ active ReviewerFormula (plan Path B §11).
+
+    Chỉ chèn khi có active formula (data.empty ≠ true). source_id cố định
+    → upsert_with_hash_check dedup: cùng data → hash trùng → 0 embedding call.
+    Dùng source_type='doc' để route C (chính sách) tự retrieve mà không cần
+    thêm nhánh mới trong router.j2.
+    """
+    if not data or data.get("empty"):
+        return []
+
+    def _fmt(v: Any) -> str:
+        return "-" if v is None else str(v)
+
+    lines = [
+        "Công thức tính điểm và payout hiện hành cho reviewer CafeStory",
+        "",
+        "Trọng số tính điểm (dùng để xét badge tháng):",
+        f"- 1 like  = {_fmt(data.get('likeWeight'))} điểm",
+        f"- 1 comment = {_fmt(data.get('commentWeight'))} điểm",
+        f"- 1 share = {_fmt(data.get('shareWeight'))} điểm",
+        "",
+        "Đơn giá quy đổi ra tiền (VND) cho mỗi tương tác:",
+        f"- 1 like  = {_fmt(data.get('likePayoutAmount'))} VND",
+        f"- 1 comment = {_fmt(data.get('commentPayoutAmount'))} VND",
+        f"- 1 share = {_fmt(data.get('sharePayoutAmount'))} VND",
+        "",
+        "Hệ số nhân payout theo huy hiệu:",
+    ]
+    for badge, mult in (data.get("multipliers") or {}).items():
+        lines.append(f"- {badge}: x{mult}")
+
+    thresholds = data.get("thresholds") or {}
+    if thresholds:
+        lines.append("")
+        lines.append("Ngưỡng điểm tối thiểu để đạt huy hiệu (mỗi tháng):")
+        for badge, points in thresholds.items():
+            lines.append(f"- {badge}: từ {points} điểm/tháng")
+
+    lines.extend([
+        "",
+        "Công thức payout tổng quát: "
+        "payout = (sum(likes) × đơn_giá_like + sum(comments) × đơn_giá_comment "
+        "+ sum(shares) × đơn_giá_share) × hệ_số_badge_hiện_tại.",
+        "",
+        "Từ khóa tìm kiếm: công thức payout, tính tiền like share comment, "
+        "1 like bao nhiêu tiền, ngưỡng lên hạng, reviewer Bạc Vàng Kim cương, "
+        "hệ số nhân badge, multiplier, cần bao nhiêu điểm.",
+    ])
+    body = "\n".join(lines)
+
+    breadcrumb = "[CafeStory › policies › Công thức payout hiện hành]"
+    metadata = {
+        "platform": "both",
+        "category": "reviewer",
+        "doc_title": "Công thức payout hiện hành",
+        "doc_slug": "cong-thuc-payout-active",
+        "section_title": "",
+        "filepath": FORMULA_SOURCE_ID,
+        "formula_id": data.get("formulaId"),
+        "system_generated": True,
+        "tags": ["payout", "formula", "reviewer", "badge"],
+    }
+    return [
+        RagChunk(
+            source_type="doc",
+            source_id=FORMULA_SOURCE_ID,
+            chunk_index=0,
+            body=body,
+            embed_text=f"{breadcrumb}\n\n{body}",
+            metadata=metadata,
+        )
+    ]
+
+
 def full_content_for_parent(chunks: list[RagChunk]) -> str:
     return "\n\n".join(chunk.body for chunk in chunks)

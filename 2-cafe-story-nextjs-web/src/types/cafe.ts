@@ -109,6 +109,28 @@ export type CafePageUpdateRequest = {
   status?: "ACTIVE" | "DRAFT" | "SUSPENDED" | string;
 };
 
+export type PageMemberStatus = "PENDING" | "ACTIVE" | "REJECTED";
+
+export type PageMemberRoleName = "OWNER" | "CO_OWNER" | "MEMBER";
+
+export type PageMemberResponse = {
+  cafePageId: string;
+  userId: string;
+  roleName: string;
+  status: PageMemberStatus;
+  createdAt: string | null;
+  updatedAt: string | null;
+};
+
+export type PageMemberAddRequest = {
+  userId: string;
+  roleName: PageMemberRoleName;
+};
+
+export type PageMemberStatusUpdateRequest = {
+  status: PageMemberStatus;
+};
+
 export type CafePageBlogCursorResponse = {
   items: BlogResponse[];
   nextCursor: string | null;

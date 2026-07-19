@@ -9,6 +9,9 @@ import type {
   CafePageResponse,
   CafeTopParams,
   CafePageUpdateRequest,
+  PageMemberAddRequest,
+  PageMemberResponse,
+  PageMemberStatus,
 } from "@/types/cafe";
 
 type ApiRequestOptions = {
@@ -171,4 +174,38 @@ export function unlikeCafePage(
     headers: options.headers,
     method: "DELETE",
   });
+}
+
+export function getPageMembers(
+  cafePageId: string,
+  options: ApiRequestOptions = {},
+) {
+  return apiFetch<PageMemberResponse[]>(apiEndpoints.cafes.members(cafePageId), {
+    headers: options.headers,
+    method: "GET",
+  });
+}
+
+export function addPageMember(
+  cafePageId: string,
+  request: PageMemberAddRequest,
+) {
+  return apiFetch<PageMemberResponse>(apiEndpoints.cafes.members(cafePageId), {
+    method: "POST",
+    body: request,
+  });
+}
+
+export function updatePageMemberStatus(
+  cafePageId: string,
+  userId: string,
+  status: PageMemberStatus,
+) {
+  return apiFetch<PageMemberResponse>(
+    apiEndpoints.cafes.memberStatus(cafePageId, userId),
+    {
+      method: "PATCH",
+      body: { status },
+    },
+  );
 }

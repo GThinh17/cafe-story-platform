@@ -11,6 +11,7 @@ import { Camera, ChevronDownIcon, ImagePlus } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AvatarImage } from "@/components/ui/avatar-image";
 import { Button } from "@/components/ui/button";
+import { CoOwnerSection } from "@/components/cafe/co-owner-section";
 import {
   Field,
   FieldDescription,
@@ -881,6 +882,15 @@ export function EditCafePageForm() {
           </div>
         </div>
       </SectionCard>
+
+      {/* ── Section 5: Co-owners ──────────────────────────────────────────── */}
+      {editMode && user && (
+        <CoOwnerSection
+          cafePageId={ownedCafePage!.id}
+          currentUserId={user.userId}
+          maxMembers={ownedCafePage!.maxMembers}
+        />
+      )}
 
       {/* ── Create mode submit ─────────────────────────────────────────────── */}
       {!editMode && (

@@ -2,7 +2,7 @@ import logging
 from typing import Any, Callable
 
 from app.config.rules import get_rag_config
-from app.services.ingest.snapshot_client import iter_snapshot_pages
+from app.services.ingest.snapshot_client import fetch_formula_snapshot, iter_snapshot_pages
 from app.services.rag import chunker
 from app.services.rag.embedder import embed_texts
 from app.services.rag.vector_store import RagChunk, get_vector_store
@@ -66,6 +66,31 @@ def ingest_source_type(source_type: str) -> dict[str, int]:
     return totals
 
 
+def ingest_formula() -> dict[str, int]:
+    """Ingest active ReviewerFormula thành 1 chunk source_type='doc' (Path B).
+
+    Idempotent: hash-check trong upsert bỏ qua nếu formula không đổi. Chạy sau
+    các source_type khác trong ingest_all_db_sources — admin update formula gọi
+    reindex-db endpoint, hàm này bảo đảm chunk _system/reviewer-formula sync.
+    """
+    data = fetch_formula_snapshot()
+    chunks = chunker.chunk_formula(data)
+    if not chunks:
+        return {"skipped": 1}
+
+    store = get_vector_store()
+    counters = store.upsert_with_hash_check(
+        "doc", chunker.FORMULA_SOURCE_ID, chunks, embed_texts,
+    )
+    store.upsert_parent_document(
+        "doc",
+        chunker.FORMULA_SOURCE_ID,
+        chunker.full_content_for_parent(chunks),
+        chunks[0].metadata,
+    )
+    return counters
+
+
 def ingest_all_db_sources() -> dict[str, dict[str, int]]:
     results: dict[str, dict[str, int]] = {}
     for source_type in get_rag_config()["ingest"]["source_types"]:
@@ -74,4 +99,9 @@ def ingest_all_db_sources() -> dict[str, dict[str, int]]:
         except Exception:
             logger.exception("ingest failed for source_type=%s", source_type)
             results[source_type] = {"error": 1}
+    try:
+        results["formula"] = ingest_formula()
+    except Exception:
+        logger.exception("formula ingest failed")
+        results["formula"] = {"error": 1}
     return results
