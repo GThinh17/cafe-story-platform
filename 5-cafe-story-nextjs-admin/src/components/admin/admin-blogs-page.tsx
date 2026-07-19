@@ -27,7 +27,6 @@ import {
   FilterSelect,
   formatDate,
   PAGE_SIZE,
-  textPreview,
   Toolbar,
   usePagedAdminResource,
 } from "@/components/admin/admin-page-utils";
@@ -182,8 +181,10 @@ export function AdminBlogsPage() {
       },
       {
         header: "Caption",
+        lines: 2,
+        maxWidth: 420,
         cell: (blog) => (
-          <p className="max-w-md text-sm leading-6 text-muted">{textPreview(blog.content)}</p>
+          <p className="text-sm leading-6 text-muted">{blog.content ?? "—"}</p>
         ),
       },
       { header: "Status", cell: (blog) => <AdminStatusBadge value={blog.status} /> },

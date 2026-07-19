@@ -22,7 +22,6 @@ import {
   FilterSelect,
   formatDate,
   PAGE_SIZE,
-  textPreview,
   Toolbar,
   usePagedAdminResource,
 } from "@/components/admin/admin-page-utils";
@@ -131,9 +130,11 @@ export function AdminModerationPage() {
       },
       {
         header: "Caption",
+        lines: 2,
+        maxWidth: 420,
         cell: (result) => (
-          <p className="max-w-md text-sm leading-6 text-muted">
-            {textPreview(result.caption || result.explanation)}
+          <p className="text-sm leading-6 text-muted">
+            {result.caption || result.explanation || "—"}
           </p>
         ),
       },

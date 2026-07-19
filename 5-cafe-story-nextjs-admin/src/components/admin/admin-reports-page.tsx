@@ -536,16 +536,18 @@ export function AdminReportsPage() {
     () => [
       {
         header: "Report",
+        lines: 2,
+        maxWidth: 420,
         cell: (report) => (
-          <div className="max-w-md">
+          <div>
             <div className="flex flex-wrap items-center gap-2">
-              <p className="font-bold text-espresso">{reportReason(report)}</p>
+              <p className="font-semibold text-espresso">{reportReason(report)}</p>
               <Badge className={severityClassName(report.reasonSeverity)}>
                 Severity {report.reasonSeverity ?? "-"}
               </Badge>
             </div>
             <p className="mt-1 text-sm leading-6 text-muted">
-              {textPreview(report.description)}
+              {report.description ?? "—"}
             </p>
             {report.reasonCode ? (
               <p className="mt-1 font-mono text-xs text-muted">{report.reasonCode}</p>

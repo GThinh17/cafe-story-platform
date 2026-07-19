@@ -22,7 +22,6 @@ import {
   FilterSelect,
   formatDate,
   PAGE_SIZE,
-  textPreview,
   Toolbar,
   useAdminDetailResource,
   usePagedAdminResource,
@@ -68,8 +67,10 @@ export function AdminCommentsPage() {
       { header: "ID", cell: (comment) => comment.userId },
       {
         header: "Comment",
+        lines: 2,
+        maxWidth: 420,
         cell: (comment) => (
-          <p className="max-w-md text-sm leading-6 text-muted">{textPreview(comment.content)}</p>
+          <p className="text-sm leading-6 text-muted">{comment.content ?? "—"}</p>
         ),
       },
       { header: "Blog", cell: (comment) => comment.blogId.slice(0, 8) },

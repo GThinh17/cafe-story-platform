@@ -5,6 +5,8 @@ import {
   BotIcon,
   CheckCircle2Icon,
   MessageSquareTextIcon,
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
   SendIcon,
   SparklesIcon,
   XIcon,
@@ -238,6 +240,62 @@ export function AdminAssistantDrawer() {
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
+  const [historyOpen, setHistoryOpen] = useState(true);
+  const [drawerWidth, setDrawerWidth] = useState(940);
+  const [isResizing, setIsResizing] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storedHistory = window.localStorage.getItem("admin-assistant.historyOpen");
+    if (storedHistory !== null) {
+      setHistoryOpen(storedHistory === "true");
+    }
+    const storedWidth = Number(window.localStorage.getItem("admin-assistant.width"));
+    if (Number.isFinite(storedWidth) && storedWidth >= 420) {
+      setDrawerWidth(storedWidth);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(
+      "admin-assistant.historyOpen",
+      String(historyOpen),
+    );
+  }, [historyOpen]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("admin-assistant.width", String(drawerWidth));
+  }, [drawerWidth]);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    function onMove(event: MouseEvent) {
+      const maxWidth = Math.max(420, window.innerWidth - 32);
+      const next = Math.min(
+        maxWidth,
+        Math.max(420, window.innerWidth - event.clientX - 16),
+      );
+      setDrawerWidth(next);
+    }
+    function onUp() {
+      setIsResizing(false);
+    }
+
+    document.body.style.cursor = "ew-resize";
+    document.body.style.userSelect = "none";
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [isResizing]);
+
   const canSend = input.trim().length > 0 && !loading;
 
   useEffect(() => {
@@ -377,9 +435,44 @@ export function AdminAssistantDrawer() {
             className="absolute inset-0 bg-black/30"
             onClick={() => setOpen(false)}
           />
-          <aside className="absolute inset-x-2 bottom-2 top-2 flex min-h-0 flex-col overflow-hidden rounded-md border border-border bg-surface shadow-[0_18px_42px_rgba(39,19,16,0.18)] sm:inset-x-auto sm:right-4 sm:w-[min(940px,calc(100vw-2rem))]">
+          <aside
+            className="absolute inset-x-2 bottom-2 top-2 flex min-h-0 flex-col overflow-hidden rounded-md border border-border bg-surface shadow-[0_18px_42px_rgba(39,19,16,0.18)] sm:inset-x-auto sm:right-4"
+            style={{
+              width:
+                typeof window !== "undefined" && window.innerWidth >= 640
+                  ? `min(${drawerWidth}px, calc(100vw - 2rem))`
+                  : undefined,
+            }}
+          >
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize assistant"
+              className={cn(
+                "absolute inset-y-0 left-0 hidden w-1.5 cursor-ew-resize bg-transparent transition-colors hover:bg-primary/30 sm:block",
+                isResizing && "bg-primary/40",
+              )}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                setIsResizing(true);
+              }}
+            />
             <header className="flex min-h-16 items-center justify-between gap-3 border-b border-border bg-surface px-4 py-3">
               <div className="flex min-w-0 items-center gap-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={historyOpen ? "Hide chat history" : "Show chat history"}
+                  className="hidden lg:inline-flex"
+                  onClick={() => setHistoryOpen((current) => !current)}
+                >
+                  {historyOpen ? (
+                    <PanelLeftCloseIcon className="size-4" />
+                  ) : (
+                    <PanelLeftOpenIcon className="size-4" />
+                  )}
+                </Button>
                 <div className="grid size-9 place-items-center rounded-md bg-primary/10 text-primary">
                   <BotIcon className="size-4" />
                 </div>
@@ -411,8 +504,18 @@ export function AdminAssistantDrawer() {
               </div>
             </header>
 
-            <div className="grid min-h-0 flex-1 grid-cols-1 bg-background/45 lg:grid-cols-[248px_minmax(0,1fr)]">
-              <div className="hidden min-h-0 border-r border-border bg-surface p-3 lg:flex lg:flex-col">
+            <div
+              className={cn(
+                "grid min-h-0 flex-1 grid-cols-1 bg-background/45",
+                historyOpen && "lg:grid-cols-[248px_minmax(0,1fr)]",
+              )}
+            >
+              <div
+                className={cn(
+                  "hidden min-h-0 border-r border-border bg-surface p-3 lg:flex-col",
+                  historyOpen && "lg:flex",
+                )}
+              >
                 <Button
                   type="button"
                   variant="outline"

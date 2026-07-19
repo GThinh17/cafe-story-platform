@@ -107,6 +107,42 @@
   box-sizing: border-box;
 }
 
+/* Truncate text in table cells with a small soft fade at the right edge only. */
+.truncate-fade {
+  overflow: hidden;
+  white-space: nowrap;
+  mask-image: linear-gradient(
+    to right,
+    black calc(100% - 14px),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    black calc(100% - 14px),
+    transparent 100%
+  );
+}
+
+/* Multi-line variant: keeps up to 2 lines and fades the tail of the last line
+   horizontally at the right edge (not vertically). */
+.truncate-fade-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  mask-image: linear-gradient(
+    to right,
+    black calc(100% - 14px),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    black calc(100% - 14px),
+    transparent 100%
+  );
+}
+
 html {
   width: 100%;
   max-width: 100%;
