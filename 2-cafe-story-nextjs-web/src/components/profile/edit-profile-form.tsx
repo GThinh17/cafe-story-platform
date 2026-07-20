@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
+import { Switch } from "@/components/ui/switch";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { uploadAvatarToCloudinary } from "@/lib/api/cloudinary";
 import { ApiError } from "@/lib/api/client";
@@ -105,6 +106,9 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
   const [avatarStatus, setAvatarStatus] = useState<FormStatus>(emptyStatus);
   const [basicStatus, setBasicStatus] = useState<FormStatus>(emptyStatus);
   const [regionStatus, setRegionStatus] = useState<FormStatus>(emptyStatus);
+  const [displayError, setDisplayError] = useState<string | null>(null);
+  const [hideCafeOnProfile, setHideCafeOnProfile] = useState(false);
+  const [isSavingDisplay, setIsSavingDisplay] = useState(false);
   const [submittingForm, setSubmittingForm] = useState<
     "avatar" | "basic" | "region" | null
   >(null);
@@ -145,6 +149,7 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
     setAvatarUrl(user.userAvatar?.trim() ?? "");
     setSelectedAvatarFile(null);
     setSelectedAvatarName("");
+    setHideCafeOnProfile(user.hideCafePageOnProfile === true);
   }, [isUserLoading, user]);
 
   useEffect(() => {
@@ -362,6 +367,27 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
     }
   }
 
+  async function toggleHideCafeOnProfile(next: boolean) {
+    const previous = hideCafeOnProfile;
+
+    setHideCafeOnProfile(next);
+    setDisplayError(null);
+    setIsSavingDisplay(true);
+
+    try {
+      await updateMe({ hideCafePageOnProfile: next });
+      await refetch();
+      router.refresh();
+    } catch (error) {
+      setHideCafeOnProfile(previous);
+      setDisplayError(
+        getSubmitErrorMessage(error, "Unable to update profile display."),
+      );
+    } finally {
+      setIsSavingDisplay(false);
+    }
+  }
+
   async function submitRegion(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -519,6 +545,37 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
           {submittingForm === "basic" ? "Saving..." : "Save basic info"}
         </Button>
       </form>
+
+      <section className="space-y-5 rounded-md border border-border bg-surface p-4 sm:p-5">
+        <div className="space-y-1">
+          <h2 className="text-base font-bold text-foreground">Profile display</h2>
+          <p className="text-xs text-muted">
+            Control which sections show on your public profile.
+          </p>
+        </div>
+        <label
+          className="flex items-start justify-between gap-4"
+          htmlFor="hideCafePageOnProfile"
+        >
+          <span className="flex flex-col gap-1">
+            <span className="text-sm font-medium text-foreground">
+              Hide cafe page on my profile
+            </span>
+            <span className="text-xs text-muted">
+              When on, visitors won&apos;t see your cafe page on your public
+              profile, and the app skips loading that data.
+              {isSavingDisplay ? " Saving..." : null}
+            </span>
+          </span>
+          <Switch
+            checked={hideCafeOnProfile}
+            disabled={isSavingDisplay}
+            id="hideCafePageOnProfile"
+            onCheckedChange={toggleHideCafeOnProfile}
+          />
+        </label>
+        {displayError ? <FieldError>{displayError}</FieldError> : null}
+      </section>
 
       <form
         className="space-y-5 rounded-md border border-border bg-surface p-4 sm:p-5"

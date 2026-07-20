@@ -73,6 +73,7 @@ export const apiEndpoints = {
   },
   payments: {
     list: "/api/payments",
+    mine: "/api/payments/me",
     byId: (paymentId: string) => `/api/payments/${pathId(paymentId)}`,
     stripeSync: (paymentId: string) => `/api/payments/${pathId(paymentId)}/stripe/sync`,
     vnpayReturn: "/api/payments/vnpay/return",
@@ -110,6 +111,8 @@ export const apiEndpoints = {
     meRegion: "/api/users/me/region",
     followers: (userId: string) => `/api/users/${pathId(userId)}/followers`,
     following: (userId: string) => `/api/users/${pathId(userId)}/following`,
+    followingTargets: (userId: string, type = "ALL") =>
+      `/api/users/${pathId(userId)}/following-targets?type=${pathId(type)}`,
     follow: (followingUserId: string) =>
       `/api/users/${pathId(followingUserId)}/followers`,
   },

@@ -34,5 +34,7 @@ public class BlogFeedResponse {
     private Integer rankPosition;
     private Boolean isAuthorFollowing;
     private Boolean isPageFollowing;
+    private Boolean isLike;
+    private Boolean isSave;
     private LocalDateTime createdAt;
 }

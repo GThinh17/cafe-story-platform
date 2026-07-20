@@ -1,4 +1,6 @@
+import { cache, Suspense } from "react";
 import { cookies } from "next/headers";
+import { CafeFeedSkeleton } from "@/components/feed/cafe-feed-skeleton";
 import { HomeAccountPanel } from "@/components/feed/home-account-panel";
 import { FeedPostList } from "@/components/feed/feed-post-list";
 import { StoryRail } from "@/components/feed/story-rail";
@@ -8,19 +10,19 @@ import { mapMixedFeedToRenderableItems } from "@/features/blogs/blog-feed-adapte
 import { ApiError } from "@/lib/api/client";
 import { getMe } from "@/lib/api/auth";
 import { getMixedFeed } from "@/lib/api/feed";
-import {
-  getCafePageById,
-  getFollowedCafePagesByUserId,
-  getTopCafePages,
-} from "@/lib/api/cafes";
+import { getTopCafePages } from "@/lib/api/cafes";
 import { getConversations } from "@/lib/api/chat";
-import { getFollowingByUserId, getUserById } from "@/lib/api/users";
+import { getFollowingTargetsByUserId } from "@/lib/api/users";
 import { DEFAULT_AVATAR_IMAGE } from "@/lib/avatar";
+import { imageWidths, optimizeImageUrl } from "@/lib/image-optimizer";
 import { ACCESS_TOKEN_COOKIE } from "@/lib/routes";
 import type { FeedRenderableItem, StoryItem, TopCafe } from "@/types/feed";
+import type { FollowTargetResponse } from "@/types/user";
 import type { MessageContact, MessageDockData } from "@/types/message";
 
 export const dynamic = "force-dynamic";
+
+const FEED_PAGE_SIZE = 20;
 
 type HomeFeedState = {
   errorMessage?: string;
@@ -28,6 +30,10 @@ type HomeFeedState = {
   nextCursor: string | null;
   items: FeedRenderableItem[];
 };
+
+const getMeCached = cache((cookieHeader: string) =>
+  getMe({ headers: { Cookie: cookieHeader } }).catch(() => null),
+);
 
 async function loadTopCafes(): Promise<TopCafe[]> {
   try {
@@ -43,81 +49,67 @@ async function loadTopCafes(): Promise<TopCafe[]> {
   }
 }
 
+function mapFollowTargetToStoryItem(
+  target: FollowTargetResponse,
+  myId: string,
+): StoryItem | null {
+  if (target.targetType === "CAFE_PAGE") {
+    const cafePageId = target.cafePageId ?? target.targetId;
+    if (!cafePageId) {
+      return null;
+    }
+
+    return {
+      id: `cafe-${cafePageId}`,
+      kind: "cafe-page",
+      label: target.pageName?.trim() || target.displayName?.trim() || "Cafe page",
+      avatarUrl:
+        optimizeImageUrl(target.avatar, { width: imageWidths.story }) ||
+        DEFAULT_AVATAR_IMAGE,
+      href: `/cafes/${cafePageId}`,
+    };
+  }
+
+  const userId = target.userId ?? target.targetId;
+  const username = target.username?.trim();
+  if (!userId || !username || userId === myId) {
+    return null;
+  }
+
+  return {
+    id: `user-${userId}`,
+    kind: "user",
+    label: username,
+    avatarUrl:
+      optimizeImageUrl(target.avatar, { width: imageWidths.story }) ||
+      DEFAULT_AVATAR_IMAGE,
+    href: `/${username}`,
+  };
+}
+
 async function loadStoryRail(cookieHeader: string): Promise<StoryItem[]> {
   try {
-    const headers = { Cookie: cookieHeader };
-    const me = await getMe({ headers }).catch(() => null);
+    const me = await getMeCached(cookieHeader);
     const myId = me?.user?.userId;
     if (!myId) {
       return [];
     }
 
-    const [followingUsers, followedCafePages] = await Promise.all([
-      getFollowingByUserId(myId, { headers }).catch(() => []),
-      getFollowedCafePagesByUserId(myId, { headers }).catch(() => []),
-    ]);
+    const targets = await getFollowingTargetsByUserId(myId, "ALL", {
+      headers: { Cookie: cookieHeader },
+    });
+    const items: StoryItem[] = [];
+    const seenIds = new Set<string>();
 
-    const followingUserIds = Array.from(
-      new Set(
-        followingUsers
-          .map((entry) => entry.followingUserId)
-          .filter((id): id is string => Boolean(id) && id !== myId),
-      ),
-    );
-    const followedCafePageIds = Array.from(
-      new Set(
-        followedCafePages
-          .map((entry) => entry.cafePageId)
-          .filter((id): id is string => Boolean(id)),
-      ),
-    );
+    for (const target of targets) {
+      const item = mapFollowTargetToStoryItem(target, myId);
+      if (item && !seenIds.has(item.id)) {
+        seenIds.add(item.id);
+        items.push(item);
+      }
+    }
 
-    const userItems = await Promise.all(
-      followingUserIds.map(async (userId) => {
-        try {
-          const user = await getUserById(userId, { headers });
-          const avatarUrl =
-            user.userAvatar?.trim() ||
-            user.avatar?.trim() ||
-            user.profileImage?.trim() ||
-            user.imageUrl?.trim() ||
-            DEFAULT_AVATAR_IMAGE;
-
-          const item: StoryItem = {
-            id: `user-${user.userId}`,
-            kind: "user",
-            label: user.userName,
-            avatarUrl,
-            href: `/${user.userName}`,
-          };
-          return item;
-        } catch {
-          return null;
-        }
-      }),
-    );
-
-    const cafeItems = await Promise.all(
-      followedCafePageIds.map(async (cafePageId) => {
-        try {
-          const cafe = await getCafePageById(cafePageId, { headers });
-          const item: StoryItem = {
-            id: `cafe-${cafe.id}`,
-            kind: "cafe-page",
-            label: cafe.name,
-            avatarUrl: cafe.avatarUrl?.trim() || DEFAULT_AVATAR_IMAGE,
-            href: `/cafes/${cafe.id}`,
-          };
-          return item;
-        } catch {
-          return null;
-        }
-      }),
-    );
-
-    return [...userItems, ...cafeItems].filter(
-      (item): item is StoryItem => item !== null,
-    );
+    return items;
   } catch {
     return [];
   }
@@ -195,26 +187,15 @@ async function loadMessageDock(
   }
 }
 
-async function loadHomeFeed(): Promise<HomeFeedState> {
-  const cookieStore = await cookies();
-
-  if (!cookieStore.has(ACCESS_TOKEN_COOKIE)) {
-    return {
-      errorMessage: "Sign in to view your personalized feed.",
-      hasMore: false,
-      nextCursor: null,
-      items: [],
-    };
-  }
-
+async function loadHomeFeed(cookieHeader: string): Promise<HomeFeedState> {
   try {
     const feed = await getMixedFeed(
       {
-        size: 20,
+        size: FEED_PAGE_SIZE,
       },
       {
         headers: {
-          Cookie: cookieStore.toString(),
+          Cookie: cookieHeader,
         },
       },
     );
@@ -237,55 +218,98 @@ async function loadHomeFeed(): Promise<HomeFeedState> {
   }
 }
 
+async function FeedSection({
+  cookieHeader,
+  hasSession,
+}: {
+  cookieHeader: string;
+  hasSession: boolean;
+}) {
+  if (!hasSession) {
+    return (
+      <FeedPostList
+        errorMessage="Sign in to view your personalized feed."
+        initialHasMore={false}
+        initialNextCursor={null}
+        initialPage={0}
+        pageSize={FEED_PAGE_SIZE}
+        items={[]}
+      />
+    );
+  }
+
+  const [feedState, storyItems] = await Promise.all([
+    loadHomeFeed(cookieHeader),
+    loadStoryRail(cookieHeader),
+  ]);
+
+  return (
+    <>
+      <StoryRail stories={storyItems} />
+      <FeedPostList
+        errorMessage={feedState.errorMessage}
+        initialHasMore={feedState.hasMore}
+        initialNextCursor={feedState.nextCursor}
+        initialPage={0}
+        pageSize={FEED_PAGE_SIZE}
+        items={feedState.items}
+      />
+    </>
+  );
+}
+
+async function TopCafesSection() {
+  const topCafes = await loadTopCafes();
+
+  if (topCafes.length === 0) {
+    return null;
+  }
+
+  return <TopCafesNearby cafes={topCafes} />;
+}
+
+async function MessageDockSection({
+  cookieHeader,
+  hasSession,
+}: {
+  cookieHeader: string;
+  hasSession: boolean;
+}) {
+  const me = hasSession ? await getMeCached(cookieHeader) : null;
+  const myId = me?.user?.userId;
+
+  if (!myId) {
+    return null;
+  }
+
+  const messageDock = await loadMessageDock(cookieHeader, myId);
+
+  return <MessageDock data={messageDock} />;
+}
+
 export default async function Home() {
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.toString();
   const hasSession = cookieStore.has(ACCESS_TOKEN_COOKIE);
 
-  const me = hasSession
-    ? await getMe({ headers: { Cookie: cookieHeader } }).catch(() => null)
-    : null;
-  const myId = me?.user?.userId ?? null;
-
-  const fallbackDock: MessageDockData = {
-    title: "Messages",
-    unreadCount: 0,
-    contacts: [],
-  };
-
-  const [feedState, topCafes, storyItems, messageDock] = await Promise.all([
-    loadHomeFeed(),
-    loadTopCafes(),
-    hasSession ? loadStoryRail(cookieHeader) : Promise.resolve<StoryItem[]>([]),
-    myId
-      ? loadMessageDock(cookieHeader, myId)
-      : Promise.resolve(fallbackDock),
-  ]);
-
   return (
     <div className="min-h-screen w-full max-w-full overflow-x-clip bg-background text-foreground">
-      
+
       <main className="grid w-full max-w-[1120px] touch-pan-y grid-cols-1 gap-14 overflow-x-clip px-4 py-8 sm:px-8 xl:ml-12 xl:max-w-none xl:grid-cols-[680px_1fr_320px] xl:gap-0 xl:px-0 xl:pr-16 2xl:ml-20 2xl:pr-24">
 
         <section className="w-full max-w-[630px] space-y-8">
-          {hasSession ? <StoryRail stories={storyItems} /> : null}
-          <FeedPostList
-            errorMessage={feedState.errorMessage}
-            initialHasMore={feedState.hasMore}
-            initialNextCursor={feedState.nextCursor}
-            initialPage={0}
-            pageSize={20}
-            items={feedState.items}
-          />
+          <Suspense fallback={<CafeFeedSkeleton />}>
+            <FeedSection cookieHeader={cookieHeader} hasSession={hasSession} />
+          </Suspense>
         </section>
 
         <aside className="sticky top-8 hidden h-fit w-full xl:col-start-3 xl:block">
           <section className="space-y-7">
             <HomeAccountPanel />
 
-            {topCafes.length > 0 ? (
-              <TopCafesNearby cafes={topCafes} />
-            ) : null}
+            <Suspense fallback={null}>
+              <TopCafesSection />
+            </Suspense>
 
             <p className="text-xs leading-5 text-muted">
               About - Help - Privacy - Terms - Locations
@@ -297,7 +321,12 @@ export default async function Home() {
       </main>
 
       <div className="fixed bottom-8 right-6 z-40 hidden xl:block 2xl:right-10">
-        <MessageDock data={messageDock} />
+        <Suspense fallback={null}>
+          <MessageDockSection
+            cookieHeader={cookieHeader}
+            hasSession={hasSession}
+          />
+        </Suspense>
       </div>
     </div>
   );

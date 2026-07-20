@@ -1,0 +1,22 @@
+Backend focused test:
+mvn "-Dtest=BlogFeedRankingServiceImplTest,PaymentServiceImplTest,PaymentHistoryServiceImplTest,PaymentControllerTest" test
+Result: PASS - 63 tests, 0 failures, 0 errors, 0 skipped.
+
+Web static validation:
+npm run typecheck
+Result: PASS.
+
+Web production build:
+npm run build
+Result: PASS.
+
+Runtime smoke:
+- Backend /v3/api-docs: HTTP 200.
+- Web /login: HTTP 200.
+- Login with the provided test account: PASS.
+- Mixed home feed rendered: PASS.
+- Like toggle and rollback: PASS (0 -> 1 -> 0).
+- Pricing/payment modal rendered: PASS.
+- Profile /thinh.dev rendered: HTTP 200.
+- Ads /ads and Campaigns tab rendered expected empty states: HTTP 200.
+- Browser console errors: none observed.

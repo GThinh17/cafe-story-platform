@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+
+# Cafe images — không commit ảnh gốc, chỉ commit URL sau khi upload
+cafe_images/
+
+# API keys / secrets local
+.env
+

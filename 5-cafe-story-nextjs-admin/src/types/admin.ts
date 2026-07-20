@@ -74,6 +74,32 @@ export type AdminDashboardSummary = {
   pendingModerationItems: number;
 };
 
+export type AdminRegionAnalytics = {
+  provinceCode: string;
+  provinceName: string;
+  userCount: number;
+  cafePageCount: number;
+  reviewerCount: number;
+};
+
+export type AdminRevenuePoint = {
+  date: string;
+  totalAmount: number;
+  reviewerRegistrationAmount: number;
+  cafePageOpeningAmount: number;
+  advertiseAmount: number;
+};
+
+export type AdminRevenueAnalytics = {
+  rangeDays: number;
+  currency: string;
+  totalAmount: number;
+  reviewerRegistrationAmount: number;
+  cafePageOpeningAmount: number;
+  advertiseAmount: number;
+  daily: AdminRevenuePoint[];
+};
+
 export type AdminAssistantConversation = {
   id: UUID;
   adminUserId: UUID;

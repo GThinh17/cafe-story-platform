@@ -18,6 +18,8 @@ public interface PaymentService {
 
     List<PaymentResponseDTO> getAllPayments(UUID requesterUserId, PaymentStatus paymentStatus);
 
+    List<PaymentResponseDTO> getMyPayments(UUID requesterUserId, PaymentStatus paymentStatus);
+
     PaymentResponseDTO markBankTransferPaid(UUID requesterUserId, UUID paymentId);
 
     void handleStripeWebhook(String payload, String signatureHeader);

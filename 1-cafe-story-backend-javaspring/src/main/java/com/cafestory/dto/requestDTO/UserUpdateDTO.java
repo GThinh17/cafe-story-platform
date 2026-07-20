@@ -29,5 +29,7 @@ public class UserUpdateDTO {
 
     private Boolean accountStatus;
 
+    private Boolean hideCafePageOnProfile;
+
     private UUID regionId;
 }

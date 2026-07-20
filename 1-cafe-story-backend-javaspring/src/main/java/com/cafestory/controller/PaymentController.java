@@ -58,6 +58,13 @@ public class PaymentController {
         return paymentHistoryService.getPayments(requireUserId(principal), paymentStatus);
     }
 
+    @GetMapping("/me")
+    public List<PaymentResponseDTO> getMyPayments(
+            @RequestParam(required = false) PaymentStatus paymentStatus,
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
+        return paymentService.getMyPayments(requireUserId(principal), paymentStatus);
+    }
+
     @PostMapping("/{paymentId}/bank-transfer/mark-paid")
     public PaymentResponseDTO markBankTransferPaid(
             @PathVariable UUID paymentId,

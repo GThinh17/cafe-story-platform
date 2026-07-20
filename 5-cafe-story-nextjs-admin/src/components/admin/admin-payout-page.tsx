@@ -319,7 +319,7 @@ export function AdminPayoutPage() {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <AdminPageHeader
         title={viewType === "DAILY" ? "Reviewer Income" : "Monthly Payouts"}
         description={

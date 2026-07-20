@@ -9,6 +9,8 @@ export const apiEndpoints = {
   },
   admin: {
     dashboardSummary: "/api/admin/dashboard/summary",
+    analyticsRegions: "/api/admin/analytics/regions",
+    analyticsRevenue: "/api/admin/analytics/revenue",
     assistantConversations: "/api/admin/assistant/conversations",
     assistantConversationMessages: (conversationId: string) =>
       `/api/admin/assistant/conversations/${pathId(conversationId)}/messages`,

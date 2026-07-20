@@ -36,6 +36,7 @@ export type { FeedPost };
 
 type PostCardProps = {
   currentUserId?: string;
+  eagerMedia?: boolean;
   onCommentClick?: (post: FeedPost) => void;
   onLikeClick?: (post: FeedPost) => void;
   onReportClick?: (post: FeedPost) => void;
@@ -81,7 +82,7 @@ function formatPostLikeCount(post: FeedPost) {
   return typeof post.likeCount === "number" ? formatCount(post.likeCount) : post.likes;
 }
 
-export function PostCard({ currentUserId, onCommentClick, onLikeClick, onReportClick, onSaveClick, onShareClick, post }: PostCardProps) {
+export function PostCard({ currentUserId, eagerMedia, onCommentClick, onLikeClick, onReportClick, onSaveClick, onShareClick, post }: PostCardProps) {
   const identity = getPostIdentity(post);
   const locationLabel = post.locationLabel?.trim() || post.location?.trim();
   const commentCount = formatPostCommentCount(post);
@@ -171,6 +172,7 @@ export function PostCard({ currentUserId, onCommentClick, onLikeClick, onReportC
 
       {media.length > 0 ? (
         <PostMediaCarousel
+          eager={eagerMedia}
           frame="adaptive"
           imageClassName="bg-espresso"
           media={media}

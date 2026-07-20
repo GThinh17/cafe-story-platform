@@ -18,7 +18,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full">
+      {/* suppressHydrationWarning: browser extensions (e.g. ColorZilla) inject
+          attributes like cz-shortcut-listen into <body> before React hydrates. */}
+      <body className="min-h-full" suppressHydrationWarning>
         <AppProviders>{children}</AppProviders>
         <Toaster position="top-right" richColors closeButton />
       </body>

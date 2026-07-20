@@ -7,6 +7,7 @@ import { UserCell } from "@/components/admin/user-cell";
 import {
   AdminDataTable,
   AdminPagination,
+  AdminRowActions,
   type AdminTableColumn,
 } from "@/components/admin/admin-data-table";
 import {
@@ -21,14 +22,11 @@ import {
   FilterSelect,
   formatDate,
   PAGE_SIZE,
-  textPreview,
   Toolbar,
   useAdminDetailResource,
   usePagedAdminResource,
 } from "@/components/admin/admin-page-utils";
-import { Button } from "@/components/ui/button";
 import {
-  deleteComment,
   getAdminComment,
   getComments,
   updateCommentStatus,
@@ -37,9 +35,11 @@ import type { Comment, PostStatus } from "@/types/admin";
 
 const postStatuses: PostStatus[] = ["DRAFT", "PUBLISHED", "HIDDEN", "REMOVED"];
 
-type PendingCommentAction =
-  | { type: "status"; comment: Comment; status: PostStatus }
-  | { type: "delete"; comment: Comment };
+type PendingCommentAction = {
+  type: "status";
+  comment: Comment;
+  status: PostStatus;
+};
 
 export function AdminCommentsPage() {
   const [status, setStatus] = useState<PostStatus | "">("");
@@ -67,52 +67,37 @@ export function AdminCommentsPage() {
       { header: "ID", cell: (comment) => comment.userId },
       {
         header: "Comment",
+        lines: 2,
+        maxWidth: 420,
         cell: (comment) => (
-          <p className="max-w-md text-sm leading-6 text-muted">{textPreview(comment.content)}</p>
+          <p className="text-sm leading-6 text-muted">{comment.content ?? "—"}</p>
         ),
       },
       { header: "Blog", cell: (comment) => comment.blogId.slice(0, 8) },
       { header: "Status", cell: (comment) => <AdminStatusBadge value={comment.status} /> },
       { header: "Created", cell: (comment) => formatDate(comment.createdAt) },
       {
-        header: "Actions",
-        className: "w-80",
+        header: "",
+        className: "w-12 text-right",
         cell: (comment) => (
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => detail.load((signal) => getAdminComment(comment.id, signal))}
-            >
-              <EyeIcon data-icon="inline-start" />
-              View
-            </Button>
-            {postStatuses
-              .filter((nextStatus) => nextStatus !== comment.status)
-              .slice(0, 2)
-              .map((nextStatus) => (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  key={nextStatus}
-                  onClick={() =>
-                    setPendingAction({ type: "status", comment, status: nextStatus })
-                  }
-                >
-                  {nextStatus}
-                </Button>
-              ))}
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              onClick={() => setPendingAction({ type: "delete", comment })}
-            >
-              Delete
-            </Button>
-          </div>
+          <AdminRowActions
+            actions={[
+              {
+                label: "View detail",
+                icon: EyeIcon,
+                onSelect: () =>
+                  detail.load((signal) => getAdminComment(comment.id, signal)),
+              },
+              ...postStatuses
+                .filter((nextStatus) => nextStatus !== comment.status)
+                .map((nextStatus) => ({
+                  label: `Set status: ${nextStatus}`,
+                  destructive: nextStatus === "REMOVED",
+                  onSelect: () =>
+                    setPendingAction({ type: "status", comment, status: nextStatus }),
+                })),
+            ]}
+          />
         ),
       },
     ],
@@ -128,20 +113,12 @@ export function AdminCommentsPage() {
     setActionError(null);
 
     try {
-      if (pendingAction.type === "status") {
-        const updatedComment = await updateCommentStatus(
-          pendingAction.comment.id,
-          pendingAction.status,
-        );
-        if (detail.data?.id === updatedComment.id) {
-          detail.setData(updatedComment);
-        }
-      } else {
-        await deleteComment(pendingAction.comment.id);
-        if (detail.data?.id === pendingAction.comment.id) {
-          detail.setOpen(false);
-          detail.setData(null);
-        }
+      const updatedComment = await updateCommentStatus(
+        pendingAction.comment.id,
+        pendingAction.status,
+      );
+      if (detail.data?.id === updatedComment.id) {
+        detail.setData(updatedComment);
       }
 
       setPendingAction(null);
@@ -156,7 +133,7 @@ export function AdminCommentsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <AdminPageHeader
         title="Comments"
         description="Review comment status by blog or user and remove abusive comments."
@@ -178,6 +155,9 @@ export function AdminCommentsPage() {
         getRowKey={(comment) => comment.id}
         isLoading={resource.isLoading}
         error={resource.error}
+        onRowClick={(comment) =>
+          detail.load((signal) => getAdminComment(comment.id, signal))
+        }
       />
       <AdminPagination page={resource.data} onPageChange={resource.setPageNumber} />
       <AdminDetailDialog

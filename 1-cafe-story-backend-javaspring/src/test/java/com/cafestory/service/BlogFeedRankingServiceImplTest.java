@@ -301,6 +301,55 @@ class BlogFeedRankingServiceImplTest {
     }
 
     @Test
+    void getPersonalizedFeed_success_batchesViewerStateWithoutPerItemQueries_TC010() {
+        User user = user();
+        Blog blog = blog(user.getRegion().getRegionId());
+        BlogRecommendationScore score = recommendationScore(user, blog, 91.0, 1);
+        LocalDateTime computedAt = LocalDateTime.of(2026, 5, 19, 10, 0);
+        BlogFeedRankingServiceImpl service = service();
+
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
+        when(blogRecommendationScoreRepository.findLatestComputedAt(
+                user.getUserId(),
+                TrendWindowType.HOUR_24,
+                user.getRegion().getRegionId())).thenReturn(computedAt);
+        when(blogRecommendationScoreRepository.findLatestPage(
+                eq(user.getUserId()),
+                eq(TrendWindowType.HOUR_24),
+                eq(user.getRegion().getRegionId()),
+                eq(computedAt),
+                any(Pageable.class))).thenReturn(List.of(score));
+        when(userFollowRepository.findFollowedUserIds(user.getUserId(), List.of(blog.getAuthor().getUserId())))
+                .thenReturn(List.of(blog.getAuthor().getUserId()));
+        when(pageFollowRepository.findFollowedCafePageIds(user.getUserId(), List.of(blog.getPageId())))
+                .thenReturn(List.of());
+        when(blogLikeRepository.findLikedBlogIdsByUserIdAndBlogIds(user.getUserId(), List.of(blog.getId())))
+                .thenReturn(List.of(blog.getId()));
+        when(blogSaveRepository.findSavedBlogIdsByUserIdAndBlogIds(user.getUserId(), List.of(blog.getId())))
+                .thenReturn(List.of());
+
+        List<BlogFeedResponse> result = service.getPersonalizedFeed(
+                user.getUserId(),
+                TrendWindowType.HOUR_24,
+                null,
+                0,
+                10);
+
+        assertThat(result).hasSize(1);
+        BlogFeedResponse response = result.getFirst();
+        assertThat(response.getIsAuthorFollowing()).isTrue();
+        assertThat(response.getIsPageFollowing()).isFalse();
+        assertThat(response.getIsLike()).isTrue();
+        assertThat(response.getIsSave()).isFalse();
+        verify(userFollowRepository, never())
+                .existsByFollowerUserIdAndFollowingUserId(any(UUID.class), any(UUID.class));
+        verify(pageFollowRepository, never())
+                .existsByUserUserIdAndCafePageId(any(UUID.class), any(UUID.class));
+        verify(blogLikeRepository, never())
+                .existsByUserUserIdAndBlogId(any(UUID.class), any(UUID.class));
+    }
+
+    @Test
     void rebuildRecommendationCache_success_scoresAndStoresCache_TC006() {
         User user = user();
         UUID regionId = user.getRegion().getRegionId();
@@ -776,6 +825,8 @@ class BlogFeedRankingServiceImplTest {
         lenient().when(userFollowRepository.findFollowedUserIds(any(UUID.class), any())).thenReturn(List.of());
         lenient().when(blogRecommendationScoreRepository.findFormulaVersionsAtComputedAt(any(), any(), any(), any()))
                 .thenReturn(List.of(FeedScoreCalculationService.FORMULA_VERSION));
+        lenient().when(blogLikeRepository.findLikedBlogIdsByUserIdAndBlogIds(any(UUID.class), any())).thenReturn(List.of());
+        lenient().when(blogSaveRepository.findSavedBlogIdsByUserIdAndBlogIds(any(UUID.class), any())).thenReturn(List.of());
         lenient().when(blogRepository.findByIdIn(any())).thenAnswer(invocation -> {
             List<UUID> blogIds = invocation.getArgument(0);
             List<Blog> publishedBlogs = blogRepository.findByStatus(PostStatus.PUBLISHED);

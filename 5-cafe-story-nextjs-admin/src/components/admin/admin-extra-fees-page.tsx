@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { PencilIcon, PowerIcon } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
 import {
   AdminDataTable,
   AdminPagination,
+  AdminRowActions,
   type AdminTableColumn,
 } from "@/components/admin/admin-data-table";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
@@ -27,7 +29,6 @@ import {
 import { Input } from "@/components/ui/input";
 import {
   createExtraFee,
-  deleteExtraFee,
   getExtraFees,
   updateExtraFee,
   updateExtraFeeStatus,
@@ -36,9 +37,7 @@ import type { ExtraFee, ExtraFeeRequest, ExtraFeeType } from "@/types/admin";
 
 const feeTypes: ExtraFeeType[] = ["REVIEWER_REGISTRATION", "CAFE_PAGE_OPENING"];
 
-type PendingExtraFeeAction =
-  | { type: "status"; fee: ExtraFee; status: boolean }
-  | { type: "delete"; fee: ExtraFee };
+type PendingExtraFeeAction = { type: "status"; fee: ExtraFee; status: boolean };
 
 type FeeFormState = {
   extraFeeId?: string;
@@ -120,41 +119,29 @@ export function AdminExtraFeesPage() {
       { header: "Members", cell: (fee) => fee.maxMembers ?? "—" },
       { header: "Status", cell: (fee) => <AdminStatusBadge value={fee.status} /> },
       {
-        header: "Actions",
-        className: "w-72",
+        header: "",
+        className: "w-12 text-right",
         cell: (fee) => (
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setForm(formFromFee(fee));
-                setActionError(null);
-                setFormOpen(true);
-              }}
-            >
-              Edit
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setPendingAction({ type: "status", fee, status: !fee.status })
-              }
-            >
-              {fee.status ? "Disable" : "Enable"}
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              onClick={() => setPendingAction({ type: "delete", fee })}
-            >
-              Delete
-            </Button>
-          </div>
+          <AdminRowActions
+            actions={[
+              {
+                label: "Edit fee",
+                icon: PencilIcon,
+                onSelect: () => {
+                  setForm(formFromFee(fee));
+                  setActionError(null);
+                  setFormOpen(true);
+                },
+              },
+              {
+                label: fee.status ? "Disable" : "Enable",
+                icon: PowerIcon,
+                destructive: Boolean(fee.status),
+                onSelect: () =>
+                  setPendingAction({ type: "status", fee, status: !fee.status }),
+              },
+            ]}
+          />
         ),
       },
     ],
@@ -170,11 +157,7 @@ export function AdminExtraFeesPage() {
     setActionError(null);
 
     try {
-      if (pendingAction.type === "status") {
-        await updateExtraFeeStatus(pendingAction.fee.extraFeeId, pendingAction.status);
-      } else {
-        await deleteExtraFee(pendingAction.fee.extraFeeId);
-      }
+      await updateExtraFeeStatus(pendingAction.fee.extraFeeId, pendingAction.status);
 
       setPendingAction(null);
       resource.refetch();
@@ -218,7 +201,7 @@ export function AdminExtraFeesPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <AdminPageHeader
         title="Extra Fees"
         description="Create and manage reviewer registration and cafe page opening fees."
@@ -250,6 +233,11 @@ export function AdminExtraFeesPage() {
         getRowKey={(fee) => fee.extraFeeId}
         isLoading={resource.isLoading}
         error={resource.error}
+        onRowClick={(fee) => {
+          setForm(formFromFee(fee));
+          setActionError(null);
+          setFormOpen(true);
+        }}
       />
       <AdminPagination page={resource.data} onPageChange={resource.setPageNumber} />
 

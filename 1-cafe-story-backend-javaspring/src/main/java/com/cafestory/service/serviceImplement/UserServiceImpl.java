@@ -145,6 +145,9 @@ public class UserServiceImpl implements UserService {
         if (userUpdateDTO.getUserDescription() != null) {
             user.setUserDescription(userUpdateDTO.getUserDescription());
         }
+        if (userUpdateDTO.getHideCafePageOnProfile() != null) {
+            user.setHideCafePageOnProfile(userUpdateDTO.getHideCafePageOnProfile());
+        }
         if (userUpdateDTO.getRegionId() != null) {
             user.setRegion(regionService.resolveExistingRegion(
                     userUpdateDTO.getRegionId(),

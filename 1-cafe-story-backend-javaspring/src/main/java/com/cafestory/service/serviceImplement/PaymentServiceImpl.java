@@ -186,6 +186,23 @@ public class PaymentServiceImpl implements PaymentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<PaymentResponseDTO> getMyPayments(UUID requesterUserId, PaymentStatus paymentStatus) {
+        if (requesterUserId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Sign in required");
+        }
+        List<Payment> payments = paymentStatus == null
+                ? paymentRepository.findByBuyerUserIdOrderByCreatedAtDesc(requesterUserId)
+                : paymentRepository.findByBuyerUserIdAndPaymentStatusOrderByCreatedAtDesc(
+                        requesterUserId, paymentStatus);
+        return payments.stream()
+                .map(payment -> toResponse(payment, paymentDetailRepository
+                        .findByPaymentPaymentId(payment.getPaymentId())
+                        .orElse(null)))
+                .toList();
+    }
+
+    @Override
     @Transactional
     @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, allEntries = true)
     public PaymentResponseDTO markBankTransferPaid(UUID requesterUserId, UUID paymentId) {

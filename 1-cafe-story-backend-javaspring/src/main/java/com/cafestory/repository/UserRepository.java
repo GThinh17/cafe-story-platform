@@ -72,4 +72,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             @Param("accountStatus") Boolean accountStatus,
             @Param("roleName") String roleName,
             Pageable pageable);
+
+    @Query("""
+            select p.provinceCode, count(u)
+            from User u
+            join u.region r
+            join r.provinceRef p
+            group by p.provinceCode
+            """)
+    List<Object[]> countUsersByProvince();
 }

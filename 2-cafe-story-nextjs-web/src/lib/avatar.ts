@@ -1,3 +1,4 @@
+import { imageWidths, optimizeImageUrl } from "@/lib/image-optimizer";
 import type { AuthUser } from "@/types/auth";
 
 export const DEFAULT_AVATAR_IMAGE = "/images/default-avatar.svg";
@@ -15,7 +16,10 @@ export function getUserEmail(user: AuthUser | null) {
 }
 
 export function getUserAvatarImage(user: AuthUser | null) {
-  return user?.userAvatar?.trim() || DEFAULT_AVATAR_IMAGE;
+  return (
+    optimizeImageUrl(user?.userAvatar, { width: imageWidths.avatar }) ||
+    DEFAULT_AVATAR_IMAGE
+  );
 }
 
 export function getUserInitials(user: AuthUser | null) {

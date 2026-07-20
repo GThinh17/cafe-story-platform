@@ -3,52 +3,73 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
+  CoffeeIcon,
   CreditCardIcon,
-  FlagIcon,
+  FileTextIcon,
+  MessageSquareIcon,
   ShieldCheckIcon,
+  TrophyIcon,
   UsersIcon,
 } from "lucide-react";
-import {
-  AdminDashboardCharts,
-  dashboardChartLegend,
-} from "@/components/admin/admin-dashboard-charts";
+import { useRouter } from "next/navigation";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import { AdminStatCard } from "@/components/admin/admin-stat-card";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AdminRevenueChart,
+  RevenueLegend,
+  formatVnd,
+} from "@/components/admin/admin-revenue-chart";
+import { AdminStatusDonut } from "@/components/admin/admin-status-donut";
+import { VietnamMap } from "@/components/admin/vietnam-map";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getDashboardSummary } from "@/lib/api/admin";
-import type { AdminDashboardSummary } from "@/types/admin";
+import {
+  getDashboardSummary,
+  getRegionAnalytics,
+  getRevenueAnalytics,
+} from "@/lib/api/admin";
+import type {
+  AdminDashboardSummary,
+  AdminRegionAnalytics,
+  AdminRevenueAnalytics,
+} from "@/types/admin";
 
-const shortcuts = [
-  {
-    href: "/moderation",
-    icon: ShieldCheckIcon,
-    label: "Moderation queue",
-    description: "Resolve AI review results.",
-  },
-  {
-    href: "/reports",
-    icon: FlagIcon,
-    label: "Reports",
-    description: "Review user-submitted content reports.",
-  },
-  {
-    href: "/payments",
-    icon: CreditCardIcon,
-    label: "Payments",
-    description: "Audit transfers and refunds.",
-  },
-  {
-    href: "/users",
-    icon: UsersIcon,
-    label: "Users",
-    description: "Manage account status and roles.",
-  },
-];
+function SectionCard({
+  title,
+  href,
+  meta,
+  children,
+  className,
+}: {
+  title: string;
+  href: string;
+  meta?: React.ReactNode;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <Card
+      asChild
+      className={`group/section transition hover:border-primary/40 hover:shadow-sm ${className ?? ""}`}
+    >
+      <Link href={href} className="flex flex-col no-underline">
+        <CardHeader className="flex flex-row items-center justify-between gap-3 p-4 pb-2">
+          <CardTitle className="text-sm font-semibold text-espresso">
+            {title}
+          </CardTitle>
+          {meta}
+        </CardHeader>
+        <div className="min-h-0 flex-1 p-4 pt-0">{children}</div>
+      </Link>
+    </Card>
+  );
+}
 
 export function AdminOverview() {
+  const router = useRouter();
   const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
+  const [revenue, setRevenue] = useState<AdminRevenueAnalytics | null>(null);
+  const [regions, setRegions] = useState<AdminRegionAnalytics[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
@@ -60,10 +81,16 @@ export function AdminOverview() {
     setIsLoading(true);
     setError(null);
 
-    getDashboardSummary(controller.signal)
-      .then((response) => {
+    Promise.all([
+      getDashboardSummary(controller.signal),
+      getRevenueAnalytics(30, controller.signal),
+      getRegionAnalytics(controller.signal),
+    ])
+      .then(([summaryResponse, revenueResponse, regionsResponse]) => {
         if (requestIdRef.current === requestId) {
-          setSummary(response);
+          setSummary(summaryResponse);
+          setRevenue(revenueResponse);
+          setRegions(regionsResponse);
         }
       })
       .catch((requestError) => {
@@ -74,7 +101,7 @@ export function AdminOverview() {
         setError(
           requestError instanceof Error
             ? requestError.message
-            : "Unable to load dashboard summary.",
+            : "Unable to load dashboard data.",
         );
       })
       .finally(() => {
@@ -87,89 +114,197 @@ export function AdminOverview() {
   }, []);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <AdminPageHeader
         title="Overview"
         description="Operational snapshot for users, content, payments, and moderation."
       />
 
       {isLoading ? (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 8 }).map((_, index) => (
-            <Skeleton className="h-28 w-full" key={index} />
+            <Skeleton className="h-24 w-full" key={index} />
           ))}
         </div>
       ) : error ? (
-        <Card className="p-5">
-          <p className="text-sm font-bold text-accent">Request failed</p>
-          <p className="mt-2 text-sm text-muted">{error}</p>
+        <Card className="p-4">
+          <p className="text-sm font-semibold text-accent">Request failed</p>
+          <p className="mt-1 text-sm text-muted">{error}</p>
         </Card>
       ) : summary ? (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {/* Row 1 — 4 stat highlights */}
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <AdminStatCard
               label="Users"
-              value={summary.totalUsers}
-              meta={`${summary.activeUsers} active`}
+              value={summary.totalUsers.toLocaleString("vi-VN")}
+              meta={`${summary.activeUsers.toLocaleString("vi-VN")} active`}
+              href="/users"
+              icon={UsersIcon}
             />
             <AdminStatCard
-              label="Reviewers"
-              value={summary.totalReviewers}
-              meta="Accounts with reviewer role"
+              label="Revenue 30d"
+              value={revenue ? formatVnd(revenue.totalAmount) : "—"}
+              meta={
+                revenue
+                  ? `${summary.paidPayments.toLocaleString("vi-VN")} paid payments`
+                  : undefined
+              }
+              href="/payments"
+              icon={CreditCardIcon}
+              iconClassName="bg-success/10 text-success"
             />
             <AdminStatCard
               label="Cafe pages"
-              value={summary.totalCafePages}
-              meta={`${summary.activeCafePages} active`}
-            />
-            <AdminStatCard
-              label="Blogs"
-              value={summary.totalBlogs}
-              meta={`${summary.publishedBlogs} published · ${summary.hiddenBlogs} hidden`}
-            />
-            <AdminStatCard label="Comments" value={summary.totalComments} />
-            <AdminStatCard
-              label="Payments"
-              value={summary.totalPayments}
-              meta={`${summary.paidPayments} paid · ${summary.pendingPayments} pending`}
-            />
-            <AdminStatCard
-              label="Failed payments"
-              value={summary.failedPayments}
+              value={summary.totalCafePages.toLocaleString("vi-VN")}
+              meta={`${summary.activeCafePages.toLocaleString("vi-VN")} active`}
+              href="/cafes"
+              icon={CoffeeIcon}
+              iconClassName="bg-warning/10 text-warning"
             />
             <AdminStatCard
               label="Pending moderation"
-              value={summary.pendingModerationItems}
+              value={summary.pendingModerationItems.toLocaleString("vi-VN")}
+              meta="Items waiting for review"
+              href="/moderation"
+              icon={ShieldCheckIcon}
+              iconClassName="bg-destructive/10 text-destructive"
             />
           </div>
 
-          <div className="flex flex-col gap-3">
-            <AdminDashboardCharts summary={summary} />
-            <div className="flex flex-wrap gap-3 rounded-md border border-border bg-surface px-4 py-3">
-              {dashboardChartLegend.map(({ label, icon: Icon, className }) => (
-                <span className="flex items-center gap-2 text-xs font-semibold text-muted" key={label}>
-                  <Icon className={className} />
-                  {label}
-                </span>
-              ))}
-            </div>
+          {/* Row 2 — revenue chart + Vietnam map */}
+          <div className="grid gap-3 lg:grid-cols-3">
+            <SectionCard
+              title="Revenue last 30 days"
+              href="/payments"
+              className="lg:col-span-2"
+              meta={<RevenueLegend />}
+            >
+              {revenue ? (
+                <AdminRevenueChart
+                  analytics={revenue}
+                  className="h-64 w-full"
+                />
+              ) : (
+                <p className="text-sm text-muted">No revenue data.</p>
+              )}
+            </SectionCard>
+            <Card
+              className="group/section cursor-pointer transition hover:border-primary/40 hover:shadow-sm"
+              onClick={() => router.push("/regions")}
+            >
+              <CardHeader className="flex flex-row items-center justify-between gap-3 p-4 pb-2">
+                <CardTitle className="text-sm font-semibold text-espresso">
+                  Users by province
+                </CardTitle>
+                <Link
+                  href="/regions"
+                  className="text-xs font-medium text-primary no-underline hover:underline"
+                >
+                  Open regions
+                </Link>
+              </CardHeader>
+              <div className="p-4 pt-0">
+                <VietnamMap
+                  className="mx-auto h-72 max-w-56 cursor-pointer"
+                  data={(regions ?? [])
+                    .filter((region) => region.provinceCode !== "unknown")
+                    .map((region) => ({
+                      provinceCode: region.provinceCode,
+                      provinceName: region.provinceName,
+                      value: region.userCount,
+                    }))}
+                  valueLabel="users"
+                  onProvinceClick={(code) =>
+                    router.push(`/regions?province=${code}`)
+                  }
+                />
+              </div>
+            </Card>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-4">
-            {shortcuts.map(({ href, icon: Icon, label, description }) => (
-              <Card key={href}>
-                <CardHeader className="p-4 pb-2">
-                  <Icon className="size-5 text-primary" />
-                  <CardTitle className="text-base">{label}</CardTitle>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-4 p-4 pt-0">
-                  <p className="text-sm leading-6 text-muted">{description}</p>
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={href}>Open</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+          {/* Row 3 — donut + blogs + reviewers + comments */}
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <SectionCard title="Payments by status" href="/payments">
+              <AdminStatusDonut
+                centerLabel="payments"
+                slices={[
+                  {
+                    key: "paid",
+                    label: "Paid",
+                    value: summary.paidPayments,
+                    color: "var(--chart-2)",
+                  },
+                  {
+                    key: "pending",
+                    label: "Pending",
+                    value: summary.pendingPayments,
+                    color: "var(--chart-3)",
+                  },
+                  {
+                    key: "failed",
+                    label: "Failed",
+                    value: summary.failedPayments,
+                    color: "var(--chart-5)",
+                  },
+                ]}
+              />
+            </SectionCard>
+            <SectionCard title="Blogs by status" href="/blogs">
+              <AdminStatusDonut
+                centerLabel="blogs"
+                slices={[
+                  {
+                    key: "published",
+                    label: "Published",
+                    value: summary.publishedBlogs,
+                    color: "var(--chart-1)",
+                  },
+                  {
+                    key: "hidden",
+                    label: "Hidden",
+                    value: summary.hiddenBlogs,
+                    color: "var(--chart-3)",
+                  },
+                  {
+                    key: "other",
+                    label: "Other",
+                    value: Math.max(
+                      summary.totalBlogs -
+                        summary.publishedBlogs -
+                        summary.hiddenBlogs,
+                      0,
+                    ),
+                    color: "var(--chart-4)",
+                  },
+                ]}
+              />
+            </SectionCard>
+            <AdminStatCard
+              label="Reviewers"
+              value={summary.totalReviewers.toLocaleString("vi-VN")}
+              meta="Active reviewer accounts"
+              href="/ranking"
+              icon={TrophyIcon}
+              iconClassName="bg-chart-4/10 text-chart-4"
+            />
+            <div className="flex flex-col gap-3">
+              <AdminStatCard
+                label="Blogs"
+                value={summary.totalBlogs.toLocaleString("vi-VN")}
+                meta={`${summary.publishedBlogs.toLocaleString("vi-VN")} published`}
+                href="/blogs"
+                icon={FileTextIcon}
+              />
+              <AdminStatCard
+                label="Comments"
+                value={summary.totalComments.toLocaleString("vi-VN")}
+                meta="Across all blogs"
+                href="/comments"
+                icon={MessageSquareIcon}
+                iconClassName="bg-secondary text-secondary-foreground"
+              />
+            </div>
           </div>
         </>
       ) : null}

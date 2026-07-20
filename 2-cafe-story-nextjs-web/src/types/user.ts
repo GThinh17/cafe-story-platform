@@ -74,6 +74,7 @@ export type UserResponse = {
   userFollower: number | null;
   followingCount: number | null;
   accountStatus: boolean | null;
+  hideCafePageOnProfile?: boolean | null;
   regionId: string | null;
   regionCityCode?: string | null;
   regionCity: string | null;
@@ -84,6 +85,26 @@ export type UserResponse = {
   regionArea: string | null;
   regionStreet: string | null;
   isFollowing: boolean | null;
+};
+
+export type FollowTargetType = "USER" | "CAFE_PAGE" | string;
+
+export type FollowTargetResponse = {
+  avatar: string | null;
+  cafePageId: string | null;
+  city: string | null;
+  displayName: string | null;
+  followedAt: string | null;
+  followId: string;
+  ownerUserId: string | null;
+  pageActive: boolean | null;
+  pageName: string | null;
+  pageStatus: string | null;
+  targetId: string | null;
+  targetType: FollowTargetType;
+  userFullName: string | null;
+  userId: string | null;
+  username: string | null;
 };
 
 export type UserFollowResponse = {

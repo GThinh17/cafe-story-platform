@@ -15,6 +15,7 @@ public class AuthUserResponse {
     private String userAvatar;
     private String userDescription;
     private Boolean accountStatus;
+    private Boolean hideCafePageOnProfile;
     private UUID cafePageId;
     private UUID pageId;
     private List<String> roles;

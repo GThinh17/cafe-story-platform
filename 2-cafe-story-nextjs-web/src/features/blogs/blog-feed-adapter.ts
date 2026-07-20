@@ -1,3 +1,4 @@
+import { imageWidths, optimizeImageUrl } from "@/lib/image-optimizer";
 import type { BlogFeedResponse, BlogResponse } from "@/types/blog";
 import type {
   FeedPost,
@@ -97,7 +98,7 @@ function mapImageUrlsToMedia(
 
   return getNonEmptyImageUrls(imageUrls).map((url, index) => ({
     id: `${postId}-${index}`,
-    src: url,
+    src: optimizeImageUrl(url, { width: imageWidths.postMedia }),
     alt: `${altPrefix} post photo ${index + 1}`,
     type: "image",
   }));
@@ -106,22 +107,29 @@ function mapImageUrlsToMedia(
 export function mapBlogFeedToFeedPosts(feed: BlogFeedResponse[]): FeedPost[] {
   return feed.map((item, index) => {
     const authorUsername = firstNonEmpty([item.authorUserName]);
-    const authorAvatar =
+    const authorAvatar = optimizeImageUrl(
       firstNonEmpty([item.authorAvatar, item.authorUserAvatar]) ??
-      "/images/default-avatar.svg";
+        "/images/default-avatar.svg",
+      { width: imageWidths.avatar },
+    );
     const pageName = firstNonEmpty([item.pageName]);
-    const pageAvatarUrl = firstNonEmpty([item.pageAvatarUrl]);
+    const pageAvatarUrl = optimizeImageUrl(firstNonEmpty([item.pageAvatarUrl]), {
+      width: imageWidths.avatar,
+    }) || undefined;
     const locationLabel = formatLocation(item);
     const media = mapImageUrlsToMedia(
       item.imageUrls,
       item.blogId,
       firstNonEmpty([item.displayName, pageName, authorUsername]),
     );
-    const image = firstNonEmpty([
-      ...media.map((mediaItem) => mediaItem.src),
-      item.pageCoverUrl,
-      item.pageAvatarUrl,
-    ]);
+    const image = optimizeImageUrl(
+      firstNonEmpty([
+        ...media.map((mediaItem) => mediaItem.src),
+        item.pageCoverUrl,
+        item.pageAvatarUrl,
+      ]),
+      { width: imageWidths.postMedia },
+    ) || undefined;
 
     return {
       id: item.blogId,
@@ -135,9 +143,13 @@ export function mapBlogFeedToFeedPosts(feed: BlogFeedResponse[]): FeedPost[] {
       commentCount: item.commentCount ?? 0,
       comments: formatCount(item.commentCount),
       displayAuthorType: item.displayAuthorType,
-      displayAvatarUrl: firstNonEmpty([item.displayAvatarUrl]),
+      displayAvatarUrl:
+        optimizeImageUrl(firstNonEmpty([item.displayAvatarUrl]), {
+          width: imageWidths.avatar,
+        }) || undefined,
       displayName: firstNonEmpty([item.displayName]),
       image: image ?? fallbackImages[index % fallbackImages.length],
+      isLiked: item.isLike ?? false,
       likeCount: item.likeCount ?? 0,
       likes: formatCount(item.likeCount),
       location: locationLabel,
@@ -211,11 +223,14 @@ export function mapBlogResponsesToFeedPosts(blogs: BlogResponse[]): FeedPost[] {
       item.displayName,
     ]);
     const media = mapImageUrlsToMedia(item.imageUrls, item.id, authorUsername);
-    const image = firstNonEmpty([
-      ...media.map((mediaItem) => mediaItem.src),
-      item.pageAvatarUrl,
-      item.displayAvatarUrl,
-    ]);
+    const image = optimizeImageUrl(
+      firstNonEmpty([
+        ...media.map((mediaItem) => mediaItem.src),
+        item.pageAvatarUrl,
+        item.displayAvatarUrl,
+      ]),
+      { width: imageWidths.postMedia },
+    ) || undefined;
     const rating =
       typeof item.ratingScore === "number"
         ? item.ratingScore.toFixed(1)
@@ -227,18 +242,23 @@ export function mapBlogResponsesToFeedPosts(blogs: BlogResponse[]): FeedPost[] {
       author: authorUsername ?? "cafestory_user",
       authorUserId: item.authorUserId,
       authorUsername: firstNonEmpty([item.authorUserName]),
-      authorAvatar:
+      authorAvatar: optimizeImageUrl(
         firstNonEmpty([
           item.displayAvatarUrl,
           item.authorUserAvatar,
           item.pageAvatarUrl,
         ]) ?? "/images/default-avatar.svg",
+        { width: imageWidths.avatar },
+      ),
       cafe: firstNonEmpty([item.pageName]) ?? "",
       caption: item.content?.trim() || "A new Cafe Story post is ready.",
       commentCount: item.commentCount ?? 0,
       comments: formatCount(item.commentCount),
       displayAuthorType: item.displayAuthorType,
-      displayAvatarUrl: firstNonEmpty([item.displayAvatarUrl]),
+      displayAvatarUrl:
+        optimizeImageUrl(firstNonEmpty([item.displayAvatarUrl]), {
+          width: imageWidths.avatar,
+        }) || undefined,
       displayName: firstNonEmpty([item.displayName]),
       image: image ?? fallbackImages[index % fallbackImages.length],
       isLiked: item.isLike ?? false,
@@ -246,7 +266,10 @@ export function mapBlogResponsesToFeedPosts(blogs: BlogResponse[]): FeedPost[] {
       likes: formatCount(item.likeCount),
       location: "",
       media,
-      pageAvatarUrl: firstNonEmpty([item.pageAvatarUrl]),
+      pageAvatarUrl:
+        optimizeImageUrl(firstNonEmpty([item.pageAvatarUrl]), {
+          width: imageWidths.avatar,
+        }) || undefined,
       pageId: item.pageId,
       pageName: firstNonEmpty([item.pageName]),
       rating,

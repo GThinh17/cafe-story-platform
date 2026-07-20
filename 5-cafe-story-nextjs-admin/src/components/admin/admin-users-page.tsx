@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { EyeIcon } from "lucide-react";
+import { EyeIcon, PowerIcon, StarIcon } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
 import {
   AdminDataTable,
   AdminPagination,
+  AdminRowActions,
   type AdminTableColumn,
 } from "@/components/admin/admin-data-table";
 import {
@@ -26,7 +27,6 @@ import {
   usePagedAdminResource,
 } from "@/components/admin/admin-page-utils";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { UserCell } from "@/components/admin/user-cell";
 import { getAdminUser, getUsers, updateUserRoles, updateUserStatus } from "@/lib/api/admin";
 import type { AdminUser, UserRole } from "@/types/admin";
@@ -90,50 +90,44 @@ export function AdminUsersPage() {
         ),
       },
       {
-        header: "Actions",
-        className: "w-80",
+        header: "",
+        className: "w-12 text-right",
         cell: (user) => (
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => detail.load((signal) => getAdminUser(user.userId, signal))}
-            >
-              <EyeIcon data-icon="inline-start" />
-              View
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setPendingAction({
-                  type: "status",
-                  user,
-                  accountStatus: !user.accountStatus,
-                })
-              }
-            >
-              {user.accountStatus ? "Deactivate" : "Activate"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setPendingAction({
-                  type: "roles",
-                  user,
-                  roles: user.roles.includes("REVIEWER")
-                    ? user.roles.filter((item) => item !== "REVIEWER")
-                    : Array.from(new Set([...user.roles, "REVIEWER"])),
-                })
-              }
-            >
-              Reviewer
-            </Button>
-          </div>
+          <AdminRowActions
+            actions={[
+              {
+                label: "View detail",
+                icon: EyeIcon,
+                onSelect: () =>
+                  detail.load((signal) => getAdminUser(user.userId, signal)),
+              },
+              {
+                label: user.accountStatus ? "Deactivate" : "Activate",
+                icon: PowerIcon,
+                destructive: user.accountStatus,
+                onSelect: () =>
+                  setPendingAction({
+                    type: "status",
+                    user,
+                    accountStatus: !user.accountStatus,
+                  }),
+              },
+              {
+                label: user.roles.includes("REVIEWER")
+                  ? "Remove reviewer role"
+                  : "Grant reviewer role",
+                icon: StarIcon,
+                onSelect: () =>
+                  setPendingAction({
+                    type: "roles",
+                    user,
+                    roles: user.roles.includes("REVIEWER")
+                      ? user.roles.filter((item) => item !== "REVIEWER")
+                      : Array.from(new Set([...user.roles, "REVIEWER"])),
+                  }),
+              },
+            ]}
+          />
         ),
       },
     ],
@@ -176,7 +170,7 @@ export function AdminUsersPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
       <AdminPageHeader
         title="Users"
         description="Search users, filter by status or role, and manage account activation."
@@ -198,6 +192,9 @@ export function AdminUsersPage() {
         getRowKey={(user) => user.userId}
         isLoading={resource.isLoading}
         error={resource.error}
+        onRowClick={(user) =>
+          detail.load((signal) => getAdminUser(user.userId, signal))
+        }
       />
       <AdminPagination page={resource.data} onPageChange={resource.setPageNumber} />
       <AdminDetailDialog

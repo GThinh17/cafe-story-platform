@@ -9,6 +9,7 @@ import type { FeedPost, FeedPostMedia } from "@/types/feed";
 type PostMediaCarouselProps = {
   media: FeedPostMedia[];
   className?: string;
+  eager?: boolean;
   frame?: "adaptive" | "fixed";
   imageClassName?: string;
 };
@@ -50,6 +51,7 @@ export function getFeedPostMediaList(post: FeedPost): FeedPostMedia[] {
 
 export function PostMediaCarousel({
   className,
+  eager = false,
   frame = "adaptive",
   imageClassName,
   media,
@@ -136,7 +138,8 @@ export function PostMediaCarousel({
                   imageClassName,
                 )}
                 decoding="async"
-                loading="lazy"
+                fetchPriority={eager && index === 0 ? "high" : undefined}
+                loading={eager && index === 0 ? "eager" : "lazy"}
                 onLoad={(event) => {
                   if (frame !== "adaptive") {
                     return;

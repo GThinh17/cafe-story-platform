@@ -360,6 +360,7 @@ public class AuthServiceImpl implements AuthService {
         userResponse.setUserAvatar(user.getUserAvatar());
         userResponse.setUserDescription(user.getUserDescription());
         userResponse.setAccountStatus(user.getAccountStatus());
+        userResponse.setHideCafePageOnProfile(user.getHideCafePageOnProfile());
         userResponse.setCafePageId(cafePageId);
         userResponse.setPageId(cafePageId);
         userResponse.setRoles(roles);

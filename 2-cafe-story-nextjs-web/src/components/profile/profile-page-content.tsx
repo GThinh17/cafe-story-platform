@@ -2,10 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import {
-  CafePageHighlights,
-  type CafePageHighlight,
-} from "@/components/profile/profile-cafe-highlights";
+import { ProfileCafeSection } from "@/components/profile/profile-cafe-section";
 import { ProfileHeader } from "@/components/profile/profile-header";
 import { ProfileReviewGrid } from "@/components/profile/profile-review-grid";
 import { ProfileUserListModal } from "@/components/profile/profile-user-list-modal";
@@ -24,6 +21,7 @@ import {
 import { getCafePagesByOwnerId } from "@/lib/api/cafes";
 import { createDirectConversation } from "@/lib/api/chat";
 import { ApiError } from "@/lib/api/client";
+import { imageWidths, optimizeImageUrl } from "@/lib/image-optimizer";
 import { getReviewerByUserId } from "@/lib/api/reviewers";
 import { getUserByUsername } from "@/lib/api/users";
 import {
@@ -94,12 +92,17 @@ function mapUserResponseToProfile(user: UserResponse): UserProfile {
 }
 
 function getProfileAvatarImage(user: UserResponse) {
-  return firstNonEmpty([
-    user.userAvatar,
-    user.avatar,
-    user.profileImage,
-    user.imageUrl,
-  ]) ?? DEFAULT_AVATAR_IMAGE;
+  return (
+    optimizeImageUrl(
+      firstNonEmpty([
+        user.userAvatar,
+        user.avatar,
+        user.profileImage,
+        user.imageUrl,
+      ]),
+      { width: imageWidths.cafeAvatar },
+    ) || DEFAULT_AVATAR_IMAGE
+  );
 }
 
 function firstNonEmpty(values: Array<string | null | undefined>) {
@@ -143,15 +146,6 @@ type ProfileUserListModalType = "followers" | "following";
 
 function isActiveCafePage(cafe: CafePageResponse) {
   return cafe.pageActive === true || cafe.status === "ACTIVE";
-}
-
-function mapCafePageToHighlight(cafe: CafePageResponse): CafePageHighlight {
-  return {
-    alt: `${cafe.name} avatar`,
-    href: `/cafes/${cafe.id}`,
-    image: cafe.avatarUrl?.trim() || cafe.coverUrl?.trim() || DEFAULT_AVATAR_IMAGE,
-    label: cafe.name,
-  };
 }
 
 export function ProfilePageContent({ username }: ProfilePageContentProps) {
@@ -211,8 +205,6 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
       setIsProfileLoading(false);
       return;
     }
-
-    console.log("[profile] fetch", usernameToFetch);
 
     try {
       const response = await getUserByUsername(usernameToFetch);
@@ -330,6 +322,8 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
     void loadProfile();
   }, [loadProfile]);
 
+  const hideCafeSection = viewedUser?.hideCafePageOnProfile === true;
+
   useEffect(() => {
     if (!viewedUser?.userId) {
       setOwnPosts([]);
@@ -342,8 +336,14 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
     }
 
     void loadProfilePosts(viewedUser.userId);
+
+    if (hideCafeSection) {
+      setActiveCafePages([]);
+      return;
+    }
+
     void loadProfileCafePages(viewedUser.userId);
-  }, [loadProfileCafePages, loadProfilePosts, viewedUser?.userId]);
+  }, [hideCafeSection, loadProfileCafePages, loadProfilePosts, viewedUser?.userId]);
 
   useEffect(() => {
     if (!isOwnProfile || !user?.userId) {
@@ -420,10 +420,6 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
     viewedUser,
   ]);
 
-  const cafeHighlights = useMemo(
-    () => activeCafePages.map(mapCafePageToHighlight),
-    [activeCafePages],
-  );
   const primaryCafePage = activeCafePages[0] ?? null;
   const cafePageHref = primaryCafePage ? `/cafes/${primaryCafePage.id}` : undefined;
   const profileUserId = viewedUser?.userId ?? (isOwnProfile ? user?.userId : undefined);
@@ -495,7 +491,13 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
           type={activeUserListModal}
         />
       ) : null}
-      <CafePageHighlights cafes={cafeHighlights} />
+      {hideCafeSection ? null : (
+        <ProfileCafeSection
+          cafe={primaryCafePage}
+          currentUserId={isOwnProfile ? user?.userId : undefined}
+          isOwnProfile={isOwnProfile}
+        />
+      )}
 
       <ProfileReviewGrid
         canCreatePost={isOwnProfile}

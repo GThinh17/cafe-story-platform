@@ -20,6 +20,15 @@ public interface CafePageRepository extends JpaRepository<CafePage, UUID> {
     long countByStatus(PageStatus status);
 
     @Query("""
+            select pr.provinceCode, count(p)
+            from CafePage p
+            join p.region r
+            join r.provinceRef pr
+            group by pr.provinceCode
+            """)
+    List<Object[]> countCafePagesByProvince();
+
+    @Query("""
             select p
             from CafePage p
             where (:status is null or p.status = :status)

@@ -1,3 +1,8 @@
+import {
+  apiCacheTtl,
+  cachedApiCall,
+  invalidateApiCache,
+} from "@/lib/api/api-cache";
 import { apiFetch } from "@/lib/api/client";
 import { apiEndpoints } from "@/lib/api/endpoints";
 import { clearStoredAuthTokens } from "@/lib/auth";
@@ -15,6 +20,7 @@ export async function login(request: LoginRequest) {
   });
 
   clearStoredAuthTokens();
+  invalidateApiCache();
 
   return response;
 }
@@ -27,10 +33,12 @@ export function register(request: RegisterRequest) {
 }
 
 export function getMe(options: { headers?: HeadersInit } = {}) {
-  return apiFetch<AuthResponse>(apiEndpoints.auth.me, {
-    method: "GET",
-    headers: options.headers,
-  });
+  return cachedApiCall("auth:me", apiCacheTtl.shortUser, () =>
+    apiFetch<AuthResponse>(apiEndpoints.auth.me, {
+      method: "GET",
+      headers: options.headers,
+    }),
+  );
 }
 
 export function refreshSession() {
@@ -52,5 +60,8 @@ export function suggestUserNames(fullName: string, signal?: AbortSignal) {
 export function logout() {
   return apiFetch<void>(apiEndpoints.auth.logout, {
     method: "POST",
-  }).finally(clearStoredAuthTokens);
+  }).finally(() => {
+    clearStoredAuthTokens();
+    invalidateApiCache();
+  });
 }

@@ -19,10 +19,14 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { getAdFees } from "@/lib/api/ad-fees";
+import { getCafePagesByOwnerId } from "@/lib/api/cafes";
 import { ApiError } from "@/lib/api/client";
 import { getExtraFees } from "@/lib/api/extra-fees";
 import { createPayment } from "@/lib/api/payments";
 import { cn } from "@/lib/utils";
+import type { AdFeeResponse, AdFeeType } from "@/types/ad-fee";
 import type { ExtraFeeResponse, ExtraFeeType } from "@/types/extra-fee";
 import type { PaymentMethod } from "@/types/payment";
 
@@ -35,10 +39,13 @@ type MembershipPlan = {
   audience: string;
   cta: string;
   features: string[];
-  feeType: ExtraFeeType;
+  feeType: ExtraFeeType | AdFeeType;
+  kind: "extra" | "ad";
+  ownersOnly?: boolean;
   highlighted?: boolean;
   name: string;
   price: string;
+  billingSuffix: string;
 };
 
 type ModalStep = "plans" | "payment";
@@ -48,6 +55,7 @@ const membershipPlans: MembershipPlan[] = [
     audience: "Personal",
     cta: "Choose plan",
     feeType: "REVIEWER_REGISTRATION",
+    kind: "extra",
     features: [
       "Reviewer Pro badge on profile and reviews",
       "Priority placement in featured reviewer lists",
@@ -57,11 +65,13 @@ const membershipPlans: MembershipPlan[] = [
     ],
     name: "Reviewer Membership",
     price: "199,000 VND",
+    billingSuffix: "/month",
   },
   {
     audience: "Business",
     cta: "Choose plan",
     feeType: "CAFE_PAGE_OPENING",
+    kind: "extra",
     features: [
       "Verified cafe profile with Official badge eligibility",
       "Cafe menu, opening hours, gallery, and booking details",
@@ -69,9 +79,27 @@ const membershipPlans: MembershipPlan[] = [
       "Profile analytics for views, saves, and audience sources",
       "Up to one additional member to manage the cafe page",
     ],
-    highlighted: true,
     name: "Cafe Owner Plan",
     price: "499,000 VND",
+    billingSuffix: "/month",
+  },
+  {
+    audience: "Cafe page boost",
+    cta: "Boost your cafe",
+    feeType: "FEED_10000_IMPRESSIONS_OR_30_DAYS",
+    kind: "ad",
+    ownersOnly: true,
+    highlighted: true,
+    features: [
+      "10,000 impressions or 30 days on the CafeStory feed",
+      "Region-targeted delivery to reviewers near your cafe",
+      "Auto-inserted between organic posts with priority pacing",
+      "Impression and click analytics per campaign",
+      "Pause, resume, and re-activate any time from cafe settings",
+    ],
+    name: "Feed Advertising Pack",
+    price: "299,000 VND",
+    billingSuffix: "/campaign",
   },
 ];
 
@@ -116,8 +144,11 @@ export function PricingPlanModal({
   onOpenChange,
 }: PricingPlanModalProps) {
   const router = useRouter();
+  const { user } = useCurrentUser();
   const [step, setStep] = useState<ModalStep>("plans");
   const [extraFees, setExtraFees] = useState<ExtraFeeResponse[]>([]);
+  const [adFees, setAdFees] = useState<AdFeeResponse[]>([]);
+  const [ownsCafePage, setOwnsCafePage] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
   const [isLoadingFees, setIsLoadingFees] = useState(false);
   const [isCreatingPayment, setIsCreatingPayment] = useState(false);
@@ -127,6 +158,15 @@ export function PricingPlanModal({
   const activeExtraFees = useMemo(
     () => extraFees.filter((fee) => fee.status !== false),
     [extraFees],
+  );
+  const activeAdFees = useMemo(
+    () => adFees.filter((fee) => fee.status !== false),
+    [adFees],
+  );
+
+  const visiblePlans = useMemo(
+    () => membershipPlans.filter((plan) => !plan.ownersOnly || ownsCafePage),
+    [ownsCafePage],
   );
 
   useEffect(() => {
@@ -140,16 +180,19 @@ export function PricingPlanModal({
 
     let isMounted = true;
 
-    async function loadExtraFees() {
+    async function loadPlans() {
       setIsLoadingFees(true);
       setError(null);
 
       try {
-        const fees = await getExtraFees();
+        const [extra, ad] = await Promise.all([
+          getExtraFees(),
+          getAdFees().catch(() => [] as AdFeeResponse[]),
+        ]);
 
-        if (isMounted) {
-          setExtraFees(fees);
-        }
+        if (!isMounted) return;
+        setExtraFees(extra);
+        setAdFees(ad);
       } catch (loadError) {
         if (isMounted) {
           setError(getErrorMessage(loadError, "Unable to load membership plans."));
@@ -161,15 +204,51 @@ export function PricingPlanModal({
       }
     }
 
-    void loadExtraFees();
+    async function loadOwnership() {
+      if (!user?.userId) {
+        if (isMounted) setOwnsCafePage(false);
+        return;
+      }
+      try {
+        const cafes = await getCafePagesByOwnerId(user.userId);
+        if (isMounted) setOwnsCafePage(cafes.length > 0);
+      } catch {
+        if (isMounted) setOwnsCafePage(false);
+      }
+    }
+
+    void loadPlans();
+    void loadOwnership();
 
     return () => {
       isMounted = false;
     };
-  }, [isOpen]);
+  }, [isOpen, user?.userId]);
 
-  function getFeeForPlan(plan: MembershipPlan) {
-    return activeExtraFees.find((fee) => fee.feeType === plan.feeType) ?? null;
+  function getFeeForPlan(plan: MembershipPlan): {
+    id: string;
+    price: number;
+    name: string;
+    description: string | null;
+  } | null {
+    if (plan.kind === "ad") {
+      const fee = activeAdFees.find((f) => f.feeType === plan.feeType);
+      if (!fee) return null;
+      return {
+        id: fee.adFeeId,
+        price: fee.price,
+        name: plan.name,
+        description: null,
+      };
+    }
+    const fee = activeExtraFees.find((f) => f.feeType === plan.feeType);
+    if (!fee) return null;
+    return {
+      id: fee.extraFeeId,
+      price: fee.price,
+      name: fee.name,
+      description: fee.description,
+    };
   }
 
   function selectPlan(plan: MembershipPlan) {
@@ -203,10 +282,11 @@ export function PricingPlanModal({
     setError(null);
 
     try {
-      const payment = await createPayment({
-        extraFeeId: extraFee.extraFeeId,
-        paymentMethod: method,
-      });
+      const payment = await createPayment(
+        selectedPlan.kind === "ad"
+          ? { adFeeId: extraFee.id, paymentMethod: method }
+          : { extraFeeId: extraFee.id, paymentMethod: method },
+      );
 
       if (!payment.paymentUrl?.trim()) {
         setError("Payment URL was not returned by the server.");
@@ -254,8 +334,8 @@ export function PricingPlanModal({
         ) : null}
 
         {step === "plans" ? (
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            {membershipPlans.map((plan) => {
+          <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {visiblePlans.map((plan) => {
               const fee = getFeeForPlan(plan);
               const displayPrice = fee ? formatVnd(fee.price) : plan.price;
               const isUnavailable = isLoadingFees || !fee;
@@ -291,7 +371,9 @@ export function PricingPlanModal({
                           : "text-muted",
                       )}
                     >
-                      {fee?.description || "CafeStory membership package"}
+                      {fee?.description || (plan.kind === "ad"
+                        ? "Sponsored placement for your cafe page"
+                        : "CafeStory membership package")}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="flex flex-1 flex-col">
@@ -307,7 +389,7 @@ export function PricingPlanModal({
                             : "text-muted",
                         )}
                       >
-                        /month
+                        {plan.billingSuffix}
                       </span>
                     </p>
 

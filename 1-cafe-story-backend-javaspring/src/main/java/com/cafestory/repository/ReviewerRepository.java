@@ -107,4 +107,14 @@ public interface ReviewerRepository extends JpaRepository<Reviewer, UUID> {
                 or lower(u.userFullName) like lower(concat('%', :query, '%')))
             """)
     List<Reviewer> searchActiveReviewers(@Param("query") String query);
+
+    @Query("""
+            select p.provinceCode, count(rv)
+            from Reviewer rv
+            join rv.user u
+            join u.region r
+            join r.provinceRef p
+            group by p.provinceCode
+            """)
+    List<Object[]> countReviewersByProvince();
 }

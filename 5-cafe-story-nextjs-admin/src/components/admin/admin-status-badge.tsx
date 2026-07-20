@@ -39,7 +39,7 @@ function getStatusClassName(normalized: string) {
   if (
     ["ACTIVE", "PAID", "PUBLISHED", "SAFE", "RESOLVED", "APPROVE", "APPROVED", "APPLIED"].includes(normalized)
   ) {
-    return "bg-primary/10 text-primary-strong border-transparent";
+    return "bg-success/10 text-success border-transparent";
   }
 
   if (
