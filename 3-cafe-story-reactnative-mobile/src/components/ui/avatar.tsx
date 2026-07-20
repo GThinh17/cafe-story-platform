@@ -2,6 +2,7 @@ import { UserRound } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { Image, StyleSheet, View } from "react-native";
 import { colors } from "../../theme";
+import { resolveAvatarImageUri } from "../../utils/avatar-image";
 
 type AvatarProps = {
   initials?: string;
@@ -11,7 +12,7 @@ type AvatarProps = {
 
 export function Avatar({ size = 48, uri }: AvatarProps) {
   const [imageFailed, setImageFailed] = useState(false);
-  const sourceUri = uri?.trim() ? uri : null;
+  const sourceUri = resolveAvatarImageUri(uri, size);
   const avatarStyle = {
     borderRadius: size / 2,
     height: size,
