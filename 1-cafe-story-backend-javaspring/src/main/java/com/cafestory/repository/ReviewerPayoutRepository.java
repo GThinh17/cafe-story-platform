@@ -14,4 +14,6 @@ public interface ReviewerPayoutRepository extends JpaRepository<ReviewerPayout, 
     Optional<ReviewerPayout> findByReviewerReviewerIdAndPayoutMonth(UUID reviewerId, String payoutMonth);
 
     List<ReviewerPayout> findByReviewerReviewerIdOrderByPayoutMonthDesc(UUID reviewerId);
+
+    List<ReviewerPayout> findByPayoutMonth(String payoutMonth);
 }

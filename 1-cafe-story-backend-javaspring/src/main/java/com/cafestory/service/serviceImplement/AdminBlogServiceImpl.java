@@ -2,6 +2,7 @@ package com.cafestory.service.serviceImplement;
 
 import com.cafestory.dto.requestDTO.AdminPostStatusUpdateRequestDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
+import com.cafestory.dto.responseDTO.BlogTaggedUserResponseDTO;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.mapper.BlogMapper;
@@ -15,6 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -33,8 +36,14 @@ public class AdminBlogServiceImpl implements AdminBlogService {
     @Override
     @Transactional(readOnly = true)
     public Page<BlogResponseDTO> getBlogs(PostStatus status, UUID authorUserId, UUID pageId, Pageable pageable) {
-        return blogRepository.findAdminBlogs(status, authorUserId, pageId, pageable)
-                .map(this::toBlogResponseDTO);
+        Page<Blog> blogs = blogRepository.findAdminBlogs(status, authorUserId, pageId, pageable);
+        Map<UUID, List<BlogTaggedUserResponseDTO>> taggedUsersByBlogId =
+                blogTagService.getTaggedUsersByBlogIds(blogs.stream().map(Blog::getId).toList());
+        return blogs.map(blog -> {
+            BlogResponseDTO response = blogMapper.toBlogResponseDTO(blog);
+            response.setTaggedUsers(taggedUsersByBlogId.getOrDefault(blog.getId(), List.of()));
+            return response;
+        });
     }
 
     @Override

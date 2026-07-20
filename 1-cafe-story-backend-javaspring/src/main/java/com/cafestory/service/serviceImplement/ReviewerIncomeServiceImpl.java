@@ -1,9 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
 import com.cafestory.dto.responseDTO.ReviewerIncomeResponseDTO;
-import com.cafestory.entity.BlogLike;
-import com.cafestory.entity.BlogShare;
-import com.cafestory.entity.Comment;
 import com.cafestory.entity.ReviewerFormula;
 import com.cafestory.entity.Reviewer;
 import com.cafestory.entity.ReviewerIncome;
@@ -75,7 +72,7 @@ public class ReviewerIncomeServiceImpl implements ReviewerIncomeService {
 
         ReviewerFormula formula = formulaService.getActiveFormula();
 
-        List<Reviewer> allReviewers = reviewerRepository.findAll();
+        List<Reviewer> allReviewers = reviewerRepository.findAllWithUser();
         Map<UUID, Reviewer> byUserId = new HashMap<>();
         Map<UUID, long[]> counts = new HashMap<>();
         for (Reviewer reviewer : allReviewers) {
@@ -83,17 +80,20 @@ public class ReviewerIncomeServiceImpl implements ReviewerIncomeService {
             counts.put(reviewer.getReviewerId(), new long[]{0L, 0L, 0L}); // like, share, comment
         }
 
-        for (BlogLike like : blogLikeRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(start, end)) {
-            Reviewer reviewer = byUserId.get(like.getUser().getUserId());
-            if (reviewer != null) counts.get(reviewer.getReviewerId())[0]++;
+        for (BlogLikeRepository.UserInteractionCountRow row
+                : blogLikeRepository.countByUserAndCreatedAtBetween(start, end)) {
+            Reviewer reviewer = byUserId.get(row.getUserId());
+            if (reviewer != null) counts.get(reviewer.getReviewerId())[0] = row.getEventCount();
         }
-        for (BlogShare share : blogShareRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(start, end)) {
-            Reviewer reviewer = byUserId.get(share.getUser().getUserId());
-            if (reviewer != null) counts.get(reviewer.getReviewerId())[1]++;
+        for (BlogShareRepository.UserShareCountRow row
+                : blogShareRepository.countByUserAndCreatedAtBetween(start, end)) {
+            Reviewer reviewer = byUserId.get(row.getUserId());
+            if (reviewer != null) counts.get(reviewer.getReviewerId())[1] = row.getEventCount();
         }
-        for (Comment comment : commentRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(start, end)) {
-            Reviewer reviewer = byUserId.get(comment.getUser().getUserId());
-            if (reviewer != null) counts.get(reviewer.getReviewerId())[2]++;
+        for (CommentRepository.UserCommentCountRow row
+                : commentRepository.countByUserAndCreatedAtBetween(start, end)) {
+            Reviewer reviewer = byUserId.get(row.getUserId());
+            if (reviewer != null) counts.get(reviewer.getReviewerId())[2] = row.getEventCount();
         }
 
         Map<UUID, ReviewerBadge> badgeByReviewerId = new HashMap<>();

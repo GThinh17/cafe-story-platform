@@ -16,6 +16,9 @@ public interface ReviewerRepository extends JpaRepository<Reviewer, UUID> {
 
     Optional<Reviewer> findByUserUserId(UUID userId);
 
+    @Query("select r from Reviewer r left join fetch r.user")
+    List<Reviewer> findAllWithUser();
+
     long countByReviewerActive(Boolean reviewerActive);
 
     @Query("""

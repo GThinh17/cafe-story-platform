@@ -12,6 +12,7 @@ import {
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import {
   FilterInput,
+  useDebouncedValue,
   FilterSelect,
   shortId,
   Toolbar,
@@ -100,6 +101,7 @@ export function AdminPayoutPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [month, setMonth] = useState(currentMonth);
   const [reviewerId, setReviewerId] = useState("");
+  const debouncedReviewerId = useDebouncedValue(reviewerId);
   const [statusFilter, setStatusFilter] = useState<AdminPayoutStatus | "">("");
   const [page, setPage] = useState(0);
 
@@ -134,7 +136,7 @@ export function AdminPayoutPage() {
       setError(null);
       if (viewType === "DAILY") {
         return getPayoutIncome(
-          { month, reviewerId: reviewerId || undefined, page, size: PAGE_SIZE, sortDir },
+          { month, reviewerId: debouncedReviewerId || undefined, page, size: PAGE_SIZE, sortDir },
           signal,
         )
           .then((res) => {
@@ -166,7 +168,7 @@ export function AdminPayoutPage() {
           });
       }
     },
-    [viewType, month, reviewerId, statusFilter, page, sortDir],
+    [viewType, month, debouncedReviewerId, statusFilter, page, sortDir],
   );
 
   useEffect(() => {
@@ -177,7 +179,7 @@ export function AdminPayoutPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [month, reviewerId, statusFilter, sortDir]);
+  }, [month, debouncedReviewerId, statusFilter, sortDir]);
 
   useEffect(() => {
     const controller = new AbortController();

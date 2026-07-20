@@ -34,6 +34,8 @@ public interface CafePageRepository extends JpaRepository<CafePage, UUID> {
             where (:status is null or p.status = :status)
             and (:ownerUserId is null or p.owner.userId = :ownerUserId)
             """)
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {
+            "owner", "region", "region.cityRef", "region.provinceRef", "region.wardRef"})
     Page<CafePage> findAdminCafePages(
             @Param("status") PageStatus status,
             @Param("ownerUserId") UUID ownerUserId,

@@ -93,4 +93,21 @@ public interface BlogLikeRepository extends JpaRepository<BlogLike, UUID> {
 
         Long getEventCount();
     }
+
+    @Query("""
+            select like.user.userId as userId, count(like) as eventCount
+            from BlogLike like
+            where like.createdAt >= :startAt
+            and like.createdAt < :endAt
+            group by like.user.userId
+            """)
+    List<UserInteractionCountRow> countByUserAndCreatedAtBetween(
+            @Param("startAt") LocalDateTime startAt,
+            @Param("endAt") LocalDateTime endAt);
+
+    interface UserInteractionCountRow {
+        UUID getUserId();
+
+        Long getEventCount();
+    }
 }

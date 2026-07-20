@@ -110,6 +110,21 @@ public class BlogTagServiceImpl implements BlogTagService {
 
     @Override
     @Transactional(readOnly = true)
+    public Map<UUID, List<BlogTaggedUserResponseDTO>> getTaggedUsersByBlogIds(List<UUID> blogIds) {
+        if (blogIds == null || blogIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, List<BlogTaggedUserResponseDTO>> tagsByBlogId = new LinkedHashMap<>();
+        for (BlogTaggedUser tag : blogTaggedUserRepository.findByBlogIdInWithTaggedUser(blogIds)) {
+            tagsByBlogId
+                    .computeIfAbsent(tag.getBlog().getId(), ignored -> new ArrayList<>())
+                    .add(blogTaggedUserMapper.toBlogTaggedUserResponseDTO(tag));
+        }
+        return tagsByBlogId;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<BlogTaggedUserResponseDTO> getTagSuggestions(UUID actorUserId, String keyword) {
         User actor = userValidator.validateUserExists(actorUserId);
         userValidator.validateUserActive(actor);

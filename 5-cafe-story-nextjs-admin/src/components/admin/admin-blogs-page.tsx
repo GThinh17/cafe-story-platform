@@ -28,12 +28,12 @@ import {
   formatDate,
   PAGE_SIZE,
   Toolbar,
+  useDebouncedValue,
   usePagedAdminResource,
 } from "@/components/admin/admin-page-utils";
 import { Button } from "@/components/ui/button";
 import {
   createBlogRankingOverride,
-  getAdminBlog,
   getBlogs,
   updateBlogStatus,
 } from "@/lib/api/admin";
@@ -125,30 +125,29 @@ export function AdminBlogsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailBlog, setDetailBlog] = useState<Blog | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [detailError, setDetailError] = useState<string | null>(null);
+  const debouncedAuthorUserId = useDebouncedValue(authorUserId);
+  const debouncedPageId = useDebouncedValue(pageId);
 
   const resource = usePagedAdminResource(
     (page, signal) =>
-      getBlogs({ status, authorUserId, pageId, page, size: PAGE_SIZE }, signal),
-    [status, authorUserId, pageId],
+      getBlogs(
+        {
+          status,
+          authorUserId: debouncedAuthorUserId,
+          pageId: debouncedPageId,
+          page,
+          size: PAGE_SIZE,
+        },
+        signal,
+      ),
+    [status, debouncedAuthorUserId, debouncedPageId],
   );
 
-  async function openDetail(blog: Blog) {
+  // The admin list DTO already carries every field the dialog renders, including
+  // content, imageUrls, and counts. Skip the redundant GET /api/admin/blogs/{id}.
+  function openDetail(blog: Blog) {
+    setDetailBlog(blog);
     setDetailOpen(true);
-    setDetailBlog(null);
-    setDetailError(null);
-    setDetailLoading(true);
-
-    try {
-      setDetailBlog(await getAdminBlog(blog.id));
-    } catch (requestError) {
-      setDetailError(
-        requestError instanceof Error ? requestError.message : "Unable to load blog detail.",
-      );
-    } finally {
-      setDetailLoading(false);
-    }
   }
 
   const columns = useMemo<AdminTableColumn<Blog>[]>(
@@ -299,8 +298,8 @@ export function AdminBlogsPage() {
         onOpenChange={setDetailOpen}
         title="Blog detail"
         description={detailBlog ? `Post ${detailBlog.id}` : "Latest detail from admin API"}
-        isLoading={detailLoading}
-        error={detailError}
+        isLoading={false}
+        error={null}
         footer={
           detailBlog ? (
             <div className="flex flex-wrap justify-end gap-2">

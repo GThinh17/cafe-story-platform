@@ -1,9 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
 import com.cafestory.dto.responseDTO.ReviewerRankingSnapshotResponseDTO;
-import com.cafestory.entity.BlogLike;
-import com.cafestory.entity.BlogShare;
-import com.cafestory.entity.Comment;
 import com.cafestory.entity.Reviewer;
 import com.cafestory.entity.ReviewerBadgeHistory;
 import com.cafestory.entity.ReviewerFormula;
@@ -78,7 +75,7 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
         DateRange range = resolveDateRange(today, periodType);
         ReviewerFormula formula = formulaService.getActiveFormula();
 
-        List<Reviewer> allReviewers = reviewerRepository.findAll();
+        List<Reviewer> allReviewers = reviewerRepository.findAllWithUser();
         Map<UUID, Reviewer> reviewersByUserId = new HashMap<>();
         Map<UUID, long[]> counts = new HashMap<>();
         for (Reviewer reviewer : allReviewers) {
@@ -86,22 +83,25 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
             counts.put(reviewer.getReviewerId(), new long[]{0, 0, 0});
         }
 
-        for (BlogLike like : blogLikeRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(range.startDate(), range.endDate())) {
-            Reviewer reviewer = reviewersByUserId.get(like.getUser().getUserId());
+        for (BlogLikeRepository.UserInteractionCountRow row
+                : blogLikeRepository.countByUserAndCreatedAtBetween(range.startDate(), range.endDate())) {
+            Reviewer reviewer = reviewersByUserId.get(row.getUserId());
             if (reviewer != null) {
-                counts.get(reviewer.getReviewerId())[0]++;
+                counts.get(reviewer.getReviewerId())[0] = row.getEventCount();
             }
         }
-        for (BlogShare share : blogShareRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(range.startDate(), range.endDate())) {
-            Reviewer reviewer = reviewersByUserId.get(share.getUser().getUserId());
+        for (BlogShareRepository.UserShareCountRow row
+                : blogShareRepository.countByUserAndCreatedAtBetween(range.startDate(), range.endDate())) {
+            Reviewer reviewer = reviewersByUserId.get(row.getUserId());
             if (reviewer != null) {
-                counts.get(reviewer.getReviewerId())[1]++;
+                counts.get(reviewer.getReviewerId())[1] = row.getEventCount();
             }
         }
-        for (Comment comment : commentRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(range.startDate(), range.endDate())) {
-            Reviewer reviewer = reviewersByUserId.get(comment.getUser().getUserId());
+        for (CommentRepository.UserCommentCountRow row
+                : commentRepository.countByUserAndCreatedAtBetween(range.startDate(), range.endDate())) {
+            Reviewer reviewer = reviewersByUserId.get(row.getUserId());
             if (reviewer != null) {
-                counts.get(reviewer.getReviewerId())[2]++;
+                counts.get(reviewer.getReviewerId())[2] = row.getEventCount();
             }
         }
 
@@ -113,7 +113,9 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
         List<SnapshotEntry> entries = new ArrayList<>();
         for (Reviewer reviewer : allReviewers) {
             long[] c = counts.get(reviewer.getReviewerId());
-            long score = formulaService.calculateScore(c[0], c[1], c[2]);
+            long score = c[0] * formula.getLikeWeight()
+                    + c[1] * formula.getShareWeight()
+                    + c[2] * formula.getCommentWeight();
             entries.add(new SnapshotEntry(reviewer, c[0], c[1], c[2], score));
         }
         entries.sort(Comparator.comparingLong(SnapshotEntry::score).reversed());
@@ -142,10 +144,14 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
     }
 
     private void upsertReviewerBadges(String month, List<SnapshotEntry> entries) {
+        Map<UUID, ReviewerBadgeHistory> existingByReviewerId = new HashMap<>();
+        for (ReviewerBadgeHistory existing : reviewerBadgeHistoryRepository.findByMonth(month)) {
+            existingByReviewerId.put(existing.getReviewer().getReviewerId(), existing);
+        }
+        List<ReviewerBadgeHistory> toSave = new ArrayList<>();
         for (SnapshotEntry entry : entries) {
-            ReviewerBadgeHistory history = reviewerBadgeHistoryRepository
-                    .findByReviewerReviewerIdAndMonth(entry.reviewer().getReviewerId(), month)
-                    .orElseGet(ReviewerBadgeHistory::new);
+            ReviewerBadgeHistory history = existingByReviewerId
+                    .getOrDefault(entry.reviewer().getReviewerId(), new ReviewerBadgeHistory());
             history.setReviewer(entry.reviewer());
             history.setMonth(month);
             history.setLikeCount(entry.likeCount());
@@ -153,8 +159,9 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
             history.setCommentCount(entry.commentCount());
             history.setScore(entry.score());
             history.setBadge(badgeThresholdService.badgeForScore(entry.score()));
-            reviewerBadgeHistoryRepository.save(history);
+            toSave.add(history);
         }
+        reviewerBadgeHistoryRepository.saveAll(toSave);
     }
 
     @Override

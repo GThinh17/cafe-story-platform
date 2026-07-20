@@ -173,10 +173,6 @@ function mergeAiHistory(
   return [created, ...current.filter((item) => item.id !== created.id)].slice(0, AI_HISTORY_SIZE);
 }
 
-function sleep(ms: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
 export function AdminReportsPage() {
   const [status, setStatus] = useState<ReportStatus | "">("");
   const [targetType, setTargetType] = useState<ReportTargetType | "">("");
@@ -219,11 +215,16 @@ export function AdminReportsPage() {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const detail = useAdminDetailResource<ContentReport>();
 
-  useEffect(() => {
-    const intervalId = window.setInterval(() => setNowMs(Date.now()), 1000);
+  const hasActiveAutoApplyJob = useMemo(
+    () => activeAutoApplyJob(autoApplyJobs) !== null,
+    [autoApplyJobs],
+  );
 
+  useEffect(() => {
+    if (!hasActiveAutoApplyJob) return;
+    const intervalId = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(intervalId);
-  }, []);
+  }, [hasActiveAutoApplyJob]);
 
   const resource = usePagedAdminResource(
     (page, signal) =>
@@ -325,7 +326,12 @@ export function AdminReportsPage() {
 
       setBulkProgress({ done: 0, failed: 0, scheduled: 0, skipped: 0, total: reports.length });
 
-      for (const report of reports) {
+      // Bounded concurrency: 4 in-flight AI calls at a time. Previous implementation
+      // ran serially with a 250 ms sleep between each report — for N reports that was
+      // (N × latency) + (N × 250 ms). This drops to roughly (N / 4 × latency).
+      const CONCURRENCY = 4;
+      let cursor = 0;
+      const processOne = async (report: (typeof reports)[number]) => {
         try {
           const createdResolution = await createReportAiResolution(
             report.id,
@@ -355,9 +361,14 @@ export function AdminReportsPage() {
             failed: current.failed + 1,
           }));
         }
-
-        await sleep(250);
-      }
+      };
+      const workers = Array.from({ length: Math.min(CONCURRENCY, reports.length) }, async () => {
+        while (cursor < reports.length) {
+          const index = cursor++;
+          await processOne(reports[index]);
+        }
+      });
+      await Promise.all(workers);
 
       if (detail.data) {
         await loadAiHistory(detail.data.id);

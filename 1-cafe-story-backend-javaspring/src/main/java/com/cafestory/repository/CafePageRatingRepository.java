@@ -20,4 +20,20 @@ public interface CafePageRatingRepository extends JpaRepository<CafePageRating, 
 
     @Query("select avg(r.rating) from CafePageRating r where r.cafePage.id = :cafePageId")
     Double findAverageRatingByCafePageId(@Param("cafePageId") UUID cafePageId);
+
+    @Query("""
+            select r.cafePage.id as cafePageId, avg(r.rating) as avgRating, count(r) as ratingCount
+            from CafePageRating r
+            where r.cafePage.id in :cafePageIds
+            group by r.cafePage.id
+            """)
+    List<CafePageRatingSummaryRow> summarizeByCafePageIds(@Param("cafePageIds") java.util.Collection<UUID> cafePageIds);
+
+    interface CafePageRatingSummaryRow {
+        UUID getCafePageId();
+
+        Double getAvgRating();
+
+        Long getRatingCount();
+    }
 }
