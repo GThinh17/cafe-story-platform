@@ -63,6 +63,20 @@ public interface BlogLikeRepository extends JpaRepository<BlogLike, UUID> {
             @Param("userId") UUID userId,
             @Param("blogIds") List<UUID> blogIds);
 
+    @Query("""
+            select distinct like.blog.id
+            from BlogLike like
+            where like.user.userId = :userId
+            and like.blog.id in :blogIds
+            and like.createdAt >= :startAt
+            and like.createdAt < :endAt
+            """)
+    List<UUID> findRecentlyLikedBlogIds(
+            @Param("userId") UUID userId,
+            @Param("blogIds") Collection<UUID> blogIds,
+            @Param("startAt") LocalDateTime startAt,
+            @Param("endAt") LocalDateTime endAt);
+
     @EntityGraph(attributePaths = {"user", "actorCafePage"})
     List<BlogLike> findByBlogId(UUID blogId);
 

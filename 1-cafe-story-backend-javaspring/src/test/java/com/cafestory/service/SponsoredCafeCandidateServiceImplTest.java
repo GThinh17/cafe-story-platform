@@ -77,11 +77,8 @@ class SponsoredCafeCandidateServiceImplTest {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
         when(adCampaignRepository.findActiveCandidates(eq(AdStatus.ACTIVE), any(LocalDateTime.class)))
                 .thenReturn(List.of(campaign));
-        when(adImpressionRepository.countByUserUserIdAndAdCampaignAdCampaignIdAndShownAtGreaterThanEqualAndShownAtLessThan(
-                eq(USER_ID),
-                eq(VALID_CAMPAIGN_ID),
-                any(LocalDateTime.class),
-                any(LocalDateTime.class))).thenReturn(0L);
+        when(adImpressionRepository.countByUserAndCampaignIdsBetween(
+                eq(USER_ID), any(), any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(List.of());
 
         List<SponsoredCafeResponseDTO> result = sponsoredCafeCandidateService.getCandidates(USER_ID, 5, 0);
 
@@ -120,16 +117,17 @@ class SponsoredCafeCandidateServiceImplTest {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
         when(adCampaignRepository.findActiveCandidates(eq(AdStatus.ACTIVE), any(LocalDateTime.class)))
                 .thenReturn(List.of(inactive, expired, exhausted, capped, valid));
-        when(adImpressionRepository.countByUserUserIdAndAdCampaignAdCampaignIdAndShownAtGreaterThanEqualAndShownAtLessThan(
-                eq(USER_ID),
-                any(UUID.class),
-                any(LocalDateTime.class),
-                any(LocalDateTime.class))).thenAnswer(invocation -> CAPPED_CAMPAIGN_ID.equals(invocation.getArgument(1)) ? 3L : 0L);
+        when(adImpressionRepository.countByUserAndCampaignIdsBetween(
+                eq(USER_ID), any(), any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(List.of(impressionCountRow(CAPPED_CAMPAIGN_ID, 3L)));
 
         List<SponsoredCafeResponseDTO> result = sponsoredCafeCandidateService.getCandidates(USER_ID, 5, 0);
 
         assertThat(result).extracting(SponsoredCafeResponseDTO::getCampaignId)
                 .containsExactly(VALID_CAMPAIGN_ID);
+        verify(adImpressionRepository, never())
+                .countByUserUserIdAndAdCampaignAdCampaignIdAndShownAtGreaterThanEqualAndShownAtLessThan(
+                        any(), any(), any(), any());
     }
 
     @Test
@@ -272,8 +270,8 @@ class SponsoredCafeCandidateServiceImplTest {
         when(userRepository.findById(USER_ID)).thenReturn(Optional.of(user));
         when(adCampaignRepository.findActiveCandidates(eq(AdStatus.ACTIVE), any(LocalDateTime.class)))
                 .thenReturn(List.of(regionless, firstTie, secondTie, future));
-        when(adImpressionRepository.countByUserUserIdAndAdCampaignAdCampaignIdAndShownAtGreaterThanEqualAndShownAtLessThan(
-                eq(USER_ID), any(UUID.class), any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(0L);
+        when(adImpressionRepository.countByUserAndCampaignIdsBetween(
+                eq(USER_ID), any(), any(LocalDateTime.class), any(LocalDateTime.class))).thenReturn(List.of());
 
         List<SponsoredCafeResponseDTO> result = sponsoredCafeCandidateService.getCandidates(USER_ID, 100, 0);
 
@@ -321,6 +319,20 @@ class SponsoredCafeCandidateServiceImplTest {
         user.setUserId(USER_ID);
         user.setRegion(region);
         return user;
+    }
+
+    private AdImpressionRepository.CampaignImpressionCountRow impressionCountRow(UUID campaignId, long count) {
+        return new AdImpressionRepository.CampaignImpressionCountRow() {
+            @Override
+            public UUID getCampaignId() {
+                return campaignId;
+            }
+
+            @Override
+            public long getImpressionCount() {
+                return count;
+            }
+        };
     }
 
     private Region region(String city) {

@@ -5,6 +5,7 @@ import com.cafestory.dto.responseDTO.BlogFeedResponse;
 import com.cafestory.dto.responseDTO.BlogDisplayAuthorType;
 import com.cafestory.dto.responseDTO.FeedResponseDTO;
 import com.cafestory.entity.Blog;
+import com.cafestory.entity.AiModerationResult;
 import com.cafestory.entity.BlogRecommendationScore;
 import com.cafestory.entity.BlogTrendingScore;
 import com.cafestory.entity.CafePage;
@@ -23,13 +24,16 @@ import com.cafestory.repository.BlogShareRepository;
 import com.cafestory.repository.BlogTrendingScoreRepository;
 import com.cafestory.repository.CafePageRepository;
 import com.cafestory.repository.CommentRepository;
+import com.cafestory.repository.ContentReportRepository;
 import com.cafestory.repository.FeedImpressionRepository;
 import com.cafestory.repository.PageFollowRepository;
 import com.cafestory.repository.RegionRepository;
-import com.cafestory.repository.ReviewerRepository;
 import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceImplement.BlogFeedRankingServiceImpl;
+import com.cafestory.service.serviceImplement.FeedScoreCalculationServiceImpl;
+import com.cafestory.service.serviceInterface.BlogRecommendationScoreBatchWriter;
+import com.cafestory.service.serviceInterface.FeedScoreCalculationService;
 import com.cafestory.validation.UserValidator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,7 +41,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -53,6 +60,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockingDetails;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -101,16 +110,25 @@ class BlogFeedRankingServiceImplTest {
     private AiModerationResultRepository aiModerationResultRepository;
 
     @Mock
+    private ContentReportRepository contentReportRepository;
+
+    @Mock
     private RegionRepository regionRepository;
 
     @Mock
     private UserRepository userRepository;
 
     @Mock
-    private ReviewerRepository reviewerRepository;
+    private UserValidator userValidator;
 
     @Mock
-    private UserValidator userValidator;
+    private BlogRecommendationScoreBatchWriter recommendationScoreBatchWriter;
+
+    @Mock
+    private TaskExecutor taskExecutor;
+
+    @Mock
+    private PlatformTransactionManager transactionManager;
 
     @Test
     void getOrganicFeed_success_rankingOrderByScore_TC001() {
@@ -247,8 +265,15 @@ class BlogFeedRankingServiceImplTest {
                 null,
                 0,
                 10);
+        List<BlogFeedResponse> cachedResult = service.getPersonalizedFeed(
+                user.getUserId(),
+                TrendWindowType.HOUR_24,
+                null,
+                0,
+                10);
 
         assertThat(result).hasSize(1);
+        assertThat(cachedResult).usingRecursiveComparison().isEqualTo(result);
         assertThat(result.getFirst().getRankPosition()).isEqualTo(1);
         assertThat(result.getFirst().getContentPreview()).isEqualTo(blog.getContent());
         assertThat(result.getFirst().getImageUrls()).containsExactly("/images/feed/cafe.jpg");
@@ -262,7 +287,17 @@ class BlogFeedRankingServiceImplTest {
         assertThat(result.getFirst().getLikeCount()).isEqualTo(12);
         assertThat(result.getFirst().getCommentCount()).isEqualTo(3);
         assertThat(result.getFirst().getShareCount()).isEqualTo(4);
-        verify(userValidator).validateUserActive(user);
+        verify(blogRecommendationScoreRepository, times(1)).findLatestComputedAt(
+                user.getUserId(),
+                TrendWindowType.HOUR_24,
+                user.getRegion().getRegionId());
+        verify(blogRecommendationScoreRepository, times(1)).findLatestPage(
+                eq(user.getUserId()),
+                eq(TrendWindowType.HOUR_24),
+                eq(user.getRegion().getRegionId()),
+                eq(computedAt),
+                any(Pageable.class));
+        verify(userValidator, times(2)).validateUserActive(user);
     }
 
     @Test
@@ -271,15 +306,9 @@ class BlogFeedRankingServiceImplTest {
         UUID regionId = user.getRegion().getRegionId();
         Region blogRegion = region("Ho Chi Minh");
         Blog blog = blog(blogRegion.getRegionId());
-        BlogTrendingScore trendingScore = trendingScore(blog, 100.0);
-        LocalDateTime trendingComputedAt = LocalDateTime.of(2026, 5, 19, 10, 0);
         BlogFeedRankingServiceImpl service = service();
 
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
-        when(blogTrendingScoreRepository.findLatestComputedAt(TrendWindowType.HOUR_24)).thenReturn(trendingComputedAt);
-        when(blogTrendingScoreRepository.findByWindowTypeAndComputedAtOrderByRankPositionAsc(
-                TrendWindowType.HOUR_24,
-                trendingComputedAt)).thenReturn(List.of(trendingScore));
         when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(blog));
         when(regionRepository.findById(regionId)).thenReturn(java.util.Optional.of(user.getRegion()));
         when(pageFollowRepository.findFollowedCafePageIds(user.getUserId(), List.of(blog.getPageId())))
@@ -302,30 +331,16 @@ class BlogFeedRankingServiceImplTest {
         assertThat(response.getDisplayAvatarUrl()).isEqualTo("/images/cafe-avatar.jpg");
         assertThat(response.getRegionCity()).isEqualTo("Ho Chi Minh");
 
-        ArgumentCaptor<Double> feedScoreCaptor = ArgumentCaptor.forClass(Double.class);
-        verify(blogRecommendationScoreRepository).upsertRecommendationScore(
-                any(UUID.class),
-                eq(user.getUserId()),
-                eq(blog.getId()),
-                eq(TrendWindowType.HOUR_24.name()),
-                eq(regionId),
-                feedScoreCaptor.capture(),
-                eq(100.0),
-                any(Double.class),
-                eq(15.0),
-                eq(25.0),
-                eq(30.0),
-                any(Double.class),
-                any(Double.class),
-                any(Double.class),
-                eq(0.0),
-                any(Double.class),
-                any(Double.class),
-                eq(1),
-                any(String.class),
-                any(LocalDateTime.class),
-                any(LocalDateTime.class));
-        assertThat(feedScoreCaptor.getValue()).isGreaterThan(100.0 * 0.35 + 30 + 25 + 15);
+        assertThat(upsertArguments()).singleElement().satisfies(arguments -> {
+            assertThat(arguments[1]).isEqualTo(user.getUserId());
+            assertThat(arguments[2]).isEqualTo(blog.getId());
+            assertThat((Double) arguments[5]).isBetween(0.0, 1.0);
+            assertThat(arguments[6]).isEqualTo(FeedScoreCalculationService.FORMULA_VERSION);
+            assertThat(arguments[7]).isEqualTo(0.8);
+            assertThat(arguments[25]).isEqualTo(1);
+        });
+        verify(userFollowRepository, never()).existsByFollowerUserIdAndFollowingUserId(any(), any());
+        verify(pageFollowRepository, never()).existsByUserUserIdAndCafePageId(any(), any());
     }
 
     @Test
@@ -344,7 +359,7 @@ class BlogFeedRankingServiceImplTest {
                 null);
 
         ArgumentCaptor<UUID> blogIdCaptor = ArgumentCaptor.forClass(UUID.class);
-        ArgumentCaptor<Double> followedUserScoreCaptor = ArgumentCaptor.forClass(Double.class);
+        ArgumentCaptor<Double> relationshipCaptor = ArgumentCaptor.forClass(Double.class);
         ArgumentCaptor<String> reasonCaptor = ArgumentCaptor.forClass(String.class);
         verify(blogRecommendationScoreRepository, times(2)).upsertRecommendationScore(
                 any(UUID.class),
@@ -353,10 +368,18 @@ class BlogFeedRankingServiceImplTest {
                 eq(TrendWindowType.HOUR_24.name()),
                 eq(user.getRegion().getRegionId()),
                 any(Double.class),
+                eq(FeedScoreCalculationService.FORMULA_VERSION),
+                relationshipCaptor.capture(),
                 any(Double.class),
                 any(Double.class),
                 any(Double.class),
-                followedUserScoreCaptor.capture(),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
                 any(Double.class),
                 any(Double.class),
                 any(Double.class),
@@ -369,8 +392,8 @@ class BlogFeedRankingServiceImplTest {
                 any(LocalDateTime.class),
                 any(LocalDateTime.class));
         assertThat(blogIdCaptor.getAllValues().getFirst()).isEqualTo(ownBlog.getId());
-        assertThat(reasonCaptor.getAllValues().getFirst()).contains("ownAuthorScore=40.0");
-        assertThat(followedUserScoreCaptor.getAllValues().getFirst()).isZero();
+        assertThat(reasonCaptor.getAllValues().getFirst()).contains("formulaVersion=EXPERT_V1", "relationship=1.0");
+        assertThat(relationshipCaptor.getAllValues().getFirst()).isEqualTo(1.0);
         verify(userFollowRepository, never())
                 .existsByFollowerUserIdAndFollowingUserId(user.getUserId(), user.getUserId());
     }
@@ -392,6 +415,12 @@ class BlogFeedRankingServiceImplTest {
                 user.getUserId(),
                 PostStatus.PUBLISHED)).thenReturn(Optional.of(ownBlog));
         when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(ownBlog));
+        when(blogRecommendationScoreRepository.findLatestPage(
+                eq(user.getUserId()),
+                eq(TrendWindowType.HOUR_24),
+                eq(regionId),
+                eq(oldComputedAt),
+                any(Pageable.class))).thenReturn(List.of(recommendationScore(user, ownBlog, 0.5, 1)));
 
         List<BlogFeedResponse> result = service.getPersonalizedFeed(
                 user.getUserId(),
@@ -408,6 +437,14 @@ class BlogFeedRankingServiceImplTest {
                 eq(ownBlog.getId()),
                 eq(TrendWindowType.HOUR_24.name()),
                 eq(regionId),
+                any(Double.class),
+                eq(FeedScoreCalculationService.FORMULA_VERSION),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
                 any(Double.class),
                 any(Double.class),
                 any(Double.class),
@@ -430,28 +467,19 @@ class BlogFeedRankingServiceImplTest {
     void rebuildRecommendationCache_success_reportPenaltyReducesScore_TC009() {
         User user = user();
         Blog blog = blog(UUID.randomUUID());
-        BlogTrendingScore trendingScore = trendingScore(blog, 100.0);
-        LocalDateTime trendingComputedAt = LocalDateTime.of(2026, 5, 19, 10, 0);
         BlogFeedRankingServiceImpl service = service();
 
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
-        when(blogTrendingScoreRepository.findLatestComputedAt(TrendWindowType.HOUR_24)).thenReturn(trendingComputedAt);
-        when(blogTrendingScoreRepository.findByWindowTypeAndComputedAtOrderByRankPositionAsc(
-                TrendWindowType.HOUR_24,
-                trendingComputedAt)).thenReturn(List.of(trendingScore));
         when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(blog));
-        when(blogEventRepository.countByBlogIdsAndEventTypeAndCreatedAtBetween(
-                eq(List.of(blog.getId())),
-                any(),
-                any(),
-                any())).thenReturn(List.of(blogEventCountRow(blog.getId(), 3L)));
+        when(contentReportRepository.countByBlogIdsAndStatusIn(any(), any()))
+                .thenReturn(List.of(contentReportCountRow(blog.getId(), 4L)));
 
         service.rebuildRecommendationCache(
                 user.getUserId(),
                 TrendWindowType.HOUR_24,
                 null);
 
-        ArgumentCaptor<Double> reportPenaltyCaptor = ArgumentCaptor.forClass(Double.class);
+        ArgumentCaptor<Double> qualityScoreCaptor = ArgumentCaptor.forClass(Double.class);
         ArgumentCaptor<String> reasonCaptor = ArgumentCaptor.forClass(String.class);
         verify(blogRecommendationScoreRepository).upsertRecommendationScore(
                 any(UUID.class),
@@ -460,7 +488,11 @@ class BlogFeedRankingServiceImplTest {
                 eq(TrendWindowType.HOUR_24.name()),
                 eq(user.getRegion().getRegionId()),
                 any(Double.class),
-                eq(100.0),
+                eq(FeedScoreCalculationService.FORMULA_VERSION),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
+                qualityScoreCaptor.capture(),
                 any(Double.class),
                 any(Double.class),
                 any(Double.class),
@@ -468,18 +500,247 @@ class BlogFeedRankingServiceImplTest {
                 any(Double.class),
                 any(Double.class),
                 any(Double.class),
-                reportPenaltyCaptor.capture(),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
+                any(Double.class),
                 any(Double.class),
                 any(Double.class),
                 eq(1),
                 reasonCaptor.capture(),
                 any(LocalDateTime.class),
                 any(LocalDateTime.class));
-        assertThat(reportPenaltyCaptor.getValue()).isEqualTo(30.0);
-        assertThat(reasonCaptor.getValue()).contains("reportPenalty=30.0");
+        assertThat(qualityScoreCaptor.getValue()).isEqualTo(0.5);
+        assertThat(reasonCaptor.getValue()).contains("quality=0.5");
+    }
+
+    @Test
+    void rebuildRecommendationCache_success_hardFiltersAiViolation_TC010() {
+        User user = user();
+        Blog allowed = blog(user.getRegion().getRegionId());
+        Blog violation = blog(user.getRegion().getRegionId());
+        BlogFeedRankingServiceImpl service = service();
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
+        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(violation, allowed));
+        when(aiModerationResultRepository.findBlogIdsByBlogIdInAndDecision(any(), any()))
+                .thenReturn(List.of(violation.getId()));
+
+        List<BlogFeedResponse> result = service.rebuildRecommendationCache(
+                user.getUserId(), TrendWindowType.HOUR_24, null);
+
+        assertThat(result).extracting(BlogFeedResponse::getBlogId).containsExactly(allowed.getId());
+        assertThat(upsertArguments()).singleElement().satisfies(arguments ->
+                assertThat(arguments[2]).isEqualTo(allowed.getId()));
+    }
+
+    @Test
+    void rebuildRecommendationCache_success_usesRecentInteractionsAndLatestTags_TC011() {
+        User user = user();
+        Blog coffeeBlog = blog(user.getRegion().getRegionId());
+        Blog teaBlog = blog(user.getRegion().getRegionId());
+        coffeeBlog.setPageId(null);
+        teaBlog.setPageId(null);
+        AiModerationResult coffeeTags = moderationTags(coffeeBlog, List.of("Coffee", "Latte"));
+        AiModerationResult teaTags = moderationTags(teaBlog, List.of("Tea"));
+        BlogFeedRankingServiceImpl service = service();
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
+        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(teaBlog, coffeeBlog));
+        when(blogLikeRepository.findRecentlyLikedBlogIds(eq(user.getUserId()), any(), any(), any()))
+                .thenReturn(List.of(coffeeBlog.getId()));
+        when(aiModerationResultRepository.findWithTagsByBlogIds(any()))
+                .thenReturn(List.of(coffeeTags, teaTags));
+
+        service.rebuildRecommendationCache(user.getUserId(), TrendWindowType.MONTH_1, null);
+
+        List<Object[]> calls = upsertArguments();
+        assertThat(calls).hasSize(2);
+        assertThat(calls.getFirst()[2]).isEqualTo(coffeeBlog.getId());
+        assertThat((Double) calls.getFirst()[8]).isEqualTo(1.0);
+        assertThat((Double) calls.get(1)[8]).isZero();
+        assertThat((Double) calls.getFirst()[7]).isEqualTo(0.5);
+    }
+
+    @Test
+    void getPersonalizedFeed_success_rebuildsLegacyFormulaOnce_TC012() {
+        User user = user();
+        Blog blog = blog(user.getRegion().getRegionId());
+        LocalDateTime computedAt = LocalDateTime.now().minusMinutes(10);
+        BlogFeedRankingServiceImpl service = service();
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
+        when(blogRecommendationScoreRepository.findLatestComputedAt(
+                user.getUserId(), TrendWindowType.DAY_7, user.getRegion().getRegionId()))
+                .thenReturn(computedAt);
+        when(blogRecommendationScoreRepository.findFormulaVersionsAtComputedAt(
+                user.getUserId(), TrendWindowType.DAY_7, user.getRegion().getRegionId(), computedAt))
+                .thenReturn(List.of("LEGACY_V1"));
+        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(blog));
+        when(blogRecommendationScoreRepository.findLatestPage(
+                eq(user.getUserId()),
+                eq(TrendWindowType.DAY_7),
+                eq(user.getRegion().getRegionId()),
+                eq(computedAt),
+                any(Pageable.class))).thenReturn(List.of(recommendationScore(user, blog, 0.4, 1)));
+
+        List<BlogFeedResponse> result = service.getPersonalizedFeed(
+                user.getUserId(), TrendWindowType.DAY_7, null, 0, 20);
+
+        assertThat(result).hasSize(1);
+        assertThat(upsertArguments()).singleElement().satisfies(arguments ->
+                assertThat(arguments[6]).isEqualTo(FeedScoreCalculationService.FORMULA_VERSION));
+        verify(blogRecommendationScoreRepository).findLatestPage(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void getPersonalizedFeed_success_returnsStaleSnapshotWithoutWaitingForDuplicateRebuild_TC014() {
+        User user = user();
+        Blog blog = blog(user.getRegion().getRegionId());
+        LocalDateTime computedAt = LocalDateTime.now().minusMinutes(10);
+        BlogRecommendationScore legacyScore = recommendationScore(user, blog, 0.4, 1);
+        BlogFeedRankingServiceImpl service = service();
+        org.mockito.Mockito.doNothing().when(taskExecutor).execute(any(Runnable.class));
+
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
+        when(blogRecommendationScoreRepository.findLatestComputedAt(
+                user.getUserId(), TrendWindowType.DAY_7, user.getRegion().getRegionId()))
+                .thenReturn(computedAt);
+        when(blogRecommendationScoreRepository.findFormulaVersionsAtComputedAt(
+                user.getUserId(), TrendWindowType.DAY_7, user.getRegion().getRegionId(), computedAt))
+                .thenReturn(List.of("LEGACY_V1"));
+        when(blogRecommendationScoreRepository.findLatestPage(
+                eq(user.getUserId()), eq(TrendWindowType.DAY_7), eq(user.getRegion().getRegionId()),
+                eq(computedAt), any(Pageable.class))).thenReturn(List.of(legacyScore));
+
+        List<BlogFeedResponse> first = service.getPersonalizedFeed(
+                user.getUserId(), TrendWindowType.DAY_7, null, 0, 20);
+        List<BlogFeedResponse> second = service.getPersonalizedFeed(
+                user.getUserId(), TrendWindowType.DAY_7, null, 0, 20);
+
+        assertThat(first).extracting(BlogFeedResponse::getBlogId).containsExactly(blog.getId());
+        assertThat(second).extracting(BlogFeedResponse::getBlogId).containsExactly(blog.getId());
+        verify(taskExecutor, times(1)).execute(any(Runnable.class));
+        verify(recommendationScoreBatchWriter, never()).upsertAll(any(), any());
+    }
+
+    @Test
+    void rebuildRecommendationCache_success_appliesDiversityThenStableTieBreak_TC013() {
+        User user = user();
+        UUID sourceA = UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        UUID sourceB = UUID.fromString("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+        LocalDateTime createdAt = LocalDateTime.of(2026, 7, 19, 10, 0);
+        Blog aLow = blog(user.getRegion().getRegionId());
+        aLow.setId(UUID.fromString("00000000-0000-0000-0000-000000000001"));
+        aLow.setPageId(sourceA);
+        aLow.setCreatedAt(createdAt);
+        Blog bMiddle = blog(user.getRegion().getRegionId());
+        bMiddle.setId(UUID.fromString("00000000-0000-0000-0000-000000000002"));
+        bMiddle.setPageId(sourceB);
+        bMiddle.setCreatedAt(createdAt);
+        Blog aHigh = blog(user.getRegion().getRegionId());
+        aHigh.setId(UUID.fromString("00000000-0000-0000-0000-000000000003"));
+        aHigh.setPageId(sourceA);
+        aHigh.setCreatedAt(createdAt);
+        BlogFeedRankingServiceImpl service = service();
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
+        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(aLow, bMiddle, aHigh));
+
+        service.rebuildRecommendationCache(user.getUserId(), TrendWindowType.HOUR_24, null);
+
+        List<Object[]> calls = upsertArguments();
+        assertThat(calls).extracting(arguments -> (UUID) arguments[2])
+                .containsExactly(aHigh.getId(), bMiddle.getId(), aLow.getId());
+        assertThat(calls).extracting(arguments -> (Double) arguments[12])
+                .containsExactly(1.0, 1.0, 0.5);
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Object[]> upsertArguments() {
+        return mockingDetails(recommendationScoreBatchWriter).getInvocations().stream()
+                .filter(invocation -> invocation.getMethod().getName().equals("upsertAll"))
+                .flatMap(invocation -> ((List<BlogRecommendationScore>) invocation.getArgument(0)).stream())
+                .map(score -> new Object[]{
+                        score.getId(),
+                        score.getUser().getUserId(),
+                        score.getBlog().getId(),
+                        score.getWindowType().name(),
+                        score.getContextRegionId(),
+                        score.getFeedScore(),
+                        score.getFormulaVersion(),
+                        score.getRelationshipScore(),
+                        score.getInterestScore(),
+                        score.getEngagementScore(),
+                        score.getQualityScore(),
+                        score.getLocationScore(),
+                        score.getDiversityScore(),
+                        score.getUnseenScore(),
+                        score.getTrendingScore(),
+                        score.getFreshnessScore(),
+                        score.getSameRegionScore(),
+                        score.getFollowedUserScore(),
+                        score.getFollowedPageScore(),
+                        score.getActivityScore(),
+                        score.getOwnAuthorScore(),
+                        score.getReviewerScore(),
+                        score.getReportPenalty(),
+                        score.getSeenPenalty(),
+                        score.getRepetitionPenalty(),
+                        score.getRankPosition(),
+                        score.getReason(),
+                        score.getComputedAt()
+                })
+                .toList();
+    }
+
+    private AiModerationResult moderationTags(Blog blog, List<String> tags) {
+        AiModerationResult result = new AiModerationResult();
+        result.setBlog(blog);
+        result.setTags(tags);
+        result.setCreatedAt(LocalDateTime.now());
+        return result;
     }
 
     private BlogFeedRankingServiceImpl service() {
+        lenient().doAnswer(invocation -> {
+            Runnable task = invocation.getArgument(0);
+            task.run();
+            return null;
+        }).when(taskExecutor).execute(any(Runnable.class));
+        lenient().doAnswer(invocation -> {
+            @SuppressWarnings("unchecked")
+            List<BlogRecommendationScore> scores = invocation.getArgument(0);
+            LocalDateTime createdAt = invocation.getArgument(1);
+            scores.forEach(score -> blogRecommendationScoreRepository.upsertRecommendationScore(
+                    score.getId() == null ? UUID.randomUUID() : score.getId(),
+                    score.getUser().getUserId(),
+                    score.getBlog().getId(),
+                    score.getWindowType().name(),
+                    score.getContextRegionId(),
+                    score.getFeedScore(),
+                    score.getFormulaVersion(),
+                    score.getRelationshipScore(),
+                    score.getInterestScore(),
+                    score.getEngagementScore(),
+                    score.getQualityScore(),
+                    score.getLocationScore(),
+                    score.getDiversityScore(),
+                    score.getUnseenScore(),
+                    score.getTrendingScore(),
+                    score.getFreshnessScore(),
+                    score.getSameRegionScore(),
+                    score.getFollowedUserScore(),
+                    score.getFollowedPageScore(),
+                    score.getActivityScore(),
+                    score.getOwnAuthorScore(),
+                    score.getReviewerScore(),
+                    score.getReportPenalty(),
+                    score.getSeenPenalty(),
+                    score.getRepetitionPenalty(),
+                    score.getRankPosition(),
+                    score.getReason(),
+                    score.getComputedAt(),
+                    createdAt));
+            return null;
+        }).when(recommendationScoreBatchWriter).upsertAll(any(), any());
         lenient().when(blogEventRepository.countByBlogIdAndEventTypeAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
                 any(UUID.class),
                 any(),
@@ -487,6 +748,8 @@ class BlogFeedRankingServiceImplTest {
                 any())).thenReturn(0L);
         lenient().when(aiModerationResultRepository.existsByBlogIdAndDecision(any(UUID.class), any())).thenReturn(false);
         lenient().when(aiModerationResultRepository.findBlogIdsByBlogIdInAndDecision(any(), any())).thenReturn(List.of());
+        lenient().when(aiModerationResultRepository.findWithTagsByBlogIds(any())).thenReturn(List.of());
+        lenient().when(contentReportRepository.countByBlogIdsAndStatusIn(any(), any())).thenReturn(List.of());
         lenient().when(blogEventRepository.countByBlogIdsAndEventTypeAndCreatedAtBetween(any(), any(), any(), any()))
                 .thenReturn(List.of());
         lenient().when(blogLikeRepository.countByBlogIdsAndCreatedAtBetween(any(), any(), any()))
@@ -499,12 +762,20 @@ class BlogFeedRankingServiceImplTest {
                 .thenReturn(List.of());
         lenient().when(blogSaveRepository.countByBlogIdsAndCreatedAtBetween(any(), any(), any()))
                 .thenReturn(List.of());
-        lenient().when(feedImpressionRepository.findSeenBlogIds(any(UUID.class), any(), any()))
+        lenient().when(blogLikeRepository.findRecentlyLikedBlogIds(any(), any(), any(), any()))
                 .thenReturn(List.of());
-        lenient().when(reviewerRepository.findActiveReviewerUserIdsByUserIds(any()))
+        lenient().when(commentRepository.findRecentlyCommentedBlogIds(any(), any(), any(), any()))
+                .thenReturn(List.of());
+        lenient().when(blogShareRepository.findRecentlySharedBlogIds(any(), any(), any(), any()))
+                .thenReturn(List.of());
+        lenient().when(blogSaveRepository.findRecentlySavedBlogIds(any(), any(), any(), any()))
+                .thenReturn(List.of());
+        lenient().when(feedImpressionRepository.findSeenBlogIds(any(UUID.class), any(), any()))
                 .thenReturn(List.of());
         lenient().when(pageFollowRepository.findFollowedCafePageIds(any(UUID.class), any())).thenReturn(List.of());
         lenient().when(userFollowRepository.findFollowedUserIds(any(UUID.class), any())).thenReturn(List.of());
+        lenient().when(blogRecommendationScoreRepository.findFormulaVersionsAtComputedAt(any(), any(), any(), any()))
+                .thenReturn(List.of(FeedScoreCalculationService.FORMULA_VERSION));
         lenient().when(blogRepository.findByIdIn(any())).thenAnswer(invocation -> {
             List<UUID> blogIds = invocation.getArgument(0);
             List<Blog> publishedBlogs = blogRepository.findByStatus(PostStatus.PUBLISHED);
@@ -532,6 +803,7 @@ class BlogFeedRankingServiceImplTest {
                     .toList();
         });
         lenient().when(regionRepository.findById(any(UUID.class))).thenReturn(Optional.empty());
+        lenient().when(transactionManager.getTransaction(any())).thenReturn(mock(TransactionStatus.class));
         lenient().when(cafePageRepository.findAllById(any())).thenAnswer(invocation -> {
             Iterable<UUID> pageIds = invocation.getArgument(0);
             List<CafePage> cafePages = new ArrayList<>();
@@ -550,7 +822,6 @@ class BlogFeedRankingServiceImplTest {
         });
         return new BlogFeedRankingServiceImpl(
                 blogRepository,
-                blogTrendingScoreRepository,
                 blogRecommendationScoreRepository,
                 cafePageRepository,
                 pageFollowRepository,
@@ -562,11 +833,17 @@ class BlogFeedRankingServiceImplTest {
                 blogSaveRepository,
                 feedImpressionRepository,
                 aiModerationResultRepository,
+                contentReportRepository,
                 regionRepository,
                 userRepository,
-                reviewerRepository,
                 userValidator,
-                new ConcurrentMapCacheManager(CacheConfig.ORGANIC_FEED_CACHE));
+                new ConcurrentMapCacheManager(
+                        CacheConfig.ORGANIC_FEED_CACHE,
+                        CacheConfig.PERSONALIZED_FEED_RANKING_CACHE),
+                new FeedScoreCalculationServiceImpl(),
+                recommendationScoreBatchWriter,
+                taskExecutor,
+                transactionManager);
     }
 
     private BlogEventRepository.BlogEventCountRow blogEventCountRow(UUID blogId, Long eventCount) {
@@ -579,6 +856,20 @@ class BlogFeedRankingServiceImplTest {
             @Override
             public Long getEventCount() {
                 return eventCount;
+            }
+        };
+    }
+
+    private ContentReportRepository.ReportCountRow contentReportCountRow(UUID blogId, long reportCount) {
+        return new ContentReportRepository.ReportCountRow() {
+            @Override
+            public UUID getTargetId() {
+                return blogId;
+            }
+
+            @Override
+            public long getReportCount() {
+                return reportCount;
             }
         };
     }

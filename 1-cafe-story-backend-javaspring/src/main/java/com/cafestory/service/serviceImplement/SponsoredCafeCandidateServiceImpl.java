@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class SponsoredCafeCandidateServiceImpl implements SponsoredCafeCandidateService {
@@ -57,11 +58,16 @@ public class SponsoredCafeCandidateServiceImpl implements SponsoredCafeCandidate
         LocalDateTime now = LocalDateTime.now();
         Region userRegion = resolveUserRegion(userId);
 
-        List<ScoredSponsoredCafe> scoredCandidates = adCampaignRepository.findActiveCandidates(AdStatus.ACTIVE, now)
+        List<AdCampaign> eligibleCampaigns = adCampaignRepository.findActiveCandidates(AdStatus.ACTIVE, now)
                 .stream()
                 .filter(campaign -> isEligibleCampaign(campaign, now))
                 .filter(campaign -> isActiveCafePage(campaign.getCafePage()))
-                .filter(campaign -> !exceedsFrequencyCap(userId, campaign, now))
+                .toList();
+        Map<UUID, Long> dailyImpressionCounts = loadDailyImpressionCounts(userId, eligibleCampaigns, now);
+
+        List<ScoredSponsoredCafe> scoredCandidates = eligibleCampaigns.stream()
+                .filter(campaign -> dailyImpressionCounts.getOrDefault(campaign.getAdCampaignId(), 0L)
+                        < DAILY_FREQUENCY_CAP)
                 .map(campaign -> new ScoredSponsoredCafe(campaign, calculateAdScore(campaign, userRegion, now)))
                 .sorted(candidateComparator())
                 .toList();
@@ -161,17 +167,29 @@ public class SponsoredCafeCandidateServiceImpl implements SponsoredCafeCandidate
         return value == null ? 0 : value;
     }
 
-    private boolean exceedsFrequencyCap(UUID userId, AdCampaign campaign, LocalDateTime now) {
-        if (userId == null) {
-            return false;
+    private Map<UUID, Long> loadDailyImpressionCounts(
+            UUID userId,
+            List<AdCampaign> campaigns,
+            LocalDateTime now) {
+        if (userId == null || campaigns.isEmpty()) {
+            return Map.of();
+        }
+        List<UUID> campaignIds = campaigns.stream()
+                .map(AdCampaign::getAdCampaignId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        if (campaignIds.isEmpty()) {
+            return Map.of();
         }
         LocalDateTime dayStart = now.toLocalDate().atStartOfDay();
         LocalDateTime dayEnd = dayStart.plusDays(1);
-        return adImpressionRepository.countByUserUserIdAndAdCampaignAdCampaignIdAndShownAtGreaterThanEqualAndShownAtLessThan(
-                userId,
-                campaign.getAdCampaignId(),
-                dayStart,
-                dayEnd) >= DAILY_FREQUENCY_CAP;
+        return adImpressionRepository.countByUserAndCampaignIdsBetween(userId, campaignIds, dayStart, dayEnd)
+                .stream()
+                .collect(Collectors.toMap(
+                        AdImpressionRepository.CampaignImpressionCountRow::getCampaignId,
+                        AdImpressionRepository.CampaignImpressionCountRow::getImpressionCount,
+                        Long::max));
     }
 
     private double calculateAdScore(AdCampaign campaign, Region userRegion, LocalDateTime now) {

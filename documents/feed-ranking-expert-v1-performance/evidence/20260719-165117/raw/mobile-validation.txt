@@ -1,0 +1,15 @@
+Môi trường dự kiến: Android thật cùng LAN, Expo.
+
+Instrumentation đã thêm và mặc định tắt.
+Biến bật: EXPO_PUBLIC_PERFORMANCE_LOGGING=true
+Metric: feed_api_network, home_feed_api, home_first_feed_render, home_refresh_first_feed_render, home_first_media_load.
+
+npm run typecheck: TypeScript 5.9 dừng với RangeError: Maximum call stack size exceeded tại resolveNameHelper.
+Kiểm tra targeted import graph: không phát hiện lỗi mới trong các file instrumentation; có lỗi baseline ở region/navigation ngoài phạm vi Feed.
+
+Thiết bị/ADB/Expo LAN: không có trong phiên.
+Warm-up: 0/2.
+Pull-to-refresh hợp lệ: 0/10.
+Kết quả API/render/media: N/A.
+Phân loại: CONFIG_ENV.
+Coverage: FRONTEND_COVERAGE_TOOLING_MISSING.

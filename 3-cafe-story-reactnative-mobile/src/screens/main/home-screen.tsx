@@ -30,6 +30,10 @@ import {
   recordFeedImpressions,
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
+import {
+  logPerformanceMetric,
+  performanceTimestamp,
+} from "../../utils/performance";
 import { routes } from "../../navigation";
 import type { MainTabParamList, RootStackParamList } from "../../navigation";
 import type {
@@ -145,6 +149,10 @@ export function HomeScreen() {
   const isPrefetchingRef = useRef(false);
   const prefetchGenerationRef = useRef(0);
   const recordedImpressionBlogIdsRef = useRef<Set<string>>(new Set());
+  const feedRenderStartedAtRef = useRef<number | null>(null);
+  const feedRenderOperationRef = useRef<"initial" | "refresh" | null>(null);
+  const mediaStartedAtRef = useRef<number | null>(null);
+  const mediaOperationRef = useRef<"initial" | "refresh" | null>(null);
   const [feedItems, setFeedItems] = useState<FeedItemResponse[]>([]);
   const [error, setError] = useState("");
   const [loadMoreError, setLoadMoreError] = useState("");
@@ -160,6 +168,24 @@ export function HomeScreen() {
   const [prefetchFailedCursor, setPrefetchFailedCursor] = useState<string | null>(null);
   const [shouldAppendPrefetch, setShouldAppendPrefetch] = useState(false);
   const [followingTargets, setFollowingTargets] = useState<FollowTargetResponse[]>([]);
+
+  useEffect(() => {
+    if (!feedItems.length || feedRenderStartedAtRef.current === null) {
+      return;
+    }
+
+    const startedAt = feedRenderStartedAtRef.current;
+    const operation = feedRenderOperationRef.current ?? "initial";
+    feedRenderStartedAtRef.current = null;
+    feedRenderOperationRef.current = null;
+    const frame = requestAnimationFrame(() => {
+      logPerformanceMetric("mobile.home.first_feed_render", startedAt, {
+        itemCount: feedItems.length,
+        operation,
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [feedItems]);
 
   useEffect(() => {
     recordedImpressionBlogIdsRef.current.clear();
@@ -323,6 +349,12 @@ export function HomeScreen() {
       : prefetchGenerationRef.current + 1;
 
     if (!append) {
+      const operation = refreshing ? "refresh" : "initial";
+      const startedAt = performanceTimestamp();
+      feedRenderStartedAtRef.current = startedAt;
+      feedRenderOperationRef.current = operation;
+      mediaStartedAtRef.current = startedAt;
+      mediaOperationRef.current = operation;
       prefetchGenerationRef.current = requestGeneration;
       setPrefetchedFeedItems([]);
       setPrefetchedCursor(null);
@@ -527,7 +559,18 @@ export function HomeScreen() {
     }
   }, [navigation]);
 
-  const renderFeedItem = useCallback((item: FeedItemResponse) => {
+  const handleFirstMediaLoad = useCallback(() => {
+    if (mediaStartedAtRef.current === null) {
+      return;
+    }
+    const startedAt = mediaStartedAtRef.current;
+    const operation = mediaOperationRef.current ?? "initial";
+    mediaStartedAtRef.current = null;
+    mediaOperationRef.current = null;
+    logPerformanceMetric("mobile.home.first_media_load", startedAt, { operation });
+  }, []);
+
+  const renderFeedItem = useCallback((item: FeedItemResponse, index: number) => {
     if (item.itemType === "SPONSORED_CAFE" && item.ad) {
       return (
         <SponsoredCafeCard
@@ -543,11 +586,17 @@ export function HomeScreen() {
     }
 
     if (item.blog) {
-      return <BlogFeedCard blog={item.blog} key={getFeedItemKey(item)} />;
+      return (
+        <BlogFeedCard
+          blog={item.blog}
+          key={getFeedItemKey(item)}
+          onFirstMediaLoad={index === 0 ? handleFirstMediaLoad : undefined}
+        />
+      );
     }
 
     return null;
-  }, [navigation]);
+  }, [handleFirstMediaLoad, navigation]);
 
   return (
     <Screen padded={false}>

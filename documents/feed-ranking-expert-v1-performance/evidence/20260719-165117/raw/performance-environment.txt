@@ -1,0 +1,14 @@
+PostgreSQL listener/container: không có.
+DB_URL/DB_USERNAME/DB_PASSWORD trong shell: không có.
+Authenticated token/cookie hợp lệ: không có.
+Android thật/ADB/Expo LAN: không có.
+
+Do đó các phép đo sau không được thực hiện và không có số thay thế:
+- query count personalized Feed size=5 so với size=20;
+- cached personalized Feed size=20 <= 12 SQL statements;
+- 2 warm-up + 50 HTTP request authenticated;
+- 10 lượt actual mixed Feed Web và 10 lượt Mobile;
+- 10 reload Web Home;
+- 2 warm-up + 10 pull-to-refresh Android thật.
+
+Các blocker đã được phân loại trong ../issue.md. Không token, cookie hoặc PII nào được ghi vào evidence.
