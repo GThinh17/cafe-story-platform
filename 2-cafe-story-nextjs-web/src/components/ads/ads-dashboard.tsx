@@ -21,7 +21,7 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { getAdCampaigns, getAdFees } from "@/lib/api/ads";
 import { ApiError } from "@/lib/api/client";
 import { getCafePagesByOwnerId } from "@/lib/api/cafes";
-import { createPayment, getPayments } from "@/lib/api/payments";
+import { createPayment, getMyPayments } from "@/lib/api/payments";
 import type { AdCampaignResponse, AdFeeResponse } from "@/types/ads";
 import type { CafePageResponse } from "@/types/cafe";
 import type { PaymentResponse } from "@/types/payment";
@@ -67,7 +67,7 @@ export function AdsDashboard({ checkoutStatus, initialPaymentId }: AdsDashboardP
       const [ownedPages, adFees, paidPayments] = await Promise.all([
         getCafePagesByOwnerId(user.userId),
         getAdFees(),
-        getPayments("PAID"),
+        getMyPayments("PAID"),
       ]);
       const campaignLists = await Promise.all(
         ownedPages.map((page) => getAdCampaigns(page.id)),

@@ -73,7 +73,7 @@ public class FeedServiceImpl implements FeedService {
 
     private FeedResponseDTO getOrganicOrPersonalizedPage(UUID userId, String cursor, int organicLimit) {
         if (userId == null) {
-            return blogFeedRankingService.getOrganicFeed(cursor, organicLimit);
+            return blogFeedRankingService.getOrganicFeed(null, cursor, organicLimit);
         }
 
         try {
@@ -85,7 +85,7 @@ public class FeedServiceImpl implements FeedService {
                     organicLimit);
         } catch (RuntimeException error) {
             log.warn("Personalized mixed feed failed; falling back to organic feed. userId={}", userId, error);
-            return blogFeedRankingService.getOrganicFeed(cursor, organicLimit);
+            return blogFeedRankingService.getOrganicFeed(userId, cursor, organicLimit);
         }
     }
 

@@ -302,17 +302,19 @@ export function FeedPostList({
     );
   }
 
+  const firstPostId = feedItems.find((item) => item.kind === "post")?.id;
+
   return (
     <>
       <div className="flex flex-col gap-6">
-        {feedItems.map((item, index) =>
+        {feedItems.map((item) =>
           item.kind === "ad" ? (
             <SponsoredCafeCard ad={item.ad} key={item.id} />
           ) : (
             <PostCard
               key={item.id}
               currentUserId={user?.userId}
-              eagerMedia={index === 0}
+              eagerMedia={item.id === firstPostId}
               onCommentClick={(selectedPost) => {
                 if (selectedPost.id) {
                   setSelectedPostId(selectedPost.id);

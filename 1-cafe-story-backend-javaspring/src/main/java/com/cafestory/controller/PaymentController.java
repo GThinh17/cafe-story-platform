@@ -6,7 +6,6 @@ import com.cafestory.dto.responseDTO.VnpayIpnResponseDTO;
 import com.cafestory.dto.responseDTO.VnpayReturnResponseDTO;
 import com.cafestory.entity.enums.PaymentStatus;
 import com.cafestory.service.serviceInterface.PaymentService;
-import com.cafestory.service.serviceInterface.PaymentHistoryService;
 import com.cafestory.until.security.AuthenticatedUserPrincipal;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,11 +29,9 @@ import static com.cafestory.until.security.AuthenticationPrincipalUtils.requireU
 public class PaymentController {
 
     private final PaymentService paymentService;
-    private final PaymentHistoryService paymentHistoryService;
 
-    public PaymentController(PaymentService paymentService, PaymentHistoryService paymentHistoryService) {
+    public PaymentController(PaymentService paymentService) {
         this.paymentService = paymentService;
-        this.paymentHistoryService = paymentHistoryService;
     }
 
     @PostMapping
@@ -55,7 +52,7 @@ public class PaymentController {
     public List<PaymentResponseDTO> getAllPayments(
             @RequestParam(required = false) PaymentStatus paymentStatus,
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
-        return paymentHistoryService.getPayments(requireUserId(principal), paymentStatus);
+        return paymentService.getMyPayments(requireUserId(principal), paymentStatus);
     }
 
     @GetMapping("/me")

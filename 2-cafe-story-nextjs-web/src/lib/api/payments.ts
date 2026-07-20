@@ -26,18 +26,6 @@ export function getPayment(paymentId: string) {
   });
 }
 
-export function getPayments(paymentStatus?: string) {
-  const query = new URLSearchParams();
-  if (paymentStatus) {
-    query.set("paymentStatus", paymentStatus);
-  }
-  const queryString = query.toString();
-  const path = queryString
-    ? `${apiEndpoints.payments.list}?${queryString}`
-    : apiEndpoints.payments.list;
-  return apiFetch<PaymentResponse[]>(path, { method: "GET" });
-}
-
 export function getMyPayments(paymentStatus?: PaymentStatus) {
   const path = paymentStatus
     ? `${apiEndpoints.payments.mine}?paymentStatus=${encodeURIComponent(String(paymentStatus))}`

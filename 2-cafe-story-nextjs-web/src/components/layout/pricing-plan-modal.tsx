@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ArrowLeft, CheckCircle2, CreditCard, Landmark, X } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -143,7 +142,6 @@ export function PricingPlanModal({
   isOpen,
   onOpenChange,
 }: PricingPlanModalProps) {
-  const router = useRouter();
   const { user } = useCurrentUser();
   const [step, setStep] = useState<ModalStep>("plans");
   const [extraFees, setExtraFees] = useState<ExtraFeeResponse[]>([]);
@@ -435,41 +433,6 @@ export function PricingPlanModal({
                 </Card>
               );
             })}
-            <Card className="flex min-h-[500px] flex-col md:col-span-2">
-              <CardHeader>
-                <span className="w-fit rounded-full bg-muted px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground">
-                  Advertising
-                </span>
-                <CardTitle className="mt-2 font-serif text-2xl leading-tight">
-                  CafeStory Ads
-                </CardTitle>
-                <CardDescription>
-                  Sponsor your cafe in the mixed feed with a fixed 10,000-impression or 30-day package.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-1 flex-col">
-                <ul className="flex flex-col gap-3.5">
-                  {["Stripe test checkout", "Region targeting", "Campaign pause and activation", "Served impressions, clicks, and CTR"].map((feature) => (
-                    <li className="grid grid-cols-[18px_1fr] gap-3 text-sm leading-5" key={feature}>
-                      <CheckCircle2 aria-hidden="true" className="mt-0.5 text-primary" />
-                      <span className="text-muted">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  className="h-12 w-full font-black"
-                  onClick={() => {
-                    onOpenChange(false);
-                    router.push("/ads");
-                  }}
-                  type="button"
-                >
-                  Open Ads dashboard
-                </Button>
-              </CardFooter>
-            </Card>
           </div>
         ) : (
           <div className="mt-6 flex flex-col gap-4">

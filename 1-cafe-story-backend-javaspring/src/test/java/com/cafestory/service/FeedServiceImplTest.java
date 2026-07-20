@@ -187,12 +187,12 @@ class FeedServiceImplTest {
 
     @Test
     void getFeed_success_anonymousUsesOrganicFeed_TC008() {
-        when(blogFeedRankingService.getOrganicFeed(null, 5)).thenReturn(organicPage(5, null, false));
+        when(blogFeedRankingService.getOrganicFeed(null, null, 5)).thenReturn(organicPage(5, null, false));
 
         FeedResponseDTO result = feedService.getFeed(null, null, 5);
 
         assertThat(result.getItems()).hasSize(5);
-        verify(blogFeedRankingService).getOrganicFeed(null, 5);
+        verify(blogFeedRankingService).getOrganicFeed(null, null, 5);
         verify(blogFeedRankingService, never()).getPersonalizedFeedPage(
                 eq(USER_ID),
                 eq(TrendWindowType.HOUR_24),
@@ -206,13 +206,13 @@ class FeedServiceImplTest {
     void getFeed_success_personalizedFailureFallsBackToOrganic_TC009() {
         when(blogFeedRankingService.getPersonalizedFeedPage(USER_ID, TrendWindowType.HOUR_24, null, null, 5))
                 .thenThrow(new IllegalStateException("missing recommendation column"));
-        when(blogFeedRankingService.getOrganicFeed(null, 5)).thenReturn(organicPage(5, null, false));
+        when(blogFeedRankingService.getOrganicFeed(USER_ID, null, 5)).thenReturn(organicPage(5, null, false));
 
         FeedResponseDTO result = feedService.getFeed(USER_ID, null, 5);
 
         assertThat(result.getItems()).hasSize(5);
         assertThat(result.getHasMore()).isFalse();
-        verify(blogFeedRankingService).getOrganicFeed(null, 5);
+        verify(blogFeedRankingService).getOrganicFeed(USER_ID, null, 5);
         verify(sponsoredCafeCandidateService, never()).getCandidates(eq(USER_ID), anyInt(), anyInt());
     }
 
@@ -305,12 +305,12 @@ class FeedServiceImplTest {
 
     @Test
     void getFeed_success_anonymousNextCursorUsesAnonymousSeed_TC015() {
-        when(blogFeedRankingService.getOrganicFeed(null, 5)).thenReturn(organicPage(5, "organic-next", true));
+        when(blogFeedRankingService.getOrganicFeed(null, null, 5)).thenReturn(organicPage(5, "organic-next", true));
 
         FeedResponseDTO result = feedService.getFeed(null, null, 5);
 
         assertThat(result.getNextCursor()).isNotBlank();
-        verify(blogFeedRankingService).getOrganicFeed(null, 5);
+        verify(blogFeedRankingService).getOrganicFeed(null, null, 5);
     }
 
     @Test

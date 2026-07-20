@@ -240,6 +240,63 @@ class BlogFeedRankingServiceImplTest {
     }
 
     @Test
+    void getOrganicFeed_success_sharedRankingCacheKeepsViewerStateIsolated_TC011() {
+        UUID firstViewerId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        Blog blog = organicBlog(
+                UUID.fromString("00000000-0000-0000-0000-000000000201"),
+                UUID.fromString("00000000-0000-0000-0000-000000000301"),
+                10,
+                2,
+                1,
+                LocalDateTime.now().minusHours(2));
+        UUID secondViewerId = blog.getAuthor().getUserId();
+        BlogFeedRankingServiceImpl service = service();
+        List<UUID> blogIds = List.of(blog.getId());
+        List<UUID> pageIds = List.of(blog.getPageId());
+        List<UUID> authorIds = List.of(blog.getAuthor().getUserId());
+
+        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(blog));
+        when(userFollowRepository.findFollowedUserIds(firstViewerId, authorIds)).thenReturn(authorIds);
+        when(pageFollowRepository.findFollowedCafePageIds(firstViewerId, pageIds)).thenReturn(pageIds);
+        when(blogLikeRepository.findLikedBlogIdsByUserIdAndBlogIds(firstViewerId, blogIds)).thenReturn(blogIds);
+        when(blogSaveRepository.findSavedBlogIdsByUserIdAndBlogIds(firstViewerId, blogIds)).thenReturn(blogIds);
+        when(userFollowRepository.findFollowedUserIds(secondViewerId, authorIds)).thenReturn(List.of());
+        when(pageFollowRepository.findFollowedCafePageIds(secondViewerId, pageIds)).thenReturn(List.of());
+        when(blogLikeRepository.findLikedBlogIdsByUserIdAndBlogIds(secondViewerId, blogIds)).thenReturn(List.of());
+        when(blogSaveRepository.findSavedBlogIdsByUserIdAndBlogIds(secondViewerId, blogIds)).thenReturn(List.of());
+
+        BlogFeedResponse firstViewerBlog = service.getOrganicFeed(firstViewerId, null, 20)
+                .getItems().getFirst().getBlog();
+        BlogFeedResponse secondViewerBlog = service.getOrganicFeed(secondViewerId, null, 20)
+                .getItems().getFirst().getBlog();
+        BlogFeedResponse anonymousBlog = service.getOrganicFeed(null, null, 20)
+                .getItems().getFirst().getBlog();
+
+        assertThat(firstViewerBlog.getIsAuthorFollowing()).isTrue();
+        assertThat(firstViewerBlog.getIsPageFollowing()).isTrue();
+        assertThat(firstViewerBlog.getIsLike()).isTrue();
+        assertThat(firstViewerBlog.getIsSave()).isTrue();
+        assertThat(secondViewerBlog.getIsAuthorFollowing()).isFalse();
+        assertThat(secondViewerBlog.getIsPageFollowing()).isFalse();
+        assertThat(secondViewerBlog.getIsLike()).isFalse();
+        assertThat(secondViewerBlog.getIsSave()).isFalse();
+        assertThat(anonymousBlog.getIsAuthorFollowing()).isFalse();
+        assertThat(anonymousBlog.getIsPageFollowing()).isFalse();
+        assertThat(anonymousBlog.getIsLike()).isFalse();
+        assertThat(anonymousBlog.getIsSave()).isFalse();
+        verify(userFollowRepository, times(2)).findFollowedUserIds(any(UUID.class), eq(authorIds));
+        verify(pageFollowRepository, times(2)).findFollowedCafePageIds(any(UUID.class), eq(pageIds));
+        verify(blogLikeRepository, times(2)).findLikedBlogIdsByUserIdAndBlogIds(any(UUID.class), eq(blogIds));
+        verify(blogSaveRepository, times(2)).findSavedBlogIdsByUserIdAndBlogIds(any(UUID.class), eq(blogIds));
+        verify(userFollowRepository, never())
+                .existsByFollowerUserIdAndFollowingUserId(any(UUID.class), any(UUID.class));
+        verify(pageFollowRepository, never())
+                .existsByUserUserIdAndCafePageId(any(UUID.class), any(UUID.class));
+        verify(blogLikeRepository, never())
+                .existsByUserUserIdAndBlogId(any(UUID.class), any(UUID.class));
+    }
+
+    @Test
     void getPersonalizedFeed_success_readsLatestCachedScores_TC005() {
         User user = user();
         Blog blog = blog(user.getRegion().getRegionId());
@@ -301,6 +358,76 @@ class BlogFeedRankingServiceImplTest {
     }
 
     @Test
+    void getPersonalizedFeed_success_rehydratesViewerStateWhenRankingCacheHits_TC012() {
+        User user = user();
+        Blog blog = blog(user.getRegion().getRegionId());
+        BlogRecommendationScore score = recommendationScore(user, blog, 91.0, 1);
+        LocalDateTime computedAt = LocalDateTime.of(2026, 5, 19, 10, 0);
+        BlogFeedRankingServiceImpl service = service();
+        List<UUID> authorIds = List.of(blog.getAuthor().getUserId());
+        List<UUID> pageIds = List.of(blog.getPageId());
+        List<UUID> blogIds = List.of(blog.getId());
+
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
+        when(blogRecommendationScoreRepository.findLatestComputedAt(
+                user.getUserId(),
+                TrendWindowType.HOUR_24,
+                user.getRegion().getRegionId())).thenReturn(computedAt);
+        when(blogRecommendationScoreRepository.findLatestPage(
+                eq(user.getUserId()),
+                eq(TrendWindowType.HOUR_24),
+                eq(user.getRegion().getRegionId()),
+                eq(computedAt),
+                any(Pageable.class))).thenReturn(List.of(score));
+        when(userFollowRepository.findFollowedUserIds(user.getUserId(), authorIds))
+                .thenReturn(List.of(), authorIds);
+        when(pageFollowRepository.findFollowedCafePageIds(user.getUserId(), pageIds))
+                .thenReturn(List.of(), pageIds);
+        when(blogLikeRepository.findLikedBlogIdsByUserIdAndBlogIds(user.getUserId(), blogIds))
+                .thenReturn(List.of(), blogIds);
+        when(blogSaveRepository.findSavedBlogIdsByUserIdAndBlogIds(user.getUserId(), blogIds))
+                .thenReturn(List.of(), blogIds);
+
+        BlogFeedResponse firstResponse = service.getPersonalizedFeed(
+                user.getUserId(),
+                TrendWindowType.HOUR_24,
+                null,
+                0,
+                10).getFirst();
+        BlogFeedResponse cachedResponse = service.getPersonalizedFeed(
+                user.getUserId(),
+                TrendWindowType.HOUR_24,
+                null,
+                0,
+                10).getFirst();
+
+        assertThat(firstResponse.getIsAuthorFollowing()).isFalse();
+        assertThat(firstResponse.getIsPageFollowing()).isFalse();
+        assertThat(firstResponse.getIsLike()).isFalse();
+        assertThat(firstResponse.getIsSave()).isFalse();
+        assertThat(cachedResponse.getIsAuthorFollowing()).isTrue();
+        assertThat(cachedResponse.getIsPageFollowing()).isTrue();
+        assertThat(cachedResponse.getIsLike()).isTrue();
+        assertThat(cachedResponse.getIsSave()).isTrue();
+        verify(blogRecommendationScoreRepository, times(1)).findLatestPage(
+                eq(user.getUserId()),
+                eq(TrendWindowType.HOUR_24),
+                eq(user.getRegion().getRegionId()),
+                eq(computedAt),
+                any(Pageable.class));
+        verify(userFollowRepository, times(2)).findFollowedUserIds(user.getUserId(), authorIds);
+        verify(pageFollowRepository, times(2)).findFollowedCafePageIds(user.getUserId(), pageIds);
+        verify(blogLikeRepository, times(2)).findLikedBlogIdsByUserIdAndBlogIds(user.getUserId(), blogIds);
+        verify(blogSaveRepository, times(2)).findSavedBlogIdsByUserIdAndBlogIds(user.getUserId(), blogIds);
+        verify(userFollowRepository, never())
+                .existsByFollowerUserIdAndFollowingUserId(any(UUID.class), any(UUID.class));
+        verify(pageFollowRepository, never())
+                .existsByUserUserIdAndCafePageId(any(UUID.class), any(UUID.class));
+        verify(blogLikeRepository, never())
+                .existsByUserUserIdAndBlogId(any(UUID.class), any(UUID.class));
+    }
+
+    @Test
     void getPersonalizedFeed_success_batchesViewerStateWithoutPerItemQueries_TC010() {
         User user = user();
         Blog blog = blog(user.getRegion().getRegionId());
@@ -341,6 +468,54 @@ class BlogFeedRankingServiceImplTest {
         assertThat(response.getIsPageFollowing()).isFalse();
         assertThat(response.getIsLike()).isTrue();
         assertThat(response.getIsSave()).isFalse();
+        verify(userFollowRepository, never())
+                .existsByFollowerUserIdAndFollowingUserId(any(UUID.class), any(UUID.class));
+        verify(pageFollowRepository, never())
+                .existsByUserUserIdAndCafePageId(any(UUID.class), any(UUID.class));
+        verify(blogLikeRepository, never())
+                .existsByUserUserIdAndBlogId(any(UUID.class), any(UUID.class));
+    }
+
+    @Test
+    void getPersonalizedFeed_success_missingSnapshotUsesViewerAwareOrganicFallback_TC015() {
+        User user = user();
+        Blog blog = blog(user.getRegion().getRegionId());
+        BlogFeedRankingServiceImpl service = service();
+        org.mockito.Mockito.doNothing().when(taskExecutor).execute(any(Runnable.class));
+        List<UUID> authorIds = List.of(blog.getAuthor().getUserId());
+        List<UUID> pageIds = List.of(blog.getPageId());
+        List<UUID> blogIds = List.of(blog.getId());
+
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
+        when(blogRecommendationScoreRepository.findLatestComputedAt(
+                user.getUserId(),
+                TrendWindowType.HOUR_24,
+                user.getRegion().getRegionId())).thenReturn(null);
+        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(blog));
+        when(userFollowRepository.findFollowedUserIds(user.getUserId(), authorIds)).thenReturn(authorIds);
+        when(pageFollowRepository.findFollowedCafePageIds(user.getUserId(), pageIds)).thenReturn(pageIds);
+        when(blogLikeRepository.findLikedBlogIdsByUserIdAndBlogIds(user.getUserId(), blogIds))
+                .thenReturn(blogIds);
+        when(blogSaveRepository.findSavedBlogIdsByUserIdAndBlogIds(user.getUserId(), blogIds))
+                .thenReturn(blogIds);
+
+        BlogFeedResponse response = service.getPersonalizedFeed(
+                user.getUserId(),
+                TrendWindowType.HOUR_24,
+                null,
+                0,
+                10).getFirst();
+
+        assertThat(response.getBlogId()).isEqualTo(blog.getId());
+        assertThat(response.getIsAuthorFollowing()).isTrue();
+        assertThat(response.getIsPageFollowing()).isTrue();
+        assertThat(response.getIsLike()).isTrue();
+        assertThat(response.getIsSave()).isTrue();
+        verify(taskExecutor).execute(any(Runnable.class));
+        verify(userFollowRepository).findFollowedUserIds(user.getUserId(), authorIds);
+        verify(pageFollowRepository).findFollowedCafePageIds(user.getUserId(), pageIds);
+        verify(blogLikeRepository).findLikedBlogIdsByUserIdAndBlogIds(user.getUserId(), blogIds);
+        verify(blogSaveRepository).findSavedBlogIdsByUserIdAndBlogIds(user.getUserId(), blogIds);
         verify(userFollowRepository, never())
                 .existsByFollowerUserIdAndFollowingUserId(any(UUID.class), any(UUID.class));
         verify(pageFollowRepository, never())

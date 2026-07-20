@@ -159,7 +159,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
 
     @Override
     @Transactional(readOnly = true)
-    public FeedResponseDTO getOrganicFeed(String cursor, int size) {
+    public FeedResponseDTO getOrganicFeed(UUID viewerUserId, String cursor, int size) {
         int safeSize = normalizeOrganicFeedSize(size);
         OrganicFeedCursor organicCursor = decodeOrganicCursor(cursor);
         LocalDateTime scoredAt = organicCursor == null ? LocalDateTime.now() : organicCursor.scoredAt();
@@ -175,7 +175,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         }
 
         BlogFeedCursorPageResponseDTO response = new BlogFeedCursorPageResponseDTO();
-        response.setItems(toOrganicFeedResponses(rankingPage.items()));
+        response.setItems(toOrganicFeedResponses(rankingPage.items(), viewerUserId));
         response.setHasMore(rankingPage.hasMore());
         response.setNextCursor(rankingPage.nextCursor());
         return toFeedResponse(response);
@@ -280,6 +280,8 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         String cacheKey = personalizedRankingCacheKey(userId, windowType, contextRegionId, safePage, safeSize);
         List<BlogFeedResponse> cachedResponses = getCachedPersonalizedFeed(cacheKey);
         if (cachedResponses != null) {
+            ViewerFeedContext viewerContext = buildViewerFeedContext(userId, cachedResponses);
+            cachedResponses.forEach(response -> applyViewerState(response, viewerContext));
             return cachedResponses;
         }
 
@@ -292,7 +294,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         if (stale) {
             scheduleRecommendationRebuild(userId, windowType, contextRegionId);
             if (latestComputedAt == null) {
-                return fallbackOrganicFeedResponses(safeSize);
+                return fallbackOrganicFeedResponses(userId, safeSize);
             }
         }
 
@@ -459,8 +461,8 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         return responses.subList(fromIndex, toIndex);
     }
 
-    private List<BlogFeedResponse> fallbackOrganicFeedResponses(int size) {
-        return getOrganicFeed(null, size)
+    private List<BlogFeedResponse> fallbackOrganicFeedResponses(UUID viewerUserId, int size) {
+        return getOrganicFeed(viewerUserId, null, size)
                 .getItems()
                 .stream()
                 .filter(item -> item.getBlog() != null)
@@ -914,6 +916,35 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                 .map(User::getUserId)
                 .distinct()
                 .toList();
+        return loadViewerFeedContext(viewerUserId, authorUserIds, pageIds, blogIds);
+    }
+
+    private ViewerFeedContext buildViewerFeedContext(
+            UUID viewerUserId,
+            List<BlogFeedResponse> responses) {
+        List<UUID> authorUserIds = responses.stream()
+                .map(BlogFeedResponse::getAuthorUserId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        List<UUID> pageIds = responses.stream()
+                .map(BlogFeedResponse::getPageId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        List<UUID> blogIds = responses.stream()
+                .map(BlogFeedResponse::getBlogId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        return loadViewerFeedContext(viewerUserId, authorUserIds, pageIds, blogIds);
+    }
+
+    private ViewerFeedContext loadViewerFeedContext(
+            UUID viewerUserId,
+            List<UUID> authorUserIds,
+            List<UUID> pageIds,
+            List<UUID> blogIds) {
         Set<UUID> followedUserIds = authorUserIds.isEmpty()
                 ? Set.of()
                 : Set.copyOf(userFollowRepository.findFollowedUserIds(viewerUserId, authorUserIds));
@@ -991,19 +1022,23 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             response.setRegionArea(region.getArea());
         }
         response.setRankPosition(score.getRankPosition());
+        applyViewerState(response, viewerContext);
+        response.setCreatedAt(blog.getCreatedAt());
+        return response;
+    }
+
+    private void applyViewerState(BlogFeedResponse response, ViewerFeedContext viewerContext) {
         UUID viewerUserId = viewerContext.viewerUserId();
-        UUID authorUserId = author.getUserId();
+        UUID authorUserId = response.getAuthorUserId();
         response.setIsAuthorFollowing(viewerUserId != null
                 && authorUserId != null
                 && !viewerUserId.equals(authorUserId)
                 && viewerContext.followedUserIds().contains(authorUserId));
-        UUID pageId = blog.getPageId();
+        UUID pageId = response.getPageId();
         response.setIsPageFollowing(viewerUserId != null && pageId != null
                 && viewerContext.followedPageIds().contains(pageId));
-        response.setIsLike(viewerUserId != null && viewerContext.likedBlogIds().contains(blog.getId()));
-        response.setIsSave(viewerUserId != null && viewerContext.savedBlogIds().contains(blog.getId()));
-        response.setCreatedAt(blog.getCreatedAt());
-        return response;
+        response.setIsLike(viewerUserId != null && viewerContext.likedBlogIds().contains(response.getBlogId()));
+        response.setIsSave(viewerUserId != null && viewerContext.savedBlogIds().contains(response.getBlogId()));
     }
 
     private void applyDisplayAuthor(BlogFeedResponse response, User author, CafePage cafePage) {
@@ -1126,7 +1161,9 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         return 0;
     }
 
-    private List<BlogFeedResponse> toOrganicFeedResponses(List<OrganicFeedRankingItem> rankingItems) {
+    private List<BlogFeedResponse> toOrganicFeedResponses(
+            List<OrganicFeedRankingItem> rankingItems,
+            UUID viewerUserId) {
         if (rankingItems.isEmpty()) {
             return List.of();
         }
@@ -1151,7 +1188,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                 })
                 .filter(score -> score != null)
                 .toList();
-        return toFeedResponses(recommendationScores, null);
+        return toFeedResponses(recommendationScores, viewerUserId);
     }
 
     private FeedResponseDTO toFeedResponse(BlogFeedCursorPageResponseDTO organicPage) {
