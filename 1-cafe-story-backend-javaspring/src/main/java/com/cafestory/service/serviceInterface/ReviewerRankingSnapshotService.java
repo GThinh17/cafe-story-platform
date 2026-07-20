@@ -3,9 +3,9 @@ package com.cafestory.service.serviceInterface;
 import com.cafestory.dto.responseDTO.ReviewerRankingSnapshotResponseDTO;
 import com.cafestory.entity.Reviewer;
 import com.cafestory.entity.enums.RankingPeriodType;
+import org.springframework.data.domain.Page;
 
 import java.time.LocalDate;
-import java.util.List;
 
 public interface ReviewerRankingSnapshotService {
 
@@ -15,5 +15,5 @@ public interface ReviewerRankingSnapshotService {
 
     void initSnapshotForNewReviewer(Reviewer reviewer);
 
-    List<ReviewerRankingSnapshotResponseDTO> getRanking(String period, RankingPeriodType periodType, int page, int limit);
+    Page<ReviewerRankingSnapshotResponseDTO> getRanking(String period, RankingPeriodType periodType, int page, int size);
 }

@@ -15,6 +15,10 @@ import com.cafestory.repository.ReviewerRepository;
 import com.cafestory.service.serviceInterface.ReviewerBadgeThresholdService;
 import com.cafestory.service.serviceInterface.ReviewerFormulaService;
 import com.cafestory.service.serviceInterface.ReviewerRankingSnapshotService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -194,14 +198,13 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
 
     @Override
     @Transactional(readOnly = true)
-    public List<ReviewerRankingSnapshotResponseDTO> getRanking(String period, RankingPeriodType periodType, int page, int limit) {
-        int sanitizedPage = Math.max(page, 1);
-        int sanitizedLimit = Math.max(1, Math.min(limit, 100));
-        List<ReviewerRankingSnapshot> all = snapshotRepository
-                .findByPeriodAndPeriodTypeOrderByRankPositionAsc(period, periodType);
-        int fromIndex = Math.min((sanitizedPage - 1) * sanitizedLimit, all.size());
-        int toIndex = Math.min(fromIndex + sanitizedLimit, all.size());
-        List<ReviewerRankingSnapshot> pageItems = all.subList(fromIndex, toIndex);
+    public Page<ReviewerRankingSnapshotResponseDTO> getRanking(String period, RankingPeriodType periodType, int page, int size) {
+        int sanitizedPage = Math.max(page, 0);
+        int sanitizedSize = Math.max(1, Math.min(size, 100));
+        Pageable pageable = PageRequest.of(sanitizedPage, sanitizedSize, Sort.by(Sort.Direction.ASC, "rankPosition"));
+        Page<ReviewerRankingSnapshot> pageResult = snapshotRepository
+                .findByPeriodAndPeriodType(period, periodType, pageable);
+        List<ReviewerRankingSnapshot> pageItems = pageResult.getContent();
 
         Map<UUID, ReviewerBadgeHistory> badgeByReviewerId = Map.of();
         if (periodType == RankingPeriodType.MONTHLY && !pageItems.isEmpty()) {
@@ -217,16 +220,14 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
         }
 
         Map<UUID, ReviewerBadgeHistory> badges = badgeByReviewerId;
-        return pageItems.stream()
-                .map(snapshot -> {
-                    ReviewerRankingSnapshotResponseDTO dto = toResponseDTO(snapshot);
-                    ReviewerBadgeHistory history = badges.get(snapshot.getReviewer().getReviewerId());
-                    if (history != null) {
-                        dto.setBadge(history.getBadge());
-                    }
-                    return dto;
-                })
-                .toList();
+        return pageResult.map(snapshot -> {
+            ReviewerRankingSnapshotResponseDTO dto = toResponseDTO(snapshot);
+            ReviewerBadgeHistory history = badges.get(snapshot.getReviewer().getReviewerId());
+            if (history != null) {
+                dto.setBadge(history.getBadge());
+            }
+            return dto;
+        });
     }
 
     private String resolvePeriod(LocalDate date, RankingPeriodType periodType) {

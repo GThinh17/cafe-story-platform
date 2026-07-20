@@ -7,8 +7,10 @@ import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
 import { UserCell } from "@/components/admin/user-cell";
 import {
   AdminDataTable,
+  AdminPagination,
   type AdminTableColumn,
 } from "@/components/admin/admin-data-table";
+import type { PageResponse } from "@/types/api";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import {
   FilterInput,
@@ -42,7 +44,7 @@ const badgeVariant: Record<ReviewerBadge, "default" | "secondary" | "outline"> =
   DIAMOND: "default",
 };
 
-const LIMIT = 20;
+const PAGE_SIZE = 20;
 
 function pad(value: number) {
   return String(value).padStart(2, "0");
@@ -82,8 +84,8 @@ function defaultPeriod(periodType: RankingPeriodType) {
 export function AdminRankingPage() {
   const [periodType, setPeriodType] = useState<RankingPeriodType>("DAILY");
   const [period, setPeriod] = useState(() => defaultPeriod("DAILY"));
-  const [page, setPage] = useState(1);
-  const [rows, setRows] = useState<ReviewerRankingSnapshot[]>([]);
+  const [page, setPage] = useState(0);
+  const [pageData, setPageData] = useState<PageResponse<ReviewerRankingSnapshot> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
@@ -101,8 +103,8 @@ export function AdminRankingPage() {
       setIsLoading(true);
       setError(null);
 
-      return getReviewerRanking({ period, periodType, page, limit: LIMIT }, signal)
-        .then((response) => setRows(response))
+      return getReviewerRanking({ period, periodType, page, size: PAGE_SIZE }, signal)
+        .then((response) => setPageData(response))
         .catch((requestError: unknown) => {
           if (signal?.aborted) {
             return;
@@ -124,7 +126,7 @@ export function AdminRankingPage() {
   );
 
   useEffect(() => {
-    setPage(1);
+    setPage(0);
   }, [period, periodType]);
 
   useEffect(() => {
@@ -241,36 +243,14 @@ export function AdminRankingPage() {
       </Toolbar>
       <AdminDataTable
         columns={columns}
-        rows={rows}
+        rows={pageData?.content ?? []}
         getRowKey={(row) => row.id}
         isLoading={isLoading}
         error={error}
         emptyTitle="No ranking data"
         emptyDescription="No snapshot found for this period. Use Generate snapshot to create one."
       />
-      <div className="flex items-center justify-between rounded-md border border-border bg-surface px-4 py-3 text-sm text-muted">
-        <span>Page {page}</span>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={page <= 1}
-            onClick={() => setPage((current) => Math.max(1, current - 1))}
-          >
-            Previous
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={rows.length < LIMIT}
-            onClick={() => setPage((current) => current + 1)}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+      <AdminPagination page={pageData} onPageChange={setPage} />
       <AdminConfirmDialog
         open={isGenerateOpen}
         onOpenChange={(open) => {
