@@ -45,9 +45,13 @@ public class FeedController {
 
     @GetMapping("/organic")
     public FeedResponseDTO getOrganicFeed(
+            @AuthenticationPrincipal AuthenticatedUserPrincipal principal,
             @RequestParam(required = false) String cursor,
             @RequestParam(defaultValue = "20") int size) {
-        return blogFeedRankingService.getOrganicFeed(cursor, size);
+        return blogFeedRankingService.getOrganicFeed(
+                principal == null ? null : principal.userId(),
+                cursor,
+                size);
     }
 
     @PostMapping("/impressions")

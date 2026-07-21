@@ -16,7 +16,6 @@ export type PaymentStatus =
 
 export type CreatePaymentRequest = {
   adFeeId?: string;
-  buyerId?: string;
   cafePageId?: string;
   extraFeeId?: string;
   paymentMethod: PaymentMethod;

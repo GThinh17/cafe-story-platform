@@ -680,6 +680,9 @@ export function ProfileScreen() {
   const visibleEmptyCopy = getEmptyCopy(activeContentTab);
   const ownedCafePageId = ownedCafePage?.id ?? linkedCafePageId(activeProfile, user);
   const shouldShowCafePageAction = hasCafePageRole(user) || Boolean(ownedCafePageId);
+  const shouldShowAdsManagerAction = Boolean(
+    ownedCafePage && isOwnedActiveCafePage(ownedCafePage),
+  );
   const shouldShowReviewerDashboardAction = hasReviewerRole(user);
 
   const openOwnedCafePage = useCallback(() => {
@@ -700,6 +703,10 @@ export function ProfileScreen() {
     navigation.navigate(routes.paymentOptions, {
       initialTab: "reviewer",
     });
+  }, [navigation]);
+
+  const openAdsManager = useCallback(() => {
+    navigation.navigate(routes.adsManager);
   }, [navigation]);
 
   const openReviewerDashboard = useCallback(() => {
@@ -815,11 +822,13 @@ export function ProfileScreen() {
     return (
       <Screen padded={false}>
         <ProfileTopBar
+          onAdsManagerPress={openAdsManager}
           onCafePagePress={openOwnedCafePage}
           onMessagePress={() => navigation.navigate(routes.conversations)}
           onPaymentPress={openPayment}
           onReviewerDashboardPress={openReviewerDashboard}
           onSettingsPress={() => navigation.navigate(routes.settings)}
+          showAdsManagerAction={shouldShowAdsManagerAction}
           showCafePageAction={shouldShowCafePageAction}
           showReviewerDashboardAction={shouldShowReviewerDashboardAction}
           userName={userName}
@@ -832,11 +841,13 @@ export function ProfileScreen() {
   return (
     <Screen padded={false}>
       <ProfileTopBar
+        onAdsManagerPress={openAdsManager}
         onCafePagePress={openOwnedCafePage}
         onMessagePress={() => navigation.navigate(routes.conversations)}
         onPaymentPress={openPayment}
         onReviewerDashboardPress={openReviewerDashboard}
         onSettingsPress={() => navigation.navigate(routes.settings)}
+        showAdsManagerAction={shouldShowAdsManagerAction}
         showCafePageAction={shouldShowCafePageAction}
         showReviewerDashboardAction={shouldShowReviewerDashboardAction}
         userName={userName}

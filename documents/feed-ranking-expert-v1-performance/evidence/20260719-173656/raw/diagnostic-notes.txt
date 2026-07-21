@@ -1,0 +1,26 @@
+Backend và Web cùng trỏ tới http://localhost:8080.
+Unauthenticated GET /: 307 trong 223 ms.
+Authenticated GET / trước benchmark: 200 trong 2.932 ms.
+
+Đo riêng dependency ban đầu:
+- auth/me: 652 ms
+- mixed feed: 1.759–2.662 ms
+- top cafes: 1.668 ms
+- following users: 338 ms, danh sách rỗng
+- followed cafes: 324 ms, danh sách rỗng
+- chat conversations: 438 ms, danh sách rỗng
+
+Forced rebuild:
+- status: 200
+- duration: 58.202 ms
+- scores/items: 434
+
+Redis warm-path check:
+- request: /api/blogs/feed?windowType=HOUR_24&page=0&size=20
+- duration: 2.020 ms
+- Redis hit delta: +1
+- Redis miss delta: +0
+- key count: 3
+- largest string payload: 27.736 bytes
+
+Không lưu email, password, access token, refresh token, Cookie hoặc Set-Cookie.

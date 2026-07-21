@@ -1,0 +1,39 @@
+{
+  "featureSlug": "feed-ranking-expert-v1-performance",
+  "evidenceTimestamp": "20260719-173656",
+  "status": "PERFORMANCE_FAILURE_CONFIRMED",
+  "coldRebuildMs": 58202,
+  "rebuildItems": 434,
+  "authenticatedBlogFeedWarm": {
+    "runs": 50,
+    "minMs": 1549.21,
+    "avgMs": 1772.52,
+    "p50Ms": 1674.64,
+    "p75Ms": 1766.84,
+    "p95Ms": 2684.11,
+    "maxMs": 3067.51,
+    "errorRatePercent": 0
+  },
+  "mixedFeedWarm": {
+    "runs": 10,
+    "minMs": 1960.06,
+    "avgMs": 2126.27,
+    "p50Ms": 2063.79,
+    "p75Ms": 2152.47,
+    "p95Ms": 2486.46,
+    "maxMs": 2486.46,
+    "errorRatePercent": 0
+  },
+  "nextHomeWarm": {
+    "runs": 10,
+    "minMs": 2914.93,
+    "avgMs": 3097.63,
+    "p50Ms": 3028.32,
+    "p75Ms": 3131.04,
+    "p95Ms": 3689.78,
+    "maxMs": 3689.78,
+    "errorRatePercent": 0
+  },
+  "confirmedCause": "SYNCHRONOUS_REBUILD_ON_READ_WITH_SERIAL_PER_SCORE_UPSERT",
+  "secretsStored": false
+}

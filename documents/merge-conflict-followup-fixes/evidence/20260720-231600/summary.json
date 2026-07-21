@@ -1,0 +1,36 @@
+{
+  "runId": "20260720-231600",
+  "status": "PASS_WITH_DOCUMENTED_TEST_DATA_LIMITATION",
+  "branch": "javaSpring/feature/fix-blog-feed",
+  "mergeBaseline": "83d7a59821a67ece0822af86c6620b786d641de7",
+  "bounds": {
+    "changed": ["spring-backend", "nextjs-web", "documents-evidence"],
+    "preserved": ["mobile", "database-schema", "ranking-formula", "feed-cursor-size-ad-slots", "payment-providers", "admin", "seed-data"]
+  },
+  "verification": {
+    "backendFocused": {"tests": 87, "failures": 0, "errors": 0, "skipped": 0},
+    "backendFull": {"tests": 580, "failures": 0, "errors": 0, "skipped": 1},
+    "webTypecheck": "PASS",
+    "webBuild": "PASS",
+    "changedLineCoveragePercent": 100,
+    "changedBranchCoveragePercent": 100,
+    "browserConsoleErrors": 0,
+    "paymentEndpointsEquivalent": true,
+    "likeCleanupVerified": true
+  },
+  "issues": {
+    "resolved": ["MCF-001", "MCF-003", "MCF-004", "MCF-005", "MCF-006"],
+    "documented": ["MCF-002", "MCF-007"]
+  },
+  "testDataLimitations": [
+    "no owned cafe page",
+    "no paid Ads package or campaign",
+    "no live sponsored item at raw index zero"
+  ],
+  "screenshots": [
+    "screenshots/01-home-feed-viewer-state.png",
+    "screenshots/02-pricing-modal-single-options.png",
+    "screenshots/03-ads-dashboard.png",
+    "screenshots/04-legacy-route-redirect.png"
+  ]
+}

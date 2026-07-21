@@ -8,6 +8,7 @@ import {
   CompassIcon,
   HomeIcon,
   MessageCircleIcon,
+  MegaphoneIcon,
   PlusIcon,
   UserIcon,
 } from "lucide-react";
@@ -33,7 +34,7 @@ import type { ModerationStatus, NotificationResponse } from "@/types/notificatio
 type SidebarItem = {
   href: string;
   label: string;
-  icon: "home" | "explore" | "bell" | "message" | "profile" | "plus";
+  icon: "home" | "explore" | "bell" | "message" | "profile" | "plus" | "ads";
 };
 
 const sidebarItems: SidebarItem[] = [
@@ -52,6 +53,7 @@ const sidebarIcons = {
   message: MessageCircleIcon,
   profile: UserIcon,
   plus: PlusIcon,
+  ads: MegaphoneIcon,
 };
 
 function isActivePath(pathname: string, href: string) {
@@ -77,6 +79,15 @@ export function SharedSidebar() {
   const profileHref = user?.userName ? `/${user.userName}` : "/login";
   const router = useRouter();
   const commentModal = useCommentModal();
+  const visibleSidebarItems = user?.roles.some((role) =>
+    ["CAFE_PAGE", "ROLE_CAFE_PAGE"].includes(role),
+  )
+    ? [
+        ...sidebarItems.slice(0, 4),
+        { href: "/ads", icon: "ads" as const, label: "Ads" },
+        ...sidebarItems.slice(4),
+      ]
+    : sidebarItems;
   const {
     notifications,
     unreadCount,
@@ -148,7 +159,7 @@ export function SharedSidebar() {
         </Link>
 
         <nav className="grid gap-1.5 px-2 py-2 sm:px-3">
-          {sidebarItems.map((item) => {
+          {visibleSidebarItems.map((item) => {
             const Icon = sidebarIcons[item.icon];
             const isNotificationItem = item.icon === "bell";
             const isCreatePostItem = item.icon === "plus";

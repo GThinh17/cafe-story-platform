@@ -25,6 +25,20 @@ public interface BlogSaveRepository extends JpaRepository<BlogSave, UUID> {
             @Param("blogIds") List<UUID> blogIds);
 
     @Query("""
+            select distinct save.blog.id
+            from BlogSave save
+            where save.user.userId = :userId
+            and save.blog.id in :blogIds
+            and save.createdAt >= :startAt
+            and save.createdAt < :endAt
+            """)
+    List<UUID> findRecentlySavedBlogIds(
+            @Param("userId") UUID userId,
+            @Param("blogIds") Collection<UUID> blogIds,
+            @Param("startAt") LocalDateTime startAt,
+            @Param("endAt") LocalDateTime endAt);
+
+    @Query("""
             select save.blog.id as blogId, count(save.id) as count
             from BlogSave save
             where save.blog.id in :blogIds

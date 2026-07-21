@@ -1,0 +1,34 @@
+CafeStory post-merge follow-up validation
+Run: 20260720-231600
+Final validation date: 2026-07-21 (Asia/Saigon)
+
+BOUND
+- Changed: Spring Boot backend and Next.js web only.
+- Preserved: mobile code and GET /api/payments contract; schema/migrations; feed formula/cursor/size/ad slots; Stripe/VNPAY integrations; admin; seed data; pre-existing untracked PRODUCT.md and documents/backend-flyway-checksum-startup/.
+
+BACKEND
+- Focused command: mvn '-Dtest=BlogFeedRankingServiceImplTest,FeedServiceImplTest,FeedControllerTest,PaymentControllerTest,PaymentServiceImplTest' test
+- Final result: PASS, 87 tests, 0 failures, 0 errors, 0 skipped.
+- Full command: mvn test
+- Final result: PASS, 580 tests, 0 failures, 0 errors, 1 skipped.
+- Changed production coverage: 37/37 executable lines (100%), 10/10 branches (100%).
+
+WEB
+- npm run typecheck: PASS.
+- npm run build: PASS; Next.js 16.2.6 generated 23 pages, including /ads and /cafes/campaigns/new.
+- Frontend unit coverage: unavailable; package.json has no unit-test or coverage script (MCF-002).
+
+RUNTIME/API
+- Signed-in mixed feed rendered for th***@gmail.com.
+- Like smoke: UI/database changed from unliked to liked; after the personalized-cache fix, full refresh preserved count=1 and SVG class fill-accent; unlike cleanup persisted after refresh.
+- Media attributes: first post loading=eager and fetchpriority=high; second post loading=lazy with no fetchpriority.
+- Pricing dialog: one dialog; removed text Open Ads dashboard count=0; non-owner Feed Advertising Pack count=0 as required.
+- Ads dashboard: loaded /ads empty states with 0 browser console errors.
+- Payment history: GET /api/payments?paymentStatus=PAID and GET /api/payments/me?paymentStatus=PAID both returned statusCode=200, dataCount=0, and identical data.
+- Compatibility redirect with paymentId: /cafes/campaigns/new?paymentId=33333333-3333-3333-3333-333333333333 -> /ads?paymentId=33333333-3333-3333-3333-333333333333.
+- Compatibility redirect without paymentId: /cafes/campaigns/new -> /ads.
+- Runtime test created no payment, campaign, post, or seed data.
+
+LIMITATIONS
+- TEST_DATA: account owns no cafe page and has no paid Ads package/campaign; live owner/paid-package UI and an ad at raw index zero were not available. Code path, typecheck/build, non-owner states, and media attributes were verified; no seed was changed.
+- Initial Maven incremental-cache failure, parallel Next build worker failure, and one test-isolation failure are documented in issue.md and resolved/retested in fix-log.md.

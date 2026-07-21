@@ -25,6 +25,21 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
     @EntityGraph(attributePaths = {"user", "actorCafePage"})
     List<Comment> findByUserUserId(UUID userId);
 
+    @Query("""
+            select distinct c.blog.id
+            from Comment c
+            where c.user.userId = :userId
+            and c.blog.id in :blogIds
+            and c.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
+            and c.createdAt >= :startAt
+            and c.createdAt < :endAt
+            """)
+    List<UUID> findRecentlyCommentedBlogIds(
+            @Param("userId") UUID userId,
+            @Param("blogIds") Collection<UUID> blogIds,
+            @Param("startAt") LocalDateTime startAt,
+            @Param("endAt") LocalDateTime endAt);
+
     @EntityGraph(attributePaths = {"user", "actorCafePage"})
     List<Comment> findByParentCommentId(UUID parentCommentId);
 

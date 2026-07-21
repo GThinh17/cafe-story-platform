@@ -2,12 +2,15 @@ package com.cafestory.service.serviceImplement;
 
 import com.cafestory.dto.responseDTO.SponsoredCafeResponseDTO;
 import com.cafestory.entity.AdCampaign;
+import com.cafestory.entity.AdDailyStat;
+import com.cafestory.entity.AdImpression;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.AdStatus;
 import com.cafestory.entity.enums.PageStatus;
 import com.cafestory.repository.AdCampaignRepository;
+import com.cafestory.repository.AdDailyStatRepository;
 import com.cafestory.repository.AdImpressionRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.SponsoredCafeCandidateService;
@@ -15,12 +18,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class SponsoredCafeCandidateServiceImpl implements SponsoredCafeCandidateService {
@@ -32,14 +37,17 @@ public class SponsoredCafeCandidateServiceImpl implements SponsoredCafeCandidate
 
     private final AdCampaignRepository adCampaignRepository;
     private final AdImpressionRepository adImpressionRepository;
+    private final AdDailyStatRepository adDailyStatRepository;
     private final UserRepository userRepository;
 
     public SponsoredCafeCandidateServiceImpl(
             AdCampaignRepository adCampaignRepository,
             AdImpressionRepository adImpressionRepository,
+            AdDailyStatRepository adDailyStatRepository,
             UserRepository userRepository) {
         this.adCampaignRepository = adCampaignRepository;
         this.adImpressionRepository = adImpressionRepository;
+        this.adDailyStatRepository = adDailyStatRepository;
         this.userRepository = userRepository;
     }
 
@@ -50,13 +58,17 @@ public class SponsoredCafeCandidateServiceImpl implements SponsoredCafeCandidate
         LocalDateTime now = LocalDateTime.now();
         Region userRegion = resolveUserRegion(userId);
 
-        List<ScoredSponsoredCafe> scoredCandidates = adCampaignRepository.findActiveCandidates(AdStatus.ACTIVE, now)
+        List<AdCampaign> eligibleCampaigns = adCampaignRepository.findActiveCandidates(AdStatus.ACTIVE, now)
                 .stream()
                 .filter(campaign -> isEligibleCampaign(campaign, now))
                 .filter(campaign -> isActiveCafePage(campaign.getCafePage()))
-                .filter(campaign -> !exceedsFrequencyCap(userId, campaign, now))
+                .toList();
+        Map<UUID, Long> dailyImpressionCounts = loadDailyImpressionCounts(userId, eligibleCampaigns, now);
+
+        List<ScoredSponsoredCafe> scoredCandidates = eligibleCampaigns.stream()
+                .filter(campaign -> dailyImpressionCounts.getOrDefault(campaign.getAdCampaignId(), 0L)
+                        < DAILY_FREQUENCY_CAP)
                 .map(campaign -> new ScoredSponsoredCafe(campaign, calculateAdScore(campaign, userRegion, now)))
-                .filter(candidate -> candidate.score() > 0)
                 .sorted(candidateComparator())
                 .toList();
 
@@ -66,6 +78,59 @@ public class SponsoredCafeCandidateServiceImpl implements SponsoredCafeCandidate
                 .limit(limit)
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional
+    public void recordServedImpressions(UUID userId, List<UUID> campaignIds) {
+        if (campaignIds == null || campaignIds.isEmpty()) {
+            return;
+        }
+        User user = userId == null ? null : userRepository.findById(userId).orElse(null);
+        LocalDateTime shownAt = LocalDateTime.now();
+        campaignIds.stream().distinct().forEach(campaignId -> recordServedImpression(campaignId, user, shownAt));
+    }
+
+    private void recordServedImpression(UUID campaignId, User user, LocalDateTime shownAt) {
+        AdCampaign campaign = adCampaignRepository.findByIdWithLock(campaignId).orElse(null);
+        if (!isEligibleCampaign(campaign, shownAt)) {
+            expireIfNeeded(campaign, shownAt);
+            return;
+        }
+
+        AdImpression impression = new AdImpression();
+        impression.setAdCampaign(campaign);
+        impression.setUser(user);
+        impression.setShownAt(shownAt);
+        adImpressionRepository.save(impression);
+
+        campaign.setServedImpressions(valueOrZero(campaign.getServedImpressions()) + 1);
+        expireIfNeeded(campaign, shownAt);
+        adCampaignRepository.save(campaign);
+        incrementDailyImpressions(campaign, shownAt.toLocalDate());
+    }
+
+    private void expireIfNeeded(AdCampaign campaign, LocalDateTime now) {
+        if (campaign != null && campaign.getStatus() == AdStatus.ACTIVE
+                && (valueOrZero(campaign.getServedImpressions()) >= valueOrZero(campaign.getMaxImpressions())
+                || (campaign.getEndAt() != null && !now.isBefore(campaign.getEndAt())))) {
+            campaign.setStatus(AdStatus.EXPIRED);
+            adCampaignRepository.save(campaign);
+        }
+    }
+
+    private void incrementDailyImpressions(AdCampaign campaign, LocalDate statDate) {
+        AdDailyStat stat = adDailyStatRepository.findByAdCampaignAdCampaignIdAndStatDate(
+                        campaign.getAdCampaignId(),
+                        statDate)
+                .orElseGet(() -> {
+                    AdDailyStat created = new AdDailyStat();
+                    created.setAdCampaign(campaign);
+                    created.setStatDate(statDate);
+                    return created;
+                });
+        stat.setImpressions(valueOrZero(stat.getImpressions()) + 1);
+        adDailyStatRepository.save(stat);
     }
 
     private int normalizeRequestedCount(int requestedCount) {
@@ -102,17 +167,29 @@ public class SponsoredCafeCandidateServiceImpl implements SponsoredCafeCandidate
         return value == null ? 0 : value;
     }
 
-    private boolean exceedsFrequencyCap(UUID userId, AdCampaign campaign, LocalDateTime now) {
-        if (userId == null) {
-            return false;
+    private Map<UUID, Long> loadDailyImpressionCounts(
+            UUID userId,
+            List<AdCampaign> campaigns,
+            LocalDateTime now) {
+        if (userId == null || campaigns.isEmpty()) {
+            return Map.of();
+        }
+        List<UUID> campaignIds = campaigns.stream()
+                .map(AdCampaign::getAdCampaignId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        if (campaignIds.isEmpty()) {
+            return Map.of();
         }
         LocalDateTime dayStart = now.toLocalDate().atStartOfDay();
         LocalDateTime dayEnd = dayStart.plusDays(1);
-        return adImpressionRepository.countByUserUserIdAndAdCampaignAdCampaignIdAndShownAtGreaterThanEqualAndShownAtLessThan(
-                userId,
-                campaign.getAdCampaignId(),
-                dayStart,
-                dayEnd) >= DAILY_FREQUENCY_CAP;
+        return adImpressionRepository.countByUserAndCampaignIdsBetween(userId, campaignIds, dayStart, dayEnd)
+                .stream()
+                .collect(Collectors.toMap(
+                        AdImpressionRepository.CampaignImpressionCountRow::getCampaignId,
+                        AdImpressionRepository.CampaignImpressionCountRow::getImpressionCount,
+                        Long::max));
     }
 
     private double calculateAdScore(AdCampaign campaign, Region userRegion, LocalDateTime now) {
@@ -186,6 +263,7 @@ public class SponsoredCafeCandidateServiceImpl implements SponsoredCafeCandidate
         response.setCafeName(cafePage.getName());
         response.setCafeAvatarUrl(cafePage.getAvatarUrl());
         response.setCafeCoverUrl(cafePage.getCoverUrl());
+        response.setImageUrl(campaign.getImageUrl());
         response.setHeadline(campaign.getTitle());
         response.setDescription(campaign.getDescription());
         response.setCtaLabel(DEFAULT_CTA_LABEL);

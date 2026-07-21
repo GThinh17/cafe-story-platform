@@ -1,6 +1,11 @@
 import { imageWidths, optimizeImageUrl } from "@/lib/image-optimizer";
 import type { BlogFeedResponse, BlogResponse } from "@/types/blog";
-import type { FeedPost, FeedPostMedia } from "@/types/feed";
+import type {
+  FeedPost,
+  FeedPostMedia,
+  FeedRenderableItem,
+  MixedFeedResponse,
+} from "@/types/feed";
 
 const fallbackImages = [
   "/images/cafes/velvet-roast/latte-art.jpg",
@@ -164,6 +169,43 @@ export function mapBlogFeedToFeedPosts(feed: BlogFeedResponse[]): FeedPost[] {
       isPageFollowing: item.isPageFollowing ?? false,
     };
   });
+}
+
+export function mapMixedFeedToFeedPosts(feed: MixedFeedResponse): FeedPost[] {
+  const blogItems = (feed.items ?? [])
+    .map((item) => item.blog)
+    .filter((item): item is BlogFeedResponse => item !== null);
+
+  return mapBlogFeedToFeedPosts(blogItems);
+}
+
+export function mapMixedFeedToRenderableItems(
+  feed: MixedFeedResponse,
+): FeedRenderableItem[] {
+  const result: FeedRenderableItem[] = [];
+  (feed.items ?? []).forEach((item, index) => {
+    if (item.ad?.campaignId) {
+      result.push({
+        ad: item.ad,
+        id: `ad-${item.ad.campaignId}-${item.position ?? index}`,
+        kind: "ad",
+      });
+      return;
+    }
+    if (!item.blog) {
+      return;
+    }
+    const post = mapBlogFeedToFeedPosts([item.blog])[0];
+    if (!post) {
+      return;
+    }
+    result.push({
+      id: `post-${post.id ?? item.position ?? index}`,
+      kind: "post",
+      post,
+    });
+  });
+  return result;
 }
 
 export function mapSharedBlogResponsesToFeedPosts(blogs: BlogResponse[]): FeedPost[] {

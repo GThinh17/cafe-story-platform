@@ -7,6 +7,7 @@ import type {
 import { apiCacheTtl, cachedApiCall } from "./api-cache";
 import { apiFetch } from "./client";
 import { apiEndpoints } from "./endpoints";
+import { logPerformanceMetric, performanceTimestamp } from "../../utils/performance";
 
 function withQuery(path: string, params: Record<string, string | number | null | undefined>) {
   const searchParams = new URLSearchParams();
@@ -28,11 +29,25 @@ export function getMixedFeed(params: FeedParams = {}) {
     size: params.size,
   });
 
-  return cachedApiCall(`feed:mixed:${path}`, apiCacheTtl.dynamic, () =>
-    apiFetch<FeedResponse>(path, {
-      method: "GET",
-    }),
-  );
+  const fetchFromApi = async () => {
+    const startedAt = performanceTimestamp();
+    try {
+      return await apiFetch<FeedResponse>(path, {
+        method: "GET",
+      });
+    } finally {
+      logPerformanceMetric("mobile.feed.api", startedAt, {
+        bypassCache: Boolean(params.bypassCache),
+        pageSize: params.size ?? null,
+      });
+    }
+  };
+
+  if (params.bypassCache) {
+    return fetchFromApi();
+  }
+
+  return cachedApiCall(`feed:mixed:${path}`, apiCacheTtl.dynamic, fetchFromApi);
 }
 
 export function recordFeedImpressions(request: FeedImpressionBatchRequest) {

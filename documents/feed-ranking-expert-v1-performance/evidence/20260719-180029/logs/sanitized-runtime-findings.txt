@@ -1,0 +1,9 @@
+[2026-07-19] Backend khởi động thành công trên cổng 8080, PostgreSQL schema ở version 20260719.01.
+[CODE_BUG-004] PostgreSQL batch lần đầu: type "trend_window_type" does not exist. UUID và SQL bind values đã lược bỏ.
+[FIX-004] Rebuild lại: HTTP 200, 434 items, 5635.75 ms.
+[CODE_BUG-005] Redis personalizedFeedRankings: Unexpected token START_OBJECT khi đọc payload List cũ. Cache key UUID đã lược bỏ.
+[FIX-005] Sau khi lưu JSON string: bốn cache-hit liên tiếp còn 1 SQL/request và 253.08-337.28 ms.
+[BENCHMARK] Personalized warm 50 request: avg 244.58 ms, p95 267.95 ms, error 0%.
+[BENCHMARK] Mixed Feed 10 request: avg 554.14 ms, p95 590.88 ms, error 0%.
+[BENCHMARK] Web Home HTTP 10 request: avg 141.19 ms, p95 224.36 ms, error 0%.
+[SECURITY] Không lưu email, mật khẩu, access token, refresh token, cookie hoặc UUID người dùng.

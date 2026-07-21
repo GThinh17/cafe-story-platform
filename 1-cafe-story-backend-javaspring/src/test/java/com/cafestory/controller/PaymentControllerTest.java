@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.anyMap;
@@ -112,24 +113,30 @@ class PaymentControllerTest {
     @Test
     void getAllPayments_success_withoutStatusFilter_TC009() {
         List<PaymentResponseDTO> response = List.of(response(PaymentMethod.VNPAY));
-        when(paymentService.getAllPayments(userId, null)).thenReturn(response);
+        when(paymentService.getMyPayments(userId, null)).thenReturn(response);
 
         List<PaymentResponseDTO> result = paymentController.getAllPayments(null, principal(userId));
 
         assertThat(result).isEqualTo(response);
-        verify(paymentService).getAllPayments(userId, null);
+        verify(paymentService).getMyPayments(userId, null);
     }
 
     @Test
     void getAllPayments_success_withStatusFilter_TC010() throws Exception {
         PaymentResponseDTO response = response(PaymentMethod.VNPAY);
         response.setPaymentStatus(PaymentStatus.PENDING);
-        when(paymentService.getAllPayments(userId, PaymentStatus.PENDING)).thenReturn(List.of(response));
+        when(paymentService.getMyPayments(userId, PaymentStatus.PENDING)).thenReturn(List.of(response));
 
-        List<PaymentResponseDTO> result = paymentController.getAllPayments(PaymentStatus.PENDING, principal(userId));
+        List<PaymentResponseDTO> legacyResult = paymentController.getAllPayments(
+                PaymentStatus.PENDING,
+                principal(userId));
+        List<PaymentResponseDTO> canonicalResult = paymentController.getMyPayments(
+                PaymentStatus.PENDING,
+                principal(userId));
 
-        assertThat(result).containsExactly(response);
-        verify(paymentService).getAllPayments(userId, PaymentStatus.PENDING);
+        assertThat(legacyResult).containsExactly(response);
+        assertThat(canonicalResult).isEqualTo(legacyResult);
+        verify(paymentService, times(2)).getMyPayments(userId, PaymentStatus.PENDING);
     }
 
     @Test
@@ -143,6 +150,28 @@ class PaymentControllerTest {
 
         assertThat(result.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
         verify(paymentService).markBankTransferPaid(userId, paymentId);
+    }
+
+    @Test
+    void syncStripePayment_success_delegatesAuthenticatedUser_TC011() {
+        UUID paymentId = UUID.randomUUID();
+        PaymentResponseDTO response = response(PaymentMethod.STRIPE_CARD);
+        response.setPaymentStatus(PaymentStatus.PAID);
+        when(paymentService.syncStripePayment(userId, paymentId)).thenReturn(response);
+
+        PaymentResponseDTO result = paymentController.syncStripePayment(paymentId, principal(userId));
+
+        assertThat(result).isEqualTo(response);
+        verify(paymentService).syncStripePayment(userId, paymentId);
+    }
+
+    @Test
+    void handleStripeWebhook_success_delegatesRawSignature_TC012() {
+        paymentController.handleStripeWebhook("{\"type\":\"checkout.session.completed\"}", "t=1,v1=test");
+
+        verify(paymentService).handleStripeWebhook(
+                "{\"type\":\"checkout.session.completed\"}",
+                "t=1,v1=test");
     }
 
     @Test

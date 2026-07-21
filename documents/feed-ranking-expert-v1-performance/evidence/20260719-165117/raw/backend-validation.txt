@@ -1,0 +1,23 @@
+Môi trường: local, 2026-07-19, Asia/Ho_Chi_Minh
+
+1. Compile production
+Lệnh: mvn -DskipTests compile
+Kết quả: PASS
+
+2. Focused tests sau các vòng sửa
+Kết quả cuối: PASS
+Phạm vi: scorer, ranking, sponsored candidate, entity lifecycle và query-count integration gate.
+
+3. Regression Maven rộng
+Lệnh: mvn test
+Tests run: 568
+Failures: 0
+Errors: 0
+Skipped: 1
+Kết quả: PASS
+
+Test bị skip: FeedQueryCountPostgresIntegrationTest, chỉ bật khi FEED_QUERY_COUNT_TEST=true và database product là PostgreSQL.
+
+4. Git whitespace validation
+Lệnh: git diff --check
+Kết quả: PASS

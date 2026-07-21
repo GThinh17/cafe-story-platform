@@ -28,6 +28,21 @@ public interface BlogRecommendationScoreRepository extends JpaRepository<BlogRec
             @Param("contextRegionId") UUID contextRegionId);
 
     @Query("""
+            select distinct s.formulaVersion
+            from BlogRecommendationScore s
+            where s.user.userId = :userId
+              and s.windowType = :windowType
+              and s.computedAt = :computedAt
+              and ((:contextRegionId is null and s.contextRegionId is null)
+                   or s.contextRegionId = :contextRegionId)
+            """)
+    List<String> findFormulaVersionsAtComputedAt(
+            @Param("userId") UUID userId,
+            @Param("windowType") TrendWindowType windowType,
+            @Param("contextRegionId") UUID contextRegionId,
+            @Param("computedAt") LocalDateTime computedAt);
+
+    @Query("""
             select s
             from BlogRecommendationScore s
             join fetch s.blog b
@@ -68,6 +83,14 @@ public interface BlogRecommendationScoreRepository extends JpaRepository<BlogRec
                 window_type,
                 context_region_id,
                 feed_score,
+                formula_version,
+                relationship_score,
+                interest_score,
+                engagement_score,
+                quality_score,
+                location_score,
+                diversity_score,
+                unseen_score,
                 trending_score,
                 freshness_score,
                 same_region_score,
@@ -91,6 +114,14 @@ public interface BlogRecommendationScoreRepository extends JpaRepository<BlogRec
                 :windowType,
                 :contextRegionId,
                 :feedScore,
+                :formulaVersion,
+                :relationshipScore,
+                :interestScore,
+                :engagementScore,
+                :qualityScore,
+                :locationScore,
+                :diversityScore,
+                :unseenScore,
                 :trendingScore,
                 :freshnessScore,
                 :sameRegionScore,
@@ -110,6 +141,14 @@ public interface BlogRecommendationScoreRepository extends JpaRepository<BlogRec
             on conflict (user_id, blog_id, window_type, context_region_id)
             do update set
                 feed_score = excluded.feed_score,
+                formula_version = excluded.formula_version,
+                relationship_score = excluded.relationship_score,
+                interest_score = excluded.interest_score,
+                engagement_score = excluded.engagement_score,
+                quality_score = excluded.quality_score,
+                location_score = excluded.location_score,
+                diversity_score = excluded.diversity_score,
+                unseen_score = excluded.unseen_score,
                 trending_score = excluded.trending_score,
                 freshness_score = excluded.freshness_score,
                 same_region_score = excluded.same_region_score,
@@ -132,6 +171,14 @@ public interface BlogRecommendationScoreRepository extends JpaRepository<BlogRec
             @Param("windowType") String windowType,
             @Param("contextRegionId") UUID contextRegionId,
             @Param("feedScore") Double feedScore,
+            @Param("formulaVersion") String formulaVersion,
+            @Param("relationshipScore") Double relationshipScore,
+            @Param("interestScore") Double interestScore,
+            @Param("engagementScore") Double engagementScore,
+            @Param("qualityScore") Double qualityScore,
+            @Param("locationScore") Double locationScore,
+            @Param("diversityScore") Double diversityScore,
+            @Param("unseenScore") Double unseenScore,
             @Param("trendingScore") Double trendingScore,
             @Param("freshnessScore") Double freshnessScore,
             @Param("sameRegionScore") Double sameRegionScore,

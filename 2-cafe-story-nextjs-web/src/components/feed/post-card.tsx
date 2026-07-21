@@ -99,7 +99,11 @@ export function PostCard({ currentUserId, eagerMedia, onCommentClick, onLikeClic
     : postActions;
 
   return (
-    <Card className="mx-auto w-[85%] max-w-full overflow-hidden [contain-intrinsic-size:765px] [content-visibility:auto] shadow-none">
+    <Card
+      className="mx-auto w-[85%] max-w-full overflow-hidden [contain-intrinsic-size:765px] [content-visibility:auto] shadow-none"
+      data-blog-id={post.id}
+      data-testid="feed-post-card"
+    >
       <CardHeader className="flex flex-row items-center justify-between gap-4 px-4 py-4">
         <div className="flex min-w-0 items-center gap-3">
           <Link

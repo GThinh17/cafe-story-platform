@@ -33,6 +33,7 @@ import type { BlogFeedResponse } from "../../types";
 
 type BlogFeedCardProps = {
   blog: BlogFeedResponse;
+  onFirstMediaLoad?: () => void;
   showFollowButton?: boolean;
 };
 
@@ -116,7 +117,11 @@ function formatTimeAgo(createdAt: string | null) {
   return `${Math.floor(diffHours / 24)} DAYS AGO`;
 }
 
-export function BlogFeedCard({ blog, showFollowButton = true }: BlogFeedCardProps) {
+export function BlogFeedCard({
+  blog,
+  onFirstMediaLoad,
+  showFollowButton = true,
+}: BlogFeedCardProps) {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
@@ -353,6 +358,7 @@ export function BlogFeedCard({ blog, showFollowButton = true }: BlogFeedCardProp
         imageAccessibilityLabel={`${displayName} post image`}
         imageUrls={images}
         insetHorizontal={0}
+        onFirstImageLoad={onFirstMediaLoad}
       />
 
       <View style={styles.actionsBlock}>

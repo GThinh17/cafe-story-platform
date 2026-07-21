@@ -44,6 +44,10 @@ export function uploadPostImageToCloudinary(file: File) {
   return uploadImageToCloudinary(file, "cafestory/posts", "post image");
 }
 
+export function uploadAdImageToCloudinary(file: File) {
+  return uploadImageToCloudinary(file, "cafestory/ads", "ad image");
+}
+
 export function uploadChatImageToCloudinary(file: File) {
   return uploadImageToCloudinary(file, "cafestory/messages", "message image");
 }
