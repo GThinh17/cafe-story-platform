@@ -396,26 +396,37 @@ async function assertReachable(context: APIRequestContext, url: string, label: s
 }
 
 async function checkWebhookActive(context: APIRequestContext) {
-  const response = await context.post(reportAiWebhookUrl, {
-    data: { preflight: true },
-    failOnStatusCode: false,
-    timeout: 15_000,
-  });
-  if (response.status() === 404) {
-    return {
-      ok: false,
-      status: response.status(),
-      message: `n8n report AI webhook is not active or published at ${reportAiWebhookUrl}`,
-    };
+  let lastStatus = 0;
+  for (let attempt = 1; attempt <= 8; attempt += 1) {
+    const response = await context.post(reportAiWebhookUrl, {
+      data: {
+        reportId: "00000000-0000-0000-0000-000000000000",
+        targetType: "BLOG",
+        targetId: "00000000-0000-0000-0000-000000000001",
+        reasonCode: "E2E_PREFLIGHT",
+        reasonLabel: "E2E preflight",
+        reportStatus: "OPEN",
+      },
+      failOnStatusCode: false,
+      timeout: 45_000,
+    });
+    lastStatus = response.status();
+    if (response.ok()) {
+      return {
+        ok: true,
+        status: lastStatus,
+        attempts: attempt,
+        message: `n8n report AI webhook preflight returned ${lastStatus}`,
+      };
+    }
+    if (attempt < 8) await new Promise((resolve) => setTimeout(resolve, 2_000));
   }
-  if (response.status() >= 500) {
-    return {
-      ok: false,
-      status: response.status(),
-      message: `n8n report AI webhook returned ${response.status()} during preflight at ${reportAiWebhookUrl}`,
-    };
-  }
-  return { ok: true, status: response.status(), message: `n8n report AI webhook preflight returned ${response.status()}` };
+  return {
+    ok: false,
+    status: lastStatus,
+    attempts: 8,
+    message: `n8n report AI webhook returned ${lastStatus} after readiness retries at ${reportAiWebhookUrl}`,
+  };
 }
 
 async function loginAsAdmin(page: Page, email: string, password: string) {
@@ -724,7 +735,8 @@ test.describe("admin report AI E2E evidence", () => {
       const webhookPreflight = await checkWebhookActive(preflight);
       rawFile(evidenceDir, "PRE", "n8n-webhook-preflight", webhookPreflight);
       if (!webhookPreflight.ok) {
-        fixLog.push(`Preflight: ${webhookPreflight.message}. Republish/activate existing workflow cafestory-admin-report-ai-resolution; do not create a new workflow.`);
+        await preflight.dispose();
+        throw new Error(`Hard preflight failed: ${webhookPreflight.message}`);
       }
       await preflight.dispose();
 
@@ -904,15 +916,19 @@ test.describe("admin report AI E2E evidence", () => {
           : ["No valid AI recommendation contract was returned; check n8n workflow publication, ADMIN_REPORT_AI_WEBHOOK_URL, OpenAI credentials, and AdminReportAiResolutionWebhookResponseDTO mapping."],
       }));
 
-      const measuredAiDurations = Object.values(aiResults).map((item) => item?.durationMs ?? 0).filter(Boolean);
+      const validAiResults = Object.values(aiResults).filter(
+        (item): item is { resolution: AiResolution; durationMs: number; rawFile: string } =>
+          Boolean(item?.resolution) && resolutionContractOk(item?.resolution ?? null),
+      );
+      const measuredAiDurations = validAiResults.map((item) => item.durationMs);
       const maxAiDuration = measuredAiDurations.length ? Math.max(...measuredAiDurations) : 0;
       records.push(makeRecord("RAI-13", {
         durationMs: maxAiDuration,
         notes: [`Max AI duration: ${performanceNote(maxAiDuration)}`],
         criteria: {
-          setup: measuredAiDurations.length > 0,
+          setup: validAiResults.length > 0,
           ui: true,
-          apiAi: measuredAiDurations.length > 0,
+          apiAi: validAiResults.length > 0,
           safety: true,
           performance: performanceCriterion(maxAiDuration),
         },
@@ -947,19 +963,27 @@ test.describe("admin report AI E2E evidence", () => {
           },
         }));
 
-        records.push(makeRecord("RAI-15", {
-          durationMs: result.durationMs,
-          screenshots: [shot],
-          rawFiles: [raw],
-          notes: [autoJob ? `Scheduled at ${autoJob.scheduledAt}` : "No SCHEDULED job; AI returned safe warning or did not meet safety gate."],
-          criteria: {
-            setup: true,
-            ui: autoJob ? await page.getByText(/Due now|\d+[hms]/).first().isVisible().catch(() => false) : true,
-            apiAi: true,
-            safety: true,
-            performance: true,
-          },
-        }));
+        records.push(autoJob
+          ? makeRecord("RAI-15", {
+              durationMs: result.durationMs,
+              screenshots: [shot],
+              rawFiles: [raw],
+              notes: [`Scheduled at ${autoJob.scheduledAt}`],
+              criteria: {
+                setup: true,
+                ui: await page.getByText(/Due now|\d+[hms]/).first().isVisible().catch(() => false),
+                apiAi: true,
+                safety: true,
+                performance: true,
+              },
+            })
+          : makeRecord("RAI-15", {
+              status: "BLOCKED",
+              score: 0,
+              screenshots: [shot],
+              rawFiles: [raw],
+              notes: ["No scheduled job exists, so countdown cannot be verified."],
+            }));
 
         if (autoJob?.status === "SCHEDULED") {
           const cancelStarted = Date.now();
@@ -981,9 +1005,9 @@ test.describe("admin report AI E2E evidence", () => {
           }));
         } else {
           records.push(makeRecord("RAI-16", {
-            status: "WARN",
-            notes: ["No scheduled job was created; cancel path is conditionally skipped."],
-            criteria: { setup: true, ui: true, apiAi: true, safety: true, performance: true },
+            status: "BLOCKED",
+            score: 0,
+            notes: ["No scheduled job exists, so cancel behavior cannot be verified."],
           }));
         }
       } else {
@@ -1117,9 +1141,9 @@ test.describe("admin report AI E2E evidence", () => {
         await page.goto("/reports");
         await expect(page.getByRole("heading", { name: "Reports" })).toBeVisible();
         const started = Date.now();
-        await page.getByRole("button", { name: "AI resolve all" }).click();
-        let bulkDialog = page.getByRole("dialog").filter({ hasText: "AI resolve reports" });
-        await expect(bulkDialog.getByRole("heading", { name: "AI resolve reports" })).toBeVisible();
+        await page.getByRole("button", { name: "Generate AI recommendations" }).click();
+        let bulkDialog = page.getByRole("dialog").filter({ hasText: "Generate AI recommendations" });
+        await expect(bulkDialog.getByRole("heading", { name: "Generate AI recommendations" })).toBeVisible();
         await bulkDialog.getByRole("button", { name: "Selected reports" }).click();
         const shot = await screenshot(page, evidenceDir, "RAI-24", "bulk-dialog-selected");
         records.push(makeRecord("RAI-24", {
@@ -1132,17 +1156,19 @@ test.describe("admin report AI E2E evidence", () => {
         await bulkDialog.getByRole("button", { name: "Run AI", exact: true }).click();
         await expect(page.getByText("Total:")).toBeVisible({ timeout: 30_000 });
         await expect(page.getByText(/Remaining: 0/)).toBeVisible({ timeout: 180_000 });
+        const selectedBulkSucceeded = await bulkDialog.getByText("Failed: 0").isVisible().catch(() => false)
+          && await bulkDialog.getByText(/Success: [1-9]\d*/).isVisible().catch(() => false);
         const bulkShot = await screenshot(page, evidenceDir, "RAI-25", "bulk-run-selected");
         records.push(makeRecord("RAI-25", {
           durationMs: Date.now() - bulkStarted,
           screenshots: [bulkShot],
           notes: [performanceNote(Date.now() - bulkStarted)],
-          criteria: { setup: true, ui: true, apiAi: true, safety: true, performance: performanceCriterion(Date.now() - bulkStarted) },
+          criteria: { setup: true, ui: true, apiAi: selectedBulkSucceeded, safety: true, performance: performanceCriterion(Date.now() - bulkStarted) },
         }));
         await bulkDialog.getByRole("button", { name: "Close" }).click();
 
-        await page.getByRole("button", { name: "AI resolve all" }).click();
-        bulkDialog = page.getByRole("dialog").filter({ hasText: "AI resolve reports" });
+        await page.getByRole("button", { name: "Generate AI recommendations" }).click();
+        bulkDialog = page.getByRole("dialog").filter({ hasText: "Generate AI recommendations" });
         await bulkDialog.getByRole("button", { name: "Selected reports" }).click();
         await bulkDialog.getByText("Auto apply after delay").last().click();
         const runButton = bulkDialog.getByRole("button", { name: "Run AI", exact: true });
@@ -1159,11 +1185,13 @@ test.describe("admin report AI E2E evidence", () => {
         await runButton.click();
         await expect(page.getByText("Total:")).toBeVisible({ timeout: 30_000 });
         await expect(page.getByText(/Remaining: 0/)).toBeVisible({ timeout: 180_000 });
+        const bulkAutoSucceeded = await bulkDialog.getByText("Failed: 0").isVisible().catch(() => false)
+          && await bulkDialog.getByText(/Success: [1-9]\d*/).isVisible().catch(() => false);
         const bulkAutoShot = await screenshot(page, evidenceDir, "RAI-27", "bulk-auto-run");
         records.push(makeRecord("RAI-27", {
           durationMs: Date.now() - bulkAutoStarted,
           screenshots: [bulkAutoShot],
-          criteria: { setup: true, ui: true, apiAi: true, safety: true, performance: performanceCriterion(Date.now() - bulkAutoStarted) },
+          criteria: { setup: true, ui: true, apiAi: bulkAutoSucceeded, safety: true, performance: performanceCriterion(Date.now() - bulkAutoStarted) },
         }));
         await bulkDialog.getByRole("button", { name: "Close" }).click();
       } else {

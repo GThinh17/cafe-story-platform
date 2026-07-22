@@ -50,7 +50,6 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
     private static final Logger log = LoggerFactory.getLogger(AdminReportAiResolutionServiceImpl.class);
     private static final List<ReportStatus> ACTIVE_REPORT_STATUSES =
             List.of(ReportStatus.OPEN, ReportStatus.REVIEWING);
-    private static final String DEFAULT_MODEL_NAME = "gpt-4o-mini";
 
     private final AdminReportAiResolutionRepository resolutionRepository;
     private final ContentReportRepository contentReportRepository;
@@ -66,9 +65,9 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
             AiModerationResultRepository moderationResultRepository,
             AdminReportAiAutoApplyJobService autoApplyJobService,
             ObjectMapper objectMapper,
-            @Value("${admin.report.ai.webhook-url:http://localhost:5678/webhook-test/cafestory-admin-report-ai-resolution}")
+            @Value("${admin.report.ai.webhook-url:http://localhost:5678/webhook/cafestory-admin-report-ai-resolution}")
             String webhookUrl,
-            @Value("${admin.report.ai.timeout-ms:15000}") int timeoutMs) {
+            @Value("${admin.report.ai.timeout-ms:40000}") int timeoutMs) {
         this(
                 resolutionRepository,
                 contentReportRepository,
@@ -109,6 +108,7 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
             AdminReportAiResolutionCreateRequestDTO request,
             UUID adminUserId) {
         ContentReport report = findReport(reportId);
+        validateReportCanRequestAi(report);
         AdminReportAiResolutionRequestDTO webhookRequest = toWebhookRequest(report);
         AdminReportAiResolutionWebhookResponseDTO webhookResponse = callWebhook(webhookRequest);
         validateWebhookResponse(report.getTargetType(), webhookResponse);
@@ -210,12 +210,12 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
         resolution.setTargetId(targetId(report));
         resolution.setReportDecision(webhookResponse.getReportDecision());
         resolution.setTargetAction(webhookResponse.getTargetAction());
-        resolution.setConfidenceScore(normalizeScore(webhookResponse.getConfidenceScore()));
-        resolution.setRiskScore(normalizeScore(webhookResponse.getRiskScore()));
+        resolution.setConfidenceScore(webhookResponse.getConfidenceScore());
+        resolution.setRiskScore(webhookResponse.getRiskScore());
         resolution.setLabels(webhookResponse.getLabels() == null ? List.of() : webhookResponse.getLabels());
         resolution.setRuleCode(blankToNull(webhookResponse.getRuleCode()));
         resolution.setExplanation(blankToNull(webhookResponse.getExplanation()));
-        resolution.setModelName(blankToDefault(webhookResponse.getModelName(), DEFAULT_MODEL_NAME));
+        resolution.setModelName(webhookResponse.getModelName().trim());
         resolution.setRawResponse(webhookResponse.getRawResponse() == null
                 ? objectMapper.convertValue(webhookResponse, new TypeReference<LinkedHashMap<String, Object>>() {
                 })
@@ -238,6 +238,65 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
                     HttpStatus.BAD_GATEWAY,
                     "Admin report AI resolution response targetAction is not valid for report target type");
         }
+        if (!isDecisionActionCombinationAllowed(
+                targetType,
+                response.getReportDecision(),
+                response.getTargetAction())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Admin report AI resolution response decision and targetAction are inconsistent");
+        }
+        if (!isValidScore(response.getConfidenceScore()) || !isValidScore(response.getRiskScore())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Admin report AI resolution response scores must be finite values from 0 to 100");
+        }
+        if (response.getExplanation() == null || response.getExplanation().isBlank()
+                || response.getModelName() == null || response.getModelName().isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Admin report AI resolution response is missing audit metadata");
+        }
+    }
+
+    private void validateReportCanRequestAi(ContentReport report) {
+        if (!ACTIVE_REPORT_STATUSES.contains(report.getStatus())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "AI resolution can only be requested for OPEN or REVIEWING reports");
+        }
+        if (report.getTargetType() == null || targetId(report) == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Report target is unavailable for AI resolution");
+        }
+    }
+
+    private boolean isDecisionActionCombinationAllowed(
+            ReportTargetType targetType,
+            AdminReportAiReportDecision decision,
+            AdminReportAiTargetAction action) {
+        return switch (decision) {
+            case NEEDS_MANUAL_REVIEW -> action == AdminReportAiTargetAction.NONE;
+            case REJECT -> switch (targetType) {
+                case BLOG, COMMENT -> action == AdminReportAiTargetAction.APPROVE;
+                case USER, CAFE_PAGE -> action == AdminReportAiTargetAction.KEEP_ACTIVE;
+            };
+            case RESOLVE -> switch (targetType) {
+                case BLOG, COMMENT -> action == AdminReportAiTargetAction.HIDE
+                        || action == AdminReportAiTargetAction.REMOVE;
+                case USER -> action == AdminReportAiTargetAction.SUSPEND_USER;
+                case CAFE_PAGE -> action == AdminReportAiTargetAction.SUSPEND_PAGE;
+            };
+        };
+    }
+
+    private boolean isValidScore(Double score) {
+        return score != null
+                && !score.isNaN()
+                && !score.isInfinite()
+                && score >= 0.0
+                && score <= 100.0;
     }
 
     private boolean isTargetActionAllowed(ReportTargetType targetType, AdminReportAiTargetAction targetAction) {
@@ -275,34 +334,27 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
 
     private Long sameTargetOpenReportCount(ContentReport report) {
         return switch (report.getTargetType()) {
-            case BLOG -> report.getBlog() == null ? 0L :
-                    contentReportRepository.countByBlogIdAndStatusIn(report.getBlog().getId(), ACTIVE_REPORT_STATUSES);
-            case COMMENT -> report.getComment() == null ? 0L :
-                    contentReportRepository.countByCommentIdAndStatusIn(report.getComment().getId(), ACTIVE_REPORT_STATUSES);
-            case USER -> report.getReportedUser() == null ? 0L :
-                    contentReportRepository.countByReportedUserUserIdAndStatusIn(
-                            report.getReportedUser().getUserId(),
-                            ACTIVE_REPORT_STATUSES);
-            case CAFE_PAGE -> report.getCafePage() == null ? 0L :
-                    contentReportRepository.countByCafePageIdAndStatusIn(
-                            report.getCafePage().getId(),
-                            ACTIVE_REPORT_STATUSES);
+            case BLOG -> contentReportRepository.countByBlogIdAndStatusIn(
+                    report.getBlog().getId(), ACTIVE_REPORT_STATUSES);
+            case COMMENT -> contentReportRepository.countByCommentIdAndStatusIn(
+                    report.getComment().getId(), ACTIVE_REPORT_STATUSES);
+            case USER -> contentReportRepository.countByReportedUserUserIdAndStatusIn(
+                    report.getReportedUser().getUserId(), ACTIVE_REPORT_STATUSES);
+            case CAFE_PAGE -> contentReportRepository.countByCafePageIdAndStatusIn(
+                    report.getCafePage().getId(), ACTIVE_REPORT_STATUSES);
         };
     }
 
     private String contentText(ContentReport report) {
         return switch (report.getTargetType()) {
-            case BLOG -> report.getBlog() == null ? null : report.getBlog().getContent();
-            case COMMENT -> report.getComment() == null ? null : report.getComment().getContent();
+            case BLOG -> report.getBlog().getContent();
+            case COMMENT -> report.getComment().getContent();
             case USER -> userContentText(report.getReportedUser());
             case CAFE_PAGE -> cafePageContentText(report.getCafePage());
         };
     }
 
     private String userContentText(User user) {
-        if (user == null) {
-            return null;
-        }
         return String.join("\n", nonBlankValues(
                 "username: " + nullToEmpty(user.getUserName()),
                 "fullName: " + nullToEmpty(user.getUserFullName()),
@@ -310,9 +362,6 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
     }
 
     private String cafePageContentText(CafePage cafePage) {
-        if (cafePage == null) {
-            return null;
-        }
         return String.join("\n", nonBlankValues(
                 "name: " + nullToEmpty(cafePage.getName()),
                 "address: " + nullToEmpty(cafePage.getAddress()),
@@ -324,25 +373,21 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
         switch (report.getTargetType()) {
             case BLOG -> {
                 Blog blog = report.getBlog();
-                if (blog != null && blog.getImageUrls() != null) {
+                if (blog.getImageUrls() != null) {
                     imageUrls.addAll(blog.getImageUrls());
                 }
             }
             case COMMENT -> {
                 Comment comment = report.getComment();
-                if (comment != null && comment.getImageUrls() != null) {
+                if (comment.getImageUrls() != null) {
                     imageUrls.addAll(comment.getImageUrls());
                 }
             }
-            case USER -> addIfNotBlank(imageUrls, report.getReportedUser() == null
-                    ? null
-                    : report.getReportedUser().getUserAvatar());
+            case USER -> addIfNotBlank(imageUrls, report.getReportedUser().getUserAvatar());
             case CAFE_PAGE -> {
                 CafePage cafePage = report.getCafePage();
-                if (cafePage != null) {
-                    addIfNotBlank(imageUrls, cafePage.getAvatarUrl());
-                    addIfNotBlank(imageUrls, cafePage.getCoverUrl());
-                }
+                addIfNotBlank(imageUrls, cafePage.getAvatarUrl());
+                addIfNotBlank(imageUrls, cafePage.getCoverUrl());
             }
         }
         return imageUrls;
@@ -378,13 +423,6 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
         return response;
     }
 
-    private Double normalizeScore(Double score) {
-        if (score == null || score.isNaN() || score.isInfinite()) {
-            return 0.0;
-        }
-        return Math.max(0.0, Math.min(100.0, score));
-    }
-
     private List<String> nonBlankValues(String... values) {
         List<String> result = new ArrayList<>();
         for (String value : values) {
@@ -401,10 +439,6 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
 
     private String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value;
-    }
-
-    private String blankToDefault(String value, String defaultValue) {
-        return value == null || value.isBlank() ? defaultValue : value;
     }
 
     private void addIfNotBlank(List<String> values, String value) {

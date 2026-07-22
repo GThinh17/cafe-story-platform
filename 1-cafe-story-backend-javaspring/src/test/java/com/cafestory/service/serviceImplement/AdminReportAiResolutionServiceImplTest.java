@@ -5,6 +5,7 @@ import com.cafestory.dto.responseDTO.AdminReportAiAutoApplyJobResponseDTO;
 import com.cafestory.dto.responseDTO.AdminReportAiResolutionResponseDTO;
 import com.cafestory.dto.responseDTO.AdminReportAiResolutionWebhookResponseDTO;
 import com.cafestory.entity.AdminReportAiResolution;
+import com.cafestory.entity.AiModerationResult;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.Comment;
@@ -28,6 +29,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -43,6 +47,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class AdminReportAiResolutionServiceImplTest {
 
@@ -188,6 +195,395 @@ class AdminReportAiResolutionServiceImplTest {
                         .isEqualTo(HttpStatus.BAD_GATEWAY));
 
         verify(resolutionRepository, never()).save(any(AdminReportAiResolution.class));
+    }
+
+    @Test
+    void createResolution_fail_terminalReportDoesNotCallWebhook_TC005_1() {
+        ContentReport report = blogReport();
+        report.setStatus(ReportStatus.RESOLVED);
+        CapturingService service = serviceReturning(response(
+                AdminReportAiReportDecision.RESOLVE,
+                AdminReportAiTargetAction.HIDE));
+        when(contentReportRepository.findById(report.getId())).thenReturn(Optional.of(report));
+
+        assertThatThrownBy(() -> service.createResolution(report.getId()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.CONFLICT))
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getReason())
+                        .contains("OPEN or REVIEWING"));
+
+        assertThat(service.lastRequest).isNull();
+        verify(resolutionRepository, never()).save(any(AdminReportAiResolution.class));
+    }
+
+    @Test
+    void createResolution_fail_reportTargetUnavailable_TC005_2() {
+        ContentReport report = baseReport(ReportTargetType.BLOG);
+        CapturingService service = serviceReturning(response(
+                AdminReportAiReportDecision.RESOLVE,
+                AdminReportAiTargetAction.HIDE));
+        when(contentReportRepository.findById(report.getId())).thenReturn(Optional.of(report));
+
+        assertThatThrownBy(() -> service.createResolution(report.getId()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.CONFLICT))
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getReason())
+                        .contains("target is unavailable"));
+
+        assertThat(service.lastRequest).isNull();
+    }
+
+    @Test
+    void createResolution_fail_inconsistentDecisionActionDoesNotSave_TC005_3() {
+        ContentReport report = blogReport();
+        AdminReportAiResolutionWebhookResponseDTO invalid = response(
+                AdminReportAiReportDecision.REJECT,
+                AdminReportAiTargetAction.HIDE);
+        when(contentReportRepository.findById(report.getId())).thenReturn(Optional.of(report));
+        when(moderationResultRepository.findTopByContentReportIdOrderByCreatedAtDesc(report.getId()))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> serviceReturning(invalid).createResolution(report.getId()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_GATEWAY))
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getReason())
+                        .contains("inconsistent"));
+
+        verify(resolutionRepository, never()).save(any(AdminReportAiResolution.class));
+    }
+
+    @Test
+    void createResolution_fail_invalidScoresOrAuditMetadataDoesNotSave_TC005_4() {
+        ContentReport report = blogReport();
+        when(contentReportRepository.findById(report.getId())).thenReturn(Optional.of(report));
+        when(moderationResultRepository.findTopByContentReportIdOrderByCreatedAtDesc(report.getId()))
+                .thenReturn(Optional.empty());
+
+        AdminReportAiResolutionWebhookResponseDTO invalidScore = response(
+                AdminReportAiReportDecision.RESOLVE,
+                AdminReportAiTargetAction.HIDE);
+        invalidScore.setConfidenceScore(Double.NaN);
+        assertThatThrownBy(() -> serviceReturning(invalidScore).createResolution(report.getId()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getReason())
+                        .contains("scores"));
+
+        AdminReportAiResolutionWebhookResponseDTO missingAudit = response(
+                AdminReportAiReportDecision.RESOLVE,
+                AdminReportAiTargetAction.HIDE);
+        missingAudit.setModelName(" ");
+        assertThatThrownBy(() -> serviceReturning(missingAudit).createResolution(report.getId()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getReason())
+                        .contains("audit metadata"));
+
+        verify(resolutionRepository, never()).save(any(AdminReportAiResolution.class));
+    }
+
+    @Test
+    void createResolution_success_rejectUsesNonDestructiveActionForTarget_TC005_5() {
+        List<ContentReport> reports = List.of(blogReport(), userReport());
+        List<AdminReportAiTargetAction> actions = List.of(
+                AdminReportAiTargetAction.APPROVE,
+                AdminReportAiTargetAction.KEEP_ACTIVE);
+
+        for (int index = 0; index < reports.size(); index++) {
+            ContentReport report = reports.get(index);
+            when(contentReportRepository.findById(report.getId())).thenReturn(Optional.of(report));
+            when(moderationResultRepository.findTopByContentReportIdOrderByCreatedAtDesc(report.getId()))
+                    .thenReturn(Optional.empty());
+            when(resolutionRepository.save(any(AdminReportAiResolution.class)))
+                    .thenAnswer(invocation -> saved(invocation.getArgument(0)));
+
+            AdminReportAiResolutionResponseDTO result = serviceReturning(response(
+                    AdminReportAiReportDecision.REJECT,
+                    actions.get(index))).createResolution(report.getId());
+
+            assertThat(result.getTargetAction()).isEqualTo(actions.get(index));
+        }
+    }
+
+    @Test
+    void callWebhook_success_parsesJsonResponse_TC005_6() throws Exception {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://localhost");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        AdminReportAiResolutionServiceImpl service = serviceWithRestClient(builder.build());
+        AdminReportAiResolutionWebhookResponseDTO expected = response(
+                AdminReportAiReportDecision.REJECT,
+                AdminReportAiTargetAction.APPROVE);
+        server.expect(requestTo("http://localhost"))
+                .andRespond(withSuccess(new ObjectMapper().writeValueAsString(expected), MediaType.APPLICATION_JSON));
+
+        AdminReportAiResolutionWebhookResponseDTO actual = service.callWebhook(webhookRequest());
+
+        assertThat(actual.getReportDecision()).isEqualTo(AdminReportAiReportDecision.REJECT);
+        assertThat(actual.getTargetAction()).isEqualTo(AdminReportAiTargetAction.APPROVE);
+        server.verify();
+    }
+
+    @Test
+    void callWebhook_fail_non2xxEmptyOrInvalidJson_TC005_7() {
+        assertWebhookFailure(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+        assertWebhookFailure(withSuccess("", MediaType.APPLICATION_JSON));
+        assertWebhookFailure(withSuccess("not-json", MediaType.TEXT_PLAIN));
+    }
+
+    @Test
+    void constructor_success_buildsConfiguredRestClient_TC005_8() {
+        AdminReportAiResolutionServiceImpl service = new AdminReportAiResolutionServiceImpl(
+                resolutionRepository,
+                contentReportRepository,
+                moderationResultRepository,
+                autoApplyJobService,
+                new ObjectMapper(),
+                "http://localhost:5678/webhook/cafestory-admin-report-ai-resolution",
+                40_000);
+
+        assertThat(service).isNotNull();
+    }
+
+    @Test
+    void getResolutions_fail_nullReportId_TC005_9() {
+        assertThatThrownBy(() -> serviceReturning(response(
+                AdminReportAiReportDecision.REJECT,
+                AdminReportAiTargetAction.APPROVE)).getResolutions(null, PageRequest.of(0, 20)))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_REQUEST));
+    }
+
+    @Test
+    void createResolution_success_includesExistingModerationAndNullOptionalValues_TC005_10() {
+        ContentReport report = blogReport();
+        report.setDescription(null);
+        report.getBlog().setImageUrls(null);
+        AiModerationResult moderation = new AiModerationResult();
+        moderation.setId(UUID.randomUUID());
+        moderation.setScore(91.0);
+        moderation.setDecision(com.cafestory.entity.enums.ModerationDecision.VIOLATION);
+        moderation.setTags(List.of("spam"));
+        moderation.setResolved(false);
+        when(contentReportRepository.findById(report.getId())).thenReturn(Optional.of(report));
+        when(moderationResultRepository.findTopByContentReportIdOrderByCreatedAtDesc(report.getId()))
+                .thenReturn(Optional.of(moderation));
+        when(resolutionRepository.save(any(AdminReportAiResolution.class)))
+                .thenAnswer(invocation -> saved(invocation.getArgument(0)));
+        AdminReportAiResolutionWebhookResponseDTO webhookResponse = response(
+                AdminReportAiReportDecision.RESOLVE,
+                AdminReportAiTargetAction.HIDE);
+        webhookResponse.setLabels(null);
+        webhookResponse.setRawResponse(null);
+        webhookResponse.setRuleCode(" ");
+        CapturingService service = serviceReturning(webhookResponse);
+
+        AdminReportAiResolutionResponseDTO result = service.createResolution(report.getId());
+
+        assertThat(service.lastRequest.getExistingModerationResult())
+                .containsEntry("decision", com.cafestory.entity.enums.ModerationDecision.VIOLATION)
+                .containsEntry("score", 91.0);
+        assertThat(service.lastRequest.getImageUrls()).isEmpty();
+        assertThat(result.getLabels()).isEmpty();
+        assertThat(result.getRuleCode()).isNull();
+        assertThat(result.getRawResponse()).containsEntry("reportDecision", "RESOLVE");
+    }
+
+    @Test
+    void createResolution_success_coversAllValidDecisionActionCombinations_TC005_11() {
+        List<RecommendationCase> cases = List.of(
+                new RecommendationCase(blogReport(), AdminReportAiReportDecision.NEEDS_MANUAL_REVIEW, AdminReportAiTargetAction.NONE),
+                new RecommendationCase(blogReport(), AdminReportAiReportDecision.REJECT, AdminReportAiTargetAction.APPROVE),
+                new RecommendationCase(blogReport(), AdminReportAiReportDecision.RESOLVE, AdminReportAiTargetAction.REMOVE),
+                new RecommendationCase(commentReport(), AdminReportAiReportDecision.REJECT, AdminReportAiTargetAction.APPROVE),
+                new RecommendationCase(commentReport(), AdminReportAiReportDecision.RESOLVE, AdminReportAiTargetAction.HIDE),
+                new RecommendationCase(userReport(), AdminReportAiReportDecision.REJECT, AdminReportAiTargetAction.KEEP_ACTIVE),
+                new RecommendationCase(userReport(), AdminReportAiReportDecision.RESOLVE, AdminReportAiTargetAction.SUSPEND_USER),
+                new RecommendationCase(cafePageReport(), AdminReportAiReportDecision.REJECT, AdminReportAiTargetAction.KEEP_ACTIVE),
+                new RecommendationCase(cafePageReport(), AdminReportAiReportDecision.RESOLVE, AdminReportAiTargetAction.SUSPEND_PAGE));
+
+        for (RecommendationCase recommendationCase : cases) {
+            ContentReport report = recommendationCase.report();
+            when(contentReportRepository.findById(report.getId())).thenReturn(Optional.of(report));
+            when(moderationResultRepository.findTopByContentReportIdOrderByCreatedAtDesc(report.getId()))
+                    .thenReturn(Optional.empty());
+            when(resolutionRepository.save(any(AdminReportAiResolution.class)))
+                    .thenAnswer(invocation -> saved(invocation.getArgument(0)));
+
+            AdminReportAiResolutionResponseDTO result = serviceReturning(response(
+                    recommendationCase.decision(),
+                    recommendationCase.action())).createResolution(report.getId());
+
+            assertThat(result.getReportDecision()).isEqualTo(recommendationCase.decision());
+            assertThat(result.getTargetAction()).isEqualTo(recommendationCase.action());
+        }
+    }
+
+    @Test
+    void createResolution_fail_targetActionFromAnotherTargetType_TC005_12() {
+        for (RecommendationCase invalidCase : List.of(
+                new RecommendationCase(blogReport(), AdminReportAiReportDecision.REJECT, AdminReportAiTargetAction.KEEP_ACTIVE),
+                new RecommendationCase(userReport(), AdminReportAiReportDecision.REJECT, AdminReportAiTargetAction.APPROVE),
+                new RecommendationCase(cafePageReport(), AdminReportAiReportDecision.RESOLVE, AdminReportAiTargetAction.HIDE))) {
+            ContentReport report = invalidCase.report();
+            when(contentReportRepository.findById(report.getId())).thenReturn(Optional.of(report));
+            when(moderationResultRepository.findTopByContentReportIdOrderByCreatedAtDesc(report.getId()))
+                    .thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> serviceReturning(response(
+                    invalidCase.decision(),
+                    invalidCase.action())).createResolution(report.getId()))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .satisfies(error -> assertThat(((ResponseStatusException) error).getReason())
+                            .contains("targetAction"));
+        }
+    }
+
+    @Test
+    void createResolution_fail_allInvalidScoreShapes_TC005_13() {
+        ContentReport report = blogReport();
+        when(contentReportRepository.findById(report.getId())).thenReturn(Optional.of(report));
+        when(moderationResultRepository.findTopByContentReportIdOrderByCreatedAtDesc(report.getId()))
+                .thenReturn(Optional.empty());
+
+        for (Double invalid : java.util.Arrays.asList(null, Double.NaN, Double.POSITIVE_INFINITY, -1.0, 101.0)) {
+            AdminReportAiResolutionWebhookResponseDTO invalidConfidence = response(
+                    AdminReportAiReportDecision.RESOLVE,
+                    AdminReportAiTargetAction.HIDE);
+            invalidConfidence.setConfidenceScore(invalid);
+            assertThatThrownBy(() -> serviceReturning(invalidConfidence).createResolution(report.getId()))
+                    .isInstanceOf(ResponseStatusException.class);
+
+            AdminReportAiResolutionWebhookResponseDTO invalidRisk = response(
+                    AdminReportAiReportDecision.RESOLVE,
+                    AdminReportAiTargetAction.HIDE);
+            invalidRisk.setRiskScore(invalid);
+            assertThatThrownBy(() -> serviceReturning(invalidRisk).createResolution(report.getId()))
+                    .isInstanceOf(ResponseStatusException.class);
+        }
+    }
+
+    @Test
+    void createResolution_fail_missingResponseDecisionActionOrAuditFields_TC005_14() {
+        ContentReport report = blogReport();
+        when(contentReportRepository.findById(report.getId())).thenReturn(Optional.of(report));
+        when(moderationResultRepository.findTopByContentReportIdOrderByCreatedAtDesc(report.getId()))
+                .thenReturn(Optional.empty());
+
+        AdminReportAiResolutionWebhookResponseDTO missingAction = response(
+                AdminReportAiReportDecision.RESOLVE,
+                AdminReportAiTargetAction.HIDE);
+        missingAction.setTargetAction(null);
+        AdminReportAiResolutionWebhookResponseDTO missingExplanation = response(
+                AdminReportAiReportDecision.RESOLVE,
+                AdminReportAiTargetAction.HIDE);
+        missingExplanation.setExplanation(null);
+        AdminReportAiResolutionWebhookResponseDTO missingModel = response(
+                AdminReportAiReportDecision.RESOLVE,
+                AdminReportAiTargetAction.HIDE);
+        missingModel.setModelName(null);
+
+        for (AdminReportAiResolutionWebhookResponseDTO invalid : java.util.Arrays.asList(
+                null,
+                new AdminReportAiResolutionWebhookResponseDTO(),
+                missingAction,
+                missingExplanation,
+                missingModel)) {
+            assertThatThrownBy(() -> serviceReturning(invalid).createResolution(report.getId()))
+                    .isInstanceOf(ResponseStatusException.class);
+        }
+    }
+
+    @Test
+    void createResolution_success_handlesBlankOptionalTargetMetadata_TC005_15() {
+        ContentReport commentReport = commentReport();
+        commentReport.getComment().setImageUrls(null);
+        ContentReport userReport = userReport();
+        userReport.getReportedUser().setUserName(null);
+        userReport.getReportedUser().setUserFullName(null);
+        userReport.getReportedUser().setUserDescription(null);
+        userReport.getReportedUser().setUserAvatar(null);
+        ContentReport pageReport = cafePageReport();
+        pageReport.getCafePage().setName(null);
+        pageReport.getCafePage().setAddress(null);
+        pageReport.getCafePage().setDescription(null);
+        pageReport.getCafePage().setAvatarUrl(null);
+        pageReport.getCafePage().setCoverUrl(null);
+
+        for (ContentReport report : List.of(commentReport, userReport, pageReport)) {
+            when(contentReportRepository.findById(report.getId())).thenReturn(Optional.of(report));
+            when(moderationResultRepository.findTopByContentReportIdOrderByCreatedAtDesc(report.getId()))
+                    .thenReturn(Optional.empty());
+            when(resolutionRepository.save(any(AdminReportAiResolution.class)))
+                    .thenAnswer(invocation -> saved(invocation.getArgument(0)));
+            CapturingService service = serviceReturning(response(
+                    AdminReportAiReportDecision.NEEDS_MANUAL_REVIEW,
+                    AdminReportAiTargetAction.NONE));
+
+            service.createResolution(report.getId());
+
+            assertThat(service.lastRequest.getImageUrls()).isEmpty();
+        }
+    }
+
+    @Test
+    void getResolutions_success_handlesLegacyResolutionWithoutReportReference_TC005_16() {
+        ContentReport report = blogReport();
+        AdminReportAiResolution resolution = saved(new AdminReportAiResolution());
+        resolution.setContentReport(null);
+        resolution.setTargetType(ReportTargetType.BLOG);
+        resolution.setTargetId(report.getBlog().getId());
+        resolution.setReportDecision(AdminReportAiReportDecision.NEEDS_MANUAL_REVIEW);
+        resolution.setTargetAction(AdminReportAiTargetAction.NONE);
+        PageRequest pageable = PageRequest.of(0, 20);
+        when(contentReportRepository.findById(report.getId())).thenReturn(Optional.of(report));
+        when(resolutionRepository.findByContentReportId(report.getId(), pageable))
+                .thenReturn(new PageImpl<>(List.of(resolution)));
+
+        AdminReportAiResolutionResponseDTO result = serviceReturning(response(
+                AdminReportAiReportDecision.NEEDS_MANUAL_REVIEW,
+                AdminReportAiTargetAction.NONE)).getResolutions(report.getId(), pageable).getContent().getFirst();
+
+        assertThat(result.getContentReportId()).isNull();
+    }
+
+    private void assertWebhookFailure(org.springframework.test.web.client.ResponseCreator responseCreator) {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://localhost");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("http://localhost")).andRespond(responseCreator);
+
+        assertThatThrownBy(() -> serviceWithRestClient(builder.build()).callWebhook(webhookRequest()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.BAD_GATEWAY));
+        server.verify();
+    }
+
+    private AdminReportAiResolutionServiceImpl serviceWithRestClient(RestClient restClient) {
+        return new AdminReportAiResolutionServiceImpl(
+                resolutionRepository,
+                contentReportRepository,
+                moderationResultRepository,
+                autoApplyJobService,
+                new ObjectMapper(),
+                restClient);
+    }
+
+    private AdminReportAiResolutionRequestDTO webhookRequest() {
+        return new AdminReportAiResolutionRequestDTO(
+                UUID.randomUUID(),
+                ReportTargetType.BLOG,
+                UUID.randomUUID(),
+                "TEST",
+                "Test",
+                1,
+                "description",
+                "content",
+                List.of(),
+                ReportStatus.OPEN,
+                null,
+                1L);
     }
 
     @Test
@@ -369,5 +765,11 @@ class AdminReportAiResolutionServiceImplTest {
             }
             return response;
         }
+    }
+
+    private record RecommendationCase(
+            ContentReport report,
+            AdminReportAiReportDecision decision,
+            AdminReportAiTargetAction action) {
     }
 }

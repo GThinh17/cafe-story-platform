@@ -100,8 +100,17 @@ type BulkAiProgress = {
   total: number;
 };
 
+type BulkAiFailure = {
+  reportId: string;
+  reason: string;
+};
+
 function reportReason(report: ContentReport) {
   return report.reasonLabel || report.reason || report.reasonCode || "Report";
+}
+
+function canRequestAi(report: ContentReport) {
+  return report.status === "OPEN" || report.status === "REVIEWING";
 }
 
 function severityClassName(severity: number | null | undefined) {
@@ -208,6 +217,7 @@ export function AdminReportsPage() {
     () => new Set(),
   );
   const [bulkError, setBulkError] = useState<string | null>(null);
+  const [bulkFailures, setBulkFailures] = useState<BulkAiFailure[]>([]);
   const [bulkRunning, setBulkRunning] = useState(false);
   const [bulkProgress, setBulkProgress] = useState<BulkAiProgress>({
     done: 0,
@@ -231,13 +241,17 @@ export function AdminReportsPage() {
     [status, targetType],
   );
 
-  const currentPageReportIds = useMemo(
-    () => resource.rows.map((report) => report.id),
+  const currentPageEligibleReports = useMemo(
+    () => resource.rows.filter(canRequestAi),
     [resource.rows],
   );
+  const currentPageReportIds = useMemo(
+    () => currentPageEligibleReports.map((report) => report.id),
+    [currentPageEligibleReports],
+  );
   const selectedBulkReports = useMemo(
-    () => resource.rows.filter((report) => selectedBulkReportIds.has(report.id)),
-    [resource.rows, selectedBulkReportIds],
+    () => currentPageEligibleReports.filter((report) => selectedBulkReportIds.has(report.id)),
+    [currentPageEligibleReports, selectedBulkReportIds],
   );
   const allCurrentPageSelected =
     currentPageReportIds.length > 0 &&
@@ -250,6 +264,7 @@ export function AdminReportsPage() {
     setBulkDelayMinutes(15);
     setBulkAutoApplyConfirmed(false);
     setBulkError(null);
+    setBulkFailures([]);
     setBulkProgress({ done: 0, failed: 0, scheduled: 0, skipped: 0, total: 0 });
     setSelectedBulkReportIds(new Set(currentPageReportIds));
   }
@@ -301,12 +316,13 @@ export function AdminReportsPage() {
       reports.push(...nextPage.content);
     }
 
-    return reports;
+    return reports.filter(canRequestAi);
   }
 
   async function handleBulkAskAi() {
     setBulkRunning(true);
     setBulkError(null);
+    setBulkFailures([]);
     setAiActionError(null);
     setBulkProgress({ done: 0, failed: 0, scheduled: 0, skipped: 0, total: 0 });
 
@@ -317,8 +333,8 @@ export function AdminReportsPage() {
       if (!reports.length) {
         setBulkError(
           bulkMode === "filtered"
-            ? "No reports match the current filters."
-            : "Select at least one report.",
+            ? "No open or reviewing reports match the current filters."
+            : "Select at least one open or reviewing report.",
         );
         return;
       }
@@ -348,7 +364,11 @@ export function AdminReportsPage() {
             scheduled: current.scheduled + (createdResolution.autoApplyJob ? 1 : 0),
             skipped: current.skipped + (createdResolution.autoApplyWarning ? 1 : 0),
           }));
-        } catch {
+        } catch (requestError) {
+          const reason = requestError instanceof Error
+            ? requestError.message
+            : "AI recommendation failed.";
+          setBulkFailures((current) => [...current, { reportId: report.id, reason }]);
           setBulkProgress((current) => ({
             ...current,
             done: current.done + 1,
@@ -590,7 +610,7 @@ export function AdminReportsPage() {
               {
                 label: "Ask AI",
                 icon: SparklesIcon,
-                disabled: aiLoadingReportId === report.id,
+                disabled: aiLoadingReportId === report.id || !canRequestAi(report),
                 onSelect: () => openAskAiDialog(report),
               },
               ...(report.status !== "RESOLVED"
@@ -681,7 +701,7 @@ export function AdminReportsPage() {
             onClick={openBulkDialog}
           >
             <ListChecksIcon data-icon="inline-start" />
-            AI resolve all
+            Generate AI recommendations
           </Button>
         }
       >
@@ -707,7 +727,7 @@ export function AdminReportsPage() {
       }}>
         <DialogContent className="max-h-[86vh] w-[94vw] max-w-3xl grid-rows-[auto_minmax(0,1fr)_auto] p-0">
           <div className="border-b border-border px-5 py-4">
-            <DialogTitle>AI resolve reports</DialogTitle>
+            <DialogTitle>Generate AI recommendations</DialogTitle>
             <DialogDescription className="mt-1">
               Create AI recommendations in bulk. This does not resolve reports or change target content.
             </DialogDescription>
@@ -751,7 +771,7 @@ export function AdminReportsPage() {
                   Run AI only for reports selected from the current page.
                 </span>
                 <span className="mt-3 block text-xs text-muted">
-                  Selected: {selectedBulkReports.length} of {resource.rows.length}
+                  Selected: {selectedBulkReports.length} of {currentPageEligibleReports.length} eligible
                 </span>
               </button>
             </div>
@@ -821,7 +841,7 @@ export function AdminReportsPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={bulkRunning || !resource.rows.length}
+                  disabled={bulkRunning || !currentPageEligibleReports.length}
                   onClick={toggleCurrentPageSelection}
                 >
                   {allCurrentPageSelected ? "Clear page" : "Select page"}
@@ -830,14 +850,18 @@ export function AdminReportsPage() {
               <div className="max-h-72 overflow-y-auto">
                 {resource.rows.map((report) => (
                   <label
-                    className="flex cursor-pointer items-start gap-3 border-b border-border px-4 py-3 last:border-b-0 hover:bg-surface-muted/40"
+                    className={`flex items-start gap-3 border-b border-border px-4 py-3 last:border-b-0 ${
+                      canRequestAi(report)
+                        ? "cursor-pointer hover:bg-surface-muted/40"
+                        : "cursor-not-allowed bg-surface-muted/30 opacity-60"
+                    }`}
                     key={report.id}
                   >
                     <input
                       type="checkbox"
                       className="mt-1 size-4 accent-primary"
                       checked={selectedBulkReportIds.has(report.id)}
-                      disabled={bulkRunning}
+                      disabled={bulkRunning || !canRequestAi(report)}
                       onChange={() => toggleBulkReport(report.id)}
                     />
                     <span className="min-w-0 flex-1">
@@ -887,9 +911,24 @@ export function AdminReportsPage() {
             ) : null}
 
             {bulkError ? (
-              <p className="mt-4 rounded-md border border-accent/30 bg-accent/10 p-3 text-sm text-accent">
+              <p role="alert" className="mt-4 rounded-md border border-accent/30 bg-accent/10 p-3 text-sm text-accent">
                 {bulkError}
               </p>
+            ) : null}
+            {bulkFailures.length ? (
+              <div role="alert" className="mt-4 rounded-md border border-accent/30 bg-accent/10 p-3">
+                <p className="text-sm font-semibold text-accent">
+                  {bulkFailures.length} report{bulkFailures.length === 1 ? "" : "s"} failed. Successful recommendations were kept.
+                </p>
+                <ul className="mt-2 max-h-32 space-y-1 overflow-y-auto text-sm text-foreground">
+                  {bulkFailures.map((failure) => (
+                    <li className="break-words" key={failure.reportId}>
+                      <span className="font-mono text-xs">{shortId(failure.reportId)}</span>
+                      {": "}{failure.reason}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ) : null}
           </div>
           <div className="flex flex-wrap justify-end gap-2 border-t border-border px-5 py-4">
@@ -990,6 +1029,15 @@ export function AdminReportsPage() {
             <div className="mt-4 rounded-md border border-dashed border-border p-3 text-sm leading-6 text-muted">
               Auto apply only schedules high-confidence decisions. Low confidence or manual-review results are saved as recommendations without a scheduled action.
             </div>
+            {aiActionError ? (
+              <div role="alert" className="mt-4 rounded-md border border-accent/30 bg-accent/10 p-3 text-sm text-accent">
+                <p className="font-semibold">AI recommendation was not created.</p>
+                <p className="mt-1 break-words">{aiActionError}</p>
+                <p className="mt-1 text-foreground">
+                  Check the service status, then select Ask AI to retry this report.
+                </p>
+              </div>
+            ) : null}
           </div>
           <div className="flex flex-wrap justify-end gap-2 border-t border-border px-5 py-4">
             <Button
@@ -1046,8 +1094,8 @@ export function AdminReportsPage() {
                 type="button"
                 variant="outline"
                 size="sm"
-                disabled={aiLoadingReportId === detailReport.id}
-              onClick={() => openAskAiDialog(detailReport)}
+                disabled={aiLoadingReportId === detailReport.id || !canRequestAi(detailReport)}
+                onClick={() => openAskAiDialog(detailReport)}
               >
                 {aiLoadingReportId === detailReport.id ? (
                   <LoaderCircleIcon className="animate-spin" data-icon="inline-start" />

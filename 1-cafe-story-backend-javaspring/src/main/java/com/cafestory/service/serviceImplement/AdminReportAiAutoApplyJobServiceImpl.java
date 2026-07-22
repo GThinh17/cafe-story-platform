@@ -193,6 +193,11 @@ public class AdminReportAiAutoApplyJobServiceImpl implements AdminReportAiAutoAp
                 markSkipped(job, "Report is no longer open for auto apply");
                 return;
             }
+            String staleTargetReason = staleTargetReason(job, report);
+            if (staleTargetReason != null) {
+                markSkipped(job, staleTargetReason);
+                return;
+            }
 
             if (job.getReportDecision() == AdminReportAiReportDecision.REJECT) {
                 rejectReport(report);
@@ -216,6 +221,69 @@ public class AdminReportAiAutoApplyJobServiceImpl implements AdminReportAiAutoAp
         });
     }
 
+    private String staleTargetReason(AdminReportAiAutoApplyJob job, ContentReport report) {
+        UUID currentTargetId = currentTargetId(report);
+        if (currentTargetId == null || !currentTargetId.equals(job.getTargetId())) {
+            return "Report target no longer matches the AI recommendation";
+        }
+
+        LocalDateTime recommendedAt = job.getAiResolution() == null
+                ? null
+                : job.getAiResolution().getCreatedAt();
+        return switch (job.getTargetType()) {
+            case BLOG -> staleBlogReason(report.getBlog(), recommendedAt);
+            case COMMENT -> staleCommentReason(report.getComment(), recommendedAt);
+            case USER -> report.getReportedUser() == null || !Boolean.TRUE.equals(report.getReportedUser().getAccountStatus())
+                    ? "Reported user is no longer active"
+                    : null;
+            case CAFE_PAGE -> staleCafePageReason(report.getCafePage(), recommendedAt);
+        };
+    }
+
+    private String staleBlogReason(Blog blog, LocalDateTime recommendedAt) {
+        if (blog == null || blog.getStatus() != PostStatus.PUBLISHED) {
+            return "Reported blog is no longer published";
+        }
+        return changedAfterRecommendation(blog.getUpdatedAt(), recommendedAt)
+                ? "Reported blog changed after the AI recommendation"
+                : null;
+    }
+
+    private String staleCommentReason(Comment comment, LocalDateTime recommendedAt) {
+        if (comment == null || comment.getStatus() != PostStatus.PUBLISHED) {
+            return "Reported comment is no longer published";
+        }
+        return changedAfterRecommendation(comment.getUpdatedAt(), recommendedAt)
+                ? "Reported comment changed after the AI recommendation"
+                : null;
+    }
+
+    private String staleCafePageReason(CafePage cafePage, LocalDateTime recommendedAt) {
+        if (cafePage == null
+                || cafePage.getStatus() != PageStatus.ACTIVE
+                || !Boolean.TRUE.equals(cafePage.getPageActive())) {
+            return "Reported cafe page is no longer active";
+        }
+        return changedAfterRecommendation(cafePage.getUpdatedAt(), recommendedAt)
+                ? "Reported cafe page changed after the AI recommendation"
+                : null;
+    }
+
+    private boolean changedAfterRecommendation(LocalDateTime targetUpdatedAt, LocalDateTime recommendedAt) {
+        return targetUpdatedAt != null
+                && recommendedAt != null
+                && targetUpdatedAt.isAfter(recommendedAt);
+    }
+
+    private UUID currentTargetId(ContentReport report) {
+        return switch (report.getTargetType()) {
+            case BLOG -> report.getBlog() == null ? null : report.getBlog().getId();
+            case COMMENT -> report.getComment() == null ? null : report.getComment().getId();
+            case USER -> report.getReportedUser() == null ? null : report.getReportedUser().getUserId();
+            case CAFE_PAGE -> report.getCafePage() == null ? null : report.getCafePage().getId();
+        };
+    }
+
     private void applyTargetAction(AdminReportAiAutoApplyJob job, ContentReport report) {
         switch (job.getTargetType()) {
             case BLOG -> applyBlogAction(report.getBlog(), job.getTargetAction());
@@ -226,9 +294,6 @@ public class AdminReportAiAutoApplyJobServiceImpl implements AdminReportAiAutoAp
     }
 
     private void applyBlogAction(Blog blog, AdminReportAiTargetAction action) {
-        if (blog == null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Report has no blog target");
-        }
         if (action == AdminReportAiTargetAction.HIDE) {
             blog.setStatus(PostStatus.HIDDEN);
         } else if (action == AdminReportAiTargetAction.REMOVE) {
@@ -240,9 +305,6 @@ public class AdminReportAiAutoApplyJobServiceImpl implements AdminReportAiAutoAp
     }
 
     private void applyCommentAction(Comment comment, AdminReportAiTargetAction action) {
-        if (comment == null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Report has no comment target");
-        }
         if (action == AdminReportAiTargetAction.HIDE) {
             comment.setStatus(PostStatus.HIDDEN);
         } else if (action == AdminReportAiTargetAction.REMOVE) {
@@ -254,9 +316,6 @@ public class AdminReportAiAutoApplyJobServiceImpl implements AdminReportAiAutoAp
     }
 
     private void applyUserAction(User user, AdminReportAiTargetAction action) {
-        if (user == null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Report has no user target");
-        }
         if (action != AdminReportAiTargetAction.SUSPEND_USER) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Auto apply action is not valid for user");
         }
@@ -265,9 +324,6 @@ public class AdminReportAiAutoApplyJobServiceImpl implements AdminReportAiAutoAp
     }
 
     private void applyCafePageAction(CafePage cafePage, AdminReportAiTargetAction action) {
-        if (cafePage == null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Report has no cafe page target");
-        }
         if (action != AdminReportAiTargetAction.SUSPEND_PAGE) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Auto apply action is not valid for cafe page");
         }
