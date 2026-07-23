@@ -66,6 +66,7 @@ public interface ReviewerRepository extends JpaRepository<Reviewer, UUID> {
             select r
             from Reviewer r
             left join fetch r.user u
+            left join fetch u.region region
             where r.reviewerActive = true
             and u.accountStatus = true
             and (
