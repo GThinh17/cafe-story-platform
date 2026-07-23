@@ -491,6 +491,13 @@ export function PaymentOptionsScreen() {
 
     const cafePageId = linkedCafePageId(user);
 
+    if (paymentFlow.plan.tab === "ads") {
+      navigation.navigate(routes.adsManager, {
+        paymentId: paymentFlow.paymentId,
+      });
+      return;
+    }
+
     if (paymentFlow.plan.tab === "cafe-page" && cafePageId) {
       navigation.navigate(routes.cafeDetail, {
         cafeId: cafePageId,
@@ -539,9 +546,20 @@ export function PaymentOptionsScreen() {
       );
     }
 
-    return plans.map((plan) => (
-      <PlanCard key={plan.id} onChoose={openPaymentModal} plan={plan} />
-    ));
+    return (
+      <>
+        {activeTab === "ads" ? (
+          <Button
+            label="Open Ads Manager"
+            onPress={() => navigation.navigate(routes.adsManager)}
+            variant="outlined"
+          />
+        ) : null}
+        {plans.map((plan) => (
+          <PlanCard key={plan.id} onChoose={openPaymentModal} plan={plan} />
+        ))}
+      </>
+    );
   }
 
   const isSuccess = paymentFlow.status === "success";
@@ -917,7 +935,9 @@ function PaymentStatusCard({
       {isSuccess ? (
         <Button
           label={
-            flow.plan.tab === "cafe-page" && cafePageId
+            flow.plan.tab === "ads"
+              ? "Open Ads Manager"
+              : flow.plan.tab === "cafe-page" && cafePageId
               ? "Open cafe page"
               : "Back to profile"
           }

@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
-import { isAuthRoute } from "@/lib/routes";
+import { isAuthRoute, isProtectedRoute } from "@/lib/routes";
 
 type AuthGateProps = {
   children: ReactNode;
@@ -30,15 +30,16 @@ export function AuthGate({ children }: AuthGateProps) {
   const pathname = usePathname();
   const router = useRouter();
   const isAuthPage = isAuthRoute(pathname);
+  const isProtectedPage = isProtectedRoute(pathname);
   const shouldWaitForInitialAuth =
-    !hasResolvedInitialAuth && isInitialLoading && !isAuthenticated;
+    isProtectedPage && !hasResolvedInitialAuth && isInitialLoading && !isAuthenticated;
 
   useEffect(() => {
     if (shouldWaitForInitialAuth) {
       return;
     }
 
-    if (!isAuthenticated && !isAuthPage) {
+    if (!isAuthenticated && isProtectedPage) {
       const params = new URLSearchParams();
       const nextPath = getSafeNextPath(pathname);
 
@@ -57,6 +58,7 @@ export function AuthGate({ children }: AuthGateProps) {
   }, [
     isAuthPage,
     isAuthenticated,
+    isProtectedPage,
     pathname,
     router,
     shouldWaitForInitialAuth,
@@ -66,7 +68,7 @@ export function AuthGate({ children }: AuthGateProps) {
     return isAuthPage ? children : null;
   }
 
-  if (!isAuthenticated && !isAuthPage) {
+  if (!isAuthenticated && isProtectedPage) {
     return null;
   }
 

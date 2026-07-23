@@ -52,16 +52,31 @@ class FeedControllerTest {
     }
 
     @Test
-    void getOrganicFeed_success_TC002() {
+    void getOrganicFeed_success_signedInPassesViewerId_TC002() {
+        UUID userId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(userId, "reader", List.of("USER"));
         FeedResponseDTO response = new FeedResponseDTO();
         response.setHasMore(false);
 
-        when(blogFeedRankingService.getOrganicFeed("cursor-token", 10)).thenReturn(response);
+        when(blogFeedRankingService.getOrganicFeed(userId, "cursor-token", 10)).thenReturn(response);
 
-        FeedResponseDTO result = feedController.getOrganicFeed("cursor-token", 10);
+        FeedResponseDTO result = feedController.getOrganicFeed(principal, "cursor-token", 10);
 
         assertThat(result).isEqualTo(response);
-        verify(blogFeedRankingService).getOrganicFeed("cursor-token", 10);
+        verify(blogFeedRankingService).getOrganicFeed(userId, "cursor-token", 10);
+    }
+
+    @Test
+    void getOrganicFeed_success_anonymousPassesNullViewer_TC004() {
+        FeedResponseDTO response = new FeedResponseDTO();
+        response.setHasMore(false);
+
+        when(blogFeedRankingService.getOrganicFeed(null, "cursor-token", 10)).thenReturn(response);
+
+        FeedResponseDTO result = feedController.getOrganicFeed(null, "cursor-token", 10);
+
+        assertThat(result).isEqualTo(response);
+        verify(blogFeedRankingService).getOrganicFeed(null, "cursor-token", 10);
     }
 
     @Test

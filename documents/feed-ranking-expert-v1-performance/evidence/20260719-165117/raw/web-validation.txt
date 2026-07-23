@@ -1,0 +1,20 @@
+Môi trường: Windows local, Web production port riêng 3001.
+
+1. npm run typecheck
+Kết quả: FAIL do lỗi baseline ngoài file Feed thay đổi (region ward/province và navigator id).
+Phân loại: CONFIG_ENV/baseline; không mở rộng scope để sửa.
+
+2. npm run build
+Kết quả: FAIL do TurbopackInternalError, kết nối nội bộ Windows bị đóng (os error 10054).
+Phân loại: CONFIG_ENV.
+
+3. npx next build --webpack
+Kết quả: PASS.
+Chi tiết: compile thành công, TypeScript trong build hoàn tất, tạo 22 route.
+
+4. Web Home authenticated
+Kết quả: không đo được. Trang production chuyển tới /login; tài khoản mẫu không hợp lệ.
+Evidence: ../screenshots/web-login-auth-required.png
+
+5. Frontend coverage
+Kết quả: FRONTEND_COVERAGE_TOOLING_MISSING.

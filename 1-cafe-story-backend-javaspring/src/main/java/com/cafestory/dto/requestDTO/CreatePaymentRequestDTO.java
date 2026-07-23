@@ -10,8 +10,6 @@ import java.util.UUID;
 @Data
 public class CreatePaymentRequestDTO {
 
-    private UUID buyerId;
-
     private UUID extraFeeId;
 
     private UUID adFeeId;

@@ -34,6 +34,7 @@ public class FeedServiceImpl implements FeedService {
     private static final int FEED_CURSOR_VERSION = 1;
     private static final int FIRST_AD_SLOT = 6;
     private static final int SECOND_AD_SLOT = 14;
+    private static final int MAX_CONSECUTIVE_ORGANIC_TYPE = 2;
     private static final ObjectMapper CURSOR_OBJECT_MAPPER = JsonMapper.builder().build();
 
     private final BlogFeedRankingService blogFeedRankingService;
@@ -60,6 +61,7 @@ public class FeedServiceImpl implements FeedService {
                 : sponsoredCafeCandidateService.getCandidates(userId, maxAds, feedCursor.adOffset());
 
         List<FeedItemResponseDTO> mixedItems = assembleFeedItems(organicItems, sponsoredCafes, safeSize);
+        sponsoredCafeCandidateService.recordServedImpressions(userId, servedCampaignIds(mixedItems));
         FeedResponseDTO response = new FeedResponseDTO();
         response.setItems(mixedItems);
         response.setHasMore(organicPage.getHasMore());
@@ -71,7 +73,7 @@ public class FeedServiceImpl implements FeedService {
 
     private FeedResponseDTO getOrganicOrPersonalizedPage(UUID userId, String cursor, int organicLimit) {
         if (userId == null) {
-            return blogFeedRankingService.getOrganicFeed(cursor, organicLimit);
+            return blogFeedRankingService.getOrganicFeed(null, cursor, organicLimit);
         }
 
         try {
@@ -83,7 +85,7 @@ public class FeedServiceImpl implements FeedService {
                     organicLimit);
         } catch (RuntimeException error) {
             log.warn("Personalized mixed feed failed; falling back to organic feed. userId={}", userId, error);
-            return blogFeedRankingService.getOrganicFeed(cursor, organicLimit);
+            return blogFeedRankingService.getOrganicFeed(userId, cursor, organicLimit);
         }
     }
 
@@ -126,7 +128,7 @@ public class FeedServiceImpl implements FeedService {
             List<FeedItemResponseDTO> organicItems,
             List<SponsoredCafeResponseDTO> sponsoredCafes,
             int safeSize) {
-        List<FeedItemResponseDTO> mixedItems = new ArrayList<>(organicItems);
+        List<FeedItemResponseDTO> mixedItems = diversifyOrganicItems(organicItems);
         List<SponsoredCafeResponseDTO> remainingAds = dedupeSponsoredCafes(sponsoredCafes);
         insertSponsoredCafe(mixedItems, remainingAds, FIRST_AD_SLOT, safeSize);
         insertSponsoredCafe(mixedItems, remainingAds, SECOND_AD_SLOT, safeSize);
@@ -138,6 +140,50 @@ public class FeedServiceImpl implements FeedService {
                 : mixedItems;
         assignPositions(limitedItems);
         return limitedItems;
+    }
+
+    private List<FeedItemResponseDTO> diversifyOrganicItems(List<FeedItemResponseDTO> organicItems) {
+        if (organicItems.size() <= MAX_CONSECUTIVE_ORGANIC_TYPE) {
+            return new ArrayList<>(organicItems);
+        }
+
+        List<FeedItemResponseDTO> remainingItems = new ArrayList<>(organicItems);
+        List<FeedItemResponseDTO> diversifiedItems = new ArrayList<>(organicItems.size());
+        while (!remainingItems.isEmpty()) {
+            int selectedIndex = selectNextOrganicIndex(remainingItems, diversifiedItems);
+            diversifiedItems.add(remainingItems.remove(selectedIndex));
+        }
+        return diversifiedItems;
+    }
+
+    private int selectNextOrganicIndex(
+            List<FeedItemResponseDTO> remainingItems,
+            List<FeedItemResponseDTO> diversifiedItems) {
+        FeedItemType blockedType = blockedOrganicType(diversifiedItems);
+        if (blockedType == null) {
+            return 0;
+        }
+
+        for (int index = 0; index < remainingItems.size(); index++) {
+            if (remainingItems.get(index).getItemType() != blockedType) {
+                return index;
+            }
+        }
+        return 0;
+    }
+
+    private FeedItemType blockedOrganicType(List<FeedItemResponseDTO> diversifiedItems) {
+        if (diversifiedItems.size() < MAX_CONSECUTIVE_ORGANIC_TYPE) {
+            return null;
+        }
+
+        FeedItemType lastType = diversifiedItems.get(diversifiedItems.size() - 1).getItemType();
+        for (int offset = 2; offset <= MAX_CONSECUTIVE_ORGANIC_TYPE; offset++) {
+            if (diversifiedItems.get(diversifiedItems.size() - offset).getItemType() != lastType) {
+                return null;
+            }
+        }
+        return lastType;
     }
 
     private List<SponsoredCafeResponseDTO> dedupeSponsoredCafes(List<SponsoredCafeResponseDTO> sponsoredCafes) {
@@ -219,6 +265,16 @@ public class FeedServiceImpl implements FeedService {
                 .count();
     }
 
+    private List<UUID> servedCampaignIds(List<FeedItemResponseDTO> items) {
+        return items.stream()
+                .filter(item -> item.getItemType() == FeedItemType.SPONSORED_CAFE)
+                .map(FeedItemResponseDTO::getAd)
+                .filter(java.util.Objects::nonNull)
+                .map(SponsoredCafeResponseDTO::getCampaignId)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+    }
+
     private String seed(UUID userId) {
         return userId == null ? "anonymous" : userId.toString();
     }
@@ -242,13 +298,9 @@ public class FeedServiceImpl implements FeedService {
     }
 
     private String encodeFeedCursor(String organicCursor, int adOffset, String seed) {
-        try {
-            FeedCursorPayload payload = new FeedCursorPayload(organicCursor, adOffset, seed, FEED_CURSOR_VERSION);
-            String json = CURSOR_OBJECT_MAPPER.writeValueAsString(payload);
-            return Base64.getUrlEncoder().withoutPadding().encodeToString(json.getBytes(StandardCharsets.UTF_8));
-        } catch (JsonProcessingException error) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unable to create feed cursor");
-        }
+        FeedCursorPayload payload = new FeedCursorPayload(organicCursor, adOffset, seed, FEED_CURSOR_VERSION);
+        String json = CURSOR_OBJECT_MAPPER.valueToTree(payload).toString();
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(json.getBytes(StandardCharsets.UTF_8));
     }
 
     private ResponseStatusException invalidFeedCursor() {

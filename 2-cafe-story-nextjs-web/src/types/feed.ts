@@ -1,3 +1,52 @@
+import type { BlogFeedResponse } from "@/types/blog";
+
+export type MixedFeedItemType = "USER_BLOG" | "CAFE_PAGE_BLOG" | "SPONSORED_CAFE" | string;
+
+export type SponsoredCafeResponse = {
+  campaignId: string;
+  cafePageId: string;
+  cafeName: string | null;
+  cafeAvatarUrl: string | null;
+  cafeCoverUrl: string | null;
+  imageUrl: string | null;
+  headline: string | null;
+  description: string | null;
+  ctaLabel: string | null;
+  targetUrl: string | null;
+  trackingToken: string | null;
+};
+
+export type MixedFeedItemResponse = {
+  itemType: MixedFeedItemType;
+  blog: BlogFeedResponse | null;
+  ad: SponsoredCafeResponse | null;
+  position: number | null;
+  trackingToken: string | null;
+};
+
+export type MixedFeedResponse = {
+  items: MixedFeedItemResponse[] | null;
+  nextCursor: string | null;
+  hasMore: boolean | null;
+};
+
+export type MixedFeedParams = {
+  cursor?: string | null;
+  size?: number;
+};
+
+export type FeedRenderableItem =
+  | {
+      id: string;
+      kind: "post";
+      post: FeedPost;
+    }
+  | {
+      id: string;
+      kind: "ad";
+      ad: SponsoredCafeResponse;
+    };
+
 export type StoryItem = {
   id: string;
   kind: "user" | "cafe-page";

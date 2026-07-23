@@ -1,0 +1,26 @@
+
+> 2-cafe-story-nextjs-web@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.6 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.56.1:3000
+- Environments: .env
+✓ Ready in 720ms
+
+ GET /login 200 in 1597ms (next.js: 254ms, proxy.ts: 397ms, application-code: 945ms)
+ GET /login 200 in 600ms (next.js: 97ms, proxy.ts: 230ms, application-code: 274ms)
+ GET / 200 in 4.8s (next.js: 208ms, proxy.ts: 14ms, application-code: 4.6s)
+ GET / 200 in 2.3s (next.js: 73ms, proxy.ts: 78ms, application-code: 2.2s)
+ GET / 200 in 3.9s (next.js: 74ms, proxy.ts: 116ms, application-code: 3.7s)
+ GET / 200 in 2.4s (next.js: 88ms, proxy.ts: 81ms, application-code: 2.3s)
+ GET /ads 200 in 598ms (next.js: 325ms, proxy.ts: 43ms, application-code: 230ms)
+○ Compiling /cafes/campaigns/new ...
+ GET /cafes/campaigns/new?paymentId=33333333-3333-3333-3333-333333333333 200 in 7.8s (next.js: 7.3s, proxy.ts: 107ms, application-code: 374ms)
+ GET /ads?paymentId=33333333-3333-3333-3333-333333333333 200 in 219ms (next.js: 10ms, proxy.ts: 33ms, application-code: 175ms)
+ GET /ads?paymentId=33333333-3333-3333-3333-333333333333 200 in 99ms (next.js: 14ms, proxy.ts: 8ms, application-code: 78ms)
+ GET /cafes/campaigns/new 200 in 1636ms (next.js: 122ms, proxy.ts: 425ms, application-code: 1089ms)
+ GET /ads 200 in 1271ms (next.js: 42ms, proxy.ts: 13ms, application-code: 1216ms)
+ GET /ads 200 in 2.5s (next.js: 390ms, proxy.ts: 862ms, application-code: 1289ms)
+✓ Finished writing to filesystem cache in 11.1s
+[?25h

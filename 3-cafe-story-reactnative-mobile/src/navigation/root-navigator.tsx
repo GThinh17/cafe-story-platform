@@ -2,6 +2,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { LoadingState, Screen } from "../components";
 import { useAuth } from "../features/auth";
 import {
+  AdsManagerScreen,
   BlogDetailScreen,
   ChatDetailScreen,
   CafePageScreen,
@@ -41,6 +42,7 @@ export function RootNavigator() {
       {isAuthenticated ? (
         <>
           <Stack.Screen component={MainTabs} name={routes.main} />
+          <Stack.Screen component={AdsManagerScreen} name={routes.adsManager} />
           <Stack.Screen
             component={ConversationScreen}
             name={routes.conversations}

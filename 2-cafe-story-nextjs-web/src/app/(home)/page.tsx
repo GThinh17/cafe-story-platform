@@ -6,27 +6,29 @@ import { FeedPostList } from "@/components/feed/feed-post-list";
 import { StoryRail } from "@/components/feed/story-rail";
 import { TopCafesNearby } from "@/components/feed/top-cafes-nearby";
 import { MessageDock } from "@/components/message/message-dock";
-import { mapBlogFeedToFeedPosts } from "@/features/blogs/blog-feed-adapter";
+import { mapMixedFeedToRenderableItems } from "@/features/blogs/blog-feed-adapter";
 import { ApiError } from "@/lib/api/client";
 import { getMe } from "@/lib/api/auth";
-import { getBlogFeed } from "@/lib/api/blogs";
+import { getMixedFeed } from "@/lib/api/feed";
 import { getTopCafePages } from "@/lib/api/cafes";
 import { getConversations } from "@/lib/api/chat";
 import { getFollowingTargetsByUserId } from "@/lib/api/users";
 import { DEFAULT_AVATAR_IMAGE } from "@/lib/avatar";
 import { imageWidths, optimizeImageUrl } from "@/lib/image-optimizer";
 import { ACCESS_TOKEN_COOKIE } from "@/lib/routes";
+import type { FeedRenderableItem, StoryItem, TopCafe } from "@/types/feed";
 import type { FollowTargetResponse } from "@/types/user";
-import type { FeedPost, StoryItem, TopCafe } from "@/types/feed";
 import type { MessageContact, MessageDockData } from "@/types/message";
 
 export const dynamic = "force-dynamic";
 
-const FEED_PAGE_SIZE = 10;
+const FEED_PAGE_SIZE = 20;
 
 type HomeFeedState = {
   errorMessage?: string;
-  posts: FeedPost[];
+  hasMore: boolean;
+  nextCursor: string | null;
+  items: FeedRenderableItem[];
 };
 
 const getMeCached = cache((cookieHeader: string) =>
@@ -187,11 +189,9 @@ async function loadMessageDock(
 
 async function loadHomeFeed(cookieHeader: string): Promise<HomeFeedState> {
   try {
-    const feed = await getBlogFeed(
+    const feed = await getMixedFeed(
       {
-        page: 0,
         size: FEED_PAGE_SIZE,
-        windowType: "HOUR_24",
       },
       {
         headers: {
@@ -201,7 +201,9 @@ async function loadHomeFeed(cookieHeader: string): Promise<HomeFeedState> {
     );
 
     return {
-      posts: mapBlogFeedToFeedPosts(feed),
+      hasMore: Boolean(feed.hasMore && feed.nextCursor),
+      nextCursor: feed.nextCursor,
+      items: mapMixedFeedToRenderableItems(feed),
     };
   } catch (error) {
     return {
@@ -209,7 +211,9 @@ async function loadHomeFeed(cookieHeader: string): Promise<HomeFeedState> {
         error instanceof ApiError
           ? error.message
           : "Unable to load your feed right now.",
-      posts: [],
+      hasMore: false,
+      nextCursor: null,
+      items: [],
     };
   }
 }
@@ -225,10 +229,11 @@ async function FeedSection({
     return (
       <FeedPostList
         errorMessage="Sign in to view your personalized feed."
+        initialHasMore={false}
+        initialNextCursor={null}
         initialPage={0}
         pageSize={FEED_PAGE_SIZE}
-        posts={[]}
-        windowType="HOUR_24"
+        items={[]}
       />
     );
   }
@@ -243,10 +248,11 @@ async function FeedSection({
       <StoryRail stories={storyItems} />
       <FeedPostList
         errorMessage={feedState.errorMessage}
+        initialHasMore={feedState.hasMore}
+        initialNextCursor={feedState.nextCursor}
         initialPage={0}
         pageSize={FEED_PAGE_SIZE}
-        posts={feedState.posts}
-        windowType="HOUR_24"
+        items={feedState.items}
       />
     </>
   );

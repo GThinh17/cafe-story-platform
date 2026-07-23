@@ -52,7 +52,7 @@ public class PaymentController {
     public List<PaymentResponseDTO> getAllPayments(
             @RequestParam(required = false) PaymentStatus paymentStatus,
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
-        return paymentService.getAllPayments(requireUserId(principal), paymentStatus);
+        return paymentService.getMyPayments(requireUserId(principal), paymentStatus);
     }
 
     @GetMapping("/me")

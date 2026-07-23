@@ -11,6 +11,7 @@ public class SponsoredCafeResponseDTO {
     private String cafeName;
     private String cafeAvatarUrl;
     private String cafeCoverUrl;
+    private String imageUrl;
     private String headline;
     private String description;
     private String ctaLabel;

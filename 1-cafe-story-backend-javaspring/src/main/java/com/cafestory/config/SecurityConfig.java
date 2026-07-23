@@ -55,6 +55,8 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/ad-fees/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/ad-fees/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/admin/assistant/tools/**").permitAll()
                         .requestMatchers("/api/internal/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")

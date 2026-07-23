@@ -212,7 +212,6 @@ class PaymentServiceImplTest {
     void createPayment_fail_requiresExactlyOneFee_TC022() {
         when(userRepository.findById(buyerId)).thenReturn(Optional.of(user()));
         CreatePaymentRequestDTO noFeeRequest = new CreatePaymentRequestDTO();
-        noFeeRequest.setBuyerId(buyerId);
         noFeeRequest.setPaymentMethod(PaymentMethod.BANK_TRANSFER);
 
         assertThatThrownBy(() -> paymentService.createPayment(buyerId, noFeeRequest))
@@ -303,6 +302,63 @@ class PaymentServiceImplTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
         verify(paymentRepository).findByPaymentStatusOrderByCreatedAtDesc(PaymentStatus.PENDING);
+    }
+
+    @Test
+    void getMyPayments_success_withoutFilter_mapsDetailAndOptionalProducts_TC033() {
+        Payment detailed = pendingPayment(
+                PaymentMethod.STRIPE_CARD,
+                extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING));
+        detailed.setPaymentStatus(PaymentStatus.PAID);
+        AdFee adFee = adFee(true);
+        detailed.setAdFee(adFee);
+        CafePage cafePage = cafePage(detailed.getBuyer());
+        detailed.setCafePage(cafePage);
+        PaymentDetail detail = paymentDetail(detailed);
+        detail.setProviderQrCodeUrl("https://cdn.example.test/qr.png");
+        detail.setTransferContent("CAFE_PAYMENT_123");
+
+        Payment plain = pendingPayment(
+                PaymentMethod.BANK_TRANSFER,
+                extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
+        plain.setPaymentId(UUID.fromString("55555555-5555-5555-5555-555555555555"));
+        plain.setExtraFee(null);
+        when(paymentRepository.findByBuyerUserIdOrderByCreatedAtDesc(buyerId))
+                .thenReturn(List.of(detailed, plain));
+        when(paymentDetailRepository.findByPaymentPaymentId(detailed.getPaymentId()))
+                .thenReturn(Optional.of(detail));
+        when(paymentDetailRepository.findByPaymentPaymentId(plain.getPaymentId()))
+                .thenReturn(Optional.empty());
+
+        List<PaymentResponseDTO> result = paymentService.getMyPayments(buyerId, null);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.getFirst().getBuyerId()).isEqualTo(buyerId);
+        assertThat(result.getFirst().getExtraFeeType()).isEqualTo(ExtraFeeType.CAFE_PAGE_OPENING);
+        assertThat(result.getFirst().getAdFeeId()).isEqualTo(adFee.getAdFeeId());
+        assertThat(result.getFirst().getActivatedCafePageId()).isEqualTo(cafePage.getId());
+        assertThat(result.getFirst().getPaymentUrl()).isEqualTo("https://checkout.stripe.com/test");
+        assertThat(result.getFirst().getQrCodeUrl()).isEqualTo("https://cdn.example.test/qr.png");
+        assertThat(result.getFirst().getTransferContent()).isEqualTo("CAFE_PAYMENT_123");
+        assertThat(result.get(1).getExtraFeeId()).isNull();
+        assertThat(result.get(1).getAdFeeId()).isNull();
+        assertThat(result.get(1).getActivatedCafePageId()).isNull();
+        assertThat(result.get(1).getPaymentUrl()).isNull();
+        verify(paymentRepository).findByBuyerUserIdOrderByCreatedAtDesc(buyerId);
+    }
+
+    @Test
+    void getMyPayments_success_withStatusFilter_TC034() {
+        when(paymentRepository.findByBuyerUserIdAndPaymentStatusOrderByCreatedAtDesc(
+                buyerId,
+                PaymentStatus.PAID)).thenReturn(List.of());
+
+        List<PaymentResponseDTO> result = paymentService.getMyPayments(buyerId, PaymentStatus.PAID);
+
+        assertThat(result).isEmpty();
+        verify(paymentRepository).findByBuyerUserIdAndPaymentStatusOrderByCreatedAtDesc(
+                buyerId,
+                PaymentStatus.PAID);
     }
 
     @Test
@@ -834,7 +890,6 @@ class PaymentServiceImplTest {
 
     private CreatePaymentRequestDTO adFeeRequest(PaymentMethod method) {
         CreatePaymentRequestDTO request = new CreatePaymentRequestDTO();
-        request.setBuyerId(buyerId);
         request.setAdFeeId(adFeeId);
         request.setPaymentMethod(method);
         return request;

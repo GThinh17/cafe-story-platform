@@ -15,6 +15,7 @@ type MobilePostCarouselProps = {
   imageAccessibilityLabel?: string;
   imageUrls: string[];
   insetHorizontal?: number;
+  onFirstImageLoad?: () => void;
 };
 
 export function MobilePostCarousel({
@@ -22,6 +23,7 @@ export function MobilePostCarousel({
   imageAccessibilityLabel = "Post image",
   imageUrls,
   insetHorizontal = spacing.lg,
+  onFirstImageLoad,
 }: MobilePostCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [containerWidth, setContainerWidth] = useState(0);
@@ -64,6 +66,7 @@ export function MobilePostCarousel({
             <View style={[styles.slide, { paddingHorizontal: insetHorizontal, width: itemWidth }]}>
               <Image
                 accessibilityLabel={`${imageAccessibilityLabel} ${index + 1}`}
+                onLoad={index === 0 ? onFirstImageLoad : undefined}
                 resizeMode="cover"
                 source={{ uri: item }}
                 style={[

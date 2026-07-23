@@ -1,0 +1,41 @@
+{
+  "featureSlug": "feed-ranking-expert-v1-performance",
+  "evidenceTimestamp": "20260719-165117",
+  "status": "IMPLEMENTED_VALIDATION_INCOMPLETE",
+  "formulaVersion": "EXPERT_V1",
+  "environment": "local/LAN",
+  "productionSla": false,
+  "implementation": {
+    "rankingFormula": "PASS",
+    "formulaWeightSum": 1.0,
+    "batchFollow": "PASS_BY_UNIT_TEST",
+    "batchAdFrequency": "PASS_BY_UNIT_TEST",
+    "apiContractChanged": false
+  },
+  "backendRegression": {
+    "tests": 568,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1
+  },
+  "coverage": {
+    "hardGate": "FAIL",
+    "FeedScoreCalculationServiceImpl": { "linePercent": 100.0, "branchPercent": 94.34 },
+    "BlogFeedRankingServiceImpl": { "linePercent": 87.98, "branchPercent": 56.15 },
+    "SponsoredCafeCandidateServiceImpl": { "linePercent": 99.32, "branchPercent": 89.74 },
+    "BlogRecommendationScore": { "linePercent": 100.0, "branchPercent": 94.44 }
+  },
+  "performance": {
+    "postgresQueryCount": null,
+    "authenticatedFeedHttp": null,
+    "mixedFeedWeb": null,
+    "webHome": null,
+    "mobileAndroid": null
+  },
+  "blockers": [
+    "CONFIG_ENV_NO_POSTGRESQL",
+    "TEST_DATA_NO_VALID_AUTHENTICATED_ACCOUNT",
+    "CONFIG_ENV_NO_ANDROID_EXPO_DEVICE",
+    "FRONTEND_COVERAGE_TOOLING_MISSING"
+  ]
+}

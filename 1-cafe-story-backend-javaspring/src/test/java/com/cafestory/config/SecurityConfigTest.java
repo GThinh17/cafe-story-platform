@@ -8,6 +8,7 @@ import com.cafestory.dto.responseDTO.ReviewerPayoutResponseDTO;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.PaymentStatus;
 import com.cafestory.service.serviceInterface.AuthService;
+import com.cafestory.service.serviceInterface.AdFeeService;
 import com.cafestory.service.serviceInterface.PaymentService;
 import com.cafestory.service.serviceInterface.ReviewerService;
 import com.cafestory.until.security.JwtAuthenticationFilter;
@@ -33,6 +34,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -55,6 +57,9 @@ class SecurityConfigTest {
 
     @MockBean
     private ReviewerService reviewerService;
+
+    @MockBean
+    private AdFeeService adFeeService;
 
     @Test
     void me_fail_withoutAccessToken_TC001() throws Exception {
@@ -186,6 +191,33 @@ class SecurityConfigTest {
                 .header("Authorization", "Bearer " + accessToken)
                 .param("month", "2026-06"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void adFeeMutation_fail_userRoleCannotCreateOrDelete_TC013() throws Exception {
+        String accessToken = jwtService.createAccessToken(user(), List.of("USER"));
+
+        mockMvc.perform(post("/api/ad-fees")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"feeType":"FEED_10000_IMPRESSIONS_OR_30_DAYS","price":500000,"currency":"VND","status":true}
+                                """))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(delete("/api/ad-fees/{id}", UUID.randomUUID())
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void adFeeList_success_userRoleCanRead_TC014() throws Exception {
+        String accessToken = jwtService.createAccessToken(user(), List.of("USER"));
+        when(adFeeService.getAllAdFees()).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/ad-fees")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk());
     }
 
     private User user() {

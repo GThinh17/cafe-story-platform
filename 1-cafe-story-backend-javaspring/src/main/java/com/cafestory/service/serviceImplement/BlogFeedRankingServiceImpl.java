@@ -1,6 +1,7 @@
 package com.cafestory.service.serviceImplement;
 
 import com.cafestory.config.CacheConfig;
+import com.cafestory.config.FeedRebuildExecutorConfig;
 import com.cafestory.dto.responseDTO.BlogDisplayAuthorType;
 import com.cafestory.dto.responseDTO.BlogFeedCursorPageResponseDTO;
 import com.cafestory.dto.responseDTO.BlogFeedResponse;
@@ -8,7 +9,7 @@ import com.cafestory.dto.responseDTO.FeedItemResponseDTO;
 import com.cafestory.dto.responseDTO.FeedResponseDTO;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogRecommendationScore;
-import com.cafestory.entity.BlogTrendingScore;
+import com.cafestory.entity.AiModerationResult;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
@@ -16,6 +17,7 @@ import com.cafestory.entity.enums.BlogEventType;
 import com.cafestory.entity.enums.FeedItemType;
 import com.cafestory.entity.enums.ModerationDecision;
 import com.cafestory.entity.enums.PostStatus;
+import com.cafestory.entity.enums.ReportStatus;
 import com.cafestory.entity.enums.TrendWindowType;
 import com.cafestory.repository.AiModerationResultRepository;
 import com.cafestory.repository.BlogEventRepository;
@@ -24,16 +26,17 @@ import com.cafestory.repository.BlogRecommendationScoreRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.BlogSaveRepository;
 import com.cafestory.repository.BlogShareRepository;
-import com.cafestory.repository.BlogTrendingScoreRepository;
 import com.cafestory.repository.CafePageRepository;
 import com.cafestory.repository.CommentRepository;
+import com.cafestory.repository.ContentReportRepository;
 import com.cafestory.repository.FeedImpressionRepository;
 import com.cafestory.repository.PageFollowRepository;
 import com.cafestory.repository.RegionRepository;
-import com.cafestory.repository.ReviewerRepository;
 import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.BlogFeedRankingService;
+import com.cafestory.service.serviceInterface.BlogRecommendationScoreBatchWriter;
+import com.cafestory.service.serviceInterface.FeedScoreCalculationService;
 import com.cafestory.validation.UserValidator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,11 +46,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
-import org.springframework.cache.annotation.Cacheable;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.charset.StandardCharsets;
@@ -55,8 +61,11 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 import java.util.Base64;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -73,17 +82,15 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
     private static final int MAX_ORGANIC_FEED_SIZE = 50;
     private static final int ORGANIC_CURSOR_VERSION = 1;
     private static final int PERSONALIZED_CURSOR_VERSION = 1;
-    private static final double OWN_AUTHOR_SCORE = 40.0;
-    private static final double REVIEWER_SCORE = 10.0;
-    private static final double SEEN_PENALTY = 25.0;
     private static final LocalDateTime REPORT_EPOCH = LocalDateTime.of(1970, 1, 1, 0, 0);
+    private static final Set<ReportStatus> ACTIVE_REPORT_STATUSES = Set.of(ReportStatus.OPEN, ReportStatus.REVIEWING);
     private static final ObjectMapper CURSOR_OBJECT_MAPPER = JsonMapper.builder()
             .addModule(new JavaTimeModule())
             .build();
     private final ConcurrentMap<RecommendationCacheKey, Object> recommendationRebuildLocks = new ConcurrentHashMap<>();
+    private final Set<RecommendationCacheKey> recommendationRebuildsInFlight = ConcurrentHashMap.newKeySet();
 
     private final BlogRepository blogRepository;
-    private final BlogTrendingScoreRepository blogTrendingScoreRepository;
     private final BlogRecommendationScoreRepository blogRecommendationScoreRepository;
     private final CafePageRepository cafePageRepository;
     private final PageFollowRepository pageFollowRepository;
@@ -95,15 +102,18 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
     private final BlogSaveRepository blogSaveRepository;
     private final FeedImpressionRepository feedImpressionRepository;
     private final AiModerationResultRepository aiModerationResultRepository;
+    private final ContentReportRepository contentReportRepository;
     private final RegionRepository regionRepository;
     private final UserRepository userRepository;
-    private final ReviewerRepository reviewerRepository;
     private final UserValidator userValidator;
     private final CacheManager cacheManager;
+    private final FeedScoreCalculationService feedScoreCalculationService;
+    private final BlogRecommendationScoreBatchWriter recommendationScoreBatchWriter;
+    private final TaskExecutor taskExecutor;
+    private final TransactionTemplate transactionTemplate;
 
     public BlogFeedRankingServiceImpl(
             BlogRepository blogRepository,
-            BlogTrendingScoreRepository blogTrendingScoreRepository,
             BlogRecommendationScoreRepository blogRecommendationScoreRepository,
             CafePageRepository cafePageRepository,
             PageFollowRepository pageFollowRepository,
@@ -115,13 +125,16 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             BlogSaveRepository blogSaveRepository,
             FeedImpressionRepository feedImpressionRepository,
             AiModerationResultRepository aiModerationResultRepository,
+            ContentReportRepository contentReportRepository,
             RegionRepository regionRepository,
             UserRepository userRepository,
-            ReviewerRepository reviewerRepository,
             UserValidator userValidator,
-            CacheManager cacheManager) {
+            CacheManager cacheManager,
+            FeedScoreCalculationService feedScoreCalculationService,
+            BlogRecommendationScoreBatchWriter recommendationScoreBatchWriter,
+            @Qualifier(FeedRebuildExecutorConfig.FEED_REBUILD_EXECUTOR) TaskExecutor taskExecutor,
+            PlatformTransactionManager transactionManager) {
         this.blogRepository = blogRepository;
-        this.blogTrendingScoreRepository = blogTrendingScoreRepository;
         this.blogRecommendationScoreRepository = blogRecommendationScoreRepository;
         this.cafePageRepository = cafePageRepository;
         this.pageFollowRepository = pageFollowRepository;
@@ -133,16 +146,20 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         this.blogSaveRepository = blogSaveRepository;
         this.feedImpressionRepository = feedImpressionRepository;
         this.aiModerationResultRepository = aiModerationResultRepository;
+        this.contentReportRepository = contentReportRepository;
         this.regionRepository = regionRepository;
         this.userRepository = userRepository;
-        this.reviewerRepository = reviewerRepository;
         this.userValidator = userValidator;
         this.cacheManager = cacheManager;
+        this.feedScoreCalculationService = feedScoreCalculationService;
+        this.recommendationScoreBatchWriter = recommendationScoreBatchWriter;
+        this.taskExecutor = taskExecutor;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public FeedResponseDTO getOrganicFeed(String cursor, int size) {
+    public FeedResponseDTO getOrganicFeed(UUID viewerUserId, String cursor, int size) {
         int safeSize = normalizeOrganicFeedSize(size);
         OrganicFeedCursor organicCursor = decodeOrganicCursor(cursor);
         LocalDateTime scoredAt = organicCursor == null ? LocalDateTime.now() : organicCursor.scoredAt();
@@ -158,7 +175,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         }
 
         BlogFeedCursorPageResponseDTO response = new BlogFeedCursorPageResponseDTO();
-        response.setItems(toOrganicFeedResponses(rankingPage.items()));
+        response.setItems(toOrganicFeedResponses(rankingPage.items(), viewerUserId));
         response.setHasMore(rankingPage.hasMore());
         response.setNextCursor(rankingPage.nextCursor());
         return toFeedResponse(response);
@@ -250,9 +267,6 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
 
     @Override
     @Transactional
-    @Cacheable(
-            cacheNames = CacheConfig.PERSONALIZED_FEED_RANKING_CACHE,
-            key = "#p0 + ':' + #p1.name() + ':' + (#p2 == null ? 'none' : #p2) + ':' + #p3 + ':' + #p4")
     public List<BlogFeedResponse> getPersonalizedFeed(
             UUID userId,
             TrendWindowType windowType,
@@ -263,22 +277,24 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         UUID contextRegionId = resolveContextRegionId(user, regionId);
         int safePage = Math.max(0, page);
         int safeSize = Math.max(1, size);
+        String cacheKey = personalizedRankingCacheKey(userId, windowType, contextRegionId, safePage, safeSize);
+        List<BlogFeedResponse> cachedResponses = getCachedPersonalizedFeed(cacheKey);
+        if (cachedResponses != null) {
+            ViewerFeedContext viewerContext = buildViewerFeedContext(userId, cachedResponses);
+            cachedResponses.forEach(response -> applyViewerState(response, viewerContext));
+            return cachedResponses;
+        }
 
         LocalDateTime latestComputedAt = blogRecommendationScoreRepository.findLatestComputedAt(
                 userId,
                 windowType,
                 contextRegionId);
-        if (latestComputedAt == null || isPersonalizedCacheStale(userId, latestComputedAt)) {
-            try {
-                List<BlogFeedResponse> rebuilt = rebuildRecommendationCacheLocked(user, windowType, contextRegionId);
-                return pageFeedResponses(rebuilt, safePage, safeSize);
-            } catch (RuntimeException error) {
-                log.warn("Personalized feed cache miss fallback userId={} windowType={} contextRegionId={}",
-                        userId,
-                        windowType,
-                        contextRegionId,
-                        error);
-                return fallbackOrganicFeedResponses(safeSize);
+        boolean stale = latestComputedAt == null
+                || isPersonalizedCacheStale(userId, windowType, contextRegionId, latestComputedAt);
+        if (stale) {
+            scheduleRecommendationRebuild(userId, windowType, contextRegionId);
+            if (latestComputedAt == null) {
+                return fallbackOrganicFeedResponses(userId, safeSize);
             }
         }
 
@@ -288,7 +304,11 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                         contextRegionId,
                         latestComputedAt,
                         PageRequest.of(safePage, safeSize));
-        return toFeedResponses(scores, userId);
+        List<BlogFeedResponse> responses = toFeedResponses(scores, userId);
+        if (!stale) {
+            putCachedPersonalizedFeed(cacheKey, responses);
+        }
+        return responses;
     }
 
     @Override
@@ -317,34 +337,108 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         return toFeedResponses(scores, user.getUserId());
     }
 
+    private void scheduleRecommendationRebuild(
+            UUID userId,
+            TrendWindowType windowType,
+            UUID contextRegionId) {
+        RecommendationCacheKey cacheKey = new RecommendationCacheKey(userId, windowType, contextRegionId);
+        if (!recommendationRebuildsInFlight.add(cacheKey)) {
+            return;
+        }
+
+        try {
+            taskExecutor.execute(() -> {
+                try {
+                    transactionTemplate.executeWithoutResult(status -> {
+                        User currentUser = validateActiveUser(userId);
+                        rebuildRecommendationCacheLocked(currentUser, windowType, contextRegionId);
+                    });
+                } catch (RuntimeException error) {
+                    log.warn("Background personalized feed rebuild failed userId={} windowType={} contextRegionId={}",
+                            userId,
+                            windowType,
+                            contextRegionId,
+                            error);
+                } finally {
+                    recommendationRebuildsInFlight.remove(cacheKey);
+                }
+            });
+        } catch (RuntimeException error) {
+            recommendationRebuildsInFlight.remove(cacheKey);
+            log.warn("Unable to schedule personalized feed rebuild userId={} windowType={} contextRegionId={}",
+                    userId,
+                    windowType,
+                    contextRegionId,
+                    error);
+        }
+    }
+
+    private String personalizedRankingCacheKey(
+            UUID userId,
+            TrendWindowType windowType,
+            UUID contextRegionId,
+            int page,
+            int size) {
+        return FeedScoreCalculationService.FORMULA_VERSION
+                + ":" + userId
+                + ":" + windowType.name()
+                + ":" + (contextRegionId == null ? "none" : contextRegionId)
+                + ":" + page
+                + ":" + size;
+    }
+
+    private List<BlogFeedResponse> getCachedPersonalizedFeed(String cacheKey) {
+        Cache cache = cacheManager.getCache(CacheConfig.PERSONALIZED_FEED_RANKING_CACHE);
+        if (cache == null) {
+            return null;
+        }
+        Cache.ValueWrapper wrapper = cache.get(cacheKey);
+        if (wrapper == null || !(wrapper.get() instanceof String cachedJson)) {
+            return null;
+        }
+        try {
+            return CURSOR_OBJECT_MAPPER.readValue(
+                    cachedJson,
+                    CURSOR_OBJECT_MAPPER.getTypeFactory()
+                            .constructCollectionType(List.class, BlogFeedResponse.class));
+        } catch (JsonProcessingException exception) {
+            log.warn("Personalized feed cache payload is invalid key={}: {}", cacheKey, exception.getMessage());
+            return null;
+        }
+    }
+
+    private void putCachedPersonalizedFeed(String cacheKey, List<BlogFeedResponse> responses) {
+        Cache cache = cacheManager.getCache(CacheConfig.PERSONALIZED_FEED_RANKING_CACHE);
+        if (cache == null) {
+            return;
+        }
+        try {
+            cache.put(cacheKey, CURSOR_OBJECT_MAPPER.writeValueAsString(responses));
+        } catch (JsonProcessingException exception) {
+            log.warn("Unable to serialize personalized feed cache key={}: {}", cacheKey, exception.getMessage());
+        }
+    }
+
     private List<BlogRecommendationScore> buildRecommendationScores(
             User user,
             TrendWindowType windowType,
             UUID contextRegionId) {
         LocalDateTime now = LocalDateTime.now();
-        Map<UUID, BlogTrendingScore> trendingScores = latestTrendingScores(windowType);
         List<Blog> publishedBlogs = blogRepository.findByStatus(PostStatus.PUBLISHED);
         FeedScoringContext scoringContext = buildFeedScoringContext(user, contextRegionId, windowType, now, publishedBlogs);
 
-        List<BlogRecommendationScore> scores = publishedBlogs
+        List<BlogRecommendationScore> candidates = publishedBlogs
                 .stream()
                 .filter(blog -> !scoringContext.violationBlogIds().contains(blog.getId()))
                 .map(blog -> createRecommendationScore(
                         user,
                         blog,
-                        trendingScores.get(blog.getId()),
                         windowType,
                         contextRegionId,
                         scoringContext,
                         now))
-                .sorted(Comparator.comparing(BlogRecommendationScore::getFeedScore).reversed())
                 .toList();
-
-        for (int index = 0; index < scores.size(); index++) {
-            scores.get(index).setRankPosition(index + 1);
-        }
-
-        return scores;
+        return selectWithDiversity(candidates);
     }
 
     private List<BlogRecommendationScore> pageScores(List<BlogRecommendationScore> scores, int page, int size) {
@@ -367,8 +461,8 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         return responses.subList(fromIndex, toIndex);
     }
 
-    private List<BlogFeedResponse> fallbackOrganicFeedResponses(int size) {
-        return getOrganicFeed(null, size)
+    private List<BlogFeedResponse> fallbackOrganicFeedResponses(UUID viewerUserId, int size) {
+        return getOrganicFeed(viewerUserId, null, size)
                 .getItems()
                 .stream()
                 .filter(item -> item.getBlog() != null)
@@ -404,12 +498,19 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                 .distinct()
                 .toList();
 
-        LocalDateTime reportStartAt = switch (windowType) {
-            case HOUR_24 -> now.minusHours(24);
-            case DAY_7 -> now.minusDays(7);
-            case MONTH_1 -> now.minusMonths(1);
-        };
+        LocalDateTime interactionStartAt = now.minusDays(30);
         LocalDateTime seenAfter = now.minusDays(7);
+        Set<UUID> recentlyInteractedBlogIds = recentlyInteractedBlogIds(
+                user.getUserId(), blogIds, interactionStartAt, now);
+        Map<UUID, Set<String>> tagsByBlogId = tagsByBlogId(blogIds);
+        Set<String> userInterestTags = recentlyInteractedBlogIds.stream()
+                .flatMap(blogId -> tagsByBlogId.getOrDefault(blogId, Set.of()).stream())
+                .collect(Collectors.toUnmodifiableSet());
+        Set<UUID> positivelyInteractedSourceKeys = blogs.stream()
+                .filter(blog -> recentlyInteractedBlogIds.contains(blog.getId()))
+                .map(this::sourceKey)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toUnmodifiableSet());
 
         return new FeedScoringContext(
                 user.getUserId(),
@@ -417,13 +518,13 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                 violationBlogIds(blogIds),
                 followedPageIds(user.getUserId(), pageIds),
                 followedUserIds(user.getUserId(), authorIds),
-                activeReviewerUserIds(authorIds),
                 cityByRegionId(regionIds),
-                reportCountsByBlogId(blogIds, reportStartAt, now),
-                activityCountsByBlogId(blogIds, reportStartAt, now),
+                activeReportCountsByBlogId(blogIds),
+                activityCountsByBlogId(blogIds, interactionStartAt, now),
                 seenBlogIds(user.getUserId(), blogIds, seenAfter),
-                authorBlogCounts(blogs),
-                pageBlogCounts(blogs));
+                positivelyInteractedSourceKeys,
+                tagsByBlogId,
+                userInterestTags);
     }
 
     private Set<UUID> violationBlogIds(List<UUID> blogIds) {
@@ -449,11 +550,51 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         return Set.copyOf(userFollowRepository.findFollowedUserIds(userId, authorIds));
     }
 
-    private Set<UUID> activeReviewerUserIds(List<UUID> authorIds) {
-        if (authorIds.isEmpty()) {
+    private Set<UUID> recentlyInteractedBlogIds(
+            UUID userId,
+            List<UUID> blogIds,
+            LocalDateTime startAt,
+            LocalDateTime endAt) {
+        if (blogIds.isEmpty()) {
             return Set.of();
         }
-        return Set.copyOf(reviewerRepository.findActiveReviewerUserIdsByUserIds(authorIds));
+        Set<UUID> interactedBlogIds = new HashSet<>();
+        interactedBlogIds.addAll(blogLikeRepository.findRecentlyLikedBlogIds(userId, blogIds, startAt, endAt));
+        interactedBlogIds.addAll(commentRepository.findRecentlyCommentedBlogIds(userId, blogIds, startAt, endAt));
+        interactedBlogIds.addAll(blogShareRepository.findRecentlySharedBlogIds(userId, blogIds, startAt, endAt));
+        interactedBlogIds.addAll(blogSaveRepository.findRecentlySavedBlogIds(userId, blogIds, startAt, endAt));
+        return Set.copyOf(interactedBlogIds);
+    }
+
+    private Map<UUID, Set<String>> tagsByBlogId(List<UUID> blogIds) {
+        if (blogIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, Set<String>> tagsByBlogId = new HashMap<>();
+        for (AiModerationResult result : aiModerationResultRepository.findWithTagsByBlogIds(blogIds)) {
+            if (result.getBlog() == null || result.getBlog().getId() == null
+                    || tagsByBlogId.containsKey(result.getBlog().getId())) {
+                continue;
+            }
+            Set<String> tags = result.getTags() == null
+                    ? Set.of()
+                    : result.getTags().stream()
+                    .filter(tag -> tag != null && !tag.isBlank())
+                    .collect(Collectors.toUnmodifiableSet());
+            tagsByBlogId.put(result.getBlog().getId(), tags);
+        }
+        return Map.copyOf(tagsByBlogId);
+    }
+
+    private Map<UUID, Long> activeReportCountsByBlogId(List<UUID> blogIds) {
+        if (blogIds.isEmpty()) {
+            return Map.of();
+        }
+        return contentReportRepository.countByBlogIdsAndStatusIn(blogIds, ACTIVE_REPORT_STATUSES)
+                .stream()
+                .collect(Collectors.toMap(
+                        ContentReportRepository.ReportCountRow::getTargetId,
+                        ContentReportRepository.ReportCountRow::getReportCount));
     }
 
     private Map<UUID, String> cityByRegionId(List<UUID> regionIds) {
@@ -544,43 +685,8 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         return Set.copyOf(feedImpressionRepository.findSeenBlogIds(userId, blogIds, shownAfter));
     }
 
-    private Map<UUID, Long> authorBlogCounts(List<Blog> blogs) {
-        return blogs.stream()
-                .filter(blog -> blog.getAuthor() != null && blog.getAuthor().getUserId() != null)
-                .collect(Collectors.groupingBy(
-                        blog -> blog.getAuthor().getUserId(),
-                        Collectors.counting()));
-    }
-
-    private Map<UUID, Long> pageBlogCounts(List<Blog> blogs) {
-        return blogs.stream()
-                .filter(blog -> blog.getPageId() != null)
-                .collect(Collectors.groupingBy(Blog::getPageId, Collectors.counting()));
-    }
-
     private void upsertRecommendationScores(List<BlogRecommendationScore> scores, LocalDateTime createdAt) {
-        scores.forEach(score -> blogRecommendationScoreRepository.upsertRecommendationScore(
-                score.getId() == null ? UUID.randomUUID() : score.getId(),
-                score.getUser().getUserId(),
-                score.getBlog().getId(),
-                score.getWindowType().name(),
-                score.getContextRegionId(),
-                score.getFeedScore(),
-                score.getTrendingScore(),
-                score.getFreshnessScore(),
-                score.getSameRegionScore(),
-                score.getFollowedUserScore(),
-                score.getFollowedPageScore(),
-                score.getActivityScore(),
-                score.getOwnAuthorScore(),
-                score.getReviewerScore(),
-                score.getReportPenalty(),
-                score.getSeenPenalty(),
-                score.getRepetitionPenalty(),
-                score.getRankPosition(),
-                score.getReason(),
-                score.getComputedAt(),
-                createdAt));
+        recommendationScoreBatchWriter.upsertAll(scores, createdAt);
     }
 
     @Override
@@ -607,86 +713,162 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         return user.getRegion() == null ? null : user.getRegion().getRegionId();
     }
 
-    private Map<UUID, BlogTrendingScore> latestTrendingScores(TrendWindowType windowType) {
-        LocalDateTime latestComputedAt = blogTrendingScoreRepository.findLatestComputedAt(windowType);
-        if (latestComputedAt == null) {
-            return Map.of();
-        }
-        return blogTrendingScoreRepository.findByWindowTypeAndComputedAtOrderByRankPositionAsc(windowType, latestComputedAt)
-                .stream()
-                .collect(Collectors.toMap(score -> score.getBlog().getId(), Function.identity()));
-    }
-
-    private boolean isPersonalizedCacheStale(UUID userId, LocalDateTime latestComputedAt) {
-        return blogRepository.findFirstByAuthorUserIdAndStatusOrderByCreatedAtDescIdDesc(userId, PostStatus.PUBLISHED)
+    private boolean isPersonalizedCacheStale(
+            UUID userId,
+            TrendWindowType windowType,
+            UUID contextRegionId,
+            LocalDateTime latestComputedAt) {
+        boolean hasNewOwnPost = blogRepository
+                .findFirstByAuthorUserIdAndStatusOrderByCreatedAtDescIdDesc(userId, PostStatus.PUBLISHED)
                 .map(blog -> blog.getCreatedAt() != null && blog.getCreatedAt().isAfter(latestComputedAt))
                 .orElse(false);
+        if (hasNewOwnPost) {
+            return true;
+        }
+        List<String> formulaVersions = blogRecommendationScoreRepository.findFormulaVersionsAtComputedAt(
+                userId,
+                windowType,
+                contextRegionId,
+                latestComputedAt);
+        return formulaVersions.size() != 1
+                || !FeedScoreCalculationService.FORMULA_VERSION.equals(formulaVersions.getFirst());
     }
 
     private BlogRecommendationScore createRecommendationScore(
             User user,
             Blog blog,
-            BlogTrendingScore trendingScore,
             TrendWindowType windowType,
             UUID contextRegionId,
             FeedScoringContext scoringContext,
-        LocalDateTime now) {
-        double baseTrendingScore = trendingScore == null ? 0.0 : trendingScore.getTrendScore();
-        double trendingComponent = baseTrendingScore * 0.35;
-        double ownAuthorScore = calculateOwnAuthorScore(blog, user.getUserId());
-        double followedPageScore = calculateFollowedPageScore(blog, scoringContext.followedPageIds());
-        double followedUserScore = calculateFollowedUserScore(blog, scoringContext.userId(), scoringContext.followedUserIds());
-        double sameRegionScore = calculateSameRegionScore(blog, scoringContext.contextCity(), scoringContext.cityByRegionId());
-        double reviewerScore = calculateReviewerScore(blog, scoringContext.activeReviewerUserIds());
-        double activityScore = calculateActivityScore(scoringContext.activityCountsByBlogId().get(blog.getId()));
-        double freshnessScore = calculateFreshnessScore(blog, now);
-        double reportPenalty = scoringContext.reportCountsByBlogId().getOrDefault(blog.getId(), 0L) * 10.0;
-        double seenPenalty = scoringContext.seenBlogIds().contains(blog.getId()) ? SEEN_PENALTY : 0.0;
-        double repetitionPenalty = calculateRepetitionPenalty(blog, scoringContext.authorBlogCounts(), scoringContext.pageBlogCounts());
-        double feedScore = trendingComponent
-                + ownAuthorScore
-                + followedPageScore
-                + followedUserScore
-                + sameRegionScore
-                + reviewerScore
-                + activityScore
-                + freshnessScore
-                - reportPenalty
-                - seenPenalty
-                - repetitionPenalty;
+            LocalDateTime now) {
+        UUID sourceKey = sourceKey(blog);
+        UUID authorId = blog.getAuthor() == null ? null : blog.getAuthor().getUserId();
+        boolean ownAuthor = user.getUserId().equals(authorId);
+        boolean followedSource = blog.getPageId() != null
+                ? scoringContext.followedPageIds().contains(blog.getPageId())
+                : scoringContext.followedUserIds().contains(authorId);
+        boolean positivelyInteracted = scoringContext.positivelyInteractedSourceKeys().contains(sourceKey);
+        ActivityCounts counts = scoringContext.activityCountsByBlogId().get(blog.getId());
+        if (counts == null) {
+            counts = new ActivityCounts(0, 0, 0, 0, 0, 0);
+        }
+
+        double relationshipScore = feedScoreCalculationService.calculateRelationshipScore(
+                ownAuthor, followedSource, positivelyInteracted);
+        double interestScore = feedScoreCalculationService.calculateInterestScore(
+                scoringContext.userInterestTags(),
+                scoringContext.tagsByBlogId().getOrDefault(blog.getId(), Set.of()));
+        double engagementScore = feedScoreCalculationService.calculateEngagementScore(
+                counts.views(), counts.likes(), counts.comments(), counts.replies(), counts.shares(), counts.saves());
+        double freshnessScore = feedScoreCalculationService.calculateFreshnessScore(blog.getCreatedAt(), now);
+        double qualityScore = feedScoreCalculationService.calculateQualityScore(
+                scoringContext.activeReportCountsByBlogId().getOrDefault(blog.getId(), 0L));
+        double locationScore = feedScoreCalculationService.calculateLocationScore(
+                scoringContext.contextCity(),
+                scoringContext.cityByRegionId().get(blog.getRegionId()));
+        double unseenScore = feedScoreCalculationService.calculateUnseenScore(
+                scoringContext.seenBlogIds().contains(blog.getId()));
+        FeedScoreCalculationService.ScoreComponents components = new FeedScoreCalculationService.ScoreComponents(
+                relationshipScore,
+                interestScore,
+                engagementScore,
+                freshnessScore,
+                qualityScore,
+                locationScore,
+                0.0,
+                unseenScore);
 
         BlogRecommendationScore score = new BlogRecommendationScore();
         score.setUser(user);
         score.setBlog(blog);
         score.setWindowType(windowType);
         score.setContextRegionId(contextRegionId);
-        score.setFeedScore(feedScore);
-        score.setTrendingScore(baseTrendingScore);
-        score.setFollowedPageScore(followedPageScore);
-        score.setFollowedUserScore(followedUserScore);
-        score.setSameRegionScore(sameRegionScore);
+        score.setFeedScore(feedScoreCalculationService.calculateStaticScore(components));
+        score.setFormulaVersion(FeedScoreCalculationService.FORMULA_VERSION);
+        score.setRelationshipScore(relationshipScore);
+        score.setInterestScore(interestScore);
+        score.setEngagementScore(engagementScore);
+        score.setQualityScore(qualityScore);
+        score.setLocationScore(locationScore);
+        score.setDiversityScore(0.0);
+        score.setUnseenScore(unseenScore);
+        score.setTrendingScore(0.0);
+        score.setFollowedPageScore(0.0);
+        score.setFollowedUserScore(0.0);
+        score.setSameRegionScore(0.0);
         score.setFreshnessScore(freshnessScore);
-        score.setActivityScore(activityScore);
-        score.setOwnAuthorScore(ownAuthorScore);
-        score.setReviewerScore(reviewerScore);
-        score.setReportPenalty(reportPenalty);
-        score.setSeenPenalty(seenPenalty);
-        score.setRepetitionPenalty(repetitionPenalty);
+        score.setActivityScore(0.0);
+        score.setOwnAuthorScore(0.0);
+        score.setReviewerScore(0.0);
+        score.setReportPenalty(0.0);
+        score.setSeenPenalty(0.0);
+        score.setRepetitionPenalty(0.0);
         score.setRankPosition(0);
-        score.setReason(buildReason(
-                trendingComponent,
-                ownAuthorScore,
-                followedPageScore,
-                followedUserScore,
-                sameRegionScore,
-                reviewerScore,
-                activityScore,
-                freshnessScore,
-                reportPenalty,
-                seenPenalty,
-                repetitionPenalty));
+        score.setReason(buildExpertReason(score));
         score.setComputedAt(now);
         return score;
+    }
+
+    private List<BlogRecommendationScore> selectWithDiversity(List<BlogRecommendationScore> candidates) {
+        List<BlogRecommendationScore> remaining = new ArrayList<>(candidates);
+        List<BlogRecommendationScore> selected = new ArrayList<>(candidates.size());
+        List<UUID> selectedSourceKeys = new ArrayList<>();
+        Comparator<BlogRecommendationScore> comparator = Comparator
+                .comparingDouble(BlogRecommendationScore::getFeedScore)
+                .thenComparing(
+                        score -> score.getBlog().getCreatedAt(),
+                        Comparator.nullsFirst(Comparator.naturalOrder()))
+                .thenComparing(
+                        score -> score.getBlog().getId(),
+                        Comparator.nullsFirst(Comparator.naturalOrder()));
+
+        while (!remaining.isEmpty()) {
+            for (BlogRecommendationScore candidate : remaining) {
+                double diversityScore = feedScoreCalculationService.calculateDiversityScore(
+                        sourceKey(candidate.getBlog()), selectedSourceKeys);
+                candidate.setDiversityScore(diversityScore);
+                candidate.setFeedScore(feedScoreCalculationService.calculateFinalScore(toComponents(candidate)));
+            }
+            BlogRecommendationScore winner = remaining.stream().max(comparator).orElseThrow();
+            remaining.remove(winner);
+            winner.setRankPosition(selected.size() + 1);
+            winner.setReason(buildExpertReason(winner));
+            selected.add(winner);
+            selectedSourceKeys.add(sourceKey(winner.getBlog()));
+        }
+        return List.copyOf(selected);
+    }
+
+    private FeedScoreCalculationService.ScoreComponents toComponents(BlogRecommendationScore score) {
+        return new FeedScoreCalculationService.ScoreComponents(
+                score.getRelationshipScore(),
+                score.getInterestScore(),
+                score.getEngagementScore(),
+                score.getFreshnessScore(),
+                score.getQualityScore(),
+                score.getLocationScore(),
+                score.getDiversityScore(),
+                score.getUnseenScore());
+    }
+
+    private UUID sourceKey(Blog blog) {
+        if (blog.getPageId() != null) {
+            return blog.getPageId();
+        }
+        return blog.getAuthor() == null ? null : blog.getAuthor().getUserId();
+    }
+
+    private String buildExpertReason(BlogRecommendationScore score) {
+        return "formulaVersion=" + FeedScoreCalculationService.FORMULA_VERSION
+                + ", relationship=" + score.getRelationshipScore()
+                + ", interest=" + score.getInterestScore()
+                + ", engagement=" + score.getEngagementScore()
+                + ", freshness=" + score.getFreshnessScore()
+                + ", quality=" + score.getQualityScore()
+                + ", location=" + score.getLocationScore()
+                + ", diversity=" + score.getDiversityScore()
+                + ", unseen=" + score.getUnseenScore()
+                + ", feedScore=" + score.getFeedScore();
     }
 
     private List<BlogFeedResponse> toFeedResponses(List<BlogRecommendationScore> scores, UUID viewerUserId) {
@@ -734,6 +916,35 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                 .map(User::getUserId)
                 .distinct()
                 .toList();
+        return loadViewerFeedContext(viewerUserId, authorUserIds, pageIds, blogIds);
+    }
+
+    private ViewerFeedContext buildViewerFeedContext(
+            UUID viewerUserId,
+            List<BlogFeedResponse> responses) {
+        List<UUID> authorUserIds = responses.stream()
+                .map(BlogFeedResponse::getAuthorUserId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        List<UUID> pageIds = responses.stream()
+                .map(BlogFeedResponse::getPageId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        List<UUID> blogIds = responses.stream()
+                .map(BlogFeedResponse::getBlogId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        return loadViewerFeedContext(viewerUserId, authorUserIds, pageIds, blogIds);
+    }
+
+    private ViewerFeedContext loadViewerFeedContext(
+            UUID viewerUserId,
+            List<UUID> authorUserIds,
+            List<UUID> pageIds,
+            List<UUID> blogIds) {
         Set<UUID> followedUserIds = authorUserIds.isEmpty()
                 ? Set.of()
                 : Set.copyOf(userFollowRepository.findFollowedUserIds(viewerUserId, authorUserIds));
@@ -811,19 +1022,23 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             response.setRegionArea(region.getArea());
         }
         response.setRankPosition(score.getRankPosition());
+        applyViewerState(response, viewerContext);
+        response.setCreatedAt(blog.getCreatedAt());
+        return response;
+    }
+
+    private void applyViewerState(BlogFeedResponse response, ViewerFeedContext viewerContext) {
         UUID viewerUserId = viewerContext.viewerUserId();
-        UUID authorUserId = author.getUserId();
+        UUID authorUserId = response.getAuthorUserId();
         response.setIsAuthorFollowing(viewerUserId != null
                 && authorUserId != null
                 && !viewerUserId.equals(authorUserId)
                 && viewerContext.followedUserIds().contains(authorUserId));
-        UUID pageId = blog.getPageId();
+        UUID pageId = response.getPageId();
         response.setIsPageFollowing(viewerUserId != null && pageId != null
                 && viewerContext.followedPageIds().contains(pageId));
-        response.setIsLike(viewerUserId != null && viewerContext.likedBlogIds().contains(blog.getId()));
-        response.setIsSave(viewerUserId != null && viewerContext.savedBlogIds().contains(blog.getId()));
-        response.setCreatedAt(blog.getCreatedAt());
-        return response;
+        response.setIsLike(viewerUserId != null && viewerContext.likedBlogIds().contains(response.getBlogId()));
+        response.setIsSave(viewerUserId != null && viewerContext.savedBlogIds().contains(response.getBlogId()));
     }
 
     private void applyDisplayAuthor(BlogFeedResponse response, User author, CafePage cafePage) {
@@ -847,77 +1062,6 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         return fallback;
     }
 
-    private double calculateFollowedPageScore(Blog blog, Set<UUID> followedPageIds) {
-        if (blog.getPageId() == null) {
-            return 0.0;
-        }
-        return followedPageIds.contains(blog.getPageId()) ? 30.0 : 0.0;
-    }
-
-    private double calculateOwnAuthorScore(Blog blog, UUID userId) {
-        if (blog.getAuthor() == null || blog.getAuthor().getUserId() == null) {
-            return 0.0;
-        }
-        return blog.getAuthor().getUserId().equals(userId) ? OWN_AUTHOR_SCORE : 0.0;
-    }
-
-    private double calculateFollowedUserScore(Blog blog, UUID userId, Set<UUID> followedUserIds) {
-        if (blog.getAuthor() == null || blog.getAuthor().getUserId() == null) {
-            return 0.0;
-        }
-        if (blog.getAuthor().getUserId().equals(userId)) {
-            return 0.0;
-        }
-        return followedUserIds.contains(blog.getAuthor().getUserId())
-                ? 25.0
-                : 0.0;
-    }
-
-    private double calculateReviewerScore(Blog blog, Set<UUID> activeReviewerUserIds) {
-        if (blog.getAuthor() == null || blog.getAuthor().getUserId() == null) {
-            return 0.0;
-        }
-        return activeReviewerUserIds.contains(blog.getAuthor().getUserId()) ? REVIEWER_SCORE : 0.0;
-    }
-
-    private double calculateActivityScore(ActivityCounts counts) {
-        if (counts == null) {
-            return 0.0;
-        }
-        return counts.views() * 0.1
-                + counts.likes() * 2.0
-                + counts.comments() * 4.0
-                + counts.replies() * 4.0
-                + counts.shares() * 6.0
-                + counts.saves() * 5.0;
-    }
-
-    private double calculateRepetitionPenalty(
-            Blog blog,
-            Map<UUID, Long> authorBlogCounts,
-            Map<UUID, Long> pageBlogCounts) {
-        long authorCount = blog.getAuthor() == null || blog.getAuthor().getUserId() == null
-                ? 0L
-                : authorBlogCounts.getOrDefault(blog.getAuthor().getUserId(), 0L);
-        long pageCount = blog.getPageId() == null ? 0L : pageBlogCounts.getOrDefault(blog.getPageId(), 0L);
-        long maxCount = Math.max(authorCount, pageCount);
-        if (maxCount <= 2) {
-            return 0.0;
-        }
-        return Math.min((maxCount - 2) * 10.0, 30.0);
-    }
-
-    private double calculateSameRegionScore(Blog blog, String contextCity, Map<UUID, String> cityByRegionId) {
-        if (isBlank(contextCity) || blog.getRegionId() == null) {
-            return 0.0;
-        }
-        String blogCity = cityByRegionId.get(blog.getRegionId());
-        if (isBlank(blogCity)) {
-            return 0.0;
-        }
-        return normalizeCity(contextCity).equals(normalizeCity(blogCity)) ? 15.0 : 0.0;
-    }
-
     private String resolveContextCity(User user, UUID contextRegionId) {
         if (contextRegionId != null) {
             return regionRepository.findById(contextRegionId)
@@ -925,47 +1069,6 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                     .orElse(null);
         }
         return user.getRegion() == null ? null : user.getRegion().getCity();
-    }
-
-    private String normalizeCity(String city) {
-        return city.trim().toLowerCase();
-    }
-
-    private boolean isBlank(String value) {
-        return value == null || value.isBlank();
-    }
-
-    private double calculateFreshnessScore(Blog blog, LocalDateTime now) {
-        if (blog.getCreatedAt() == null) {
-            return 0.0;
-        }
-        double ageHours = Math.max(0, Duration.between(blog.getCreatedAt(), now).toMinutes() / 60.0);
-        return Math.exp(-ageHours / 48.0) * 10.0;
-    }
-
-    private String buildReason(
-            double trendingComponent,
-            double ownAuthorScore,
-            double followedPageScore,
-            double followedUserScore,
-            double sameRegionScore,
-            double reviewerScore,
-            double activityScore,
-            double freshnessScore,
-            double reportPenalty,
-            double seenPenalty,
-            double repetitionPenalty) {
-        return "trendingComponent=" + trendingComponent
-                + ", ownAuthorScore=" + ownAuthorScore
-                + ", followedPageScore=" + followedPageScore
-                + ", followedUserScore=" + followedUserScore
-                + ", sameRegionScore=" + sameRegionScore
-                + ", reviewerScore=" + reviewerScore
-                + ", activityScore=" + activityScore
-                + ", freshnessScore=" + freshnessScore
-                + ", reportPenalty=" + reportPenalty
-                + ", seenPenalty=" + seenPenalty
-                + ", repetitionPenalty=" + repetitionPenalty;
     }
 
     private String toPreview(String content) {
@@ -1058,7 +1161,9 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         return 0;
     }
 
-    private List<BlogFeedResponse> toOrganicFeedResponses(List<OrganicFeedRankingItem> rankingItems) {
+    private List<BlogFeedResponse> toOrganicFeedResponses(
+            List<OrganicFeedRankingItem> rankingItems,
+            UUID viewerUserId) {
         if (rankingItems.isEmpty()) {
             return List.of();
         }
@@ -1083,7 +1188,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                 })
                 .filter(score -> score != null)
                 .toList();
-        return toFeedResponses(recommendationScores, null);
+        return toFeedResponses(recommendationScores, viewerUserId);
     }
 
     private FeedResponseDTO toFeedResponse(BlogFeedCursorPageResponseDTO organicPage) {
@@ -1230,13 +1335,13 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             Set<UUID> violationBlogIds,
             Set<UUID> followedPageIds,
             Set<UUID> followedUserIds,
-            Set<UUID> activeReviewerUserIds,
             Map<UUID, String> cityByRegionId,
-            Map<UUID, Long> reportCountsByBlogId,
+            Map<UUID, Long> activeReportCountsByBlogId,
             Map<UUID, ActivityCounts> activityCountsByBlogId,
             Set<UUID> seenBlogIds,
-            Map<UUID, Long> authorBlogCounts,
-            Map<UUID, Long> pageBlogCounts) {
+            Set<UUID> positivelyInteractedSourceKeys,
+            Map<UUID, Set<String>> tagsByBlogId,
+            Set<String> userInterestTags) {
     }
 
     private record ActivityCounts(

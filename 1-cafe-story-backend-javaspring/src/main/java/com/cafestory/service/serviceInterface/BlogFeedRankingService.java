@@ -8,7 +8,11 @@ import java.util.List;
 import java.util.UUID;
 
 public interface BlogFeedRankingService {
-    FeedResponseDTO getOrganicFeed(String cursor, int size);
+    default FeedResponseDTO getOrganicFeed(String cursor, int size) {
+        return getOrganicFeed(null, cursor, size);
+    }
+
+    FeedResponseDTO getOrganicFeed(UUID viewerUserId, String cursor, int size);
 
     FeedResponseDTO getPersonalizedFeedPage(
             UUID userId,

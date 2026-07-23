@@ -1,0 +1,53 @@
+{
+  "featureSlug": "feed-ranking-expert-v1-performance",
+  "evidenceTimestamp": "20260719-180029",
+  "status": "PARTIAL_PASS",
+  "functionalFix": "PASS",
+  "rebuild": {
+    "items": 434,
+    "beforeMs": 58202.0,
+    "afterMs": 5635.75,
+    "improvementPercent": 90.32
+  },
+  "personalizedFeedWarm": {
+    "requests": 50,
+    "averageMs": 244.58,
+    "p95Ms": 267.95,
+    "errorRatePercent": 0,
+    "status": "PASS"
+  },
+  "mixedFeed": {
+    "requests": 10,
+    "averageMs": 554.14,
+    "p95Ms": 590.88,
+    "errorRatePercent": 0,
+    "status": "FAIL_THRESHOLD"
+  },
+  "webHomeHttp": {
+    "requests": 10,
+    "averageMs": 141.19,
+    "p95Ms": 224.36,
+    "errorRatePercent": 0,
+    "status": "PASS"
+  },
+  "mobileDevice": {
+    "status": "NOT_RUN_NO_DEVICE_SESSION"
+  },
+  "tests": {
+    "focusedPassed": 24,
+    "regressionRun": 571,
+    "regressionFailures": 0,
+    "regressionErrors": 0,
+    "regressionSkipped": 1,
+    "webTypecheck": "PASS",
+    "mobileTypecheck": "COMPILER_STACK_OVERFLOW"
+  },
+  "clientContract": {
+    "webFeedApi": "GET /api/feed",
+    "mobileFeedApi": "GET /api/feed",
+    "webCallsRebuild": false,
+    "mobileCallsRebuild": false,
+    "rebuildOwnership": "BACKEND"
+  },
+  "secretsStored": false
+}

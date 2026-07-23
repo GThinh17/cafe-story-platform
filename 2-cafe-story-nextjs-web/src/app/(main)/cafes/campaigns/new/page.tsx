@@ -1,5 +1,4 @@
-import { SettingsShell } from "@/components/settings/settings-shell";
-import { CampaignCreateForm } from "@/components/cafe/campaign-create-form";
+import { redirect } from "next/navigation";
 
 type CampaignCreateSearchParams = {
   paymentId?: string | string[];
@@ -17,9 +16,7 @@ export default async function CampaignCreatePage({
     ? params.paymentId[0]
     : params.paymentId;
 
-  return (
-    <SettingsShell>
-      <CampaignCreateForm paymentId={paymentId ?? ""} />
-    </SettingsShell>
-  );
+  redirect(paymentId
+    ? `/ads?paymentId=${encodeURIComponent(paymentId)}`
+    : "/ads");
 }

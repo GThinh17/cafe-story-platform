@@ -1,3 +1,4 @@
+export * from "./main/ads-manager-screen";
 export * from "./main/blog-detail-screen";
 export * from "./main/cafe-page-screen";
 export * from "./auth/login-screen";

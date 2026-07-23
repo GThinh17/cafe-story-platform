@@ -2,6 +2,7 @@ import {
   CreditCard,
   Ellipsis,
   LayoutDashboard,
+  Megaphone,
   Send,
   Settings,
   Store,
@@ -12,22 +13,26 @@ import { useState, type ReactNode } from "react";
 import { colors, spacing, typography } from "../../theme";
 
 type ProfileTopBarProps = {
+  onAdsManagerPress?: () => void;
   onCafePagePress?: () => void;
   onMessagePress?: () => void;
   onPaymentPress?: () => void;
   onReviewerDashboardPress?: () => void;
   onSettingsPress?: () => void;
+  showAdsManagerAction?: boolean;
   showCafePageAction?: boolean;
   showReviewerDashboardAction?: boolean;
   userName: string;
 };
 
 export function ProfileTopBar({
+  onAdsManagerPress,
   onCafePagePress,
   onMessagePress,
   onPaymentPress,
   onReviewerDashboardPress,
   onSettingsPress,
+  showAdsManagerAction = false,
   showCafePageAction = false,
   showReviewerDashboardAction = false,
   userName,
@@ -93,6 +98,16 @@ export function ProfileTopBar({
                 onPaymentPress?.();
               }}
             />
+            {showAdsManagerAction ? (
+              <OptionItem
+                icon={<Megaphone color={colors.foreground} size={20} strokeWidth={2.4} />}
+                label="Ads Manager"
+                onPress={() => {
+                  closeOptions();
+                  onAdsManagerPress?.();
+                }}
+              />
+            ) : null}
             {showReviewerDashboardAction ? (
               <OptionItem
                 icon={

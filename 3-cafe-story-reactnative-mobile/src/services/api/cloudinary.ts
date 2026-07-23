@@ -94,6 +94,10 @@ export function uploadPostImageToCloudinary(file: CloudinaryUploadFile) {
   return uploadImageToCloudinary(file, "cafestory/posts", "post image");
 }
 
+export function uploadAdImageToCloudinary(file: CloudinaryUploadFile) {
+  return uploadImageToCloudinary(file, "cafestory/ads", "ad image");
+}
+
 export function uploadChatImageToCloudinary(file: CloudinaryUploadFile) {
   return uploadImageToCloudinary(file, "cafestory/messages", "message image");
 }

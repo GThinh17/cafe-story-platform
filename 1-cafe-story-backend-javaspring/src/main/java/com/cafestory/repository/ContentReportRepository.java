@@ -41,6 +41,17 @@ public interface ContentReportRepository extends JpaRepository<ContentReport, UU
 
     long countByBlogIdAndStatusIn(UUID blogId, Collection<ReportStatus> statuses);
 
+    @Query("""
+            select r.blog.id as targetId, count(r) as reportCount
+            from ContentReport r
+            where r.blog.id in :blogIds
+            and r.status in :statuses
+            group by r.blog.id
+            """)
+    List<ReportCountRow> countByBlogIdsAndStatusIn(
+            @Param("blogIds") Collection<UUID> blogIds,
+            @Param("statuses") Collection<ReportStatus> statuses);
+
     long countByCommentIdAndStatusIn(UUID commentId, Collection<ReportStatus> statuses);
 
     @Query("""

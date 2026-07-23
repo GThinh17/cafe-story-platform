@@ -200,7 +200,7 @@ export function AdCampaignsSection({ cafePageId }: AdCampaignsSectionProps) {
             {availablePayments.map((payment) => (
               <Link
                 className="flex items-center justify-between gap-3 rounded-md border border-dashed border-border bg-background p-4 transition hover:border-primary hover:bg-primary/5"
-                href={`/cafes/campaigns/new?paymentId=${encodeURIComponent(payment.paymentId)}`}
+                href={`/ads?paymentId=${encodeURIComponent(payment.paymentId)}`}
                 key={payment.paymentId}
               >
                 <div className="min-w-0">

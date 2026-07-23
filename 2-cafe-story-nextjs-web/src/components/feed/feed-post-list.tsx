@@ -11,9 +11,9 @@ import {
 import { PostCard } from "@/components/feed/post-card";
 import { PostCommentsModal } from "@/components/feed/post-comments-modal";
 import { ReportPostModal } from "@/components/feed/report-post-modal";
-import { mapBlogFeedToFeedPosts } from "@/features/blogs/blog-feed-adapter";
+import { SponsoredCafeCard } from "@/components/feed/sponsored-cafe-card";
+import { mapMixedFeedToRenderableItems } from "@/features/blogs/blog-feed-adapter";
 import {
-  getBlogFeed,
   likeBlog,
   saveBlog,
   shareBlog,
@@ -21,29 +21,33 @@ import {
   unsaveBlog,
   unshareBlog,
 } from "@/lib/api/blogs";
+import { getMixedFeed } from "@/lib/api/feed";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import type { TrendWindowType } from "@/types/blog";
-import type { FeedPost } from "@/types/feed";
+import type { FeedPost, FeedRenderableItem } from "@/types/feed";
 
 type FeedPostListProps = {
   errorMessage?: string;
+  initialHasMore?: boolean;
+  initialNextCursor?: string | null;
   initialPage?: number;
   pageSize?: number;
-  posts: FeedPost[];
-  windowType?: TrendWindowType;
+  items: FeedRenderableItem[];
 };
 
 export function FeedPostList({
   errorMessage,
+  initialHasMore,
+  initialNextCursor = null,
   initialPage = 0,
   pageSize = 20,
-  posts,
-  windowType = "HOUR_24",
+  items,
 }: FeedPostListProps) {
-  const [feedPosts, setFeedPosts] = useState(posts);
-  const [nextPage, setNextPage] = useState(initialPage + 1);
+  const [feedItems, setFeedItems] = useState(items);
+  const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(posts.length >= pageSize);
+  const [hasMore, setHasMore] = useState(
+    initialHasMore ?? items.length >= pageSize,
+  );
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const isLoadingMoreRef = useRef(false);
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
@@ -55,14 +59,21 @@ export function FeedPostList({
   const { user } = useCurrentUser();
 
   const selectedPost = useMemo(
-    () => feedPosts.find((post) => post.id === selectedPostId) ?? null,
-    [feedPosts, selectedPostId],
+    () => feedItems.find(
+      (item): item is Extract<FeedRenderableItem, { kind: "post" }> =>
+        item.kind === "post" && item.post.id === selectedPostId,
+    )?.post ?? null,
+    [feedItems, selectedPostId],
   );
 
   const updatePost = useCallback(
     (postId: string, updater: (post: FeedPost) => FeedPost) => {
-      setFeedPosts((currentPosts) =>
-        currentPosts.map((post) => (post.id === postId ? updater(post) : post)),
+      setFeedItems((currentItems) =>
+        currentItems.map((item) =>
+          item.kind === "post" && item.post.id === postId
+            ? { ...item, post: updater(item.post) }
+            : item,
+        ),
       );
     },
     [],
@@ -150,32 +161,31 @@ export function FeedPostList({
     setLoadMoreError(null);
 
     try {
-      const response = await getBlogFeed({
-        page: nextPage,
+      const response = await getMixedFeed({
+        cursor: nextCursor,
         size: pageSize,
-        windowType,
       });
-      const nextPosts = mapBlogFeedToFeedPosts(response);
+      const nextItems = mapMixedFeedToRenderableItems(response);
 
-      setFeedPosts((currentPosts) => [...currentPosts, ...nextPosts]);
-      setNextPage((currentPage) => currentPage + 1);
-      setHasMore(response.length >= pageSize);
+      setFeedItems((currentItems) => [...currentItems, ...nextItems]);
+      setNextCursor(response.nextCursor ?? null);
+      setHasMore(Boolean(response.hasMore && response.nextCursor));
     } catch {
       setLoadMoreError("Unable to load more posts.");
     } finally {
       isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
     }
-  }, [hasMore, nextPage, pageSize, windowType]);
+  }, [hasMore, nextCursor, pageSize]);
 
   useEffect(() => {
-    setFeedPosts(posts);
-    setNextPage(initialPage + 1);
-    setHasMore(posts.length >= pageSize);
+    setFeedItems(items);
+    setNextCursor(initialNextCursor);
+    setHasMore(initialHasMore ?? items.length >= pageSize);
     setLoadMoreError(null);
     isLoadingMoreRef.current = false;
     setIsLoadingMore(false);
-  }, [initialPage, pageSize, posts]);
+  }, [initialHasMore, initialNextCursor, initialPage, items, pageSize]);
 
   useEffect(() => {
     const sentinel = loadMoreSentinelRef.current;
@@ -280,7 +290,7 @@ export function FeedPostList({
     );
   }
 
-  if (posts.length === 0) {
+  if (items.length === 0) {
     return (
       <Alert>
         <AlertTitle>No posts yet</AlertTitle>
@@ -292,26 +302,32 @@ export function FeedPostList({
     );
   }
 
+  const firstPostId = feedItems.find((item) => item.kind === "post")?.id;
+
   return (
     <>
       <div className="flex flex-col gap-6">
-        {feedPosts.map((post, index) => (
-          <PostCard
-            key={post.id ?? post.cafe}
-            currentUserId={user?.userId}
-            eagerMedia={index === 0}
-            onCommentClick={(selectedPost) => {
-              if (selectedPost.id) {
-                setSelectedPostId(selectedPost.id);
-              }
-            }}
-            onLikeClick={handleLikeClick}
-            onReportClick={setReportingPost}
-            onSaveClick={handleSaveClick}
-            onShareClick={handleShareClick}
-            post={post}
-          />
-        ))}
+        {feedItems.map((item) =>
+          item.kind === "ad" ? (
+            <SponsoredCafeCard ad={item.ad} key={item.id} />
+          ) : (
+            <PostCard
+              key={item.id}
+              currentUserId={user?.userId}
+              eagerMedia={item.id === firstPostId}
+              onCommentClick={(selectedPost) => {
+                if (selectedPost.id) {
+                  setSelectedPostId(selectedPost.id);
+                }
+              }}
+              onLikeClick={handleLikeClick}
+              onReportClick={setReportingPost}
+              onSaveClick={handleSaveClick}
+              onShareClick={handleShareClick}
+              post={item.post}
+            />
+          ),
+        )}
 
         {hasMore ? (
           <div
