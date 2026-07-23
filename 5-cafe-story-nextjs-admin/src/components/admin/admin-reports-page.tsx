@@ -58,7 +58,6 @@ import {
 import type { PageResponse } from "@/types/api";
 import type {
   AdminReportAiAutoApplyJob,
-  AdminReportAiAutoApplyRequest,
   AdminReportAiResolution,
   ContentReport,
   ReportStatus,
@@ -70,15 +69,6 @@ const targetTypes: ReportTargetType[] = ["BLOG", "COMMENT", "USER", "CAFE_PAGE"]
 const AI_HISTORY_SIZE = 8;
 const BULK_FETCH_SIZE = 100;
 const AUTO_APPLY_HISTORY_SIZE = 8;
-const AUTO_APPLY_DELAYS = [
-  { label: "15m", value: 15 },
-  { label: "30m", value: 30 },
-  { label: "1h", value: 60 },
-  { label: "2h", value: 120 },
-  { label: "6h", value: 360 },
-  { label: "12h", value: 720 },
-];
-
 const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
   OPEN: "Reopen",
   REVIEWING: "Mark reviewing",
@@ -95,8 +85,8 @@ type BulkAiMode = "filtered" | "selected";
 type BulkAiProgress = {
   done: number;
   failed: number;
-  scheduled: number;
-  skipped: number;
+  recommended: number;
+  manualReview: number;
   total: number;
 };
 
@@ -131,17 +121,6 @@ function severityClassName(severity: number | null | undefined) {
 
 function scoreLabel(value: number | null | undefined) {
   return typeof value === "number" ? value.toFixed(1) : "-";
-}
-
-function autoApplyRequest(enabled: boolean, delayMinutes: number): AdminReportAiAutoApplyRequest | undefined {
-  if (!enabled) {
-    return undefined;
-  }
-
-  return {
-    autoApplyEnabled: true,
-    autoApplyDelayMinutes: delayMinutes,
-  };
 }
 
 function activeAutoApplyJob(jobs: AdminReportAiAutoApplyJob[]) {
@@ -206,13 +185,8 @@ export function AdminReportsPage() {
     useState<PageResponse<AdminReportAiAutoApplyJob> | null>(null);
   const [askAiDialogOpen, setAskAiDialogOpen] = useState(false);
   const [askAiReport, setAskAiReport] = useState<ContentReport | null>(null);
-  const [askAiAutoApplyEnabled, setAskAiAutoApplyEnabled] = useState(false);
-  const [askAiDelayMinutes, setAskAiDelayMinutes] = useState(15);
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [bulkMode, setBulkMode] = useState<BulkAiMode>("filtered");
-  const [bulkAutoApplyEnabled, setBulkAutoApplyEnabled] = useState(false);
-  const [bulkDelayMinutes, setBulkDelayMinutes] = useState(15);
-  const [bulkAutoApplyConfirmed, setBulkAutoApplyConfirmed] = useState(false);
   const [selectedBulkReportIds, setSelectedBulkReportIds] = useState<Set<string>>(
     () => new Set(),
   );
@@ -222,8 +196,8 @@ export function AdminReportsPage() {
   const [bulkProgress, setBulkProgress] = useState<BulkAiProgress>({
     done: 0,
     failed: 0,
-    scheduled: 0,
-    skipped: 0,
+    recommended: 0,
+    manualReview: 0,
     total: 0,
   });
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -260,12 +234,9 @@ export function AdminReportsPage() {
   function openBulkDialog() {
     setBulkDialogOpen(true);
     setBulkMode("filtered");
-    setBulkAutoApplyEnabled(false);
-    setBulkDelayMinutes(15);
-    setBulkAutoApplyConfirmed(false);
     setBulkError(null);
     setBulkFailures([]);
-    setBulkProgress({ done: 0, failed: 0, scheduled: 0, skipped: 0, total: 0 });
+    setBulkProgress({ done: 0, failed: 0, recommended: 0, manualReview: 0, total: 0 });
     setSelectedBulkReportIds(new Set(currentPageReportIds));
   }
 
@@ -324,7 +295,7 @@ export function AdminReportsPage() {
     setBulkError(null);
     setBulkFailures([]);
     setAiActionError(null);
-    setBulkProgress({ done: 0, failed: 0, scheduled: 0, skipped: 0, total: 0 });
+    setBulkProgress({ done: 0, failed: 0, recommended: 0, manualReview: 0, total: 0 });
 
     try {
       const reports =
@@ -339,14 +310,11 @@ export function AdminReportsPage() {
         return;
       }
 
-      setBulkProgress({ done: 0, failed: 0, scheduled: 0, skipped: 0, total: reports.length });
+      setBulkProgress({ done: 0, failed: 0, recommended: 0, manualReview: 0, total: reports.length });
 
       for (const report of reports) {
         try {
-          const createdResolution = await createReportAiResolution(
-            report.id,
-            autoApplyRequest(bulkAutoApplyEnabled, bulkDelayMinutes),
-          );
+          const createdResolution = await createReportAiResolution(report.id);
 
           if (detail.data?.id === report.id) {
             setAiHistory((current) => mergeAiHistory(current, createdResolution));
@@ -361,8 +329,12 @@ export function AdminReportsPage() {
           setBulkProgress((current) => ({
             ...current,
             done: current.done + 1,
-            scheduled: current.scheduled + (createdResolution.autoApplyJob ? 1 : 0),
-            skipped: current.skipped + (createdResolution.autoApplyWarning ? 1 : 0),
+            recommended:
+              current.recommended +
+              (createdResolution.reportDecision === "NEEDS_MANUAL_REVIEW" ? 0 : 1),
+            manualReview:
+              current.manualReview +
+              (createdResolution.reportDecision === "NEEDS_MANUAL_REVIEW" ? 1 : 0),
           }));
         } catch (requestError) {
           const reason = requestError instanceof Error
@@ -471,18 +443,16 @@ export function AdminReportsPage() {
 
   function openAskAiDialog(report: ContentReport) {
     setAskAiReport(report);
-    setAskAiAutoApplyEnabled(false);
-    setAskAiDelayMinutes(15);
     setAiActionError(null);
     setAskAiDialogOpen(true);
   }
 
-  async function handleAskAi(report: ContentReport, request?: AdminReportAiAutoApplyRequest) {
+  async function handleAskAi(report: ContentReport) {
     setAiLoadingReportId(report.id);
     setAiActionError(null);
 
     try {
-      const createdResolution = await createReportAiResolution(report.id, request);
+      const createdResolution = await createReportAiResolution(report.id);
 
       if (detail.data?.id === report.id) {
         setAiHistory((current) => mergeAiHistory(current, createdResolution));
@@ -515,10 +485,7 @@ export function AdminReportsPage() {
       return;
     }
 
-    await handleAskAi(
-      askAiReport,
-      autoApplyRequest(askAiAutoApplyEnabled, askAiDelayMinutes),
-    );
+    await handleAskAi(askAiReport);
   }
 
   async function handleCancelAutoApply(job: AdminReportAiAutoApplyJob) {
@@ -776,57 +743,13 @@ export function AdminReportsPage() {
               </button>
             </div>
 
-            <div className="mt-5 rounded-md border border-border bg-background p-4">
-              <label className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  className="mt-1 size-4 accent-primary"
-                  checked={bulkAutoApplyEnabled}
-                  disabled={bulkRunning}
-                  onChange={(event) => {
-                    setBulkAutoApplyEnabled(event.target.checked);
-                    setBulkAutoApplyConfirmed(false);
-                  }}
-                />
-                <span>
-                  <span className="block text-sm font-bold text-espresso">
-                    Auto apply after delay
-                  </span>
-                  <span className="mt-1 block text-sm leading-6 text-muted">
-                    Only high-confidence recommendations are scheduled. Admin can cancel before the countdown ends.
-                  </span>
-                </span>
-              </label>
-              {bulkAutoApplyEnabled ? (
-                <div className="mt-4 flex flex-col gap-3">
-                  <div className="flex flex-wrap gap-2">
-                    {AUTO_APPLY_DELAYS.map((option) => (
-                      <Button
-                        type="button"
-                        variant={bulkDelayMinutes === option.value ? "default" : "outline"}
-                        size="sm"
-                        disabled={bulkRunning}
-                        key={option.value}
-                        onClick={() => setBulkDelayMinutes(option.value)}
-                      >
-                        {option.label}
-                      </Button>
-                    ))}
-                  </div>
-                  <label className="flex items-start gap-3 rounded-md border border-accent/20 bg-accent/5 p-3">
-                    <input
-                      type="checkbox"
-                      className="mt-1 size-4 accent-primary"
-                      checked={bulkAutoApplyConfirmed}
-                      disabled={bulkRunning}
-                      onChange={(event) => setBulkAutoApplyConfirmed(event.target.checked)}
-                    />
-                    <span className="text-sm leading-6 text-foreground">
-                      I understand this may schedule target actions for every matching report in this bulk run.
-                    </span>
-                  </label>
-                </div>
-              ) : null}
+            <div className="mt-5 rounded-md border border-primary/20 bg-primary/5 p-4">
+              <p className="text-sm font-bold text-espresso">
+                Recommendation only — automation is disabled
+              </p>
+              <p className="mt-1 text-sm leading-6 text-muted">
+                This bulk run creates review records only. It never resolves a report or changes a target.
+              </p>
             </div>
 
             <div className="mt-5 rounded-md border border-border bg-background">
@@ -889,9 +812,9 @@ export function AdminReportsPage() {
             {bulkProgress.total > 0 ? (
               <div className="mt-5 rounded-md border border-border bg-background p-4">
                 <div className="flex flex-wrap gap-4 text-sm text-muted">
-                  <span>Success: {bulkSuccess}</span>
-                  <span>Scheduled: {bulkProgress.scheduled}</span>
-                  <span>Skipped: {bulkProgress.skipped}</span>
+                  <span>Completed: {bulkSuccess}</span>
+                  <span>Recommended: {bulkProgress.recommended}</span>
+                  <span>Needs manual review: {bulkProgress.manualReview}</span>
                   <span>Failed: {bulkProgress.failed}</span>
                   <span>Remaining: {bulkRemaining}</span>
                   <span>Total: {bulkProgress.total}</span>
@@ -944,8 +867,7 @@ export function AdminReportsPage() {
               type="button"
               disabled={
                 bulkRunning ||
-                (bulkMode === "selected" && selectedBulkReports.length === 0) ||
-                (bulkAutoApplyEnabled && !bulkAutoApplyConfirmed)
+                (bulkMode === "selected" && selectedBulkReports.length === 0)
               }
               onClick={() => void handleBulkAskAi()}
             >
@@ -971,7 +893,7 @@ export function AdminReportsPage() {
           <div className="border-b border-border px-5 py-4">
             <DialogTitle>Ask AI for report resolution</DialogTitle>
             <DialogDescription className="mt-1">
-              Create a recommendation now. Auto apply is optional and can be cancelled before the scheduled time.
+              Build an evidence-based recommendation. No report or target action is applied.
             </DialogDescription>
           </div>
           <div className="px-5 py-4">
@@ -990,44 +912,11 @@ export function AdminReportsPage() {
               </div>
             ) : null}
 
-            <div className="mt-4 rounded-md border border-border bg-background p-4">
-              <label className="flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  className="mt-1 size-4 accent-primary"
-                  checked={askAiAutoApplyEnabled}
-                  disabled={Boolean(aiLoadingReportId)}
-                  onChange={(event) => setAskAiAutoApplyEnabled(event.target.checked)}
-                />
-                <span>
-                  <span className="block text-sm font-bold text-espresso">
-                    Auto apply after delay
-                  </span>
-                  <span className="mt-1 block text-sm leading-6 text-muted">
-                    BE schedules the countdown. Closing this tab will not cancel the job.
-                  </span>
-                </span>
-              </label>
-              {askAiAutoApplyEnabled ? (
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {AUTO_APPLY_DELAYS.map((option) => (
-                    <Button
-                      type="button"
-                      variant={askAiDelayMinutes === option.value ? "default" : "outline"}
-                      size="sm"
-                      disabled={Boolean(aiLoadingReportId)}
-                      key={option.value}
-                      onClick={() => setAskAiDelayMinutes(option.value)}
-                    >
-                      {option.label}
-                    </Button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="mt-4 rounded-md border border-dashed border-border p-3 text-sm leading-6 text-muted">
-              Auto apply only schedules high-confidence decisions. Low confidence or manual-review results are saved as recommendations without a scheduled action.
+            <div className="mt-4 rounded-md border border-primary/20 bg-primary/5 p-4 text-sm leading-6 text-foreground">
+              <p className="font-bold text-espresso">A0 recommendation-only mode</p>
+              <p className="mt-1 text-muted">
+                AI findings support an admin review. Confidence, likelihood, severity, or action risk never authorize an automatic action.
+              </p>
             </div>
             {aiActionError ? (
               <div role="alert" className="mt-4 rounded-md border border-accent/30 bg-accent/10 p-3 text-sm text-accent">
@@ -1218,29 +1107,106 @@ export function AdminReportsPage() {
                     <div className="flex flex-wrap gap-2">
                       <AdminStatusBadge value={latestAiResolution.reportDecision} />
                       <AdminStatusBadge value={latestAiResolution.targetAction} />
+                      <Badge variant="outline">
+                        {latestAiResolution.contractVersion === "2.0" ? "CONTRACT V2" : "LEGACY V1"}
+                      </Badge>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="rounded-md bg-surface p-3">
-                        <p className="text-xs font-black uppercase text-muted">Confidence</p>
-                        <p className="mt-1 font-semibold text-espresso">
-                          {scoreLabel(latestAiResolution.confidenceScore)}
-                        </p>
-                      </div>
-                      <div className="rounded-md bg-surface p-3">
-                        <p className="text-xs font-black uppercase text-muted">Risk</p>
-                        <p className="mt-1 font-semibold text-espresso">
-                          {scoreLabel(latestAiResolution.riskScore)}
-                        </p>
-                      </div>
-                    </div>
-                    <div>
-                      <p className="text-xs font-black uppercase text-muted">Rule</p>
-                      <p className="mt-1 text-sm text-foreground">
-                        {latestAiResolution.ruleCode || "-"}
+                    <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm leading-6">
+                      <p className="font-bold text-espresso">
+                        AI recommendation only — no action has been applied
+                      </p>
+                      <p className="mt-1 text-muted">
+                        An admin must make and execute the final moderation decision.
                       </p>
                     </div>
+                    {latestAiResolution.blockedReasons?.length ? (
+                      <div className="rounded-md border border-rating/30 bg-rating/10 p-3">
+                        <p className="text-xs font-black uppercase text-espresso">
+                          Why manual review is required
+                        </p>
+                        <ul className="mt-2 space-y-1 text-sm text-foreground">
+                          {latestAiResolution.blockedReasons.map((reason) => (
+                            <li className="font-mono text-xs" key={reason}>• {reason}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                    {latestAiResolution.contractVersion === "2.0" ? (
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="rounded-md bg-surface p-3">
+                          <p className="text-xs font-black uppercase text-muted">Evidence</p>
+                          <p className="mt-1 font-semibold text-espresso">
+                            {latestAiResolution.evidenceSufficiency || "UNKNOWN"}
+                          </p>
+                          <p className="mt-1 text-xs text-muted">
+                            Quality {latestAiResolution.evidenceQuality || "UNKNOWN"}
+                          </p>
+                        </div>
+                        <div className="rounded-md bg-surface p-3">
+                          <p className="text-xs font-black uppercase text-muted">Assessment</p>
+                          <p className="mt-1 font-semibold text-espresso">
+                            Likelihood {latestAiResolution.violationLikelihood || "UNKNOWN"}
+                          </p>
+                          <p className="mt-1 text-xs text-muted">
+                            Harm {latestAiResolution.harmSeverity || "UNKNOWN"} · Action risk {latestAiResolution.actionRisk || "UNKNOWN"}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-md border border-dashed border-border p-3 text-sm text-muted">
+                        Legacy confidence {scoreLabel(latestAiResolution.confidenceScore)} · risk {scoreLabel(latestAiResolution.riskScore)}.
+                        These uncalibrated values are not action authority.
+                      </div>
+                    )}
+                    {latestAiResolution.findings?.length ? (
+                      <div>
+                        <p className="text-xs font-black uppercase text-muted">Policy findings</p>
+                        <div className="mt-2 space-y-2">
+                          {latestAiResolution.findings.map((finding) => (
+                            <div className="rounded-md border border-border p-3" key={`${finding.ruleId}-${finding.ruleVersion}`}>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant="outline">{finding.ruleId}</Badge>
+                                <span className="text-xs text-muted">{finding.ruleVersion}</span>
+                                <AdminStatusBadge value={finding.outcome} />
+                              </div>
+                              <p className="mt-2 text-sm text-foreground">{finding.rationale}</p>
+                              <p className="mt-2 text-xs text-muted">
+                                Evidence: {finding.evidenceIds.join(", ") || "none"}
+                              </p>
+                              {finding.missingEvidenceIds.length ? (
+                                <p className="mt-1 text-xs text-rating">
+                                  Missing: {finding.missingEvidenceIds.join(", ")}
+                                </p>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                    <div className="grid grid-cols-3 gap-2 text-sm">
+                      <div className="rounded-md bg-surface p-3">
+                        <p className="text-xs font-black uppercase text-muted">Used evidence</p>
+                        <p className="mt-1 font-semibold text-espresso">
+                          {latestAiResolution.evidenceSummary?.usedEvidenceIds?.length ?? 0}
+                        </p>
+                      </div>
+                      <div className="rounded-md bg-surface p-3">
+                        <p className="text-xs font-black uppercase text-muted">Counter</p>
+                        <p className="mt-1 font-semibold text-espresso">
+                          {latestAiResolution.evidenceSummary?.counterEvidenceIds?.length ?? 0}
+                        </p>
+                      </div>
+                      <div className="rounded-md bg-surface p-3">
+                        <p className="text-xs font-black uppercase text-muted">Missing</p>
+                        <p className="mt-1 font-semibold text-espresso">
+                          {latestAiResolution.evidenceSummary?.missingEvidenceIds?.length ?? 0}
+                        </p>
+                      </div>
+                    </div>
                     <div>
-                      <p className="text-xs font-black uppercase text-muted">Explanation</p>
+                      <p className="text-xs font-black uppercase text-muted">
+                        AI rationale — not evidence
+                      </p>
                       <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-foreground">
                         {latestAiResolution.explanation || "-"}
                       </p>
@@ -1260,6 +1226,15 @@ export function AdminReportsPage() {
                       {latestAiResolution.modelName || "Unknown model"} -{" "}
                       {formatDate(latestAiResolution.createdAt)}
                     </p>
+                    {latestAiResolution.contractVersion === "2.0" ? (
+                      <div className="rounded-md bg-surface p-3 font-mono text-[11px] leading-5 text-muted">
+                        <p>Policy {latestAiResolution.policyVersion || "-"}</p>
+                        <p>Rules {latestAiResolution.ruleCatalogVersion || "-"}</p>
+                        <p>Prompt {latestAiResolution.promptVersion || "-"}</p>
+                        <p>Workflow {latestAiResolution.workflowVersion || "-"}</p>
+                        <p>Correlation {latestAiResolution.correlationId || "-"}</p>
+                      </div>
+                    ) : null}
                   </div>
                 ) : (
                   <div className="mt-5 rounded-md border border-dashed border-border p-4 text-sm text-muted">
@@ -1271,10 +1246,10 @@ export function AdminReportsPage() {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">
-                        Auto apply
+                        Legacy auto-apply history
                       </p>
                       <p className="mt-1 text-sm text-muted">
-                        Scheduled actions run in backend and can be cancelled before they apply.
+                        New jobs are disabled in A0. Existing scheduled jobs remain visible so an admin can cancel them.
                       </p>
                     </div>
                     <ClockIcon className="size-5 shrink-0 text-primary" />
@@ -1331,7 +1306,7 @@ export function AdminReportsPage() {
                     </div>
                   ) : (
                     <div className="mt-4 rounded-md border border-dashed border-border p-3 text-sm text-muted">
-                      No auto apply job has been scheduled for this report.
+                      No legacy auto-apply job exists for this report.
                     </div>
                   )}
                 </div>
@@ -1379,7 +1354,10 @@ export function AdminReportsPage() {
                         <div className="flex flex-wrap gap-2">
                           <AdminStatusBadge value={resolution.reportDecision} />
                           <AdminStatusBadge value={resolution.targetAction} />
-                          {resolution.ruleCode ? (
+                          <Badge variant="outline">
+                            {resolution.contractVersion === "2.0" ? "CONTRACT V2" : "LEGACY V1"}
+                          </Badge>
+                          {resolution.contractVersion !== "2.0" && resolution.ruleCode ? (
                             <Badge variant="outline">{resolution.ruleCode}</Badge>
                           ) : null}
                         </div>
@@ -1392,8 +1370,17 @@ export function AdminReportsPage() {
                         {resolution.explanation || "-"}
                       </p>
                       <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted">
-                        <span>Confidence {scoreLabel(resolution.confidenceScore)}</span>
-                        <span>Risk {scoreLabel(resolution.riskScore)}</span>
+                        {resolution.contractVersion === "2.0" ? (
+                          <>
+                            <span>Evidence {resolution.evidenceSufficiency || "UNKNOWN"}</span>
+                            <span>Likelihood {resolution.violationLikelihood || "UNKNOWN"}</span>
+                            <span>Action risk {resolution.actionRisk || "UNKNOWN"}</span>
+                          </>
+                        ) : (
+                          <span>
+                            Confidence {scoreLabel(resolution.confidenceScore)} · risk {scoreLabel(resolution.riskScore)} — uncalibrated legacy values
+                          </span>
+                        )}
                         <span>{resolution.modelName || "Unknown model"}</span>
                       </div>
                     </div>

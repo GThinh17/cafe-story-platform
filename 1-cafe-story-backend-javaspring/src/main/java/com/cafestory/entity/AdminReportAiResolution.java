@@ -44,6 +44,18 @@ public class AdminReportAiResolution {
     @Column(name = "id", updatable = false, nullable = false)
     private UUID id;
 
+    @Column(name = "contract_version", length = 32)
+    private String contractVersion;
+
+    @Column(name = "correlation_id")
+    private UUID correlationId;
+
+    @Column(name = "idempotency_key", length = 64)
+    private String idempotencyKey;
+
+    @Column(name = "automation_mode", length = 40)
+    private String automationMode;
+
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "content_report_id", nullable = false)
@@ -90,6 +102,48 @@ public class AdminReportAiResolution {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "raw_response", columnDefinition = "jsonb")
     private Map<String, Object> rawResponse;
+
+    @Column(name = "policy_version", length = 80)
+    private String policyVersion;
+
+    @Column(name = "rule_catalog_version", length = 80)
+    private String ruleCatalogVersion;
+
+    @Column(name = "prompt_version", length = 80)
+    private String promptVersion;
+
+    @Column(name = "workflow_version", length = 80)
+    private String workflowVersion;
+
+    @Column(name = "target_snapshot_hash", length = 64)
+    private String targetSnapshotHash;
+
+    @Column(name = "evidence_quality", length = 24)
+    private String evidenceQuality;
+
+    @Column(name = "evidence_sufficiency", length = 24)
+    private String evidenceSufficiency;
+
+    @Column(name = "violation_likelihood", length = 24)
+    private String violationLikelihood;
+
+    @Column(name = "harm_severity", length = 24)
+    private String harmSeverity;
+
+    @Column(name = "action_risk", length = 24)
+    private String actionRisk;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "findings_json", columnDefinition = "jsonb")
+    private List<Map<String, Object>> findings;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "evidence_summary_json", columnDefinition = "jsonb")
+    private Map<String, Object> evidenceSummary;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "blocked_reasons_json", columnDefinition = "jsonb")
+    private List<String> blockedReasons;
 
     @NotNull
     @Column(name = "created_at", nullable = false, updatable = false)

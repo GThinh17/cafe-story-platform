@@ -20,7 +20,6 @@ import com.cafestory.repository.AiModerationResultRepository;
 import com.cafestory.repository.ContentReportRepository;
 import com.cafestory.service.serviceInterface.AdminReportAiAutoApplyJobService;
 import com.cafestory.service.serviceInterface.AdminReportAiResolutionService;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,10 +37,17 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -50,6 +56,8 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
     private static final Logger log = LoggerFactory.getLogger(AdminReportAiResolutionServiceImpl.class);
     private static final List<ReportStatus> ACTIVE_REPORT_STATUSES =
             List.of(ReportStatus.OPEN, ReportStatus.REVIEWING);
+    private static final String CONTRACT_VERSION = "2.0";
+    private static final String AUTOMATION_MODE = "A0_RECOMMEND_ONLY";
 
     private final AdminReportAiResolutionRepository resolutionRepository;
     private final ContentReportRepository contentReportRepository;
@@ -110,9 +118,19 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
         ContentReport report = findReport(reportId);
         validateReportCanRequestAi(report);
         AdminReportAiResolutionRequestDTO webhookRequest = toWebhookRequest(report);
-        AdminReportAiResolutionWebhookResponseDTO webhookResponse = callWebhook(webhookRequest);
-        validateWebhookResponse(report.getTargetType(), webhookResponse);
-        AdminReportAiResolution savedResolution = resolutionRepository.save(toEntity(report, webhookResponse));
+        Optional<AdminReportAiResolution> existing =
+                resolutionRepository.findByIdempotencyKey(webhookRequest.getIdempotencyKey());
+        if (existing.isPresent()) {
+            return toResponse(existing.get());
+        }
+
+        AdminReportAiResolutionWebhookResponseDTO webhookResponse =
+                isManualOnlyTarget(report.getTargetType())
+                        ? localManualOnlyResponse(webhookRequest, "TARGET_DEEP_POLICY_NOT_IN_SPRINT1")
+                        : callWebhook(webhookRequest);
+        validateWebhookResponse(webhookRequest, webhookResponse);
+        AdminReportAiResolution savedResolution =
+                resolutionRepository.save(toEntity(report, webhookRequest, webhookResponse));
         AdminReportAiResolutionResponseDTO response = toResponse(savedResolution);
         if (autoApplyJobService != null && request != null && request.isAutoApplyEnabled()) {
             AdminReportAiAutoApplyJobService.ScheduleResult scheduleResult =
@@ -168,9 +186,11 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
             return objectMapper.readValue(responseBody, AdminReportAiResolutionWebhookResponseDTO.class);
         } catch (IOException exception) {
             log.warn(
-                    "Admin report AI response parse failed contentType={} bodyPreview={}",
+                    "Admin report AI response parse failed reportId={} correlationId={} contentType={}",
+                    request.getReportId(),
+                    request.getCorrelationId(),
                     rawResponse.contentType(),
-                    responseBody.substring(0, Math.min(responseBody.length(), 300)));
+                    exception);
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY,
                     "Admin report AI resolution response is not valid JSON");
@@ -186,45 +206,327 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
     }
 
     private AdminReportAiResolutionRequestDTO toWebhookRequest(ContentReport report) {
-        return new AdminReportAiResolutionRequestDTO(
-                report.getId(),
-                report.getTargetType(),
-                targetId(report),
-                report.getReason() == null ? null : report.getReason().getCode(),
-                report.getReasonSnapshot(),
-                report.getReason() == null ? null : report.getReason().getSeverity(),
-                report.getDescription(),
-                contentText(report),
-                imageUrls(report),
-                report.getStatus(),
-                existingModerationResult(report.getId()),
-                sameTargetOpenReportCount(report));
+        AdminReportAiResolutionRequestDTO request = new AdminReportAiResolutionRequestDTO();
+        request.setContractVersion(CONTRACT_VERSION);
+        request.setCorrelationId(UUID.randomUUID());
+        request.setRequestedAt(OffsetDateTime.now(ZoneOffset.UTC));
+        request.setAutomationMode(AUTOMATION_MODE);
+        request.setReportId(report.getId());
+        request.setTargetType(report.getTargetType());
+        request.setTargetId(targetId(report));
+        request.setReasonCode(report.getReason() == null ? null : report.getReason().getCode());
+        request.setReasonLabel(report.getReasonSnapshot());
+        request.setReasonSeverity(report.getReason() == null ? null : report.getReason().getSeverity());
+        request.setDescription(report.getDescription());
+        request.setContentText(contentText(report));
+        request.setImageUrls(imageUrls(report));
+        request.setReportStatus(report.getStatus());
+        request.setExistingModerationResult(existingModerationResult(report.getId()));
+        request.setSameTargetOpenReportCount(sameTargetOpenReportCount(report));
+
+        request.setReportClaim(reportClaim(request));
+        request.setTargetSnapshot(targetSnapshot(report));
+        request.setEvidence(evidence(report, request));
+        request.setPolicyContext(policyContext(request.getReasonCode()));
+        request.setExecutionConstraints(executionConstraints(report, request));
+        String snapshotHash = String.valueOf(request.getTargetSnapshot().get("snapshotHash"));
+        request.setIdempotencyKey(sha256(String.join("|",
+                report.getId().toString(),
+                report.getTargetType().name(),
+                request.getTargetId().toString(),
+                snapshotHash,
+                AdminReportAiPolicyCatalog.POLICY_VERSION,
+                AdminReportAiPolicyCatalog.RULE_CATALOG_VERSION,
+                AdminReportAiPolicyCatalog.PROMPT_VERSION,
+                AdminReportAiPolicyCatalog.WORKFLOW_VERSION)));
+        return request;
     }
 
     private AdminReportAiResolution toEntity(
             ContentReport report,
+            AdminReportAiResolutionRequestDTO webhookRequest,
             AdminReportAiResolutionWebhookResponseDTO webhookResponse) {
         AdminReportAiResolution resolution = new AdminReportAiResolution();
         resolution.setContentReport(report);
+        resolution.setContractVersion(CONTRACT_VERSION);
+        resolution.setCorrelationId(webhookResponse.getCorrelationId());
+        resolution.setIdempotencyKey(webhookRequest.getIdempotencyKey());
+        resolution.setAutomationMode(AUTOMATION_MODE);
         resolution.setTargetType(report.getTargetType());
         resolution.setTargetId(targetId(report));
         resolution.setReportDecision(webhookResponse.getReportDecision());
         resolution.setTargetAction(webhookResponse.getTargetAction());
-        resolution.setConfidenceScore(webhookResponse.getConfidenceScore());
-        resolution.setRiskScore(webhookResponse.getRiskScore());
+        resolution.setConfidenceScore(null);
+        resolution.setRiskScore(null);
         resolution.setLabels(webhookResponse.getLabels() == null ? List.of() : webhookResponse.getLabels());
-        resolution.setRuleCode(blankToNull(webhookResponse.getRuleCode()));
+        resolution.setRuleCode(null);
         resolution.setExplanation(blankToNull(webhookResponse.getExplanation()));
         resolution.setModelName(webhookResponse.getModelName().trim());
-        resolution.setRawResponse(webhookResponse.getRawResponse() == null
-                ? objectMapper.convertValue(webhookResponse, new TypeReference<LinkedHashMap<String, Object>>() {
-                })
-                : webhookResponse.getRawResponse());
+        resolution.setRawResponse(null);
+        resolution.setPolicyVersion(AdminReportAiPolicyCatalog.POLICY_VERSION);
+        resolution.setRuleCatalogVersion(AdminReportAiPolicyCatalog.RULE_CATALOG_VERSION);
+        resolution.setPromptVersion(AdminReportAiPolicyCatalog.PROMPT_VERSION);
+        resolution.setWorkflowVersion(AdminReportAiPolicyCatalog.WORKFLOW_VERSION);
+        resolution.setTargetSnapshotHash(String.valueOf(webhookRequest.getTargetSnapshot().get("snapshotHash")));
+        resolution.setEvidenceQuality(webhookResponse.getEvidenceQuality());
+        resolution.setEvidenceSufficiency(webhookResponse.getEvidenceSufficiency());
+        resolution.setViolationLikelihood(webhookResponse.getViolationLikelihood());
+        resolution.setHarmSeverity(webhookResponse.getHarmSeverity());
+        resolution.setActionRisk(actionRisk(report.getTargetType(), webhookResponse.getTargetAction()));
+        resolution.setFindings(webhookResponse.getFindings() == null ? List.of() : webhookResponse.getFindings());
+        resolution.setEvidenceSummary(webhookResponse.getEvidenceSummary() == null
+                ? Map.of()
+                : webhookResponse.getEvidenceSummary());
+        resolution.setBlockedReasons(webhookResponse.getBlockedReasons() == null
+                ? List.of()
+                : webhookResponse.getBlockedReasons());
         return resolution;
     }
 
+    private Map<String, Object> reportClaim(AdminReportAiResolutionRequestDTO request) {
+        Map<String, Object> claim = new LinkedHashMap<>();
+        claim.put("reportId", request.getReportId());
+        claim.put("status", request.getReportStatus());
+        claim.put("reasonCode", request.getReasonCode());
+        claim.put("reasonCatalogVersion", AdminReportAiPolicyCatalog.REASON_CATALOG_VERSION);
+        claim.put("description", request.getDescription());
+        claim.put("trustLevel", "UNTRUSTED_REPORTER_CLAIM");
+        return claim;
+    }
+
+    private Map<String, Object> targetSnapshot(ContentReport report) {
+        Map<String, Object> observable = new LinkedHashMap<>();
+        observable.put("contentText", contentText(report));
+        observable.put("imageUrls", imageUrls(report));
+        observable.put("status", targetStatus(report));
+        observable.put("createdAt", isoTimestamp(targetCreatedAt(report)));
+        observable.put("updatedAt", isoTimestamp(targetUpdatedAt(report)));
+        if (report.getTargetType() == ReportTargetType.COMMENT && report.getComment().getBlog() != null) {
+            observable.put("parentBlogId", report.getComment().getBlog().getId());
+            observable.put("parentBlogExcerpt", truncate(report.getComment().getBlog().getContent(), 500));
+        }
+
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        snapshot.put("targetType", report.getTargetType());
+        snapshot.put("targetId", targetId(report));
+        snapshot.put("snapshotVersion", "1");
+        snapshot.put("capturedAt", OffsetDateTime.now(ZoneOffset.UTC));
+        snapshot.put("observableFields", observable);
+        snapshot.put("snapshotHash", sha256(toCanonicalJson(observable)));
+        return snapshot;
+    }
+
+    private List<Map<String, Object>> evidence(
+            ContentReport report,
+            AdminReportAiResolutionRequestDTO request) {
+        List<Map<String, Object>> evidence = new ArrayList<>();
+        evidence.add(evidenceItem(
+                "EV-TARGET-IDENTITY",
+                "PLATFORM_RECORD",
+                "Target " + report.getTargetType() + " id=" + targetId(report),
+                "backend:content-report",
+                "HIGH",
+                "AVAILABLE"));
+        evidence.add(evidenceItem(
+                "EV-TARGET-CONTENT",
+                "PLATFORM_RECORD",
+                truncate(request.getContentText(), 4000),
+                "backend:" + report.getTargetType().name().toLowerCase(),
+                request.getContentText() == null || request.getContentText().isBlank() ? "UNUSABLE" : "HIGH",
+                request.getContentText() == null || request.getContentText().isBlank()
+                        ? "MISSING"
+                        : "AVAILABLE"));
+        evidence.add(evidenceItem(
+                "EV-TARGET-STATE",
+                "PLATFORM_RECORD",
+                "status=" + targetStatus(report)
+                        + "; createdAt=" + targetCreatedAt(report)
+                        + "; updatedAt=" + targetUpdatedAt(report),
+                "backend:" + report.getTargetType().name().toLowerCase(),
+                "HIGH",
+                "AVAILABLE"));
+        evidence.add(evidenceItem(
+                "EV-REASON-ROUTE",
+                "REPORTER_CLAIM",
+                "reasonCode=" + request.getReasonCode(),
+                "backend:content-report-reason",
+                "LOW",
+                "AVAILABLE"));
+        if (report.getTargetType() == ReportTargetType.COMMENT) {
+            Blog parentBlog = report.getComment().getBlog();
+            evidence.add(evidenceItem(
+                    "EV-PARENT-CONTEXT",
+                    "PLATFORM_RECORD",
+                    parentBlog == null ? null : truncate(parentBlog.getContent(), 1000),
+                    "backend:comment-parent-blog",
+                    parentBlog == null ? "UNUSABLE" : "HIGH",
+                    parentBlog == null ? "MISSING" : "AVAILABLE"));
+        }
+        if (!request.getImageUrls().isEmpty()) {
+            evidence.add(evidenceItem(
+                    "EV-TARGET-MEDIA",
+                    "PLATFORM_RECORD",
+                    "Media references exist but were not fetched or evaluated.",
+                    "backend:media-reference",
+                    "UNUSABLE",
+                    "UNREADABLE_OR_NOT_EVALUATED"));
+        }
+        if (request.getExistingModerationResult() != null) {
+            evidence.add(evidenceItem(
+                    "EV-DERIVED-MODERATION",
+                    "DERIVED_SIGNAL",
+                    "Existing moderation signal is available; it is not independent evidence.",
+                    "backend:ai-moderation-result",
+                    "LOW",
+                    "AVAILABLE"));
+        }
+        return evidence;
+    }
+
+    private Map<String, Object> policyContext(String reasonCode) {
+        Map<String, Object> policy = new LinkedHashMap<>();
+        policy.put("policyVersion", AdminReportAiPolicyCatalog.POLICY_VERSION);
+        policy.put("ruleCatalogVersion", AdminReportAiPolicyCatalog.RULE_CATALOG_VERSION);
+        policy.put("candidateRules", AdminReportAiPolicyCatalog.candidateRules(reasonCode));
+        return policy;
+    }
+
+    private Map<String, Object> executionConstraints(
+            ContentReport report,
+            AdminReportAiResolutionRequestDTO request) {
+        boolean missingContent = request.getContentText() == null || request.getContentText().isBlank();
+        boolean mediaUnevaluated = request.getImageUrls() != null
+                && !request.getImageUrls().isEmpty()
+                && "INAPPROPRIATE_IMAGE".equalsIgnoreCase(request.getReasonCode());
+        boolean parentMissing = report.getTargetType() == ReportTargetType.COMMENT
+                && report.getComment().getBlog() == null;
+        Map<String, Object> constraints = new LinkedHashMap<>();
+        constraints.put("recommendationOnly", true);
+        constraints.put("allowedCandidateActions", List.of("NO_ACTION", "KEEP_VISIBLE", "HIDE", "REMOVE"));
+        constraints.put("criticalMissingBehavior", "NEEDS_MANUAL_REVIEW");
+        constraints.put("criticalEvidenceMissing", missingContent || mediaUnevaluated || parentMissing);
+        return constraints;
+    }
+
+    private Map<String, Object> evidenceItem(
+            String evidenceId,
+            String sourceType,
+            String observation,
+            String provenance,
+            String quality,
+            String availability) {
+        Map<String, Object> item = new LinkedHashMap<>();
+        item.put("evidenceId", evidenceId);
+        item.put("sourceType", sourceType);
+        item.put("observation", observation);
+        item.put("provenance", provenance);
+        item.put("capturedAt", OffsetDateTime.now(ZoneOffset.UTC));
+        item.put("quality", quality);
+        item.put("availability", availability);
+        return item;
+    }
+
+    private AdminReportAiResolutionWebhookResponseDTO localManualOnlyResponse(
+            AdminReportAiResolutionRequestDTO request,
+            String blockedReason) {
+        AdminReportAiResolutionWebhookResponseDTO response = new AdminReportAiResolutionWebhookResponseDTO();
+        response.setContractVersion(CONTRACT_VERSION);
+        response.setCorrelationId(request.getCorrelationId());
+        response.setRecommendationState("NEEDS_MANUAL_REVIEW");
+        response.setReportDecision(AdminReportAiReportDecision.NEEDS_MANUAL_REVIEW);
+        response.setTargetAction(AdminReportAiTargetAction.NO_ACTION);
+        response.setLabels(List.of("manual-review"));
+        response.setExplanation("Target-deep policy evaluation is outside Sprint 1; an admin must review this report.");
+        response.setModelName("backend-policy-guard");
+        response.setFindings(List.of());
+        response.setEvidenceSummary(Map.of(
+                "usedEvidenceIds", List.of("EV-TARGET-IDENTITY", "EV-TARGET-STATE"),
+                "missingEvidenceIds", List.of("EV-TARGET-DEEP-REVIEW")));
+        response.setBlockedReasons(List.of(blockedReason));
+        response.setEvidenceQuality("LOW");
+        response.setEvidenceSufficiency("UNASSESSABLE");
+        response.setViolationLikelihood("UNKNOWN");
+        response.setHarmSeverity("UNKNOWN");
+        response.setPolicyVersion(AdminReportAiPolicyCatalog.POLICY_VERSION);
+        response.setRuleCatalogVersion(AdminReportAiPolicyCatalog.RULE_CATALOG_VERSION);
+        response.setPromptVersion(AdminReportAiPolicyCatalog.PROMPT_VERSION);
+        response.setWorkflowVersion(AdminReportAiPolicyCatalog.WORKFLOW_VERSION);
+        return response;
+    }
+
+    private boolean isManualOnlyTarget(ReportTargetType targetType) {
+        return targetType == ReportTargetType.USER || targetType == ReportTargetType.CAFE_PAGE;
+    }
+
+    private String actionRisk(ReportTargetType targetType, AdminReportAiTargetAction action) {
+        if (action == AdminReportAiTargetAction.REMOVE
+                || action == AdminReportAiTargetAction.SUSPEND_USER
+                || action == AdminReportAiTargetAction.SUSPEND_PAGE) {
+            return "CRITICAL";
+        }
+        if (action == AdminReportAiTargetAction.HIDE) {
+            return "MEDIUM";
+        }
+        return "LOW";
+    }
+
+    private Object targetStatus(ContentReport report) {
+        return switch (report.getTargetType()) {
+            case BLOG -> report.getBlog().getStatus();
+            case COMMENT -> report.getComment().getStatus();
+            case USER -> report.getReportedUser().getAccountStatus();
+            case CAFE_PAGE -> report.getCafePage().getStatus();
+        };
+    }
+
+    private LocalDateTime targetCreatedAt(ContentReport report) {
+        return switch (report.getTargetType()) {
+            case BLOG -> report.getBlog().getCreatedAt();
+            case COMMENT -> report.getComment().getCreatedAt();
+            case USER -> null;
+            case CAFE_PAGE -> report.getCafePage().getCreatedAt();
+        };
+    }
+
+    private LocalDateTime targetUpdatedAt(ContentReport report) {
+        return switch (report.getTargetType()) {
+            case BLOG -> report.getBlog().getUpdatedAt();
+            case COMMENT -> report.getComment().getUpdatedAt();
+            case USER -> null;
+            case CAFE_PAGE -> report.getCafePage().getUpdatedAt();
+        };
+    }
+
+    private String toCanonicalJson(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Unable to serialize Admin Report AI target snapshot", exception);
+        }
+    }
+
+    private String sha256(String value) {
+        try {
+            return HexFormat.of().formatHex(
+                    MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is not available", exception);
+        }
+    }
+
+    private String truncate(String value, int maxLength) {
+        if (value == null || value.length() <= maxLength) {
+            return value;
+        }
+        return value.substring(0, maxLength);
+    }
+
+    private String isoTimestamp(LocalDateTime value) {
+        return value == null ? null : value.toString();
+    }
+
     private void validateWebhookResponse(
-            ReportTargetType targetType,
+            AdminReportAiResolutionRequestDTO request,
             AdminReportAiResolutionWebhookResponseDTO response) {
         if (response == null
                 || response.getReportDecision() == null
@@ -233,29 +535,26 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
                     HttpStatus.BAD_GATEWAY,
                     "Admin report AI resolution response is missing required fields");
         }
-        if (!isTargetActionAllowed(targetType, response.getTargetAction())) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_GATEWAY,
-                    "Admin report AI resolution response targetAction is not valid for report target type");
-        }
-        if (!isDecisionActionCombinationAllowed(
-                targetType,
-                response.getReportDecision(),
-                response.getTargetAction())) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_GATEWAY,
-                    "Admin report AI resolution response decision and targetAction are inconsistent");
-        }
-        if (!isValidScore(response.getConfidenceScore()) || !isValidScore(response.getRiskScore())) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_GATEWAY,
-                    "Admin report AI resolution response scores must be finite values from 0 to 100");
-        }
         if (response.getExplanation() == null || response.getExplanation().isBlank()
                 || response.getModelName() == null || response.getModelName().isBlank()) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY,
                     "Admin report AI resolution response is missing audit metadata");
+        }
+        AdminReportAiSemanticValidator.ValidationResult validation =
+                AdminReportAiSemanticValidator.validate(request, response);
+        AdminReportAiResolutionWebhookResponseDTO validated = validation.response();
+        if (!AdminReportAiSemanticValidator.isDecisionActionAllowed(
+                request.getTargetType(),
+                validated.getReportDecision(),
+                validated.getTargetAction())) {
+            validated.setRecommendationState("NEEDS_MANUAL_REVIEW");
+            validated.setReportDecision(AdminReportAiReportDecision.NEEDS_MANUAL_REVIEW);
+            validated.setTargetAction(AdminReportAiTargetAction.NO_ACTION);
+            List<String> reasons = new ArrayList<>(validated.getBlockedReasons());
+            reasons.add("DECISION_ACTION_NOT_ALLOWED");
+            validated.setBlockedReasons(reasons.stream().distinct().toList());
+            validated.setFindings(List.of());
         }
     }
 
@@ -270,48 +569,6 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
                     HttpStatus.CONFLICT,
                     "Report target is unavailable for AI resolution");
         }
-    }
-
-    private boolean isDecisionActionCombinationAllowed(
-            ReportTargetType targetType,
-            AdminReportAiReportDecision decision,
-            AdminReportAiTargetAction action) {
-        return switch (decision) {
-            case NEEDS_MANUAL_REVIEW -> action == AdminReportAiTargetAction.NONE;
-            case REJECT -> switch (targetType) {
-                case BLOG, COMMENT -> action == AdminReportAiTargetAction.APPROVE;
-                case USER, CAFE_PAGE -> action == AdminReportAiTargetAction.KEEP_ACTIVE;
-            };
-            case RESOLVE -> switch (targetType) {
-                case BLOG, COMMENT -> action == AdminReportAiTargetAction.HIDE
-                        || action == AdminReportAiTargetAction.REMOVE;
-                case USER -> action == AdminReportAiTargetAction.SUSPEND_USER;
-                case CAFE_PAGE -> action == AdminReportAiTargetAction.SUSPEND_PAGE;
-            };
-        };
-    }
-
-    private boolean isValidScore(Double score) {
-        return score != null
-                && !score.isNaN()
-                && !score.isInfinite()
-                && score >= 0.0
-                && score <= 100.0;
-    }
-
-    private boolean isTargetActionAllowed(ReportTargetType targetType, AdminReportAiTargetAction targetAction) {
-        if (targetAction == AdminReportAiTargetAction.NONE) {
-            return true;
-        }
-        return switch (targetType) {
-            case BLOG, COMMENT -> targetAction == AdminReportAiTargetAction.APPROVE
-                    || targetAction == AdminReportAiTargetAction.HIDE
-                    || targetAction == AdminReportAiTargetAction.REMOVE;
-            case USER -> targetAction == AdminReportAiTargetAction.KEEP_ACTIVE
-                    || targetAction == AdminReportAiTargetAction.SUSPEND_USER;
-            case CAFE_PAGE -> targetAction == AdminReportAiTargetAction.KEEP_ACTIVE
-                    || targetAction == AdminReportAiTargetAction.SUSPEND_PAGE;
-        };
     }
 
     private Map<String, Object> existingModerationResult(UUID reportId) {
@@ -405,6 +662,12 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
     private AdminReportAiResolutionResponseDTO toResponse(AdminReportAiResolution resolution) {
         AdminReportAiResolutionResponseDTO response = new AdminReportAiResolutionResponseDTO();
         response.setId(resolution.getId());
+        response.setContractVersion(resolution.getContractVersion() == null ? "legacy-v1" : resolution.getContractVersion());
+        response.setCorrelationId(resolution.getCorrelationId());
+        response.setAutomationMode(resolution.getAutomationMode() == null ? AUTOMATION_MODE : resolution.getAutomationMode());
+        response.setRecommendationState(resolution.getReportDecision() == null
+                ? null
+                : resolution.getReportDecision().name());
         response.setContentReportId(resolution.getContentReport() == null
                 ? null
                 : resolution.getContentReport().getId());
@@ -418,8 +681,20 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
         response.setRuleCode(resolution.getRuleCode());
         response.setExplanation(resolution.getExplanation());
         response.setModelName(resolution.getModelName());
-        response.setRawResponse(resolution.getRawResponse());
         response.setCreatedAt(resolution.getCreatedAt());
+        response.setFindings(resolution.getFindings());
+        response.setEvidenceSummary(resolution.getEvidenceSummary());
+        response.setBlockedReasons(resolution.getBlockedReasons());
+        response.setEvidenceQuality(resolution.getEvidenceQuality());
+        response.setEvidenceSufficiency(resolution.getEvidenceSufficiency());
+        response.setViolationLikelihood(resolution.getViolationLikelihood());
+        response.setHarmSeverity(resolution.getHarmSeverity());
+        response.setActionRisk(resolution.getActionRisk());
+        response.setPolicyVersion(resolution.getPolicyVersion());
+        response.setRuleCatalogVersion(resolution.getRuleCatalogVersion());
+        response.setPromptVersion(resolution.getPromptVersion());
+        response.setWorkflowVersion(resolution.getWorkflowVersion());
+        response.setTargetSnapshotHash(resolution.getTargetSnapshotHash());
         return response;
     }
 

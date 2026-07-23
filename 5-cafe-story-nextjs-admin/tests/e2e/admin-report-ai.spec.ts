@@ -7,7 +7,7 @@ type ReportStatus = "OPEN" | "REVIEWING" | "RESOLVED" | "REJECTED";
 type PostStatus = "DRAFT" | "PUBLISHED" | "HIDDEN" | "REMOVED";
 type PageStatus = "DRAFT" | "ACTIVE" | "SUSPENDED";
 type ReportDecision = "RESOLVE" | "REJECT" | "NEEDS_MANUAL_REVIEW";
-type TargetAction = "APPROVE" | "HIDE" | "REMOVE" | "KEEP_ACTIVE" | "SUSPEND_USER" | "SUSPEND_PAGE" | "NONE";
+type TargetAction = "KEEP_VISIBLE" | "NO_ACTION" | "APPROVE" | "HIDE" | "REMOVE" | "KEEP_ACTIVE" | "SUSPEND_USER" | "SUSPEND_PAGE" | "NONE";
 type AutoJobStatus = "SCHEDULED" | "APPLYING" | "APPLIED" | "CANCELLED" | "FAILED" | "SKIPPED";
 
 type PageResponse<T> = {
@@ -88,6 +88,9 @@ type ContentReport = {
 
 type AiResolution = {
   id: string;
+  contractVersion: "2.0" | "legacy-v1";
+  correlationId: string | null;
+  automationMode: "A0_RECOMMEND_ONLY";
   contentReportId: string;
   targetType: ReportTargetType;
   targetId: string;
@@ -99,10 +102,35 @@ type AiResolution = {
   ruleCode: string | null;
   explanation: string | null;
   modelName: string | null;
-  rawResponse: Record<string, unknown> | null;
   createdAt: string;
   autoApplyJob?: AutoApplyJob | null;
   autoApplyWarning?: string | null;
+  findings: Array<{
+    ruleId: string;
+    ruleVersion: string;
+    outcome: "SUPPORTED" | "NOT_SUPPORTED" | "INCONCLUSIVE";
+    evidenceIds: string[];
+    counterEvidenceIds: string[];
+    missingEvidenceIds: string[];
+    violationLikelihood: "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
+    rationale: string;
+  }> | null;
+  evidenceSummary: {
+    usedEvidenceIds?: string[];
+    counterEvidenceIds?: string[];
+    missingEvidenceIds?: string[];
+  } | null;
+  blockedReasons: string[] | null;
+  evidenceQuality: "HIGH" | "MEDIUM" | "LOW" | "UNUSABLE" | null;
+  evidenceSufficiency: "SUFFICIENT" | "INSUFFICIENT" | "CONFLICTED" | "UNASSESSABLE" | null;
+  violationLikelihood: "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN" | null;
+  harmSeverity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN" | null;
+  actionRisk: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | null;
+  policyVersion: string | null;
+  ruleCatalogVersion: string | null;
+  promptVersion: string | null;
+  workflowVersion: string | null;
+  targetSnapshotHash: string | null;
 };
 
 type AutoApplyJob = {
@@ -180,22 +208,22 @@ const scenarioDefinitions = [
   ["RAI-09", "Ask AI cho USER", "AI recommendation exists, USER action valid."],
   ["RAI-10", "Ask AI cho CAFE_PAGE", "AI recommendation exists, CAFE_PAGE action valid."],
   ["RAI-11", "AI history refresh", "Latest recommendation appears in history."],
-  ["RAI-12", "AI response contract", "decision, action, confidence, risk, explanation, modelName present."],
+  ["RAI-12", "AI response Contract V2", "Evidence, findings, categorical risk, versions, and no raw provider payload."],
   ["RAI-13", "n8n/OpenAI latency", "Ask AI <30s pass, 30-45s warn, >45s fail."],
-  ["RAI-14", "Ask AI bat auto apply 15m", "Job or safe warning, UI does not crash."],
-  ["RAI-15", "Countdown hien thi", "Scheduled job shows countdown when present."],
-  ["RAI-16", "Cancel auto apply", "Job becomes CANCELLED and target not mutated."],
-  ["RAI-17", "Auto apply safety gate", "Warning/no job when recommendation is not safe enough."],
-  ["RAI-18", "Schedule moi thay job cu", "New request cancels/replaces existing scheduled job or returns safe warning."],
-  ["RAI-19", "Auto job history", "Latest auto job status appears in detail/history."],
+  ["RAI-14", "UI khong tao auto apply", "No auto-apply creation control; A0 notice is visible."],
+  ["RAI-15", "Legacy request bi chan A0", "autoApply=true returns warning and creates no job."],
+  ["RAI-16", "Cancel legacy auto apply", "Existing SCHEDULED job can still be cancelled when fixture exists."],
+  ["RAI-17", "A0 safety invariant", "AI creates no job and does not mutate report or target."],
+  ["RAI-18", "Lap lai legacy request", "Repeated autoApply=true still creates no job."],
+  ["RAI-19", "Legacy auto job history", "History remains readable while creation stays disabled."],
   ["RAI-20", "Resolve report", "Report becomes RESOLVED."],
   ["RAI-21", "Reopen report", "Report becomes OPEN."],
   ["RAI-22", "Mark reviewing", "Report becomes REVIEWING."],
   ["RAI-23", "Reject report", "Report becomes REJECTED and resolvedAt is set."],
   ["RAI-24", "Bulk dialog selected mode", "Dialog opens and selected mode can be used."],
-  ["RAI-25", "Bulk Ask AI selected", "Progress reports done/failed/scheduled/skipped."],
-  ["RAI-26", "Bulk auto apply confirm", "Auto apply requires explicit confirmation."],
-  ["RAI-27", "Bulk auto apply selected", "Creates jobs or safe warnings without immediate target mutation."],
+  ["RAI-25", "Bulk Ask AI selected", "Progress separates recommended/manual/failed."],
+  ["RAI-26", "Bulk A0 notice", "Automation-disabled notice is visible and no auto-apply control exists."],
+  ["RAI-27", "Bulk recommendation only", "Bulk creates recommendations/manual outcomes and no jobs."],
   ["RAI-28", "Security check", "No token/password/API key appears in UI/raw evidence."],
   ["RAI-29", "Performance classification", "Report contains UI/BE/n8n/OpenAI bottleneck classification."],
   ["RAI-30", "Cleanup verification", "Test reports are not left OPEN/REVIEWING and jobs are cancelled."],
@@ -560,22 +588,32 @@ async function createReportWithSelfHeal(
 }
 
 function allowedActionForTarget(targetType: ReportTargetType, action: TargetAction) {
-  if (action === "NONE") return true;
-  if (targetType === "BLOG" || targetType === "COMMENT") return ["APPROVE", "HIDE", "REMOVE"].includes(action);
-  if (targetType === "USER") return ["KEEP_ACTIVE", "SUSPEND_USER"].includes(action);
-  return ["KEEP_ACTIVE", "SUSPEND_PAGE"].includes(action);
+  if (action === "NO_ACTION" || action === "NONE") return true;
+  if (targetType === "BLOG" || targetType === "COMMENT") {
+    return ["KEEP_VISIBLE", "APPROVE", "HIDE", "REMOVE"].includes(action);
+  }
+  return false;
 }
 
 function resolutionContractOk(resolution: AiResolution | null | undefined) {
   return Boolean(
     resolution?.id &&
+      resolution.contractVersion === "2.0" &&
+      resolution.automationMode === "A0_RECOMMEND_ONLY" &&
       resolution.contentReportId &&
       resolution.targetType &&
       resolution.targetId &&
       resolution.reportDecision &&
       resolution.targetAction &&
-      typeof resolution.confidenceScore === "number" &&
-      typeof resolution.riskScore === "number" &&
+      resolution.evidenceQuality &&
+      resolution.evidenceSufficiency &&
+      resolution.violationLikelihood &&
+      resolution.harmSeverity &&
+      resolution.actionRisk &&
+      resolution.policyVersion &&
+      resolution.ruleCatalogVersion &&
+      resolution.promptVersion &&
+      resolution.workflowVersion &&
       resolution.explanation &&
       resolution.modelName,
   );
@@ -940,54 +978,57 @@ test.describe("admin report AI E2E evidence", () => {
       let autoJob: AutoApplyJob | null = null;
       if (autoReport) {
         const started = Date.now();
+        await openReportDetail(page, autoReport);
+        const detailDialog = page.getByRole("dialog").filter({ hasText: "Report detail" });
+        await detailDialog.getByRole("button", { name: "Ask AI" }).click();
+        const askDialog = page.getByRole("dialog").filter({ hasText: "Ask AI for report resolution" });
+        const a0NoticeVisible = await askDialog.getByText("A0 recommendation-only mode").isVisible();
+        const autoCreationControlVisible = await askDialog.getByText("Auto apply after delay").isVisible().catch(() => false);
+        const uiShot = await screenshot(page, evidenceDir, "RAI-14", "a0-recommendation-only-ui");
+        await askDialog.getByRole("button", { name: "Close" }).click();
+        records.push(makeRecord("RAI-14", {
+          durationMs: Date.now() - started,
+          screenshots: [uiShot],
+          criteria: {
+            setup: true,
+            ui: a0NoticeVisible && !autoCreationControlVisible,
+            apiAi: true,
+            safety: true,
+            performance: true,
+          },
+        }));
+
         const result = await createAiResolution(page, autoReport, { autoApplyEnabled: true, autoApplyDelayMinutes: 15 });
         autoResolution = result.data ?? null;
         autoJob = autoResolution?.autoApplyJob ?? null;
-        const raw = rawFile(evidenceDir, "RAI-14", "auto-apply-resolution", result.raw);
+        const raw = rawFile(evidenceDir, "RAI-15", "a0-blocked-auto-apply", result.raw);
         await openReportDetail(page, autoReport);
-        const shot = await screenshot(page, evidenceDir, "RAI-14", "auto-apply-ui");
-        records.push(makeRecord("RAI-14", {
-          durationMs: Date.now() - started,
+        const shot = await screenshot(page, evidenceDir, "RAI-15", "a0-blocked-auto-apply-ui");
+        records.push(makeRecord("RAI-15", {
+          durationMs: result.durationMs,
           screenshots: [shot],
           rawFiles: [raw],
-          notes: [autoResolution?.autoApplyWarning ?? (autoJob ? "Auto apply job scheduled." : "No job returned.")],
+          notes: [autoResolution?.autoApplyWarning ?? "No A0 warning returned."],
           fixRecommendations: result.response.ok()
             ? []
-            : [`POST /api/admin/reports/{reportId}/ai-resolution auto apply returned ${result.response.status()}; fix admin report AI service before validating auto-apply scheduling.`],
+            : [`Legacy autoApply request returned ${result.response.status()}; inspect A0 compatibility handling.`],
           criteria: {
             setup: true,
             ui: true,
             apiAi: result.response.ok() && Boolean(autoResolution),
-            safety: isSecretSafe(result.raw),
+            safety: !autoJob && Boolean(autoResolution?.autoApplyWarning?.includes("A0_RECOMMEND_ONLY")),
             performance: performanceCriterion(result.durationMs),
           },
         }));
 
-        records.push(autoJob
-          ? makeRecord("RAI-15", {
-              durationMs: result.durationMs,
-              screenshots: [shot],
-              rawFiles: [raw],
-              notes: [`Scheduled at ${autoJob.scheduledAt}`],
-              criteria: {
-                setup: true,
-                ui: await page.getByText(/Due now|\d+[hms]/).first().isVisible().catch(() => false),
-                apiAi: true,
-                safety: true,
-                performance: true,
-              },
-            })
-          : makeRecord("RAI-15", {
-              status: "BLOCKED",
-              score: 0,
-              screenshots: [shot],
-              rawFiles: [raw],
-              notes: ["No scheduled job exists, so countdown cannot be verified."],
-            }));
-
-        if (autoJob?.status === "SCHEDULED") {
+        const legacyJobs = await apiFetch<PageResponse<AutoApplyJob>>(
+          page,
+          withQuery(`/api/admin/reports/${encodeURIComponent(autoReport.id)}/ai-auto-resolutions`, { page: 0, size: 20 }),
+        );
+        const cancellableLegacyJob = legacyJobs.data?.content.find((job) => job.status === "SCHEDULED") ?? null;
+        if (cancellableLegacyJob) {
           const cancelStarted = Date.now();
-          const cancel = await apiFetch<AutoApplyJob>(page, `/api/admin/reports/ai-auto-resolutions/${encodeURIComponent(autoJob.id)}/cancel`, { method: "POST" });
+          const cancel = await apiFetch<AutoApplyJob>(page, `/api/admin/reports/ai-auto-resolutions/${encodeURIComponent(cancellableLegacyJob.id)}/cancel`, { method: "POST" });
           const rawCancel = rawFile(evidenceDir, "RAI-16", "cancel-auto-apply", cancel.raw);
           await openReportDetail(page, autoReport);
           const cancelShot = await screenshot(page, evidenceDir, "RAI-16", "cancel-auto-apply-ui");
@@ -1007,70 +1048,56 @@ test.describe("admin report AI E2E evidence", () => {
           records.push(makeRecord("RAI-16", {
             status: "BLOCKED",
             score: 0,
-            notes: ["No scheduled job exists, so cancel behavior cannot be verified."],
+            notes: ["No pre-existing SCHEDULED legacy job fixture exists; cancel endpoint remains covered by Backend tests."],
           }));
         }
-      } else {
-        for (const id of ["RAI-14", "RAI-15", "RAI-16"] as const) {
-          records.push(makeRecord(id, { status: "BLOCKED", notes: ["No report is available for auto apply test."] }));
-        }
-      }
 
-      records.push(makeRecord("RAI-17", {
-        rawFiles: autoResolution ? [rawFile(evidenceDir, "RAI-17", "auto-apply-safety", autoResolution)] : [],
-        notes: [autoResolution?.autoApplyWarning ?? (autoResolution?.autoApplyJob ? "Safety gate allowed scheduling." : "No auto apply response.")],
-        fixRecommendations: autoResolution ? [] : ["Auto apply safety gate cannot be evaluated until admin report AI recommendation endpoint returns a valid response."],
-        criteria: {
-          setup: Boolean(autoResolution),
-          ui: true,
-          apiAi: Boolean(autoResolution),
-          safety: autoResolution ? Boolean(autoResolution.autoApplyWarning || autoResolution.autoApplyJob) : false,
-          performance: true,
-        },
-      }));
-
-      if (autoReport) {
-        const started = Date.now();
-        const replace = await createAiResolution(page, autoReport, { autoApplyEnabled: true, autoApplyDelayMinutes: 15 });
-        const replacement = replace.data ?? null;
-        const raw = rawFile(evidenceDir, "RAI-18", "replacement-auto-apply", replace.raw);
-        if (replacement?.autoApplyJob?.status === "SCHEDULED") await cancelScheduledJobs(page, autoReport.id);
-        records.push(makeRecord("RAI-18", {
-          durationMs: Date.now() - started,
-          rawFiles: [raw],
-          notes: [replacement?.autoApplyWarning ?? (replacement?.autoApplyJob ? "Replacement scheduling returned a new job." : "No replacement job created.")],
+        const reportAfter = await apiFetch<ContentReport>(
+          page,
+          `/api/admin/reports/${encodeURIComponent(autoReport.id)}`,
+        );
+        records.push(makeRecord("RAI-17", {
+          rawFiles: [rawFile(evidenceDir, "RAI-17", "a0-safety-invariant", {
+            resolution: autoResolution,
+            reportAfter: reportAfter.data,
+          })],
           criteria: {
-            setup: true,
+            setup: Boolean(autoResolution),
             ui: true,
-            apiAi: replace.response.ok() && Boolean(replacement),
-            safety: isSecretSafe(replace.raw),
-            performance: performanceCriterion(replace.durationMs),
+            apiAi: !autoJob,
+            safety: reportAfter.data?.status === autoReport.status,
+            performance: true,
           },
         }));
-      } else {
-        records.push(makeRecord("RAI-18", { status: "BLOCKED", notes: ["No report is available for replacement scheduling."] }));
-      }
 
-      if (autoReport) {
-        const started = Date.now();
-        const jobs = await apiFetch<PageResponse<AutoApplyJob>>(
-          page,
-          withQuery(`/api/admin/reports/${encodeURIComponent(autoReport.id)}/ai-auto-resolutions`, { page: 0, size: 20 }),
-        );
-        const raw = rawFile(evidenceDir, "RAI-19", "auto-job-history", jobs.raw);
-        records.push(makeRecord("RAI-19", {
-          durationMs: Date.now() - started,
-          rawFiles: [raw],
+        const repeat = await createAiResolution(page, autoReport, { autoApplyEnabled: true, autoApplyDelayMinutes: 15 });
+        const repeatResolution = repeat.data ?? null;
+        records.push(makeRecord("RAI-18", {
+          durationMs: repeat.durationMs,
+          rawFiles: [rawFile(evidenceDir, "RAI-18", "repeat-a0-request", repeat.raw)],
           criteria: {
             setup: true,
             ui: true,
-            apiAi: Array.isArray(jobs.data?.content),
-            safety: isSecretSafe(jobs.raw),
+            apiAi: repeat.response.ok() && Boolean(repeatResolution),
+            safety: !repeatResolution?.autoApplyJob,
+            performance: performanceCriterion(repeat.durationMs),
+          },
+        }));
+
+        records.push(makeRecord("RAI-19", {
+          rawFiles: [rawFile(evidenceDir, "RAI-19", "legacy-auto-job-history", legacyJobs.raw)],
+          criteria: {
+            setup: true,
+            ui: await page.getByText("Legacy auto-apply history").isVisible().catch(() => false),
+            apiAi: Array.isArray(legacyJobs.data?.content),
+            safety: isSecretSafe(legacyJobs.raw),
             performance: true,
           },
         }));
       } else {
-        records.push(makeRecord("RAI-19", { status: "BLOCKED", notes: ["No report is available for auto job history."] }));
+        for (const id of ["RAI-14", "RAI-15", "RAI-16", "RAI-17", "RAI-18", "RAI-19"] as const) {
+          records.push(makeRecord(id, { status: "BLOCKED", notes: ["No report is available for auto apply test."] }));
+        }
       }
 
       const statusSeed = seedState.targets.USER ?? seedState.targets.CAFE_PAGE ?? seedState.targets.BLOG ?? seedState.targets.COMMENT;
@@ -1157,7 +1184,7 @@ test.describe("admin report AI E2E evidence", () => {
         await expect(page.getByText("Total:")).toBeVisible({ timeout: 30_000 });
         await expect(page.getByText(/Remaining: 0/)).toBeVisible({ timeout: 180_000 });
         const selectedBulkSucceeded = await bulkDialog.getByText("Failed: 0").isVisible().catch(() => false)
-          && await bulkDialog.getByText(/Success: [1-9]\d*/).isVisible().catch(() => false);
+          && await bulkDialog.getByText(/Completed: [1-9]\d*/).isVisible().catch(() => false);
         const bulkShot = await screenshot(page, evidenceDir, "RAI-25", "bulk-run-selected");
         records.push(makeRecord("RAI-25", {
           durationMs: Date.now() - bulkStarted,
@@ -1170,28 +1197,40 @@ test.describe("admin report AI E2E evidence", () => {
         await page.getByRole("button", { name: "Generate AI recommendations" }).click();
         bulkDialog = page.getByRole("dialog").filter({ hasText: "Generate AI recommendations" });
         await bulkDialog.getByRole("button", { name: "Selected reports" }).click();
-        await bulkDialog.getByText("Auto apply after delay").last().click();
-        const runButton = bulkDialog.getByRole("button", { name: "Run AI", exact: true });
-        const disabledBeforeConfirm = await runButton.isDisabled();
-        const confirmShot = await screenshot(page, evidenceDir, "RAI-26", "bulk-auto-confirm-required");
+        const a0BulkNotice = await bulkDialog.getByText("Recommendation only — automation is disabled").isVisible();
+        const autoControlVisible = await bulkDialog.getByText("Auto apply after delay").isVisible().catch(() => false);
+        const confirmShot = await screenshot(page, evidenceDir, "RAI-26", "bulk-a0-notice");
         records.push(makeRecord("RAI-26", {
           screenshots: [confirmShot],
-          criteria: { setup: true, ui: disabledBeforeConfirm, apiAi: true, safety: true, performance: true },
-          fixRecommendations: disabledBeforeConfirm ? [] : ["Bulk auto apply can run without explicit confirmation; inspect AdminReportsPage bulkAutoApplyConfirmed guard."],
+          criteria: { setup: true, ui: a0BulkNotice && !autoControlVisible, apiAi: true, safety: true, performance: true },
         }));
 
-        await page.getByText("I understand this may schedule target actions").click();
-        const bulkAutoStarted = Date.now();
-        await runButton.click();
+        const bulkRecommendationStarted = Date.now();
+        await bulkDialog.getByRole("button", { name: "Run AI", exact: true }).click();
         await expect(page.getByText("Total:")).toBeVisible({ timeout: 30_000 });
         await expect(page.getByText(/Remaining: 0/)).toBeVisible({ timeout: 180_000 });
-        const bulkAutoSucceeded = await bulkDialog.getByText("Failed: 0").isVisible().catch(() => false)
-          && await bulkDialog.getByText(/Success: [1-9]\d*/).isVisible().catch(() => false);
-        const bulkAutoShot = await screenshot(page, evidenceDir, "RAI-27", "bulk-auto-run");
+        const bulkRecommendationSucceeded = await bulkDialog.getByText("Failed: 0").isVisible().catch(() => false)
+          && await bulkDialog.getByText(/Completed: [1-9]\d*/).isVisible().catch(() => false);
+        const bulkJobs = await Promise.all(
+          bulkReports.map((report) =>
+            apiFetch<PageResponse<AutoApplyJob>>(
+              page,
+              withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-auto-resolutions`, { page: 0, size: 20 }),
+            )),
+        );
+        const noNewJobs = bulkJobs.every((result) =>
+          (result.data?.content ?? []).every((job) => job.status !== "SCHEDULED" && job.status !== "APPLYING"));
+        const bulkAutoShot = await screenshot(page, evidenceDir, "RAI-27", "bulk-recommendation-only");
         records.push(makeRecord("RAI-27", {
-          durationMs: Date.now() - bulkAutoStarted,
+          durationMs: Date.now() - bulkRecommendationStarted,
           screenshots: [bulkAutoShot],
-          criteria: { setup: true, ui: true, apiAi: bulkAutoSucceeded, safety: true, performance: performanceCriterion(Date.now() - bulkAutoStarted) },
+          criteria: {
+            setup: true,
+            ui: true,
+            apiAi: bulkRecommendationSucceeded,
+            safety: noNewJobs,
+            performance: performanceCriterion(Date.now() - bulkRecommendationStarted),
+          },
         }));
         await bulkDialog.getByRole("button", { name: "Close" }).click();
       } else {

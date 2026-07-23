@@ -1,6 +1,8 @@
 package com.cafestory.entity.enums;
 
 public enum AdminReportAiTargetAction {
+    KEEP_VISIBLE,
+    NO_ACTION,
     APPROVE,
     HIDE,
     REMOVE,
