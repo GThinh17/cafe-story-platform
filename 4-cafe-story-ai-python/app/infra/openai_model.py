@@ -24,7 +24,7 @@ class OpenAIModel(AIModel):
         response = self._client.chat.completions.create(
             model=self.model_name,
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=300,
+            max_tokens=600,
             temperature=0,
             response_format={"type": "json_object"},
         )
