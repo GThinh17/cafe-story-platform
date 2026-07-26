@@ -27,6 +27,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
@@ -65,6 +66,7 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
     private final AdminReportAiAutoApplyJobService autoApplyJobService;
     private final ObjectMapper objectMapper;
     private final RestClient restClient;
+    private final AdminReportAiWebhookSigner webhookSigner;
 
     @Autowired
     public AdminReportAiResolutionServiceImpl(
@@ -73,6 +75,7 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
             AiModerationResultRepository moderationResultRepository,
             AdminReportAiAutoApplyJobService autoApplyJobService,
             ObjectMapper objectMapper,
+            AdminReportAiWebhookSigner webhookSigner,
             @Value("${admin.report.ai.webhook-url:http://localhost:5678/webhook/cafestory-admin-report-ai-resolution}")
             String webhookUrl,
             @Value("${admin.report.ai.timeout-ms:40000}") int timeoutMs) {
@@ -82,6 +85,7 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
                 moderationResultRepository,
                 autoApplyJobService,
                 objectMapper,
+                webhookSigner,
                 RestClient.builder()
                         .baseUrl(webhookUrl)
                         .requestFactory(requestFactory(timeoutMs))
@@ -94,12 +98,14 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
             AiModerationResultRepository moderationResultRepository,
             AdminReportAiAutoApplyJobService autoApplyJobService,
             ObjectMapper objectMapper,
+            AdminReportAiWebhookSigner webhookSigner,
             RestClient restClient) {
         this.resolutionRepository = resolutionRepository;
         this.contentReportRepository = contentReportRepository;
         this.moderationResultRepository = moderationResultRepository;
         this.autoApplyJobService = autoApplyJobService;
         this.objectMapper = objectMapper;
+        this.webhookSigner = webhookSigner;
         this.restClient = restClient;
     }
 
@@ -152,11 +158,14 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
     protected AdminReportAiResolutionWebhookResponseDTO callWebhook(AdminReportAiResolutionRequestDTO request) {
         RawWebhookResponse rawResponse;
         try {
+            AdminReportAiWebhookSigner.SignedRequest signedRequest =
+                    webhookSigner.signRequest(request, CONTRACT_VERSION, request.getCorrelationId());
             rawResponse = restClient.post()
                     .uri("")
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON)
-                    .body(request)
+                    .headers(signedRequest::apply)
+                    .body(signedRequest.body())
                     .exchange((clientRequest, clientResponse) -> {
                         byte[] responseBytes = clientResponse.getBody().readAllBytes();
                         if (!clientResponse.getStatusCode().is2xxSuccessful()) {
@@ -164,9 +173,12 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
                                     + clientResponse.getStatusCode());
                         }
                         MediaType contentType = clientResponse.getHeaders().getContentType();
+                        HttpHeaders responseHeaders = new HttpHeaders();
+                        responseHeaders.putAll(clientResponse.getHeaders());
                         return new RawWebhookResponse(
                                 new String(responseBytes, StandardCharsets.UTF_8),
-                                contentType == null ? "unknown" : contentType.toString());
+                                contentType == null ? "unknown" : contentType.toString(),
+                                responseHeaders);
                     });
         } catch (RuntimeException exception) {
             log.warn("Admin report AI webhook failed reportId={} reason={}", request.getReportId(), exception.getMessage());
@@ -180,6 +192,23 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY,
                     "Admin report AI resolution response is empty");
+        }
+
+        try {
+            webhookSigner.verifyResponse(
+                    responseBody,
+                    rawResponse.headers(),
+                    CONTRACT_VERSION,
+                    request.getCorrelationId());
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "Admin report AI response security verification failed reportId={} correlationId={} reason={}",
+                    request.getReportId(),
+                    request.getCorrelationId(),
+                    exception.getMessage());
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Admin report AI resolution response failed security verification");
         }
 
         try {
@@ -729,6 +758,6 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
         return requestFactory;
     }
 
-    private record RawWebhookResponse(String body, String contentType) {
+    private record RawWebhookResponse(String body, String contentType, HttpHeaders headers) {
     }
 }

@@ -34,6 +34,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -50,6 +51,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class AdminReportAiResolutionServiceImplTest {
@@ -59,6 +61,7 @@ class AdminReportAiResolutionServiceImplTest {
     private AiModerationResultRepository moderationResultRepository;
     private AdminReportAiAutoApplyJobService autoApplyJobService;
     private ObjectMapper objectMapper;
+    private AdminReportAiWebhookSigner webhookSigner;
 
     @BeforeEach
     void setUp() {
@@ -67,6 +70,7 @@ class AdminReportAiResolutionServiceImplTest {
         moderationResultRepository = mock(AiModerationResultRepository.class);
         autoApplyJobService = mock(AdminReportAiAutoApplyJobService.class);
         objectMapper = new ObjectMapper().findAndRegisterModules();
+        webhookSigner = new AdminReportAiWebhookSigner(objectMapper, "unit-test-secret", 120, 300, Clock.systemUTC());
         when(resolutionRepository.findByIdempotencyKey(any())).thenReturn(Optional.empty());
         when(resolutionRepository.save(any(AdminReportAiResolution.class))).thenAnswer(invocation -> {
             AdminReportAiResolution resolution = invocation.getArgument(0);
@@ -302,8 +306,34 @@ class AdminReportAiResolutionServiceImplTest {
                 request,
                 AdminReportAiReportDecision.RESOLVE,
                 AdminReportAiTargetAction.HIDE);
+        AdminReportAiWebhookSigner.SignedRequest signedResponse =
+                webhookSigner.signRequest(expected, "2.0", request.getCorrelationId());
         server.expect(requestTo("http://localhost"))
-                .andRespond(withSuccess(objectMapper.writeValueAsString(expected), MediaType.APPLICATION_JSON));
+                .andExpect(header(AdminReportAiWebhookSigner.CONTRACT_VERSION_HEADER, "2.0"))
+                .andExpect(header(
+                        AdminReportAiWebhookSigner.CORRELATION_ID_HEADER,
+                        request.getCorrelationId().toString()))
+                .andExpect(clientRequest -> {
+                    assertThat(clientRequest.getHeaders().getFirst(AdminReportAiWebhookSigner.TIMESTAMP_HEADER))
+                            .matches("\\d+");
+                    assertThat(clientRequest.getHeaders().getFirst(AdminReportAiWebhookSigner.NONCE_HEADER))
+                            .matches("[0-9a-f-]{36}");
+                    assertThat(clientRequest.getHeaders().getFirst(AdminReportAiWebhookSigner.BODY_SHA256_HEADER))
+                            .matches("[0-9a-f]{64}");
+                    assertThat(clientRequest.getHeaders().getFirst(AdminReportAiWebhookSigner.SIGNATURE_HEADER))
+                            .matches("[0-9a-f]{64}");
+                })
+                .andRespond(withSuccess(signedResponse.body(), MediaType.APPLICATION_JSON)
+                        .header(
+                                AdminReportAiWebhookSigner.CONTRACT_VERSION_HEADER,
+                                signedResponse.contractVersion())
+                        .header(
+                                AdminReportAiWebhookSigner.CORRELATION_ID_HEADER,
+                                signedResponse.correlationId())
+                        .header(AdminReportAiWebhookSigner.TIMESTAMP_HEADER, signedResponse.timestamp())
+                        .header(AdminReportAiWebhookSigner.NONCE_HEADER, signedResponse.nonce())
+                        .header(AdminReportAiWebhookSigner.BODY_SHA256_HEADER, signedResponse.bodyHash())
+                        .header(AdminReportAiWebhookSigner.SIGNATURE_HEADER, signedResponse.signature()));
 
         AdminReportAiResolutionWebhookResponseDTO actual = new AdminReportAiResolutionServiceImpl(
                 resolutionRepository,
@@ -311,10 +341,43 @@ class AdminReportAiResolutionServiceImplTest {
                 moderationResultRepository,
                 autoApplyJobService,
                 objectMapper,
+                webhookSigner,
                 builder.build()).callWebhook(request);
 
         assertThat(actual.getContractVersion()).isEqualTo("2.0");
         assertThat(actual.getCorrelationId()).isEqualTo(request.getCorrelationId());
+        server.verify();
+    }
+
+    @Test
+    void callWebhook_unsignedResponseFailsClosed_TC012() throws Exception {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://localhost");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        AdminReportAiResolutionRequestDTO request = new AdminReportAiResolutionRequestDTO();
+        request.setReportId(UUID.randomUUID());
+        request.setCorrelationId(UUID.randomUUID());
+        AdminReportAiResolutionWebhookResponseDTO response = validResponse(
+                request,
+                AdminReportAiReportDecision.RESOLVE,
+                AdminReportAiTargetAction.HIDE);
+        server.expect(requestTo("http://localhost"))
+                .andRespond(withSuccess(objectMapper.writeValueAsString(response), MediaType.APPLICATION_JSON));
+        AdminReportAiResolutionServiceImpl service = new AdminReportAiResolutionServiceImpl(
+                resolutionRepository,
+                contentReportRepository,
+                moderationResultRepository,
+                autoApplyJobService,
+                objectMapper,
+                webhookSigner,
+                builder.build());
+
+        assertThatThrownBy(() -> service.callWebhook(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> {
+                    ResponseStatusException responseError = (ResponseStatusException) error;
+                    assertThat(responseError.getStatusCode()).isEqualTo(HttpStatus.BAD_GATEWAY);
+                    assertThat(responseError.getReason()).contains("failed security verification");
+                });
         server.verify();
     }
 
@@ -475,6 +538,7 @@ class AdminReportAiResolutionServiceImplTest {
                     moderationResultRepository,
                     autoApplyJobService,
                     objectMapper,
+                    webhookSigner,
                     (RestClient) null);
             this.responder = responder;
         }
