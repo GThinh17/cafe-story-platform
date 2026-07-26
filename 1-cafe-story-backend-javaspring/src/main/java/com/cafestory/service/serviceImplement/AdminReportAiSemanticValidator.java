@@ -92,13 +92,12 @@ public final class AdminReportAiSemanticValidator {
         if (targetType == ReportTargetType.USER || targetType == ReportTargetType.CAFE_PAGE) {
             return false;
         }
-        return switch (decision) {
-            case REJECT -> action == AdminReportAiTargetAction.KEEP_VISIBLE
+        if (decision == AdminReportAiReportDecision.REJECT) {
+            return action == AdminReportAiTargetAction.KEEP_VISIBLE
                     || action == AdminReportAiTargetAction.APPROVE;
-            case RESOLVE -> action == AdminReportAiTargetAction.HIDE
-                    || action == AdminReportAiTargetAction.REMOVE;
-            case NEEDS_MANUAL_REVIEW -> false;
-        };
+        }
+        return action == AdminReportAiTargetAction.HIDE
+                || action == AdminReportAiTargetAction.REMOVE;
     }
 
     private static boolean validFindings(

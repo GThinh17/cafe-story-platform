@@ -92,6 +92,18 @@ class AdminReportAiAutoApplyJobServiceImplTest {
     }
 
     @Test
+    void scheduleIfRequested_nullReportAndResolutionStillFailsClosed_TC002_1() {
+        AdminReportAiResolutionCreateRequestDTO request = new AdminReportAiResolutionCreateRequestDTO();
+        request.setAutoApplyEnabled(true);
+
+        AdminReportAiAutoApplyJobService.ScheduleResult result =
+                service.scheduleIfRequested(null, null, request, UUID.randomUUID());
+
+        assertThat(result.job()).isNull();
+        assertThat(result.warning()).contains("A0_RECOMMEND_ONLY");
+    }
+
+    @Test
     void processDueJobs_quarantinesLegacyJobsWithoutMutatingReportOrTarget_TC003() {
         ContentReport report = report();
         Blog blog = report.getBlog();
@@ -118,6 +130,21 @@ class AdminReportAiAutoApplyJobServiceImplTest {
     }
 
     @Test
+    void processDueJobs_nullBatchAndDetachedLegacyJobAreHandled_TC004_1() {
+        when(jobRepository.claimDueJobs(any(), any(), anyInt())).thenReturn(null);
+        assertThat(service.processDueJobs(10)).isZero();
+
+        AdminReportAiAutoApplyJob detachedJob = job(report());
+        detachedJob.setContentReport(null);
+        detachedJob.setAiResolution(null);
+        when(jobRepository.claimDueJobs(any(), any(), anyInt())).thenReturn(List.of(detachedJob));
+
+        assertThat(service.processDueJobs(10)).isEqualTo(1);
+        assertThat(detachedJob.getStatus()).isEqualTo(AdminReportAiAutoApplyJobStatus.SKIPPED);
+        verify(jobRepository).save(detachedJob);
+    }
+
+    @Test
     void constructor_rejectsUnapprovedAutomationMode_TC005() {
         assertThatThrownBy(() -> new AdminReportAiAutoApplyJobServiceImpl(
                 jobRepository,
@@ -126,6 +153,14 @@ class AdminReportAiAutoApplyJobServiceImplTest {
                 "A1_AUTO_APPLY"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("only permits A0_RECOMMEND_ONLY");
+
+        assertThatThrownBy(() -> new AdminReportAiAutoApplyJobServiceImpl(
+                jobRepository,
+                contentReportRepository,
+                new NoopTransactionManager(),
+                null))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Unsupported admin.report.ai.automation-mode");
     }
 
     @Test
@@ -148,6 +183,16 @@ class AdminReportAiAutoApplyJobServiceImplTest {
                 .singleElement()
                 .extracting(AdminReportAiAutoApplyJobResponseDTO::getStatus)
                 .isEqualTo(AdminReportAiAutoApplyJobStatus.SCHEDULED);
+
+        AdminReportAiAutoApplyJob detachedJob = job(report());
+        detachedJob.setContentReport(null);
+        detachedJob.setAiResolution(null);
+        when(jobRepository.findByContentReportId(reportId, pageable))
+                .thenReturn(new PageImpl<>(List.of(detachedJob)));
+        AdminReportAiAutoApplyJobResponseDTO detached =
+                service.getJobs(reportId, pageable).getContent().getFirst();
+        assertThat(detached.getContentReportId()).isNull();
+        assertThat(detached.getAiResolutionId()).isNull();
     }
 
     @Test
