@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
-import { readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, utimesSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const require = createRequire(import.meta.url);
 const workflowPath = new URL('../cafestory-admin-report-ai-resolution-n8n-workflow.json', import.meta.url);
@@ -11,6 +13,8 @@ const compose = readFileSync(composePath, 'utf8');
 const secret = 'test-only-report-ai-hmac-secret';
 const correlationId = crypto.randomUUID();
 const staticData = {};
+const nonceDirectory = mkdtempSync(join(tmpdir(), 'cafestory-report-ai-nonce-'));
+process.on('exit', () => rmSync(nonceDirectory, { recursive: true, force: true }));
 
 const canonicalize = (value) => {
   if (Array.isArray(value)) return `[${value.map(canonicalize).join(',')}]`;
@@ -63,6 +67,7 @@ const executeCodeNode = async (nodeName, json, dollar = undefined) => {
     json,
     {
       ADMIN_REPORT_AI_HMAC_SECRET: secret,
+      ADMIN_REPORT_AI_NONCE_DIR: nonceDirectory,
       OPENAI_DECISION_MODEL: 'gpt-4o-mini',
     },
     () => staticData,
@@ -115,6 +120,38 @@ await assert.rejects(
     headers: validHeaders,
     body: requestBody,
   }),
+  /nonce replay detected/,
+);
+
+const nonceFilePath = join(
+  nonceDirectory,
+  `${crypto.createHash('sha256').update(nonce, 'utf8').digest('hex')}.nonce`,
+);
+assert.equal(existsSync(nonceFilePath), true);
+const expiredNonceTime = new Date(Date.now() - 301_000);
+utimesSync(nonceFilePath, expiredNonceTime, expiredNonceTime);
+const acceptedAfterExpiry = await executeCodeNode('Validate Contract V2 And Build Request', {
+  headers: validHeaders,
+  body: requestBody,
+});
+assert.equal(acceptedAfterExpiry[0].json.requestContext.correlationId, correlationId);
+
+const concurrentNonce = crypto.randomUUID();
+const concurrentHeaders = signatureHeaders(requestBody, timestamp, concurrentNonce);
+const concurrentResults = await Promise.allSettled([
+  executeCodeNode('Validate Contract V2 And Build Request', {
+    headers: concurrentHeaders,
+    body: requestBody,
+  }),
+  executeCodeNode('Validate Contract V2 And Build Request', {
+    headers: concurrentHeaders,
+    body: requestBody,
+  }),
+]);
+assert.equal(concurrentResults.filter((result) => result.status === 'fulfilled').length, 1);
+assert.equal(concurrentResults.filter((result) => result.status === 'rejected').length, 1);
+assert.match(
+  String(concurrentResults.find((result) => result.status === 'rejected').reason),
   /nonce replay detected/,
 );
 
@@ -206,12 +243,15 @@ const responseNode = workflow.nodes.find((node) => node.name === 'Respond To Bac
 assert.deepEqual(responseNode.parameters.responseBody, '={{ $json.response }}');
 assert.equal(responseNode.parameters.options.responseHeaders.entries.length, 6);
 assert.equal(workflow.active, false);
-assert.match(compose, /NODE_FUNCTION_ALLOW_BUILTIN:\s*"crypto"/);
+assert.match(compose, /NODE_FUNCTION_ALLOW_BUILTIN:\s*"crypto,fs"/);
+assert.match(compose, /ADMIN_REPORT_AI_NONCE_DIR:\s*"\/home\/node\/\.n8n\/report-ai-nonces"/);
 assert.doesNotMatch(JSON.stringify(workflow), new RegExp(secret));
 
 console.log('ADMIN_REPORT_AI_N8N_SECURITY=PASS');
 console.log('VALID_REQUEST=PASS');
 console.log('REPLAY_REJECTED=PASS');
+console.log('EXPIRED_NONCE_REACCEPTED=PASS');
+console.log('ATOMIC_REPLAY_CLAIM=PASS');
 console.log('STALE_TIMESTAMP_REJECTED=PASS');
 console.log('TAMPERED_BODY_REJECTED=PASS');
 console.log('INVALID_SIGNATURE_REJECTED=PASS');

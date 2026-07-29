@@ -9,7 +9,8 @@ services:
       - .env
     environment:
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
-      NODE_FUNCTION_ALLOW_BUILTIN: "crypto"
+      NODE_FUNCTION_ALLOW_BUILTIN: "crypto,fs"
+      ADMIN_REPORT_AI_NONCE_DIR: "/home/node/.n8n/report-ai-nonces"
       N8N_HOST: "localhost"
       N8N_PORT: "5678"
       N8N_PROTOCOL: "http"
