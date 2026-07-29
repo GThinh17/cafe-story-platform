@@ -232,6 +232,35 @@ class AdminReportAiResolutionServiceImplTest {
     }
 
     @Test
+    void createResolution_duplicateAutoApplyRequestStillReturnsA0Warning_TC006_1() {
+        ContentReport report = blogReport("stable content");
+        stubReport(report);
+        AdminReportAiResolution existing = existingResolution(report);
+        AdminReportAiResolutionCreateRequestDTO createRequest = new AdminReportAiResolutionCreateRequestDTO();
+        createRequest.setAutoApplyEnabled(true);
+        createRequest.setAutoApplyDelayMinutes(15);
+        UUID adminUserId = UUID.randomUUID();
+        when(resolutionRepository.findByIdempotencyKey(any())).thenReturn(Optional.of(existing));
+        when(autoApplyJobService.scheduleIfRequested(report, existing, createRequest, adminUserId))
+                .thenReturn(new AdminReportAiAutoApplyJobService.ScheduleResult(
+                        null,
+                        "Automation mode A0_RECOMMEND_ONLY is active."));
+        CapturingService service = serviceReturning(request -> {
+            throw new AssertionError("Duplicate request must not call provider");
+        });
+
+        AdminReportAiResolutionResponseDTO result =
+                service.createResolution(report.getId(), createRequest, adminUserId);
+
+        assertThat(result.getId()).isEqualTo(existing.getId());
+        assertThat(result.getAutoApplyJob()).isNull();
+        assertThat(result.getAutoApplyWarning()).contains("A0_RECOMMEND_ONLY");
+        assertThat(service.providerCalls).isZero();
+        verify(autoApplyJobService).scheduleIfRequested(report, existing, createRequest, adminUserId);
+        verify(resolutionRepository, never()).save(any(AdminReportAiResolution.class));
+    }
+
+    @Test
     void createResolution_autoApplyRequestReturnsBlockedOutcomeAndNoJob_TC007() {
         ContentReport report = blogReport("content");
         stubReport(report);

@@ -127,7 +127,12 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
         Optional<AdminReportAiResolution> existing =
                 resolutionRepository.findByIdempotencyKey(webhookRequest.getIdempotencyKey());
         if (existing.isPresent()) {
-            return toResponse(existing.get());
+            return withAutoApplyOutcome(
+                    report,
+                    existing.get(),
+                    toResponse(existing.get()),
+                    request,
+                    adminUserId);
         }
 
         AdminReportAiResolutionWebhookResponseDTO webhookResponse =
@@ -137,10 +142,23 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
         validateWebhookResponse(webhookRequest, webhookResponse);
         AdminReportAiResolution savedResolution =
                 resolutionRepository.save(toEntity(report, webhookRequest, webhookResponse));
-        AdminReportAiResolutionResponseDTO response = toResponse(savedResolution);
+        return withAutoApplyOutcome(
+                report,
+                savedResolution,
+                toResponse(savedResolution),
+                request,
+                adminUserId);
+    }
+
+    private AdminReportAiResolutionResponseDTO withAutoApplyOutcome(
+            ContentReport report,
+            AdminReportAiResolution resolution,
+            AdminReportAiResolutionResponseDTO response,
+            AdminReportAiResolutionCreateRequestDTO request,
+            UUID adminUserId) {
         if (autoApplyJobService != null && request != null && request.isAutoApplyEnabled()) {
             AdminReportAiAutoApplyJobService.ScheduleResult scheduleResult =
-                    autoApplyJobService.scheduleIfRequested(report, savedResolution, request, adminUserId);
+                    autoApplyJobService.scheduleIfRequested(report, resolution, request, adminUserId);
             response.setAutoApplyJob(scheduleResult.job());
             response.setAutoApplyWarning(scheduleResult.warning());
         }

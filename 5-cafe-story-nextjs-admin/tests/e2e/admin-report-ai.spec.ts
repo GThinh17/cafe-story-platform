@@ -159,6 +159,12 @@ type TargetSeed = {
   source: Blog | Comment | AdminUser | CafePage;
 };
 
+type TargetSnapshot = {
+  targetType: ReportTargetType;
+  targetId: string;
+  state: Record<string, string | boolean | null>;
+};
+
 type ScenarioRecord = {
   id: string;
   title: string;
@@ -637,6 +643,67 @@ async function createAiResolution(
   return { ...result, durationMs: Date.now() - started };
 }
 
+async function fetchTargetSnapshot(
+  page: Page,
+  targetType: ReportTargetType,
+  targetId: string,
+): Promise<TargetSnapshot> {
+  if (targetType === "BLOG") {
+    const result = await apiFetch<Blog>(page, `/api/admin/blogs/${encodeURIComponent(targetId)}`);
+    if (!result.data) throw new Error(`BLOG target ${targetId} was not returned.`);
+    return {
+      targetType,
+      targetId,
+      state: {
+        authorUserId: result.data.authorUserId,
+        content: result.data.content,
+        status: result.data.status,
+      },
+    };
+  }
+  if (targetType === "COMMENT") {
+    const result = await apiFetch<Comment>(page, `/api/admin/comments/${encodeURIComponent(targetId)}`);
+    if (!result.data) throw new Error(`COMMENT target ${targetId} was not returned.`);
+    return {
+      targetType,
+      targetId,
+      state: {
+        blogId: result.data.blogId,
+        content: result.data.content,
+        status: result.data.status,
+        userId: result.data.userId,
+      },
+    };
+  }
+  if (targetType === "USER") {
+    const result = await apiFetch<AdminUser>(page, `/api/admin/users/${encodeURIComponent(targetId)}`);
+    if (!result.data) throw new Error(`USER target ${targetId} was not returned.`);
+    return {
+      targetType,
+      targetId,
+      state: {
+        accountStatus: result.data.accountStatus,
+        userName: result.data.userName,
+      },
+    };
+  }
+  const result = await apiFetch<CafePage>(page, `/api/admin/cafe-pages/${encodeURIComponent(targetId)}`);
+  if (!result.data) throw new Error(`CAFE_PAGE target ${targetId} was not returned.`);
+  return {
+    targetType,
+    targetId,
+    state: {
+      name: result.data.name,
+      ownerUserId: result.data.ownerUserId,
+      status: result.data.status,
+    },
+  };
+}
+
+function targetWasNotMutated(before: TargetSnapshot, after: TargetSnapshot) {
+  return JSON.stringify(before) === JSON.stringify(after);
+}
+
 async function openReportDetail(page: Page, report: ContentReport) {
   await page.goto("/reports");
   await expect(page.getByRole("heading", { name: "Reports" })).toBeVisible({ timeout: 30_000 });
@@ -873,7 +940,13 @@ test.describe("admin report AI E2E evidence", () => {
         records.push(makeRecord("RAI-06", { status: "BLOCKED", notes: ["No report is available for detail UI check."] }));
       }
 
-      const aiResults: Partial<Record<ReportTargetType, { resolution: AiResolution | null; durationMs: number; rawFile: string }>> = {};
+      const aiResults: Partial<Record<ReportTargetType, {
+        resolution: AiResolution | null;
+        durationMs: number;
+        rawFile: string;
+        targetBefore: TargetSnapshot;
+        targetAfter: TargetSnapshot;
+      }>> = {};
       for (const [scenarioId, targetType] of [
         ["RAI-07", "BLOG"],
         ["RAI-08", "COMMENT"],
@@ -886,6 +959,7 @@ test.describe("admin report AI E2E evidence", () => {
           records.push(makeRecord(scenarioId, { status: "BLOCKED", notes: [`No ${targetType} report is available.`] }));
           continue;
         }
+        const targetBefore = await fetchTargetSnapshot(page, targetType, report.targetId);
         const result = scenarioId === "RAI-07"
           ? await askAiViaUi(page, report).then((uiResult) => ({
               data: uiResult.data,
@@ -894,9 +968,22 @@ test.describe("admin report AI E2E evidence", () => {
               durationMs: Date.now() - started,
             }))
           : await createAiResolution(page, report);
+        const targetAfter = await fetchTargetSnapshot(page, targetType, report.targetId);
+        const noMutation = targetWasNotMutated(targetBefore, targetAfter);
         const resolution = result.data;
         const raw = rawFile(evidenceDir, scenarioId, `ai-resolution-${targetType}`, result.raw);
-        aiResults[targetType] = { resolution: resolution ?? null, durationMs: result.durationMs, rawFile: raw };
+        const noMutationRaw = rawFile(evidenceDir, scenarioId, `target-no-mutation-${targetType}`, {
+          targetBefore,
+          targetAfter,
+          noMutation,
+        });
+        aiResults[targetType] = {
+          resolution: resolution ?? null,
+          durationMs: result.durationMs,
+          rawFile: raw,
+          targetBefore,
+          targetAfter,
+        };
         if (scenarioId !== "RAI-07") await openReportDetail(page, report);
         const shot = await screenshot(page, evidenceDir, scenarioId, `ai-resolution-${targetType}`);
         const aiFixes = result.response.ok()
@@ -905,8 +992,8 @@ test.describe("admin report AI E2E evidence", () => {
         records.push(makeRecord(scenarioId, {
           durationMs: Date.now() - started,
           screenshots: [shot],
-          rawFiles: [raw],
-          notes: [performanceNote(result.durationMs)],
+          rawFiles: [raw, noMutationRaw],
+          notes: [performanceNote(result.durationMs), `Target unchanged: ${noMutation}.`],
           fixRecommendations: [
             ...aiFixes,
             ...(result.durationMs > LATENCY_PASS_MS ? ["Investigate n8n/OpenAI latency for admin report AI resolution workflow."] : []),
@@ -915,7 +1002,7 @@ test.describe("admin report AI E2E evidence", () => {
             setup: true,
             ui: true,
             apiAi: result.response.ok() && Boolean(resolution) && allowedActionForTarget(targetType, resolution!.targetAction),
-            safety: isSecretSafe(result.raw),
+            safety: isSecretSafe(result.raw) && noMutation,
             performance: performanceCriterion(result.durationMs),
           },
         }));
@@ -955,7 +1042,13 @@ test.describe("admin report AI E2E evidence", () => {
       }));
 
       const validAiResults = Object.values(aiResults).filter(
-        (item): item is { resolution: AiResolution; durationMs: number; rawFile: string } =>
+        (item): item is {
+          resolution: AiResolution;
+          durationMs: number;
+          rawFile: string;
+          targetBefore: TargetSnapshot;
+          targetAfter: TargetSnapshot;
+        } =>
           Boolean(item?.resolution) && resolutionContractOk(item?.resolution ?? null),
       );
       const measuredAiDurations = validAiResults.map((item) => item.durationMs);
@@ -998,7 +1091,9 @@ test.describe("admin report AI E2E evidence", () => {
           },
         }));
 
+        const targetBeforeAutoRequest = await fetchTargetSnapshot(page, autoReport.targetType, autoReport.targetId);
         const result = await createAiResolution(page, autoReport, { autoApplyEnabled: true, autoApplyDelayMinutes: 15 });
+        const targetAfterAutoRequest = await fetchTargetSnapshot(page, autoReport.targetType, autoReport.targetId);
         autoResolution = result.data ?? null;
         autoJob = autoResolution?.autoApplyJob ?? null;
         const raw = rawFile(evidenceDir, "RAI-15", "a0-blocked-auto-apply", result.raw);
@@ -1056,16 +1151,20 @@ test.describe("admin report AI E2E evidence", () => {
           page,
           `/api/admin/reports/${encodeURIComponent(autoReport.id)}`,
         );
+        const targetNoMutation = targetWasNotMutated(targetBeforeAutoRequest, targetAfterAutoRequest);
         records.push(makeRecord("RAI-17", {
           rawFiles: [rawFile(evidenceDir, "RAI-17", "a0-safety-invariant", {
             resolution: autoResolution,
             reportAfter: reportAfter.data,
+            targetBefore: targetBeforeAutoRequest,
+            targetAfter: targetAfterAutoRequest,
+            targetNoMutation,
           })],
           criteria: {
             setup: Boolean(autoResolution),
             ui: true,
             apiAi: !autoJob,
-            safety: reportAfter.data?.status === autoReport.status,
+            safety: reportAfter.data?.status === autoReport.status && targetNoMutation,
             performance: true,
           },
         }));
