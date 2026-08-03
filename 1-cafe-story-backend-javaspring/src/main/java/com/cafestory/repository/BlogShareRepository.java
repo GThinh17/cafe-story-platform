@@ -56,4 +56,21 @@ public interface BlogShareRepository extends JpaRepository<BlogShare, UUID> {
 
         Long getEventCount();
     }
+
+    @org.springframework.data.jpa.repository.Query("""
+            select share.user.userId as userId, count(share) as eventCount
+            from BlogShare share
+            where share.createdAt >= :startAt
+            and share.createdAt < :endAt
+            group by share.user.userId
+            """)
+    List<UserShareCountRow> countByUserAndCreatedAtBetween(
+            @org.springframework.data.repository.query.Param("startAt") LocalDateTime startAt,
+            @org.springframework.data.repository.query.Param("endAt") LocalDateTime endAt);
+
+    interface UserShareCountRow {
+        UUID getUserId();
+
+        Long getEventCount();
+    }
 }

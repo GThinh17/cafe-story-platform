@@ -1,53 +1,75 @@
 Project cafe_story_platform {
   database_type: "PostgreSQL"
-  Note: "Recommended ERD rewrite from ERD_CT250H.drawio. Focus: clean likes, comments, follows, cafe pages, moderation, reviewer, and payment flows."
+  Note: "Reverse-engineered from the JPA entities under 1-cafe-story-backend-javaspring/src/main/java/com/cafestory/entity. String enums (@Enumerated(EnumType.STRING)) are represented as DBML enums here; the underlying Postgres column is varchar unless noted. Only admin_payout.status uses a native Postgres NAMED_ENUM. created_at / updated_at are populated in @PrePersist / @PreUpdate (application-side), not by DB defaults."
 }
 
-Enum user_status {
-  ACTIVE
-  INACTIVE
-  BANNED
-}
+// =============================================================================
+// ENUMS
+// =============================================================================
 
-Enum page_status {
-  DRAFT
-  ACTIVE
-  SUSPENDED
-}
-
-Enum post_status {
-  DRAFT
-  PUBLISHED
-  HIDDEN
-  REMOVED
-}
-
-Enum report_status {
-  OPEN
-  REVIEWING
-  RESOLVED
-  REJECTED
-}
-
-Enum report_target_type {
-  BLOG
-  COMMENT
+Enum actor_context_type {
   USER
   CAFE_PAGE
 }
 
-Enum moderation_decision {
-  SAFE
-  NEEDS_REVIEW
-  VIOLATION
+Enum ad_fee_type {
+  FEED_10000_IMPRESSIONS_OR_30_DAYS
 }
 
-Enum report_moderation_job_status {
+Enum ad_status {
+  DRAFT
+  ACTIVE
+  PAUSED
+  EXPIRED
+  REJECTED
+}
+
+Enum admin_assistant_draft_action_status {
   PENDING
-  PROCESSING
-  SUCCEEDED
+  EXECUTED
+  CANCELLED
+  EXPIRED
   FAILED
-  DEAD_LETTER
+}
+
+Enum admin_assistant_draft_action_type {
+  REPORT_RESOLVE
+  REPORT_REJECT
+  REPORT_ASK_AI_RESOLUTION
+  REPORT_CANCEL_AUTO_APPLY
+  BLOG_HIDE
+  BLOG_REMOVE
+  COMMENT_HIDE
+  COMMENT_REMOVE
+  USER_DEACTIVATE
+  CAFE_PAGE_SUSPEND
+}
+
+Enum admin_assistant_message_role {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+Enum admin_assistant_tool_call_status {
+  SUCCESS
+  FAILED
+}
+
+Enum admin_payout_status {
+  PENDING
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+Enum admin_report_ai_auto_apply_job_status {
+  SCHEDULED
+  APPLYING
+  APPLIED
+  CANCELLED
+  FAILED
+  SKIPPED
 }
 
 Enum admin_report_ai_report_decision {
@@ -66,10 +88,118 @@ Enum admin_report_ai_target_action {
   NONE
 }
 
+Enum blog_event_type {
+  VIEW
+  LIKE
+  COMMENT
+  SHARE
+  SAVE
+  REPORT
+}
+
+Enum chat_sender_context_type {
+  USER
+  CAFE_PAGE
+}
+
+Enum chat_target_type {
+  USER
+  CAFE_PAGE
+  GROUP
+}
+
+Enum conversation_type {
+  DIRECT
+  CAFE_PAGE
+  GROUP
+}
+
+Enum extra_fee_type {
+  REVIEWER_REGISTRATION
+  CAFE_PAGE_OPENING
+}
+
+Enum feed_item_type {
+  USER_BLOG
+  CAFE_PAGE_BLOG
+  SPONSORED_CAFE
+}
+
+Enum follow_target_filter {
+  ALL
+  USER
+  CAFE_PAGE
+}
+
+Enum follow_target_type {
+  USER
+  CAFE_PAGE
+}
+
+Enum member_role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+Enum message_status {
+  SENT
+  FAILED
+  DELETED
+}
+
+Enum message_type {
+  TEXT
+  IMAGE
+  STICKER
+  MIXED
+}
+
+Enum moderation_decision {
+  SAFE
+  NEEDS_REVIEW
+  VIOLATION
+}
+
 Enum moderation_resolve_action {
   APPROVE
   HIDE
   REMOVE
+}
+
+Enum notification_target_type {
+  BLOG
+  CONVERSATION
+  USER
+  CAFE_PAGE
+}
+
+Enum notification_type {
+  LIKE
+  SHARE
+  COMMENT
+  MESSAGE
+  FOLLOW
+  TAG
+  BLOG_MODERATION
+}
+
+Enum page_member_status {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+Enum page_status {
+  DRAFT
+  ACTIVE
+  SUSPENDED
+}
+
+Enum payment_method {
+  STRIPE_CARD
+  BANK_TRANSFER
+  VNPAY
 }
 
 Enum payment_status {
@@ -81,77 +211,56 @@ Enum payment_status {
   REFUNDED
 }
 
-Enum payment_method {
-  STRIPE_CARD
-  BANK_TRANSFER
-  VNPAY
-}
-
 Enum payout_status {
-  PENDING
-  APPROVED
-  REJECTED
+  CALCULATED
   PAID
+  CANCELLED
 }
 
-Enum share_type {
-  PUBLIC
-  PRIVATE
-  PAGE_ONLY
+Enum post_status {
+  DRAFT
+  PUBLISHED
+  HIDDEN
+  REMOVED
 }
 
-Enum conversation_type {
-  DIRECT
-  GROUP
+Enum ranking_period_type {
+  DAILY
+  WEEKLY
+  MONTHLY
 }
 
-Enum member_role {
-  OWNER
-  ADMIN
-  MEMBER
+Enum recommendation_target_type {
+  USER
+  REVIEWER
+  CAFE_PAGE
 }
 
-Enum page_member_status {
+Enum region_requirement {
+  BLOG_LOCATION
+  FULL_ADDRESS
+}
+
+Enum report_moderation_job_status {
   PENDING
-  ACTIVE
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  DEAD_LETTER
+}
+
+Enum report_status {
+  OPEN
+  REVIEWING
+  RESOLVED
   REJECTED
 }
 
-Enum blog_event_type {
-  VIEW
-  LIKE
+Enum report_target_type {
+  BLOG
   COMMENT
-  SHARE
-  SAVE
-  REPORT
-}
-
-Enum trend_window_type {
-  HOUR_24
-  DAY_7
-  MONTH_1
-}
-
-Enum message_type {
-  TEXT  
-  IMAGE
-  STICKER
-  MIXED
-}
-
-Enum message_status {
-  SENT
-  FAILED
-  DELETED
-}
-
-Enum notification_type {
-  LIKE
-  SHARE
-  COMMENT
-  MESSAGE
-  FOLLOW
-  TAG
+  USER
+  CAFE_PAGE
 }
 
 Enum reviewer_badge {
@@ -162,48 +271,28 @@ Enum reviewer_badge {
   DIAMOND
 }
 
-Enum ranking_period_type {
-  DAILY
-  WEEKLY
-  MONTHLY
+Enum share_type {
+  PUBLIC
+  PRIVATE
+  PAGE_ONLY
 }
 
-Enum admin_payout_status {
-  PENDING
-  APPROVED
-  PAID
-  CANCELLED
+Enum trend_window_type {
+  HOUR_24
+  DAY_7
+  MONTH_1
 }
 
-Enum reviewer_payout_status {
-  CALCULATED
-  PAID
-  CANCELLED
-}
-
-Enum extra_fee_type {
-  REVIEWER_REGISTRATION
-  CAFE_PAGE_OPENING
-}
-
-Enum ad_status {
-  DRAFT
-  ACTIVE
-  PAUSED
-  EXPIRED
-  REJECTED
-}
-
-Enum ad_fee_type {
-  FEED_10000_IMPRESSIONS_OR_30_DAYS
-}
+// =============================================================================
+// USER & AUTH
+// =============================================================================
 
 Table users {
   user_id uuid [pk]
-  user_name varchar(255) [not null]
+  user_name varchar(255)
   user_full_name varchar(255)
-  user_password varchar(255) [not null]
-  user_email varchar(255) [not null, unique]
+  user_password varchar(255)
+  user_email varchar(255) [unique]
   user_phone bigint
   user_avatar varchar(255)
   user_description text
@@ -211,13 +300,15 @@ Table users {
   user_like int [not null, default: 0]
   user_follower int [not null, default: 0]
   account_status boolean [not null, default: true]
-  Note: "Current backend schema. user_like and user_follower are cached counters updated by services; relation tables remain the source of truth."
+  hide_cafe_page_on_profile boolean [not null, default: false]
+
+  Note: "user_like and user_follower are cached counters maintained by services; blog_likes / user_follows are the source of truth. account_status=false means the account is disabled."
 }
 
 Table roles {
-  id int [pk]
+  id int [pk, increment]
   name varchar(60) [not null, unique]
-  Note: "Default roles seeded by backend: USER, REVIEWER, ADMIN, CAFE_PAGE."
+  Note: "Seeded values: USER, REVIEWER, ADMIN, CAFE_PAGE (see RoleDataInitializer)."
 }
 
 Table user_roles {
@@ -241,25 +332,44 @@ Table refresh_tokens {
   Indexes {
     (user_id)
     (expires_at)
-    (revoked_at)
   }
 
-  Note: "Stores SHA-256 hashes of refresh tokens only. Raw refresh tokens are sent to clients in HttpOnly cookie refresh_token and are never persisted."
+  Note: "Stores SHA-256 hashes only; raw refresh token is sent to clients via HttpOnly cookie and never persisted."
 }
+
+Table user_follows {
+  id uuid [pk]
+  follower_user_id uuid [not null]
+  following_user_id uuid [not null]
+  created_at datetime [not null]
+
+  Indexes {
+    (follower_user_id, following_user_id) [unique]
+    (follower_user_id, created_at)
+    (following_user_id, created_at)
+  }
+
+  Note: "Application check: follower_user_id <> following_user_id."
+}
+
+// =============================================================================
+// REGION
+// =============================================================================
 
 Table regions {
   region_id uuid [pk]
-  city_code varchar(16)
-  city varchar(255)
   province_code varchar(16)
-  province varchar(255)
+  city_code varchar(16)
   ward_code varchar(16)
+  province varchar(255)
+  city varchar(255)
   ward varchar(255)
   area varchar(255)
   street varchar(255)
   created_at datetime [not null]
   updated_at datetime
-  Note: "Shared location/address table. province_code/city_code/ward_code point to normalized Vietnam lookup tables while text fields keep display snapshots. Blog locations require province and city. User and cafe page addresses require province, city, ward, and street."
+
+  Note: "Denormalized address snapshot table. *_code point to region_provinces / region_cities / region_wards; text columns keep display copies. Blog locations only require province+city; user and cafe_page addresses require province+city+ward+street."
 }
 
 Table region_provinces {
@@ -285,15 +395,18 @@ Table region_wards {
   name varchar(160) [not null]
 
   Indexes {
-    (province_code)
     (city_code)
-    (province_code, name)
+    (province_code, city_code, name)
   }
 }
 
+// =============================================================================
+// CAFE PAGE
+// =============================================================================
+
 Table cafe_pages {
   id uuid [pk]
-  owner_user_id uuid [not null, unique]
+  owner_user_id uuid [not null]
   region_id uuid
   name varchar(160) [not null]
   address text [not null]
@@ -308,7 +421,8 @@ Table cafe_pages {
   page_expires_at datetime
   created_at datetime [not null]
   updated_at datetime
-  Note: "owner_user_id is the creator/primary owner and must be unique so one user can create only one cafe page. Use page_members for additional owners/staff."
+
+  Note: "owner_user_id is the creator. Additional owners/staff live in page_members. Only ACTIVE + page_active=true pages can post blogs and receive orders."
 }
 
 Table page_members {
@@ -318,93 +432,15 @@ Table page_members {
   status page_member_status [not null, default: "ACTIVE"]
   created_at datetime [not null]
   updated_at datetime
-  Note: "Stores cafe page members and co-owners. User self-registration creates MEMBER/PENDING. Page managers can approve to ACTIVE/REJECTED or add members directly as ACTIVE. OWNER/CO_OWNER ACTIVE can create blogs for this page."
 
   Indexes {
     (page_id, user_id) [pk]
   }
+
+  Note: "role_name uses constants OWNER / CO_OWNER / MEMBER. Self-registration creates MEMBER/PENDING; managers approve to ACTIVE/REJECTED. OWNER or CO_OWNER with status=ACTIVE can create blogs for the page."
 }
 
-Table blogs {
-  id uuid [pk]
-  author_user_id uuid [not null]
-  page_id uuid
-  region_id uuid
-  content text [not null]
-  status post_status [not null, default: "PUBLISHED"]
-  is_pinned boolean [not null, default: false]
-  allow_comment boolean [not null, default: true]
-  like_count int [not null, default: 0]
-  share_count int [not null, default: 0]
-  comment_count int [not null, default: 0]
-  created_at datetime [not null]
-  updated_at datetime
-  Note: "If page_id is set, the post belongs to a cafe page but still has a real user author."
-}
-
-Table blog_images {
-  blog_id uuid [not null]
-  image_url text
-}
-
-Table blog_tagged_users {
-  id uuid [pk]
-  blog_id uuid [not null]
-  tagged_user_id uuid [not null]
-  tagged_by_user_id uuid [not null]
-  created_at datetime [not null]
-
-  Indexes {
-    (blog_id, tagged_user_id) [unique]
-    (blog_id)
-    (tagged_user_id)
-    (tagged_by_user_id)
-  }
-
-  Note: "Stores users tagged in a blog. A user can be tagged at most once per blog."
-}
-
-Table comments {
-  id uuid [pk]
-  blog_id uuid [not null]
-  user_id uuid [not null]
-  parent_comment_id uuid
-  content text [not null]
-  status post_status [not null, default: "PUBLISHED"]
-  created_at datetime [not null]
-  updated_at datetime
-  Note: "This replaces Comment + detail_comment. parent_comment_id supports replies."
-}
-
-Table comment_images {
-  comment_id uuid [not null]
-  image_url text
-}
-
-Table blog_likes {
-  id uuid [pk]
-  user_id uuid [not null]
-  blog_id uuid [not null]
-  created_at datetime [not null]
-
-  Indexes {
-    (user_id, blog_id) [unique]
-    (blog_id)
-  }
-}
-
-Table comment_likes {
-  user_id uuid [not null]
-  comment_id uuid [not null]
-  created_at datetime [not null]
-
-  Indexes {
-    (user_id, comment_id) [pk]
-    (comment_id)
-  }
-}
-
-Table page_likes {
+Table page_follows {
   id uuid [pk]
   user_id uuid [not null]
   page_id uuid [not null]
@@ -412,25 +448,12 @@ Table page_likes {
 
   Indexes {
     (user_id, page_id) [unique]
-    (page_id)
+    (user_id, created_at)
+    (page_id, created_at)
   }
 }
 
-Table user_follows {
-  id uuid [pk]
-  follower_user_id uuid [not null]
-  following_user_id uuid [not null]
-  created_at datetime [not null]
-
-  Indexes {
-    (follower_user_id, following_user_id) [unique]
-    (following_user_id)
-  }
-
-  Note: "Add an application/database check: follower_user_id <> following_user_id."
-}
-
-Table page_follows {
+Table page_likes {
   id uuid [pk]
   user_id uuid [not null]
   page_id uuid [not null]
@@ -452,24 +475,130 @@ Table cafe_page_ratings {
 
   Indexes {
     (user_id, cafe_page_id) [unique]
-    (user_id)
     (cafe_page_id)
     (rating)
   }
 
-  Note: "rating must be between 1 and 5."
+  Note: "rating between 1 and 5."
+}
+
+// =============================================================================
+// BLOG (POSTS)
+// =============================================================================
+
+Table blogs {
+  id uuid [pk]
+  author_user_id uuid [not null]
+  page_id uuid
+  region_id uuid
+  content text [not null]
+  status post_status [not null, default: "PUBLISHED"]
+  is_pinned boolean [not null, default: false]
+  allow_comment boolean [not null, default: true]
+  like_count int [not null, default: 0]
+  share_count int [not null, default: 0]
+  comment_count int [not null, default: 0]
+  created_at datetime [not null]
+  updated_at datetime
+
+  Indexes {
+    (author_user_id, created_at)
+    (status, created_at)
+    (page_id, status, created_at)
+    (region_id)
+  }
+
+  Note: "author_user_id is always the real user. page_id set => the blog is authored on behalf of that cafe page (writer must be an ACTIVE OWNER/CO_OWNER). region_id is a raw UUID column (no FK annotation) referencing regions.region_id."
+}
+
+Table blog_images {
+  blog_id uuid [not null]
+  image_url text
+
+  Indexes {
+    (blog_id)
+  }
+
+  Note: "ElementCollection side table. No surrogate PK; ordered as inserted."
+}
+
+Table blog_tagged_users {
+  id uuid [pk]
+  blog_id uuid [not null]
+  tagged_user_id uuid [not null]
+  tagged_by_user_id uuid [not null]
+  created_at datetime [not null]
+
+  Indexes {
+    (blog_id, tagged_user_id) [unique]
+    (blog_id)
+    (tagged_user_id, created_at)
+  }
+}
+
+Table comments {
+  id uuid [pk]
+  blog_id uuid [not null]
+  user_id uuid [not null]
+  actor_cafe_page_id uuid
+  actor_context_type actor_context_type [not null, default: "USER"]
+  parent_comment_id uuid
+  content text [not null]
+  status post_status [not null, default: "PUBLISHED"]
+  created_at datetime [not null]
+  updated_at datetime
+
+  Indexes {
+    (blog_id, status, created_at)
+    (parent_comment_id, status, created_at)
+    (user_id, created_at)
+    (actor_cafe_page_id, created_at)
+  }
+
+  Note: "parent_comment_id supports one-level replies. actor_context_type=CAFE_PAGE means the user commented on behalf of actor_cafe_page_id."
+}
+
+Table comment_images {
+  comment_id uuid [not null]
+  image_url text
+
+  Indexes {
+    (comment_id)
+  }
+
+  Note: "ElementCollection side table."
+}
+
+Table blog_likes {
+  id uuid [pk]
+  user_id uuid [not null]
+  blog_id uuid [not null]
+  actor_cafe_page_id uuid
+  actor_context_type actor_context_type [not null, default: "USER"]
+  created_at datetime [not null]
+
+  Indexes {
+    (user_id, created_at)
+    (blog_id, created_at)
+    (actor_cafe_page_id, created_at)
+  }
+
+  Note: "No global unique on (user_id, blog_id): the same user can like once as USER and once per CAFE_PAGE they represent. Uniqueness is enforced at service layer per (user_id, blog_id, actor_context_type, actor_cafe_page_id)."
 }
 
 Table blog_shares {
   id uuid [pk]
   blog_id uuid [not null]
   user_id uuid [not null]
+  actor_cafe_page_id uuid
+  actor_context_type actor_context_type [not null, default: "USER"]
   share_type share_type [not null, default: "PUBLIC"]
   created_at datetime [not null]
 
   Indexes {
-    (blog_id)
-    (user_id)
+    (blog_id, created_at)
+    (user_id, created_at)
+    (actor_cafe_page_id, created_at)
   }
 }
 
@@ -481,9 +610,8 @@ Table blog_saves {
 
   Indexes {
     (user_id, blog_id) [unique]
-    (user_id)
-    (blog_id)
-    (created_at)
+    (user_id, created_at)
+    (blog_id, created_at)
   }
 }
 
@@ -497,12 +625,11 @@ Table blog_ratings {
 
   Indexes {
     (user_id, blog_id) [unique]
-    (user_id)
     (blog_id)
     (rating)
   }
 
-  Note: "rating must be between 1 and 5."
+  Note: "rating between 1 and 5."
 }
 
 Table blog_events {
@@ -510,14 +637,13 @@ Table blog_events {
   blog_id uuid [not null]
   user_id uuid
   event_type blog_event_type [not null]
-  weight decimal(8, 2) [not null, default: 1.0]
+  weight double [not null, default: 1.0]
   created_at datetime [not null]
 
   Indexes {
-    (blog_id)
-    (user_id)
-    (event_type)
+    (blog_id, event_type, created_at)
     (created_at)
+    (user_id, created_at)
   }
 }
 
@@ -531,7 +657,7 @@ Table blog_daily_metrics {
   shares bigint [not null, default: 0]
   saves bigint [not null, default: 0]
   reports bigint [not null, default: 0]
-  avg_read_seconds decimal(10, 2) [not null, default: 0]
+  avg_read_seconds double [not null, default: 0.0]
   created_at datetime [not null]
   updated_at datetime
 
@@ -544,21 +670,21 @@ Table blog_trending_scores {
   id uuid [pk]
   blog_id uuid [not null]
   window_type trend_window_type [not null]
-  trend_score decimal(14, 4) [not null]
+  trend_score double [not null]
   rank_position int [not null]
   reason text
   computed_at datetime [not null]
 
   Indexes {
-    (window_type, computed_at)
-    (rank_position)
+    (window_type, computed_at, rank_position)
+    (blog_id)
   }
 }
 
 Table blog_ranking_overrides {
   id uuid [pk]
   blog_id uuid [not null]
-  boost_score decimal(12, 2) [not null, default: 0]
+  boost_score double [not null, default: 0.0]
   is_pinned boolean [not null, default: false]
   reason text
   start_at datetime [not null]
@@ -578,13 +704,26 @@ Table blog_recommendation_scores {
   blog_id uuid [not null]
   window_type trend_window_type [not null]
   context_region_id uuid
-  feed_score decimal(14, 4) [not null]
-  trending_score decimal(14, 4) [not null, default: 0]
-  followed_page_score decimal(14, 4) [not null, default: 0]
-  followed_user_score decimal(14, 4) [not null, default: 0]
-  same_region_score decimal(14, 4) [not null, default: 0]
-  freshness_score decimal(14, 4) [not null, default: 0]
-  report_penalty decimal(14, 4) [not null, default: 0]
+  formula_version varchar(32) [not null, default: "LEGACY_V1"]
+  feed_score double [not null]
+  relationship_score double [not null, default: 0.0]
+  interest_score double [not null, default: 0.0]
+  engagement_score double [not null, default: 0.0]
+  quality_score double [not null, default: 0.0]
+  location_score double [not null, default: 0.0]
+  diversity_score double [not null, default: 0.0]
+  unseen_score double [not null, default: 0.0]
+  trending_score double [not null, default: 0.0]
+  followed_page_score double [not null, default: 0.0]
+  followed_user_score double [not null, default: 0.0]
+  same_region_score double [not null, default: 0.0]
+  freshness_score double [not null, default: 0.0]
+  activity_score double [not null, default: 0.0]
+  own_author_score double [not null, default: 0.0]
+  reviewer_score double [not null, default: 0.0]
+  report_penalty double [not null, default: 0.0]
+  seen_penalty double [not null, default: 0.0]
+  repetition_penalty double [not null, default: 0.0]
   rank_position int [not null]
   reason text
   computed_at datetime [not null]
@@ -592,23 +731,55 @@ Table blog_recommendation_scores {
 
   Indexes {
     (user_id, blog_id, window_type, context_region_id) [unique]
-    (user_id, window_type, context_region_id, computed_at)
-    (user_id, window_type, context_region_id, rank_position)
+    (user_id, window_type, context_region_id, computed_at, rank_position)
     (blog_id)
   }
 
-  Note: "Cached personalized feed scores per user/window/region context. API reads this table; scheduled/manual rebuild writes it. Component columns explain why a blog is recommended."
+  Note: "Personalized feed cache per user/window/region. API reads this table; scheduled or manual rebuild writes it. Component columns explain why a blog is recommended."
 }
+
+// =============================================================================
+// FEED IMPRESSIONS
+// =============================================================================
+
+Table feed_impressions {
+  id uuid [pk]
+  user_id uuid [not null]
+  blog_id uuid [not null]
+  position int
+  shown_at datetime [not null]
+  clicked boolean [not null, default: false]
+  dismissed boolean [not null, default: false]
+
+  Indexes {
+    (user_id, blog_id, shown_at)
+    (user_id, shown_at)
+  }
+
+  Note: "Records blogs shown in a user's feed. Used to drive seen_penalty / diversity_score in blog_recommendation_scores."
+}
+
+// =============================================================================
+// CHAT
+// =============================================================================
 
 Table conversations {
   id uuid [pk]
   type conversation_type [not null]
   group_name varchar(255)
   group_avatar varchar(255)
+  cafe_page_id uuid
   latest_message_id uuid
   latest_message_preview text
   created_at datetime [not null]
   updated_at datetime [not null]
+
+  Indexes {
+    (type, cafe_page_id)
+    (updated_at)
+  }
+
+  Note: "type=CAFE_PAGE conversations carry cafe_page_id. latest_message_id is a raw UUID reference to chat_messages.id (no JPA FK)."
 }
 
 Table chat_members {
@@ -627,6 +798,8 @@ Table chat_messages {
   id uuid [pk]
   conversation_id uuid [not null]
   sender_id uuid [not null]
+  sender_cafe_page_id uuid
+  sender_context_type chat_sender_context_type [not null, default: "USER"]
   type message_type [not null]
   text text
   sticker_url varchar(255)
@@ -641,21 +814,104 @@ Table chat_messages {
 Table chat_message_images {
   message_id uuid [not null]
   image_url text
+
+  Indexes {
+    (message_id)
+  }
+
+  Note: "ElementCollection side table."
 }
+
+// =============================================================================
+// NOTIFICATION
+// =============================================================================
 
 Table notifications {
   id uuid [pk]
   recipient_id uuid [not null]
   actor_id uuid [not null]
+  actor_cafe_page_id uuid
+  actor_context_type actor_context_type [not null, default: "USER"]
   type notification_type [not null]
+  target_type follow_target_type
   blog_id uuid
   conversation_id uuid
   target_user_id uuid
+  target_cafe_page_id uuid
   comment_id uuid
   message_id uuid
+  moderation_status varchar(64)
+  moderation_reason varchar(1024)
   is_read boolean [not null, default: false]
   created_at datetime [not null]
   updated_at datetime [not null]
+
+  Note: "target_type reuses the follow_target_type enum for USER/CAFE_PAGE. Target FK columns (blog_id, comment_id, message_id, etc.) are raw UUIDs — no JPA foreign key. Filled based on notification_type."
+}
+
+// =============================================================================
+// REPORT & MODERATION
+// =============================================================================
+
+Table report_reasons {
+  id uuid [pk]
+  code varchar(80) [not null, unique]
+  label_vi varchar(160) [not null]
+  description_vi text
+  target_type report_target_type
+  severity int [not null, default: 1]
+  requires_description boolean [not null, default: false]
+  is_active boolean [not null, default: true]
+  sort_order int [not null, default: 0]
+  created_at datetime [not null]
+  updated_at datetime
+
+  Note: "Catalog of selectable report reasons. target_type null means the reason works for any target. Active reasons returned sorted by severity desc then sort_order asc."
+}
+
+Table content_reports {
+  id uuid [pk]
+  reporter_user_id uuid [not null]
+  target_type report_target_type [not null]
+  blog_id uuid
+  comment_id uuid
+  reported_user_id uuid
+  cafe_page_id uuid
+  reason_id uuid [not null]
+  reason varchar(160) [not null]
+  description text
+  status report_status [not null, default: "OPEN"]
+  created_at datetime [not null]
+  resolved_at datetime
+
+  Note: "target_type must match exactly one populated FK column: blog_id, comment_id, reported_user_id, or cafe_page_id. `reason` stores the label_vi snapshot at submission time."
+}
+
+Table report_moderation_jobs {
+  id uuid [pk]
+  content_report_id uuid [not null, unique]
+  target_type report_target_type [not null]
+  target_id uuid [not null]
+  status report_moderation_job_status [not null, default: "PENDING"]
+  attempt_count int [not null, default: 0]
+  max_attempts int [not null, default: 3]
+  next_attempt_at datetime [not null]
+  processing_started_at datetime
+  last_error text
+  last_duration_ms bigint
+  priority_score double [not null, default: 0.0]
+  risk_score double [not null, default: 0.0]
+  reason_severity_signal double [not null, default: 0.0]
+  report_count_signal double [not null, default: 0.0]
+  created_at datetime [not null]
+  updated_at datetime
+
+  Indexes {
+    (status, next_attempt_at)
+    (content_report_id)
+  }
+
+  Note: "DB-backed queue for AI moderation triggered by reports. Worker claims due PENDING/FAILED rows with FOR UPDATE SKIP LOCKED and moves exhausted failures to DEAD_LETTER."
 }
 
 Table ai_moderation_results {
@@ -664,7 +920,7 @@ Table ai_moderation_results {
   comment_id uuid
   content_report_id uuid
   caption text
-  score decimal(5, 4) [not null]
+  score double [not null]
   decision moderation_decision [not null]
   labels text
   explanation text
@@ -676,124 +932,150 @@ Table ai_moderation_results {
   ai_status varchar(50)
   raw_response jsonb
   model_name varchar(120)
-  priority_score decimal
-  risk_score decimal
-  reason_severity_signal decimal
-  report_count_signal decimal
+  priority_score double
+  risk_score double
+  reason_severity_signal double
+  report_count_signal double
   resolved boolean [not null, default: false]
   resolved_action moderation_resolve_action
   resolved_at datetime
   created_at datetime [not null]
   updated_at datetime
+
+  Indexes {
+    (blog_id, decision)
+    (comment_id, decision)
+  }
 }
 
-Table reviewers {
-  reviewer_id uuid [pk]
-  user_id uuid [not null, unique]
-  reviewer_active boolean [not null, default: false]
-  reviewer_expires_at datetime
-  created_at datetime [not null]
-  updated_at datetime
-}
-
-Table reviewer_badges {
+Table admin_report_ai_resolutions {
   id uuid [pk]
-  reviewer_id uuid [not null]
-  badge_month varchar(255) [not null]
-  score bigint [not null, default: 0]
-  badge reviewer_badge [not null]
-  like_count bigint [not null, default: 0]
-  share_count bigint [not null, default: 0]
-  comment_count bigint [not null, default: 0]
+  content_report_id uuid [not null]
+  target_type report_target_type [not null]
+  target_id uuid [not null]
+  report_decision admin_report_ai_report_decision [not null]
+  target_action admin_report_ai_target_action [not null]
+  confidence_score double
+  risk_score double
+  labels jsonb
+  rule_code varchar(120)
+  explanation text
+  model_name varchar(120)
+  raw_response jsonb
   created_at datetime [not null]
-  updated_at datetime
 
   Indexes {
-    (reviewer_id, badge_month) [unique]
+    (content_report_id, created_at)
   }
+
+  Note: "Admin-triggered synchronous AI recommendations for resolving a report. Advisory only; does not mutate content_reports or target content."
 }
 
-Table reviewer_payouts {
+Table admin_report_ai_auto_apply_jobs {
   id uuid [pk]
-  reviewer_id uuid [not null]
-  payout_month varchar(255) [not null]
-  like_count bigint [not null, default: 0]
-  share_count bigint [not null, default: 0]
-  comment_count bigint [not null, default: 0]
-  like_amount bigint [not null, default: 0]
-  share_amount bigint [not null, default: 0]
-  comment_amount bigint [not null, default: 0]
-  total_amount bigint [not null, default: 0]
-  payout_status reviewer_payout_status [not null, default: "CALCULATED"]
+  content_report_id uuid [not null]
+  ai_resolution_id uuid [not null]
+  target_type report_target_type [not null]
+  target_id uuid [not null]
+  report_decision admin_report_ai_report_decision [not null]
+  target_action admin_report_ai_target_action [not null]
+  confidence_score double
+  risk_score double
+  status admin_report_ai_auto_apply_job_status [not null, default: "SCHEDULED"]
+  scheduled_at datetime [not null]
+  applied_at datetime
+  cancelled_at datetime
+  created_by_admin_user_id uuid
+  cancelled_by_admin_user_id uuid
+  cancellation_reason varchar(160)
+  last_error text
   created_at datetime [not null]
   updated_at datetime
 
   Indexes {
-    (reviewer_id, payout_month) [unique]
+    (content_report_id, created_at)
+    (status, scheduled_at)
   }
+
+  Note: "Scheduled auto-apply of an AI resolution recommendation. Admin can cancel before scheduled_at is reached."
 }
 
-Table payment_methods {
-  id int [pk]
-  name varchar(80) [not null, unique]
-  status boolean [not null, default: true]
-  created_at datetime [not null]
-}
+// =============================================================================
+// ADMIN ASSISTANT (Internal AI chat for admins)
+// =============================================================================
 
-Table payments {
-  payment_id uuid [pk]
-  buyer_id uuid [not null]
-  extra_fee_id uuid
-  ad_fee_id uuid
-  payment_method payment_method [not null]
-  amount decimal(12, 2) [not null]
-  currency varchar(10) [not null, default: "VND"]
-  payment_status payment_status [not null, default: "PENDING"]
+Table admin_assistant_conversations {
+  id uuid [pk]
+  admin_user_id uuid [not null]
+  title varchar(160)
   created_at datetime [not null]
   updated_at datetime
-  paid_at datetime
-  expired_at datetime
 
   Indexes {
-    (buyer_id)
-    (extra_fee_id)
-    (ad_fee_id)
-    (payment_status)
+    (admin_user_id, updated_at)
+  }
+}
+
+Table admin_assistant_messages {
+  id uuid [pk]
+  conversation_id uuid [not null]
+  role admin_assistant_message_role [not null]
+  content text [not null]
+  metadata jsonb
+  created_at datetime [not null]
+
+  Indexes {
+    (conversation_id, created_at)
+  }
+}
+
+Table admin_assistant_tool_calls {
+  id uuid [pk]
+  conversation_id uuid [not null]
+  message_id uuid
+  tool_name varchar(100) [not null]
+  input_payload jsonb
+  output_summary jsonb
+  status admin_assistant_tool_call_status [not null]
+  error_message text
+  duration_ms bigint
+  created_at datetime [not null]
+
+  Indexes {
+    (conversation_id, created_at)
+    (tool_name, created_at)
+  }
+}
+
+Table admin_assistant_draft_actions {
+  id uuid [pk]
+  conversation_id uuid [not null]
+  message_id uuid
+  admin_user_id uuid [not null]
+  action_type admin_assistant_draft_action_type [not null]
+  payload jsonb
+  explanation text
+  source_refs jsonb
+  status admin_assistant_draft_action_status [not null, default: "PENDING"]
+  expires_at datetime [not null]
+  executed_at datetime
+  executed_by_admin_user_id uuid
+  execution_result jsonb
+  error_message text
+  created_at datetime [not null]
+  updated_at datetime
+
+  Indexes {
+    (conversation_id, created_at)
+    (status, expires_at)
   }
 
-  Note: "Exactly one of extra_fee_id or ad_fee_id must be set. Extra fee payments activate existing products after PAID; ad fee payments only buy the package and campaigns are created separately."
+  Note: "Drafted admin actions proposed by the AI assistant. Admin must execute them explicitly before expires_at."
 }
 
-Table payment_details {
-  payment_detail_id uuid [pk]
-  payment_id uuid [not null, unique]
-  provider_name varchar(80)
-  provider_transaction_id varchar(255)
-  provider_order_id varchar(255)
-  provider_payment_url text
-  provider_qr_code_url text
-  transfer_content varchar(255)
-  raw_response text
-  failure_code varchar(80)
-  failure_message text
-  note text
-  created_at datetime [not null]
-  updated_at datetime
-}
-
-Table extra_fees {
-  Note: "Successful REVIEWER_REGISTRATION payments activate/extend reviewer status. Successful CAFE_PAGE_OPENING payments activate the buyer's cafe page package, creating a draft cafe page and OWNER page_members row only when missing; payment request does not carry cafe page name/address."
-  extra_fee_id uuid [pk]
-  name varchar(255) [not null]
-  description text
-  fee_type extra_fee_type [not null]
-  price bigint [not null]
-  duration_months int
-  max_members int
-  status boolean [not null, default: true]
-  created_at datetime [not null]
-  updated_at datetime
-}
+// =============================================================================
+// ADS
+// =============================================================================
 
 Table ad_fees {
   ad_fee_id uuid [pk]
@@ -804,7 +1086,7 @@ Table ad_fees {
   created_at datetime [not null]
   updated_at datetime
 
-  Note: "price must be greater than 0. MVP supports only FEED_10000_IMPRESSIONS_OR_30_DAYS."
+  Note: "MVP has only FEED_10000_IMPRESSIONS_OR_30_DAYS."
 }
 
 Table ad_campaigns {
@@ -828,11 +1110,10 @@ Table ad_campaigns {
   Indexes {
     (status, start_at, end_at)
     (cafe_page_id)
-    (payment_id)
     (status, served_impressions)
   }
 
-  Note: "Feed ads only; no placement column. max_impressions must equal 10000, max_duration_days must equal 30, served_impressions must be between 0 and max_impressions. ACTIVE campaigns expire when served_impressions >= 10000, now >= start_at + 30 days, or now > end_at."
+  Note: "Feed ads only. ACTIVE campaigns expire when served_impressions >= max_impressions, now >= start_at + max_duration_days, or now > end_at."
 }
 
 Table ad_target_regions {
@@ -847,13 +1128,9 @@ Table ad_target_regions {
 
   Indexes {
     (ad_campaign_id)
-    (province)
-    (city)
-    (area)
-    (ward)
   }
 
-  Note: "If a campaign has no target region rows, it is global."
+  Note: "If a campaign has no ad_target_regions rows, it is global."
 }
 
 Table ad_impressions {
@@ -894,7 +1171,95 @@ Table ad_daily_stats {
   }
 }
 
-Table reviewer_scoring_formula {
+// =============================================================================
+// PAYMENT
+// =============================================================================
+
+Table payments {
+  payment_id uuid [pk]
+  buyer_id uuid [not null]
+  extra_fee_id uuid
+  ad_fee_id uuid
+  cafe_page_id uuid
+  payment_method payment_method [not null]
+  amount decimal(12, 2) [not null]
+  currency varchar(10) [not null, default: "VND"]
+  payment_status payment_status [not null, default: "PENDING"]
+  created_at datetime [not null]
+  updated_at datetime
+  paid_at datetime
+  expired_at datetime
+
+  Indexes {
+    (buyer_id)
+    (extra_fee_id)
+    (ad_fee_id)
+    (cafe_page_id)
+    (payment_status)
+  }
+
+  Note: "Exactly one of extra_fee_id or ad_fee_id is set. cafe_page_id links an ad payment to the paying cafe page. Successful extra_fee payments activate reviewer or cafe page packages; ad_fee payments only buy the package (campaign is created separately)."
+}
+
+Table payment_details {
+  payment_detail_id uuid [pk]
+  payment_id uuid [not null, unique]
+  provider_name varchar(80)
+  provider_transaction_id varchar(255)
+  provider_order_id varchar(255)
+  provider_payment_url text
+  provider_qr_code_url text
+  transfer_content varchar(255)
+  raw_response text
+  failure_code varchar(80)
+  failure_message text
+  note text
+  created_at datetime [not null]
+  updated_at datetime
+}
+
+Table extra_fees {
+  extra_fee_id uuid [pk]
+  name varchar(255) [not null]
+  description varchar(255)
+  fee_type extra_fee_type [not null]
+  price bigint [not null]
+  duration_months int
+  max_members int
+  status boolean [not null, default: true]
+  created_at datetime [not null]
+  updated_at datetime
+
+  Note: "Successful REVIEWER_REGISTRATION payments activate/extend reviewer status. Successful CAFE_PAGE_OPENING payments activate the buyer's cafe page package (creating a DRAFT cafe_page + OWNER page_members row only when missing)."
+}
+
+// =============================================================================
+// REVIEWER
+// =============================================================================
+
+Table reviewers {
+  reviewer_id uuid [pk]
+  user_id uuid [not null, unique]
+  reviewer_active boolean [not null, default: false]
+  reviewer_expires_at datetime
+  created_at datetime [not null]
+  updated_at datetime
+}
+
+Table reviewer_stripe_accounts {
+  id uuid [pk]
+  reviewer_id uuid [not null, unique]
+  stripe_account_id varchar(100) [not null, unique]
+  onboarding_status varchar(20) [not null, default: "PENDING"]
+  charges_enabled boolean [not null, default: false]
+  payouts_enabled boolean [not null, default: false]
+  created_at datetime [not null]
+  updated_at datetime
+
+  Note: "onboarding_status uses string constants PENDING / INCOMPLETE / COMPLETE (not a native enum). Populated via the Stripe Connect onboarding webhook."
+}
+
+Table reviewer_formula {
   id uuid [pk]
   like_weight int [not null, default: 1]
   comment_weight int [not null, default: 5]
@@ -902,13 +1267,18 @@ Table reviewer_scoring_formula {
   like_payout_amount bigint [not null, default: 100]
   comment_payout_amount bigint [not null, default: 500]
   share_payout_amount bigint [not null, default: 300]
+  iron_multiplier decimal(5, 2) [not null, default: 1.00]
+  bronze_multiplier decimal(5, 2) [not null, default: 1.20]
+  silver_multiplier decimal(5, 2) [not null, default: 1.50]
+  gold_multiplier decimal(5, 2) [not null, default: 2.00]
+  diamond_multiplier decimal(5, 2) [not null, default: 3.00]
   active boolean [not null, default: false]
-  description text
+  description varchar(255)
   created_by uuid
   created_at datetime [not null]
   updated_at datetime
 
-  Note: "Scoring formula used to compute reviewer ranking score and payout amounts. Only one formula can be active at a time. created_by references users.user_id."
+  Note: "Combined ranking + payout formula. Only one row can have active=true at any time."
 }
 
 Table reviewer_badge_threshold {
@@ -923,7 +1293,26 @@ Table reviewer_badge_threshold {
     (formula_id, badge) [unique]
   }
 
-  Note: "Defines the minimum score required to earn each badge under a given scoring formula."
+  Note: "Minimum score required per badge under a given formula."
+}
+
+Table reviewer_badges {
+  id uuid [pk]
+  reviewer_id uuid [not null]
+  badge_month varchar(255) [not null]
+  score bigint [not null, default: 0]
+  badge reviewer_badge [not null]
+  like_count bigint [not null, default: 0]
+  share_count bigint [not null, default: 0]
+  comment_count bigint [not null, default: 0]
+  created_at datetime [not null]
+  updated_at datetime
+
+  Indexes {
+    (reviewer_id, badge_month) [unique]
+  }
+
+  Note: "Monthly badge history per reviewer. badge_month format: 'yyyy-MM'."
 }
 
 Table reviewer_ranking_snapshot {
@@ -945,26 +1334,7 @@ Table reviewer_ranking_snapshot {
     (reviewer_id, period, period_type) [unique]
   }
 
-  Note: "Periodic ranking snapshots per reviewer. period format: 'yyyy-MM-dd' (DAILY), 'yyyy-Www' (WEEKLY), 'yyyy-MM' (MONTHLY). Generated via POST /api/admin/reviewer-config/ranking/generate."
-}
-
-Table payout_formula {
-  id uuid [pk]
-  like_payout_amount bigint [not null, default: 100]
-  comment_payout_amount bigint [not null, default: 500]
-  share_payout_amount bigint [not null, default: 300]
-  iron_multiplier decimal(5,2) [not null, default: 1.00]
-  bronze_multiplier decimal(5,2) [not null, default: 1.20]
-  silver_multiplier decimal(5,2) [not null, default: 1.50]
-  gold_multiplier decimal(5,2) [not null, default: 2.00]
-  diamond_multiplier decimal(5,2) [not null, default: 3.00]
-  active boolean [not null, default: false]
-  description text
-  created_by uuid
-  created_at datetime [not null]
-  updated_at datetime
-
-  Note: "Payout formula decoupled from reviewer_scoring_formula. Stores per-action payout amounts and badge multipliers. Only one row can be active at a time (partial unique index on active=true)."
+  Note: "Periodic snapshots per reviewer. period format: 'yyyy-MM-dd' (DAILY), 'yyyy-Www' (WEEKLY), 'yyyy-MM' (MONTHLY). Generated via POST /api/admin/reviewer-config/ranking/generate."
 }
 
 Table reviewer_income {
@@ -975,7 +1345,7 @@ Table reviewer_income {
   comment_count bigint [not null, default: 0]
   share_count bigint [not null, default: 0]
   badge reviewer_badge [not null]
-  badge_multiplier decimal(5,2) [not null]
+  badge_multiplier decimal(5, 2) [not null]
   base_amount bigint [not null, default: 0]
   final_amount bigint [not null, default: 0]
   formula_id uuid [not null]
@@ -988,7 +1358,29 @@ Table reviewer_income {
     (reviewer_id)
   }
 
-  Note: "Daily income record per reviewer. base_amount = like*like_payout + comment*comment_payout + share*share_payout. final_amount = base_amount * badge_multiplier. Upsert on (reviewer_id, income_date). Auto-generated daily at 3AM for yesterday."
+  Note: "Daily income per reviewer. base_amount = like*like_payout + comment*comment_payout + share*share_payout. final_amount = base_amount * badge_multiplier. Upsert on (reviewer_id, income_date). Auto-generated daily at 3AM for yesterday."
+}
+
+Table reviewer_payouts {
+  id uuid [pk]
+  reviewer_id uuid [not null]
+  payout_month varchar(255) [not null]
+  like_count bigint [not null, default: 0]
+  share_count bigint [not null, default: 0]
+  comment_count bigint [not null, default: 0]
+  like_amount bigint [not null, default: 0]
+  share_amount bigint [not null, default: 0]
+  comment_amount bigint [not null, default: 0]
+  total_amount bigint [not null, default: 0]
+  payout_status payout_status [not null, default: "CALCULATED"]
+  created_at datetime [not null]
+  updated_at datetime
+
+  Indexes {
+    (reviewer_id, payout_month) [unique]
+  }
+
+  Note: "Legacy monthly aggregation per reviewer. New payout flow uses admin_payout below."
 }
 
 Table admin_payout {
@@ -997,13 +1389,15 @@ Table admin_payout {
   payout_month varchar(7) [not null]
   total_base_amount bigint [not null, default: 0]
   badge reviewer_badge [not null]
-  badge_multiplier decimal(5,2) [not null]
+  badge_multiplier decimal(5, 2) [not null]
   total_final_amount bigint [not null, default: 0]
   status admin_payout_status [not null, default: "PENDING"]
   approved_by uuid
   approved_at datetime
   paid_at datetime
-  note text
+  note varchar(255)
+  stripe_transfer_id varchar(100)
+  stripe_idempotency_key varchar(200)
   formula_id uuid [not null]
   created_at datetime [not null]
   updated_at datetime
@@ -1014,104 +1408,38 @@ Table admin_payout {
     (status)
   }
 
-  Note: "Monthly payout per reviewer, managed by admin. payout_month format: 'yyyy-MM'. Status flow: PENDING → APPROVED → PAID (or CANCELLED). total_base_amount = SUM(reviewer_income.base_amount) for the month. total_final_amount = total_base_amount * badge_multiplier. Upsert on (reviewer_id, payout_month). Auto-generated on 1st of each month at 4AM."
+  Note: "Monthly payout managed by admin. payout_month format: 'yyyy-MM'. Status flow: PENDING → APPROVED → PAID (or CANCELLED). status uses a Postgres NAMED_ENUM (only entity that does). total_base_amount = SUM(reviewer_income.base_amount) for the month; total_final_amount = total_base_amount * badge_multiplier. Auto-generated on the 1st of each month at 4AM. stripe_transfer_id / stripe_idempotency_key are set after a Stripe transfer succeeds."
 }
 
-Table report_reasons {
-  id uuid [pk]
-  code varchar(80) [not null, unique]
-  label_vi varchar(160) [not null]
-  description_vi text
-  target_type report_target_type
-  severity int [not null, default: 1]
-  requires_description boolean [not null, default: false]
-  is_active boolean [not null, default: true]
-  sort_order int [not null, default: 0]
-  created_at datetime [not null]
-  updated_at datetime
-
-  Note: "Catalog of selectable report reasons. target_type null means the reason can be used for any target type. Active reasons are returned sorted by severity desc, sort_order asc."
-}
-
-Table content_reports {
-  id uuid [pk]
-  reporter_user_id uuid [not null]
-  target_type report_target_type [not null]
-  blog_id uuid
-  comment_id uuid
-  reported_user_id uuid
-  cafe_page_id uuid
-  reason_id uuid [not null]
-  reason varchar(160) [not null]
-  description text
-  status report_status [not null, default: "OPEN"]
-  created_at datetime [not null]
-  resolved_at datetime
-
-  Note: "Use target_type with exactly one matching target FK: blog_id, comment_id, reported_user_id, or cafe_page_id. reason stores the label snapshot selected from report_reasons."
-}
-
-Table report_moderation_jobs {
-  id uuid [pk]
-  content_report_id uuid [not null, unique]
-  target_type report_target_type [not null]
-  target_id uuid [not null]
-  status report_moderation_job_status [not null, default: "PENDING"]
-  attempt_count int [not null, default: 0]
-  max_attempts int [not null, default: 3]
-  next_attempt_at datetime [not null]
-  processing_started_at datetime
-  last_error text
-  last_duration_ms bigint
-  priority_score decimal
-  risk_score decimal
-  reason_severity_signal decimal
-  report_count_signal decimal
-  created_at datetime [not null]
-  updated_at datetime
-
-  Note: "DB-backed async worker queue for report-triggered AI moderation. Worker claims due PENDING/FAILED rows with FOR UPDATE SKIP LOCKED and moves exhausted failures to DEAD_LETTER."
-}
-
-Table admin_report_ai_resolutions {
-  id uuid [pk]
-  content_report_id uuid [not null]
-  target_type report_target_type [not null]
-  target_id uuid [not null]
-  report_decision admin_report_ai_report_decision [not null]
-  target_action admin_report_ai_target_action [not null]
-  confidence_score decimal
-  risk_score decimal
-  labels jsonb
-  rule_code varchar(120)
-  explanation text
-  model_name varchar(120)
-  raw_response jsonb
-  created_at datetime [not null]
-
-  Indexes {
-    (content_report_id, created_at)
-    (target_type, target_id)
-  }
-
-  Note: "Admin-triggered sync AI recommendation history for resolving reports. Recommendations are advisory only and do not mutate content_reports or target content."
-}
+// =============================================================================
+// REFERENCES
+// =============================================================================
 
 Ref: user_roles.user_id > users.user_id
 Ref: user_roles.role_id > roles.id
 Ref: refresh_tokens.user_id > users.user_id
 
-Ref: cafe_pages.owner_user_id > users.user_id
 Ref: users.region_id > regions.region_id
-Ref: cafe_pages.region_id > regions.region_id
 Ref: regions.province_code > region_provinces.province_code
 Ref: regions.city_code > region_cities.city_code
 Ref: regions.ward_code > region_wards.ward_code
 Ref: region_cities.province_code > region_provinces.province_code
 Ref: region_wards.province_code > region_provinces.province_code
 Ref: region_wards.city_code > region_cities.city_code
+
+Ref: cafe_pages.owner_user_id > users.user_id
+Ref: cafe_pages.region_id > regions.region_id
 Ref: page_members.page_id > cafe_pages.id
 Ref: page_members.user_id > users.user_id
+Ref: page_follows.user_id > users.user_id
+Ref: page_follows.page_id > cafe_pages.id
+Ref: page_likes.user_id > users.user_id
+Ref: page_likes.page_id > cafe_pages.id
+Ref: cafe_page_ratings.user_id > users.user_id
+Ref: cafe_page_ratings.cafe_page_id > cafe_pages.id
+
+Ref: user_follows.follower_user_id > users.user_id
+Ref: user_follows.following_user_id > users.user_id
 
 Ref: blogs.author_user_id > users.user_id
 Ref: blogs.page_id > cafe_pages.id
@@ -1120,27 +1448,19 @@ Ref: blog_images.blog_id > blogs.id
 Ref: blog_tagged_users.blog_id > blogs.id
 Ref: blog_tagged_users.tagged_user_id > users.user_id
 Ref: blog_tagged_users.tagged_by_user_id > users.user_id
+
 Ref: comments.blog_id > blogs.id
 Ref: comments.user_id > users.user_id
+Ref: comments.actor_cafe_page_id > cafe_pages.id
 Ref: comments.parent_comment_id > comments.id
 Ref: comment_images.comment_id > comments.id
 
 Ref: blog_likes.user_id > users.user_id
 Ref: blog_likes.blog_id > blogs.id
-Ref: comment_likes.user_id > users.user_id
-Ref: comment_likes.comment_id > comments.id
-Ref: page_likes.user_id > users.user_id
-Ref: page_likes.page_id > cafe_pages.id
-Ref: cafe_page_ratings.user_id > users.user_id
-Ref: cafe_page_ratings.cafe_page_id > cafe_pages.id
-
-Ref: user_follows.follower_user_id > users.user_id
-Ref: user_follows.following_user_id > users.user_id
-Ref: page_follows.user_id > users.user_id
-Ref: page_follows.page_id > cafe_pages.id
-
+Ref: blog_likes.actor_cafe_page_id > cafe_pages.id
 Ref: blog_shares.blog_id > blogs.id
 Ref: blog_shares.user_id > users.user_id
+Ref: blog_shares.actor_cafe_page_id > cafe_pages.id
 Ref: blog_saves.user_id > users.user_id
 Ref: blog_saves.blog_id > blogs.id
 Ref: blog_ratings.user_id > users.user_id
@@ -1154,32 +1474,59 @@ Ref: blog_ranking_overrides.created_by > users.user_id
 Ref: blog_recommendation_scores.user_id > users.user_id
 Ref: blog_recommendation_scores.blog_id > blogs.id
 Ref: blog_recommendation_scores.context_region_id > regions.region_id
+Ref: feed_impressions.user_id > users.user_id
+Ref: feed_impressions.blog_id > blogs.id
 
+Ref: conversations.cafe_page_id > cafe_pages.id
+Ref: conversations.latest_message_id > chat_messages.id
 Ref: chat_members.conversation_id > conversations.id
 Ref: chat_members.user_id > users.user_id
 Ref: chat_messages.conversation_id > conversations.id
 Ref: chat_messages.sender_id > users.user_id
+Ref: chat_messages.sender_cafe_page_id > cafe_pages.id
 Ref: chat_message_images.message_id > chat_messages.id
 
 Ref: notifications.recipient_id > users.user_id
 Ref: notifications.actor_id > users.user_id
+Ref: notifications.actor_cafe_page_id > cafe_pages.id
+Ref: notifications.blog_id > blogs.id
+Ref: notifications.conversation_id > conversations.id
+Ref: notifications.target_user_id > users.user_id
+Ref: notifications.target_cafe_page_id > cafe_pages.id
+Ref: notifications.comment_id > comments.id
+Ref: notifications.message_id > chat_messages.id
 
-Ref: reviewers.user_id > users.user_id
-Ref: reviewer_scoring_formula.created_by > users.user_id
-Ref: reviewer_badge_threshold.formula_id > reviewer_scoring_formula.id
-Ref: reviewer_ranking_snapshot.reviewer_id > reviewers.reviewer_id
-Ref: reviewer_ranking_snapshot.formula_id > reviewer_scoring_formula.id
-Ref: payout_formula.created_by > users.user_id
-Ref: reviewer_income.reviewer_id > reviewers.reviewer_id
-Ref: reviewer_income.formula_id > payout_formula.id
-Ref: admin_payout.reviewer_id > reviewers.reviewer_id
-Ref: admin_payout.formula_id > payout_formula.id
-Ref: admin_payout.approved_by > users.user_id
+Ref: content_reports.reporter_user_id > users.user_id
+Ref: content_reports.blog_id > blogs.id
+Ref: content_reports.comment_id > comments.id
+Ref: content_reports.reported_user_id > users.user_id
+Ref: content_reports.cafe_page_id > cafe_pages.id
+Ref: content_reports.reason_id > report_reasons.id
+Ref: report_moderation_jobs.content_report_id > content_reports.id
+Ref: ai_moderation_results.blog_id > blogs.id
+Ref: ai_moderation_results.comment_id > comments.id
+Ref: ai_moderation_results.content_report_id > content_reports.id
+Ref: admin_report_ai_resolutions.content_report_id > content_reports.id
+Ref: admin_report_ai_auto_apply_jobs.content_report_id > content_reports.id
+Ref: admin_report_ai_auto_apply_jobs.ai_resolution_id > admin_report_ai_resolutions.id
+Ref: admin_report_ai_auto_apply_jobs.created_by_admin_user_id > users.user_id
+Ref: admin_report_ai_auto_apply_jobs.cancelled_by_admin_user_id > users.user_id
+
+Ref: admin_assistant_conversations.admin_user_id > users.user_id
+Ref: admin_assistant_messages.conversation_id > admin_assistant_conversations.id
+Ref: admin_assistant_tool_calls.conversation_id > admin_assistant_conversations.id
+Ref: admin_assistant_tool_calls.message_id > admin_assistant_messages.id
+Ref: admin_assistant_draft_actions.conversation_id > admin_assistant_conversations.id
+Ref: admin_assistant_draft_actions.message_id > admin_assistant_messages.id
+Ref: admin_assistant_draft_actions.admin_user_id > users.user_id
+Ref: admin_assistant_draft_actions.executed_by_admin_user_id > users.user_id
 
 Ref: payments.buyer_id > users.user_id
 Ref: payments.extra_fee_id > extra_fees.extra_fee_id
 Ref: payments.ad_fee_id > ad_fees.ad_fee_id
+Ref: payments.cafe_page_id > cafe_pages.id
 Ref: payment_details.payment_id > payments.payment_id
+
 Ref: ad_campaigns.cafe_page_id > cafe_pages.id
 Ref: ad_campaigns.payment_id > payments.payment_id
 Ref: ad_target_regions.ad_campaign_id > ad_campaigns.ad_campaign_id
@@ -1188,14 +1535,17 @@ Ref: ad_impressions.user_id > users.user_id
 Ref: ad_clicks.ad_campaign_id > ad_campaigns.ad_campaign_id
 Ref: ad_clicks.user_id > users.user_id
 Ref: ad_daily_stats.ad_campaign_id > ad_campaigns.ad_campaign_id
-Ref: content_reports.reporter_user_id > users.user_id
-Ref: content_reports.blog_id > blogs.id
-Ref: content_reports.comment_id > comments.id
-Ref: content_reports.reported_user_id > users.user_id
-Ref: content_reports.cafe_page_id > cafe_pages.id
-Ref: content_reports.reason_id > report_reasons.id
-Ref: ai_moderation_results.blog_id > blogs.id
-Ref: ai_moderation_results.comment_id > comments.id
-Ref: ai_moderation_results.content_report_id > content_reports.id
-Ref: report_moderation_jobs.content_report_id > content_reports.id
-Ref: admin_report_ai_resolutions.content_report_id > content_reports.id
+
+Ref: reviewers.user_id > users.user_id
+Ref: reviewer_stripe_accounts.reviewer_id > reviewers.reviewer_id
+Ref: reviewer_formula.created_by > users.user_id
+Ref: reviewer_badge_threshold.formula_id > reviewer_formula.id
+Ref: reviewer_badges.reviewer_id > reviewers.reviewer_id
+Ref: reviewer_ranking_snapshot.reviewer_id > reviewers.reviewer_id
+Ref: reviewer_ranking_snapshot.formula_id > reviewer_formula.id
+Ref: reviewer_income.reviewer_id > reviewers.reviewer_id
+Ref: reviewer_income.formula_id > reviewer_formula.id
+Ref: reviewer_payouts.reviewer_id > reviewers.reviewer_id
+Ref: admin_payout.reviewer_id > reviewers.reviewer_id
+Ref: admin_payout.approved_by > users.user_id
+Ref: admin_payout.formula_id > reviewer_formula.id

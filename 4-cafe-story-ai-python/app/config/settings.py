@@ -20,4 +20,4 @@ RAG_DOCS_CORPUS_DIR: str = os.getenv(
     "RAG_DOCS_CORPUS_DIR",
     os.path.join(os.path.dirname(__file__), "..", "..", "..", "documents", "rag-corpus"),
 )
-RAG_DAILY_BUDGET_USD: float = float(os.getenv("RAG_DAILY_BUDGET_USD", "0.15"))
+RAG_DAILY_BUDGET_USD: float = float(os.getenv("RAG_DAILY_BUDGET_USD", "1.0"))

@@ -169,7 +169,7 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
             and (:authorUserId is null or b.author.userId = :authorUserId)
             and (:pageId is null or b.pageId = :pageId)
             """)
-    @EntityGraph(attributePaths = {"author"})
+    @EntityGraph(attributePaths = {"author", "page"})
     Page<Blog> findAdminBlogs(
             @Param("status") PostStatus status,
             @Param("authorUserId") UUID authorUserId,

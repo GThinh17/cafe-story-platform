@@ -5,9 +5,11 @@ import re
 # lớp này chặn email/phone lỡ lọt trong UGC content trước khi embed.
 
 _EMAIL_PATTERN = re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}")
-# SĐT Việt Nam: 0/84/+84 + đầu số di động, cho phép chấm/gạch/space giữa các cụm.
+# SĐT di động Việt Nam: prefix 0 / 84 / +84 + đầu số di động hợp lệ (03/05/07/08/09)
+# + đúng 7 chữ số còn lại (tổng 10 số quốc nội). Cho phép chấm/gạch/space giữa các cụm.
+# Siết chặt so với bản cũ (khớp 8-10 số bất kỳ) để không mask nhầm giá tiền / ID dài.
 _PHONE_PATTERN = re.compile(
-    r"(?<!\d)(?:\+?84|0)(?:[\s.\-]?\d){8,10}(?!\d)"
+    r"(?<!\d)(?:\+?84|0)[\s.\-]?(?:3[2-9]|5[25689]|7[06-9]|8[1-9]|9\d)(?:[\s.\-]?\d){7}(?!\d)"
 )
 _MENTION_PATTERN = re.compile(r"@[\w.]{2,}")
 

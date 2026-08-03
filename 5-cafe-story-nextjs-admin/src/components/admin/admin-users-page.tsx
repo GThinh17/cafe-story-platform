@@ -24,11 +24,12 @@ import {
   PAGE_SIZE,
   Toolbar,
   useAdminDetailResource,
+  useDebouncedValue,
   usePagedAdminResource,
 } from "@/components/admin/admin-page-utils";
 import { Badge } from "@/components/ui/badge";
 import { UserCell } from "@/components/admin/user-cell";
-import { getAdminUser, getUsers, updateUserRoles, updateUserStatus } from "@/lib/api/admin";
+import { getUsers, updateUserRoles, updateUserStatus } from "@/lib/api/admin";
 import type { AdminUser, UserRole } from "@/types/admin";
 
 const roles: UserRole[] = ["USER", "REVIEWER", "ADMIN", "CAFE_PAGE"];
@@ -45,12 +46,18 @@ export function AdminUsersPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const detail = useAdminDetailResource<AdminUser>();
+  const debouncedSearch = useDebouncedValue(search);
 
   const resource = usePagedAdminResource(
     (page, signal) =>
-      getUsers({ search, accountStatus, role, page, size: PAGE_SIZE }, signal),
-    [search, accountStatus, role],
+      getUsers({ search: debouncedSearch, accountStatus, role, page, size: PAGE_SIZE }, signal),
+    [debouncedSearch, accountStatus, role],
   );
+
+  function openDetail(user: AdminUser) {
+    // Row already has everything the dialog renders — skip the redundant GET.
+    void detail.load(async () => user);
+  }
 
   const columns = useMemo<AdminTableColumn<AdminUser>[]>(
     () => [
@@ -98,8 +105,7 @@ export function AdminUsersPage() {
               {
                 label: "View detail",
                 icon: EyeIcon,
-                onSelect: () =>
-                  detail.load((signal) => getAdminUser(user.userId, signal)),
+                onSelect: () => openDetail(user),
               },
               {
                 label: user.accountStatus ? "Deactivate" : "Activate",
@@ -192,9 +198,7 @@ export function AdminUsersPage() {
         getRowKey={(user) => user.userId}
         isLoading={resource.isLoading}
         error={resource.error}
-        onRowClick={(user) =>
-          detail.load((signal) => getAdminUser(user.userId, signal))
-        }
+        onRowClick={openDetail}
       />
       <AdminPagination page={resource.data} onPageChange={resource.setPageNumber} />
       <AdminDetailDialog

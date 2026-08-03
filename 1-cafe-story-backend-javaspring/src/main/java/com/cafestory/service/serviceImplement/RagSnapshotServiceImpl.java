@@ -33,6 +33,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class RagSnapshotServiceImpl implements RagSnapshotService {
@@ -126,12 +127,29 @@ public class RagSnapshotServiceImpl implements RagSnapshotService {
     private RagSnapshotResponseDTO reviewerSnapshot(LocalDateTime since, UUID cursorId, int limit, Pageable pageable) {
         List<Reviewer> reviewers = reviewerRepository.findRagSnapshotReviewers(since, cursorId, pageable);
 
+        // Batch fetch badge history cho toàn bộ reviewers trong page (chống N+1: cũ = 2*N query,
+        // mới = 1 query + group in-memory). Sort theo reviewerId, month DESC nên list mỗi reviewer
+        // giữ đúng thứ tự "latest first" như findTopByReviewerReviewerIdOrderByMonthDesc trước đây.
+        List<UUID> reviewerIds = reviewers.stream().map(Reviewer::getReviewerId).toList();
+        Map<UUID, List<ReviewerBadgeHistory>> historyByReviewerId = reviewerIds.isEmpty()
+                ? Map.of()
+                : reviewerBadgeHistoryRepository
+                        .findByReviewerReviewerIdInOrderByReviewerReviewerIdAscMonthDesc(reviewerIds)
+                        .stream()
+                        .collect(Collectors.groupingBy(h -> h.getReviewer().getReviewerId()));
+
+        // Active formula: cũ gọi 1 lần/reviewer, giờ hoist ra ngoài loop.
+        ReviewerFormula activeFormula = reviewerFormulaRepository.findByActiveTrue().orElse(null);
+
         List<RagSnapshotItemResponseDTO> items = reviewers.stream()
                 .map(reviewer -> new RagSnapshotItemResponseDTO(
                         SOURCE_TYPE_REVIEWER,
                         reviewer.getReviewerId().toString(),
                         effectiveTimestamp(reviewer.getUpdatedAt(), reviewer.getCreatedAt()),
-                        reviewerData(reviewer)))
+                        reviewerData(
+                                reviewer,
+                                historyByReviewerId.getOrDefault(reviewer.getReviewerId(), List.of()),
+                                activeFormula)))
                 .toList();
 
         List<String> tombstones = reviewerRepository.findRagTombstoneReviewerIds(since).stream()
@@ -210,7 +228,8 @@ public class RagSnapshotServiceImpl implements RagSnapshotService {
         return data;
     }
 
-    private Map<String, Object> reviewerData(Reviewer reviewer) {
+    private Map<String, Object> reviewerData(
+            Reviewer reviewer, List<ReviewerBadgeHistory> history, ReviewerFormula activeFormula) {
         User user = reviewer.getUser();
         Region region = user == null ? null : user.getRegion();
 
@@ -230,19 +249,14 @@ public class RagSnapshotServiceImpl implements RagSnapshotService {
         data.put("followerCount", user == null ? 0 : user.getUserFollower());
         data.put("likeCount", user == null ? 0 : user.getUserLike());
 
-        // Latest badge — cho câu "reviewer nào nổi bật" (badge = huy hiệu công khai)
-        var latestBadgeOpt = reviewerBadgeHistoryRepository
-                .findTopByReviewerReviewerIdOrderByMonthDesc(reviewer.getReviewerId());
-        if (latestBadgeOpt.isPresent()) {
-            ReviewerBadgeHistory latest = latestBadgeOpt.get();
+        // history được caller sort month DESC, phần tử đầu = latest.
+        ReviewerBadgeHistory latest = history.isEmpty() ? null : history.get(0);
+        if (latest != null) {
             data.put("latestBadge", latest.getBadge().name());
             data.put("latestBadgeMonth", latest.getMonth());
             data.put("latestBadgeScore", latest.getScore());
         }
 
-        // Badge history summary (đếm mỗi loại đã đạt bao nhiêu tháng)
-        List<ReviewerBadgeHistory> history = reviewerBadgeHistoryRepository
-                .findByReviewerReviewerIdOrderByMonthDesc(reviewer.getReviewerId());
         Map<String, Long> badgeCounts = new HashMap<>();
         for (ReviewerBadgeHistory h : history) {
             badgeCounts.merge(h.getBadge().name(), 1L, Long::sum);
@@ -250,11 +264,8 @@ public class RagSnapshotServiceImpl implements RagSnapshotService {
         data.put("badgeCounts", badgeCounts);
         data.put("badgeTotalMonths", (long) history.size());
 
-        // Formula tier hiện tại (nếu có active formula và reviewer có badge)
-        ReviewerFormula activeFormula = reviewerFormulaRepository.findByActiveTrue().orElse(null);
-        if (activeFormula != null && latestBadgeOpt.isPresent()) {
-            data.put("formulaMultiplier",
-                    activeFormula.getMultiplierForBadge(latestBadgeOpt.get().getBadge()));
+        if (activeFormula != null && latest != null) {
+            data.put("formulaMultiplier", activeFormula.getMultiplierForBadge(latest.getBadge()));
         }
         return data;
     }

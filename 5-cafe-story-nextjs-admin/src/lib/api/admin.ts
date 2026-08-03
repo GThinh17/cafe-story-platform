@@ -556,9 +556,9 @@ export function getReviewerRanking(params: {
   period: string;
   periodType: RankingPeriodType;
   page: number;
-  limit: number;
+  size: number;
 }, signal?: AbortSignal) {
-  return apiFetch<ReviewerRankingSnapshot[]>(
+  return apiFetch<PageResponse<ReviewerRankingSnapshot>>(
     withQuery(apiEndpoints.admin.reviewerRanking, params),
     { method: "GET", signal },
   );

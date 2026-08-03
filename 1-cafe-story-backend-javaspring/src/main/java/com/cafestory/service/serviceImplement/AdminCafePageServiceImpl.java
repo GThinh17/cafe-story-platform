@@ -17,7 +17,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class AdminCafePageServiceImpl implements AdminCafePageService {
@@ -37,8 +40,25 @@ public class AdminCafePageServiceImpl implements AdminCafePageService {
     @Override
     @Transactional(readOnly = true)
     public Page<CafePageResponseDTO> getCafePages(PageStatus status, UUID ownerUserId, Pageable pageable) {
-        return cafePageRepository.findAdminCafePages(status, ownerUserId, pageable)
-                .map(this::toCafePageResponseDTO);
+        Page<CafePage> cafePages = cafePageRepository.findAdminCafePages(status, ownerUserId, pageable);
+        List<UUID> pageIds = cafePages.stream().map(CafePage::getId).toList();
+        Map<UUID, CafePageRatingRepository.CafePageRatingSummaryRow> ratingsByPageId = pageIds.isEmpty()
+                ? Map.of()
+                : cafePageRatingRepository.summarizeByCafePageIds(pageIds).stream()
+                        .collect(Collectors.toMap(
+                                CafePageRatingRepository.CafePageRatingSummaryRow::getCafePageId,
+                                row -> row));
+        return cafePages.map(cafePage -> {
+            CafePageResponseDTO response = cafePageMapper.toCafePageResponseDTO(cafePage);
+            response.setIsFollowing(false);
+            response.setIsLiked(false);
+            response.setIsRating(false);
+            response.setMyRating(null);
+            CafePageRatingRepository.CafePageRatingSummaryRow rating = ratingsByPageId.get(cafePage.getId());
+            response.setRatingScore(rating == null ? null : rating.getAvgRating());
+            response.setRatingCount(rating == null ? 0L : rating.getRatingCount());
+            return response;
+        });
     }
 
     @Override

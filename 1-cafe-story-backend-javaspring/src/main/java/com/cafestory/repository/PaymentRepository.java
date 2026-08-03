@@ -35,6 +35,7 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
             where (:paymentStatus is null or p.paymentStatus = :paymentStatus)
             and (:buyerId is null or p.buyer.userId = :buyerId)
             """)
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"buyer", "extraFee", "adFee", "cafePage"})
     Page<Payment> findAdminPayments(
             @Param("paymentStatus") PaymentStatus paymentStatus,
             @Param("buyerId") UUID buyerId,

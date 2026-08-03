@@ -39,12 +39,15 @@ def ingest_source_type(source_type: str) -> dict[str, int]:
             source_id = item["sourceId"]
             chunks = chunk_fn(source_id, item.get("data") or {})
             counters = store.upsert_with_hash_check(source_type, source_id, chunks, embed_texts)
-            store.upsert_parent_document(
-                source_type,
-                source_id,
-                chunker.full_content_for_parent(chunks),
-                chunks[0].metadata if chunks else {},
-            )
+            # B7: chỉ ghi parent khi có thay đổi thật. Item hash trùng (chỉ kept) →
+            # body không đổi → parent full_content không đổi → bỏ ghi thừa mỗi chu kỳ.
+            if counters["embedded"] or counters["deleted"]:
+                store.upsert_parent_document(
+                    source_type,
+                    source_id,
+                    chunker.full_content_for_parent(chunks),
+                    chunks[0].metadata if chunks else {},
+                )
             totals["items"] += 1
             totals["embedded"] += counters["embedded"]
             totals["deleted"] += counters["deleted"]

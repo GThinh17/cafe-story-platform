@@ -23,6 +23,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -132,8 +135,8 @@ class ReviewerRankingSnapshotServiceImplTest {
     @Test
     void getRanking_monthly_enrichesBadgeFromHistory_TC004() {
         ReviewerRankingSnapshot snapshot = snapshot(150L);
-        when(snapshotRepository.findByPeriodAndPeriodTypeOrderByRankPositionAsc(MONTH_PERIOD, RankingPeriodType.MONTHLY))
-                .thenReturn(List.of(snapshot));
+        when(snapshotRepository.findByPeriodAndPeriodType(eq(MONTH_PERIOD), eq(RankingPeriodType.MONTHLY), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(snapshot)));
         ReviewerBadgeHistory history = new ReviewerBadgeHistory();
         history.setReviewer(snapshot.getReviewer());
         history.setMonth(MONTH_PERIOD);
@@ -141,22 +144,22 @@ class ReviewerRankingSnapshotServiceImplTest {
         when(reviewerBadgeHistoryRepository.findByMonthAndReviewerReviewerIdIn(eq(MONTH_PERIOD), any()))
                 .thenReturn(List.of(history));
 
-        List<ReviewerRankingSnapshotResponseDTO> result = service.getRanking(MONTH_PERIOD, RankingPeriodType.MONTHLY, 1, 20);
+        Page<ReviewerRankingSnapshotResponseDTO> result = service.getRanking(MONTH_PERIOD, RankingPeriodType.MONTHLY, 0, 20);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getBadge()).isEqualTo(ReviewerBadge.BRONZE);
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getBadge()).isEqualTo(ReviewerBadge.BRONZE);
     }
 
     @Test
     void getRanking_daily_doesNotQueryBadgeHistory_TC005() {
         ReviewerRankingSnapshot snapshot = snapshot(150L);
-        when(snapshotRepository.findByPeriodAndPeriodTypeOrderByRankPositionAsc("2026-06-15", RankingPeriodType.DAILY))
-                .thenReturn(List.of(snapshot));
+        when(snapshotRepository.findByPeriodAndPeriodType(eq("2026-06-15"), eq(RankingPeriodType.DAILY), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(snapshot)));
 
-        List<ReviewerRankingSnapshotResponseDTO> result = service.getRanking("2026-06-15", RankingPeriodType.DAILY, 1, 20);
+        Page<ReviewerRankingSnapshotResponseDTO> result = service.getRanking("2026-06-15", RankingPeriodType.DAILY, 0, 20);
 
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getBadge()).isNull();
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getBadge()).isNull();
         verify(reviewerBadgeHistoryRepository, never()).findByMonthAndReviewerReviewerIdIn(any(), any());
     }
 

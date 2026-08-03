@@ -20,7 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class AdminUserServiceImpl implements AdminUserService {
@@ -50,8 +52,15 @@ public class AdminUserServiceImpl implements AdminUserService {
             Pageable pageable) {
         String normalizedSearch = normalize(search);
         String roleName = role == null ? null : role.name();
-        return userRepository.findAdminUsers(normalizedSearch, accountStatus, roleName, pageable)
-                .map(this::toResponse);
+        Page<User> users = userRepository.findAdminUsers(normalizedSearch, accountStatus, roleName, pageable);
+        List<UUID> userIds = users.stream().map(User::getUserId).toList();
+        Map<UUID, List<UserRoleAssignment>> assignmentsByUserId = userIds.isEmpty()
+                ? Map.of()
+                : userRoleAssignmentRepository.findByUserUserIdIn(userIds).stream()
+                        .collect(Collectors.groupingBy(assignment -> assignment.getUser().getUserId()));
+        return users.map(user -> adminUserMapper.toAdminUserResponseDTO(
+                user,
+                assignmentsByUserId.getOrDefault(user.getUserId(), List.of())));
     }
 
     @Override

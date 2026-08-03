@@ -5,7 +5,6 @@ import com.cafestory.dto.responseDTO.AdminPayoutResponseDTO;
 import com.cafestory.entity.AdminPayout;
 import com.cafestory.entity.ReviewerFormula;
 import com.cafestory.entity.Reviewer;
-import com.cafestory.entity.ReviewerIncome;
 import com.cafestory.entity.ReviewerRankingSnapshot;
 import com.cafestory.entity.ReviewerStripeAccount;
 import com.cafestory.entity.User;
@@ -15,6 +14,7 @@ import com.cafestory.entity.enums.ReviewerBadge;
 import com.cafestory.repository.AdminPayoutRepository;
 import com.cafestory.repository.ReviewerIncomeRepository;
 import com.cafestory.repository.ReviewerRankingSnapshotRepository;
+import com.cafestory.repository.ReviewerRepository;
 import com.cafestory.repository.ReviewerStripeAccountRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.AdminPayoutService;
@@ -62,6 +62,7 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
     private final ReviewerIncomeService reviewerIncomeService;
     private final ReviewerStripeAccountRepository stripeAccountRepository;
     private final ReviewerBadgeThresholdService badgeThresholdService;
+    private final ReviewerRepository reviewerRepository;
 
     public AdminPayoutServiceImpl(
             @Value("${stripe.secret-key:}") String stripeSecretKey,
@@ -72,7 +73,8 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
             ReviewerFormulaService formulaService,
             ReviewerIncomeService reviewerIncomeService,
             ReviewerStripeAccountRepository stripeAccountRepository,
-            ReviewerBadgeThresholdService badgeThresholdService) {
+            ReviewerBadgeThresholdService badgeThresholdService,
+            ReviewerRepository reviewerRepository) {
         this.stripeSecretKey = stripeSecretKey;
         this.payoutRepository = payoutRepository;
         this.incomeRepository = incomeRepository;
@@ -82,6 +84,7 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
         this.reviewerIncomeService = reviewerIncomeService;
         this.stripeAccountRepository = stripeAccountRepository;
         this.badgeThresholdService = badgeThresholdService;
+        this.reviewerRepository = reviewerRepository;
     }
 
     @Override
@@ -101,14 +104,8 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
 
         ReviewerFormula formula = formulaService.getActiveFormula();
 
-        List<ReviewerIncome> monthlyIncomes = incomeRepository
-                .findByIncomeDateGreaterThanEqualAndIncomeDateLessThan(start, end);
-
         // Gap detection: find days in the month that have no income record, then backfill
-        Set<LocalDate> coveredDates = new HashSet<>();
-        for (ReviewerIncome income : monthlyIncomes) {
-            coveredDates.add(income.getIncomeDate());
-        }
+        Set<LocalDate> coveredDates = new HashSet<>(incomeRepository.findCoveredDatesBetween(start, end));
         List<LocalDate> missingDates = new ArrayList<>();
         for (LocalDate d = start; d.isBefore(end); d = d.plusDays(1)) {
             if (!coveredDates.contains(d)) missingDates.add(d);
@@ -119,21 +116,21 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
             for (LocalDate missing : missingDates) {
                 reviewerIncomeService.generateDailyIncome(missing);
             }
-            // Re-query to include newly generated records
-            monthlyIncomes = incomeRepository
-                    .findByIncomeDateGreaterThanEqualAndIncomeDateLessThan(start, end);
         }
 
         Map<UUID, Long> totalBaseByReviewerId = new HashMap<>();
-        Map<UUID, Reviewer> reviewerById = new HashMap<>();
-        for (ReviewerIncome income : monthlyIncomes) {
-            UUID rid = income.getReviewer().getReviewerId();
-            totalBaseByReviewerId.merge(rid, income.getBaseAmount(), Long::sum);
-            reviewerById.putIfAbsent(rid, income.getReviewer());
+        for (ReviewerIncomeRepository.ReviewerBaseRow row
+                : incomeRepository.sumBaseAmountByReviewerBetween(start, end)) {
+            totalBaseByReviewerId.put(row.getReviewerId(), row.getTotalBase());
         }
 
         if (totalBaseByReviewerId.isEmpty()) {
             return;
+        }
+
+        Map<UUID, Reviewer> reviewerById = new HashMap<>();
+        for (Reviewer reviewer : reviewerRepository.findAllById(totalBaseByReviewerId.keySet())) {
+            reviewerById.put(reviewer.getReviewerId(), reviewer);
         }
 
         Map<UUID, ReviewerBadge> badgeByReviewerId = new HashMap<>();

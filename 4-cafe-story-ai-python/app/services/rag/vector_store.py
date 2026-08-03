@@ -102,6 +102,9 @@ class VectorStore:
         Returns counters {embedded, deleted, kept}.
         """
         new_hashes = {c.body_hash for c in chunks}
+        # NOTE (B8): đọc hash cũ ở connection riêng — KHÔNG gộp vào transaction ghi
+        # bên dưới, vì embed_fn là network call nằm giữa read và write; gộp lại sẽ
+        # giữ 1 connection pool suốt lúc gọi API embedding (hại khi concurrency).
         old_hashes = self.existing_hashes(source_type, source_id)
 
         to_delete = old_hashes - new_hashes
@@ -109,6 +112,30 @@ class VectorStore:
         to_keep = [c for c in chunks if c.body_hash in old_hashes]
 
         embeddings = embed_fn([c.embed_text for c in to_embed]) if to_embed else []
+
+        insert_params = [
+            (
+                chunk.source_type,
+                chunk.source_id,
+                chunk.chunk_index,
+                chunk.body_hash,
+                chunk.embed_text,
+                json.dumps(chunk.metadata, ensure_ascii=False, default=str),
+                embedding,
+                chunk.embed_text,
+            )
+            for chunk, embedding in zip(to_embed, embeddings)
+        ]
+        update_params = [
+            (
+                chunk.chunk_index,
+                json.dumps(chunk.metadata, ensure_ascii=False, default=str),
+                source_type,
+                source_id,
+                chunk.body_hash,
+            )
+            for chunk in to_keep
+        ]
 
         with self._pool.connection() as conn:
             with conn.transaction():
@@ -121,46 +148,34 @@ class VectorStore:
                         """,
                         (source_type, source_id, list(to_delete)),
                     )
-                for chunk, embedding in zip(to_embed, embeddings):
-                    conn.execute(
-                        """
-                        INSERT INTO rag_documents
-                            (source_type, source_id, chunk_index, content_hash,
-                             content, metadata, embedding, content_tsv, updated_at)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s,
-                                to_tsvector('simple', unaccent(%s)), NOW())
-                        ON CONFLICT (source_type, source_id, content_hash)
-                        DO UPDATE SET
-                            chunk_index = EXCLUDED.chunk_index,
-                            metadata = EXCLUDED.metadata,
-                            updated_at = NOW()
-                        """,
-                        (
-                            chunk.source_type,
-                            chunk.source_id,
-                            chunk.chunk_index,
-                            chunk.body_hash,
-                            chunk.embed_text,
-                            json.dumps(chunk.metadata, ensure_ascii=False, default=str),
-                            embedding,
-                            chunk.embed_text,
-                        ),
-                    )
-                for chunk in to_keep:
-                    conn.execute(
-                        """
-                        UPDATE rag_documents
-                        SET chunk_index = %s, metadata = %s, updated_at = NOW()
-                        WHERE source_type = %s AND source_id = %s AND content_hash = %s
-                        """,
-                        (
-                            chunk.chunk_index,
-                            json.dumps(chunk.metadata, ensure_ascii=False, default=str),
-                            source_type,
-                            source_id,
-                            chunk.body_hash,
-                        ),
-                    )
+                if insert_params:
+                    # B6: executemany thay vòng lặp 1 round-trip/chunk (N+1 ghi).
+                    with conn.cursor() as cur:
+                        cur.executemany(
+                            """
+                            INSERT INTO rag_documents
+                                (source_type, source_id, chunk_index, content_hash,
+                                 content, metadata, embedding, content_tsv, updated_at)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s,
+                                    to_tsvector('simple', unaccent(%s)), NOW())
+                            ON CONFLICT (source_type, source_id, content_hash)
+                            DO UPDATE SET
+                                chunk_index = EXCLUDED.chunk_index,
+                                metadata = EXCLUDED.metadata,
+                                updated_at = NOW()
+                            """,
+                            insert_params,
+                        )
+                if update_params:
+                    with conn.cursor() as cur:
+                        cur.executemany(
+                            """
+                            UPDATE rag_documents
+                            SET chunk_index = %s, metadata = %s, updated_at = NOW()
+                            WHERE source_type = %s AND source_id = %s AND content_hash = %s
+                            """,
+                            update_params,
+                        )
 
         counters = {"embedded": len(to_embed), "deleted": len(to_delete), "kept": len(to_keep)}
         logger.info("upsert %s:%s -> %s", source_type, source_id, counters)
@@ -405,6 +420,38 @@ class VectorStore:
                 """
             ).fetchone()
         return int(row[0]), int(row[1])
+
+    def usage_today_by_operation(self) -> dict[str, tuple[int, int]]:
+        """Token hôm nay gom theo operation → tính spend đúng đơn giá từng loại (§15.5)."""
+        with self._pool.connection() as conn:
+            rows = conn.execute(
+                """
+                SELECT operation,
+                       COALESCE(SUM(input_tokens), 0),
+                       COALESCE(SUM(output_tokens), 0)
+                FROM rag_usage_log
+                WHERE created_at >= date_trunc('day', NOW())
+                GROUP BY operation
+                """
+            ).fetchall()
+        return {row[0]: (int(row[1]), int(row[2])) for row in rows}
+
+    # ---- Retention (plan C9): dọn bảng chỉ-append tránh phình ----
+
+    def purge_old_records(self, usage_days: int = 2, cache_minutes: int = 60) -> dict[str, int]:
+        with self._pool.connection() as conn:
+            with conn.transaction():
+                usage = conn.execute(
+                    "DELETE FROM rag_usage_log WHERE created_at < NOW() - make_interval(days => %s)",
+                    (usage_days,),
+                )
+                cache = conn.execute(
+                    "DELETE FROM rag_query_cache WHERE created_at < NOW() - make_interval(mins => %s)",
+                    (cache_minutes,),
+                )
+        counters = {"usage_deleted": usage.rowcount, "cache_deleted": cache.rowcount}
+        logger.info("purge old records: %s", counters)
+        return counters
 
 
 _store: VectorStore | None = None

@@ -100,4 +100,21 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
 
         Long getEventCount();
     }
+
+    @Query("""
+            select c.user.userId as userId, count(c) as eventCount
+            from Comment c
+            where c.createdAt >= :startAt
+            and c.createdAt < :endAt
+            group by c.user.userId
+            """)
+    List<UserCommentCountRow> countByUserAndCreatedAtBetween(
+            @Param("startAt") LocalDateTime startAt,
+            @Param("endAt") LocalDateTime endAt);
+
+    interface UserCommentCountRow {
+        UUID getUserId();
+
+        Long getEventCount();
+    }
 }

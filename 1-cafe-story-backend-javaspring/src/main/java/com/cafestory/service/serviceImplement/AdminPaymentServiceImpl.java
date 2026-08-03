@@ -20,7 +20,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class AdminPaymentServiceImpl implements AdminPaymentService {
@@ -43,8 +45,15 @@ public class AdminPaymentServiceImpl implements AdminPaymentService {
     @Override
     @Transactional(readOnly = true)
     public Page<PaymentResponseDTO> getPayments(PaymentStatus paymentStatus, UUID buyerId, Pageable pageable) {
-        return paymentRepository.findAdminPayments(paymentStatus, buyerId, pageable)
-                .map(payment -> toResponse(payment, findDetail(payment.getPaymentId())));
+        Page<Payment> payments = paymentRepository.findAdminPayments(paymentStatus, buyerId, pageable);
+        List<UUID> paymentIds = payments.stream().map(Payment::getPaymentId).toList();
+        Map<UUID, PaymentDetail> detailsByPaymentId = paymentIds.isEmpty()
+                ? Map.of()
+                : paymentDetailRepository.findByPaymentPaymentIdIn(paymentIds).stream()
+                        .collect(Collectors.toMap(
+                                detail -> detail.getPayment().getPaymentId(),
+                                detail -> detail));
+        return payments.map(payment -> toResponse(payment, detailsByPaymentId.get(payment.getPaymentId())));
     }
 
     @Override

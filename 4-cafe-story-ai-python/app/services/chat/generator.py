@@ -1,6 +1,5 @@
 import json
 import logging
-from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any, Iterator
@@ -23,6 +22,11 @@ logger = logging.getLogger("cafestory-ai.chat-generator")
 
 BUSY_MESSAGE = "Hệ thống đang bận, vui lòng thử lại sau ít phút nhé."
 NO_CONTEXT_MESSAGE = "Mình chưa có thông tin về điều này. Bạn thử hỏi theo cách khác xem sao nhé."
+OUT_OF_SCOPE_MESSAGE = (
+    "Mình là trợ lý của CafeStory nên chỉ hỗ trợ các thông tin về quán cà phê, "
+    "reviewer, bài viết và cách sử dụng nền tảng thôi nhé. Câu này mình chưa hỗ trợ được. "
+    "Bạn thử hỏi mình về quán cà phê, reviewer hay cách dùng CafeStory xem sao."
+)
 LOGIN_HINT_MESSAGE = (
     "Để xem lý do cụ thể cho bài viết của bạn, hãy đăng nhập rồi hỏi lại, "
     "hoặc vào mục \"Bài viết của tôi\" để xem trạng thái từng bài."
@@ -140,7 +144,9 @@ def _retrieve_for_route(
     """Adaptive dispatch (plan §1): mỗi route 1 chiến lược retrieval."""
     if decision.route == "A":
         query_lower = decision.rewritten_query.lower()
-        if "reviewer" in query_lower:
+        # Mở rộng nhận diện reviewer: không chỉ "reviewer" mà cả biến thể tiếng Việt.
+        reviewer_keywords = ("reviewer", "người review", "người đánh giá", "người viết đánh giá")
+        if any(keyword in query_lower for keyword in reviewer_keywords):
             return _top_reviewer_chunks()
         return _trending_chunks(decision.province)
 
@@ -220,8 +226,10 @@ def _prepare(
 ) -> _Prepared:
     """Router + retrieval chung cho sync và streaming.
 
-    §15.4: router và embed chạy song song (ThreadPoolExecutor — pattern
-    blog_evaluator). Nếu router rewrite khác query gốc thì re-embed (rẻ).
+    §15.4 (điều chỉnh): route trước, rồi embed tuần tự trên `rewritten_query`
+    bên trong `_retrieve_for_route`. Bỏ speculative embed song song query gốc —
+    router thường rewrite nên bản embed gốc sẽ bị vứt đi và phải embed lại, tốn
+    thêm 1 call mà latency không giảm (embed tuần tự ≈ song song trong case này).
     """
     query = (query or "").strip()
     if not query:
@@ -242,20 +250,16 @@ def _prepare(
 
     try:
         check_budget()
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            route_future = pool.submit(route_query, query, history)
-            embed_future = pool.submit(embed_query, query)
-            decision = route_future.result()
-            try:
-                original_embedding = embed_future.result()
-            except Exception:
-                original_embedding = None
-
-        query_embedding = original_embedding
-        if decision.rewritten_query != query or query_embedding is None:
-            query_embedding = None  # _retrieve_for_route sẽ embed lại theo rewritten
-
-        chunks = _retrieve_for_route(decision, query_embedding, user_jwt)
+        decision = route_query(query, history)
+        # Out-of-scope (route F): trả lời từ chối NGAY, không embed/retrieve/generate
+        # → tiết kiệm usage (chỉ tốn 1 call router để phân loại).
+        if decision.route == "F":
+            return _Prepared(
+                early_answer=ChatAnswer(
+                    answer=OUT_OF_SCOPE_MESSAGE, sources=[], route="F")
+            )
+        # query_embedding=None → _retrieve_for_route tự embed rewritten_query khi cần.
+        chunks = _retrieve_for_route(decision, None, user_jwt)
     except BudgetExceededError:
         logger.warning("budget exceeded, refusing query")
         return _Prepared(early_answer=ChatAnswer(answer=BUSY_MESSAGE, sources=[]))
@@ -308,7 +312,7 @@ def answer_query(
     response = _get_client().chat.completions.create(
         model=config["generator"],
         messages=[{"role": "user", "content": prepared.prompt}],
-        max_tokens=600,
+        max_tokens=1000,
         temperature=0.3,
     )
     raw_answer = response.choices[0].message.content or NO_CONTEXT_MESSAGE
@@ -329,9 +333,11 @@ def answer_query_stream(
 ) -> Iterator[str]:
     """SSE stream (plan §7 Phase 4). Yield từng event `data: {...}\n\n`.
 
-    Event: {"delta": "..."} sau khi answer đã được sanitize, cuối cùng
-    {"done": true, "sources": [...]}. Không stream từng token thô vì PII có
-    thể bị split qua nhiều chunk và lọt qua regex redaction theo delta.
+    Stream tăng dần theo mốc xuống dòng: mỗi khi buffer có `\n`, phần trước
+    newline cuối cùng được sanitize rồi phát ngay → client thấy chữ dần dần.
+    Chỉ flush ở ranh giới `\n` vì email/SĐT không bao giờ chứa newline nên
+    không bị regex redaction chẻ đôi (space thì có thể — SĐT cho phép space
+    giữa các cụm số). Cuối cùng phát nốt phần còn lại + {"done": true, ...}.
     """
     prepared = _prepare(query, platform, history, user_jwt)
     if prepared.early_answer:
@@ -344,25 +350,51 @@ def answer_query_stream(
     stream = _get_client().chat.completions.create(
         model=config["generator"],
         messages=[{"role": "user", "content": prepared.prompt}],
-        max_tokens=600,
+        max_tokens=1000,
         temperature=0.3,
         stream=True,
+        stream_options={"include_usage": True},
     )
 
     collected: list[str] = []
-    for event in stream:
-        delta = event.choices[0].delta.content if event.choices else None
-        if delta:
+    pending = ""
+    usage_in = 0
+    usage_out = 0
+    try:
+        for event in stream:
+            usage = getattr(event, "usage", None)
+            if usage:
+                usage_in = getattr(usage, "prompt_tokens", 0) or usage_in
+                usage_out = getattr(usage, "completion_tokens", 0) or usage_out
+            delta = event.choices[0].delta.content if event.choices else None
+            if not delta:
+                continue
             collected.append(delta)
+            pending += delta
+            if "\n" in pending:
+                head, pending = pending.rsplit("\n", 1)
+                yield _sse({"delta": sanitize_text(head + "\n")})
+    except Exception:
+        logger.exception("chat stream failed mid-generation")
+        if not collected:
+            yield _sse({"delta": BUSY_MESSAGE})
+            yield _sse({"done": True, "sources": []})
+            return
+
+    if pending:
+        yield _sse({"delta": sanitize_text(pending)})
 
     raw_answer = "".join(collected) or NO_CONTEXT_MESSAGE
+    if not collected:
+        # Không có token nào (chưa flush gì ở trên) → phát message fallback.
+        yield _sse({"delta": sanitize_text(raw_answer)})
+
     result = _finalize(
         prepared,
         raw_answer,
-        estimate_tokens(prepared.prompt or ""),
-        estimate_tokens(raw_answer),
+        usage_in or estimate_tokens(prepared.prompt or ""),
+        usage_out or estimate_tokens(raw_answer),
     )
-    yield _sse({"delta": result.answer})
     yield _sse({"done": True, "sources": result.sources, "route": result.route})
 
 

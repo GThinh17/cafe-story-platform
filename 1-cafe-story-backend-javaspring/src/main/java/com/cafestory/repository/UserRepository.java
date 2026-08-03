@@ -67,6 +67,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             and (cast(:accountStatus as boolean) is null or u.accountStatus = :accountStatus)
             and (cast(:roleName as string) is null or assignment.role.name = :roleName)
             """)
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = {"region"})
     Page<User> findAdminUsers(
             @Param("search") String search,
             @Param("accountStatus") Boolean accountStatus,

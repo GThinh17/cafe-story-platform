@@ -235,28 +235,25 @@ type AdminPaginationProps<T> = {
   onPageChange: (page: number) => void;
 };
 
-/** Build a compact page list with ellipsis, always keeping the first and last
- *  page visible plus a sliding window around the current page. */
+/** Compact window: keeps a 3-page slice around current, plus ellipsis + last
+ *  (e.g. `1 2 3 … 49`, `… 24 25 26 … 49`, `… 47 48 49`). */
 function buildPageWindow(current: number, total: number): (number | "…")[] {
-  if (total <= 7) {
+  if (total <= 5) {
     return Array.from({ length: total }, (_, index) => index + 1);
   }
 
-  const pages: (number | "…")[] = [1];
-  const windowStart = Math.max(2, current - 1);
-  const windowEnd = Math.min(total - 1, current + 1);
+  // Near the start: 1 2 3 … N
+  if (current <= 3) {
+    return [1, 2, 3, "…", total];
+  }
 
-  if (windowStart > 2) {
-    pages.push("…");
+  // Near the end: 1 … N-2 N-1 N
+  if (current >= total - 2) {
+    return [1, "…", total - 2, total - 1, total];
   }
-  for (let page = windowStart; page <= windowEnd; page += 1) {
-    pages.push(page);
-  }
-  if (windowEnd < total - 1) {
-    pages.push("…");
-  }
-  pages.push(total);
-  return pages;
+
+  // Middle: 1 … c-1 c c+1 … N
+  return [1, "…", current - 1, current, current + 1, "…", total];
 }
 
 export function AdminPagination<T>({ page, onPageChange }: AdminPaginationProps<T>) {

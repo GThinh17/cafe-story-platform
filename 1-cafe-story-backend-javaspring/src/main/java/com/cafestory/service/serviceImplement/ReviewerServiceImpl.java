@@ -323,14 +323,17 @@ public class ReviewerServiceImpl implements ReviewerService {
         DateRange range = dateRangeForMonth(yearMonth);
         Map<UUID, EngagementAccumulator> engagement = aggregateEngagementForAllUsers(range.startDate(), range.endDate());
         ReviewerFormula formula = formulaService.getActiveFormula();
-        List<ReviewerPayoutResponseDTO> responses = new ArrayList<>();
+        Map<UUID, ReviewerPayout> existingByReviewerId = new HashMap<>();
+        for (ReviewerPayout existing : reviewerPayoutRepository.findByPayoutMonth(month)) {
+            existingByReviewerId.put(existing.getReviewer().getReviewerId(), existing);
+        }
+        List<ReviewerPayout> toSave = new ArrayList<>();
         for (EngagementAccumulator accumulator : engagement.values()) {
-            if (reviewerPayoutRepository.existsByReviewerReviewerIdAndPayoutMonth(accumulator.reviewer().getReviewerId(), month) && !overwrite) {
+            UUID reviewerId = accumulator.reviewer().getReviewerId();
+            if (existingByReviewerId.containsKey(reviewerId) && !overwrite) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Duplicate payout generation");
             }
-            ReviewerPayout payout = reviewerPayoutRepository
-                    .findByReviewerReviewerIdAndPayoutMonth(accumulator.reviewer().getReviewerId(), month)
-                    .orElseGet(ReviewerPayout::new);
+            ReviewerPayout payout = existingByReviewerId.getOrDefault(reviewerId, new ReviewerPayout());
             payout.setReviewer(accumulator.reviewer());
             payout.setPayoutMonth(month);
             payout.setLikeCount(accumulator.likeCount());
@@ -341,9 +344,12 @@ public class ReviewerServiceImpl implements ReviewerService {
             payout.setCommentAmount(accumulator.commentCount() * formula.getCommentPayoutAmount());
             payout.setTotalAmount(payout.getLikeAmount() + payout.getShareAmount() + payout.getCommentAmount());
             payout.setPayoutStatus(PayoutStatus.CALCULATED);
-            responses.add(toPayoutResponse(reviewerPayoutRepository.save(payout)));
+            toSave.add(payout);
         }
-        return responses;
+        return reviewerPayoutRepository.saveAll(toSave)
+                .stream()
+                .map(this::toPayoutResponse)
+                .toList();
     }
 
     @Override
@@ -353,14 +359,17 @@ public class ReviewerServiceImpl implements ReviewerService {
         YearMonth yearMonth = parseMonth(month);
         DateRange range = dateRangeForMonth(yearMonth);
         Map<UUID, EngagementAccumulator> engagement = aggregateEngagementForAllUsers(range.startDate(), range.endDate());
-        List<ReviewerBadgeResponseDTO> responses = new ArrayList<>();
+        Map<UUID, ReviewerBadgeHistory> existingByReviewerId = new HashMap<>();
+        for (ReviewerBadgeHistory existing : reviewerBadgeHistoryRepository.findByMonth(month)) {
+            existingByReviewerId.put(existing.getReviewer().getReviewerId(), existing);
+        }
+        List<ReviewerBadgeHistory> toSave = new ArrayList<>();
         for (EngagementAccumulator accumulator : engagement.values()) {
-            if (reviewerBadgeHistoryRepository.existsByReviewerReviewerIdAndMonth(accumulator.reviewer().getReviewerId(), month) && !overwrite) {
+            UUID reviewerId = accumulator.reviewer().getReviewerId();
+            if (existingByReviewerId.containsKey(reviewerId) && !overwrite) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Duplicate badge generation");
             }
-            ReviewerBadgeHistory badgeHistory = reviewerBadgeHistoryRepository
-                    .findByReviewerReviewerIdAndMonth(accumulator.reviewer().getReviewerId(), month)
-                    .orElseGet(ReviewerBadgeHistory::new);
+            ReviewerBadgeHistory badgeHistory = existingByReviewerId.getOrDefault(reviewerId, new ReviewerBadgeHistory());
             badgeHistory.setReviewer(accumulator.reviewer());
             badgeHistory.setMonth(month);
             badgeHistory.setLikeCount(accumulator.likeCount());
@@ -368,9 +377,12 @@ public class ReviewerServiceImpl implements ReviewerService {
             badgeHistory.setCommentCount(accumulator.commentCount());
             badgeHistory.setScore(accumulator.score());
             badgeHistory.setBadge(badgeThresholdService.badgeForScore(accumulator.score()));
-            responses.add(toBadgeResponse(reviewerBadgeHistoryRepository.save(badgeHistory)));
+            toSave.add(badgeHistory);
         }
-        return responses;
+        return reviewerBadgeHistoryRepository.saveAll(toSave)
+                .stream()
+                .map(this::toBadgeResponse)
+                .toList();
     }
 
     @Override
@@ -458,7 +470,7 @@ public class ReviewerServiceImpl implements ReviewerService {
         int commentWeight = formula.getCommentWeight();
         Map<UUID, Reviewer> reviewersByUserId = new HashMap<>();
         Map<UUID, EngagementAccumulator> engagement = new HashMap<>();
-        for (Reviewer reviewer : reviewerRepository.findAll()) {
+        for (Reviewer reviewer : reviewerRepository.findAllWithUser()) {
             reviewersByUserId.put(reviewer.getUser().getUserId(), reviewer);
             engagement.putIfAbsent(reviewer.getReviewerId(), new EngagementAccumulator(reviewer, likeWeight, shareWeight, commentWeight));
         }
@@ -474,14 +486,17 @@ public class ReviewerServiceImpl implements ReviewerService {
             int likeWeight,
             int shareWeight,
             int commentWeight) {
-        for (BlogLike like : blogLikeRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(startDate, endDate)) {
-            accumulator(engagement, reviewersByUserId.get(like.getUser().getUserId()), likeWeight, shareWeight, commentWeight).incrementLikes();
+        for (BlogLikeRepository.UserInteractionCountRow row
+                : blogLikeRepository.countByUserAndCreatedAtBetween(startDate, endDate)) {
+            accumulator(engagement, reviewersByUserId.get(row.getUserId()), likeWeight, shareWeight, commentWeight).addLikes(row.getEventCount());
         }
-        for (BlogShare share : blogShareRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(startDate, endDate)) {
-            accumulator(engagement, reviewersByUserId.get(share.getUser().getUserId()), likeWeight, shareWeight, commentWeight).incrementShares();
+        for (BlogShareRepository.UserShareCountRow row
+                : blogShareRepository.countByUserAndCreatedAtBetween(startDate, endDate)) {
+            accumulator(engagement, reviewersByUserId.get(row.getUserId()), likeWeight, shareWeight, commentWeight).addShares(row.getEventCount());
         }
-        for (Comment comment : commentRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(startDate, endDate)) {
-            accumulator(engagement, reviewersByUserId.get(comment.getUser().getUserId()), likeWeight, shareWeight, commentWeight).incrementComments();
+        for (CommentRepository.UserCommentCountRow row
+                : commentRepository.countByUserAndCreatedAtBetween(startDate, endDate)) {
+            accumulator(engagement, reviewersByUserId.get(row.getUserId()), likeWeight, shareWeight, commentWeight).addComments(row.getEventCount());
         }
     }
 
@@ -1091,16 +1106,16 @@ public class ReviewerServiceImpl implements ReviewerService {
             return likeCount * likeWeight + shareCount * shareWeight + commentCount * commentWeight;
         }
 
-        void incrementLikes() {
-            likeCount++;
+        void addLikes(long delta) {
+            likeCount += delta;
         }
 
-        void incrementShares() {
-            shareCount++;
+        void addShares(long delta) {
+            shareCount += delta;
         }
 
-        void incrementComments() {
-            commentCount++;
+        void addComments(long delta) {
+            commentCount += delta;
         }
     }
 }

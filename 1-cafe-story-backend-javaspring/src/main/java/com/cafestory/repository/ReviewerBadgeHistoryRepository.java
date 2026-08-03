@@ -3,6 +3,7 @@ package com.cafestory.repository;
 import com.cafestory.entity.ReviewerBadgeHistory;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,5 +18,10 @@ public interface ReviewerBadgeHistoryRepository extends JpaRepository<ReviewerBa
 
     Optional<ReviewerBadgeHistory> findTopByReviewerReviewerIdOrderByMonthDesc(UUID reviewerId);
 
-    List<ReviewerBadgeHistory> findByMonthAndReviewerReviewerIdIn(String month, java.util.Collection<UUID> reviewerIds);
+    List<ReviewerBadgeHistory> findByReviewerReviewerIdInOrderByReviewerReviewerIdAscMonthDesc(
+            Collection<UUID> reviewerIds);
+
+    List<ReviewerBadgeHistory> findByMonthAndReviewerReviewerIdIn(String month, Collection<UUID> reviewerIds);
+
+    List<ReviewerBadgeHistory> findByMonth(String month);
 }

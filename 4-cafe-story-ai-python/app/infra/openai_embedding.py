@@ -29,7 +29,9 @@ class OpenAIEmbeddingModel:
         last_error: Exception | None = None
         for attempt in range(MAX_RETRIES):
             try:
-                response = self._client.embeddings.create(model=self.model_name, input=texts)
+                response = self._client.embeddings.create(
+                    model=self.model_name, input=texts, dimensions=self.dimensions
+                )
                 return [item.embedding for item in response.data]
             except Exception as exc:
                 last_error = exc

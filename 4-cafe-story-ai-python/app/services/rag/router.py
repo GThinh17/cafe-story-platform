@@ -13,7 +13,7 @@ from app.utils.json_extractor import extract_json
 
 logger = logging.getLogger("cafestory-ai.rag-router")
 
-VALID_ROUTES = {"A", "B", "C", "D", "E"}
+VALID_ROUTES = {"A", "B", "C", "D", "E", "F"}
 DEFAULT_ROUTE = "B"
 
 

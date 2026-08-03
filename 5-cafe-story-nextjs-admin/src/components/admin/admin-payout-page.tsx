@@ -7,11 +7,14 @@ import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
 import { UserCell } from "@/components/admin/user-cell";
 import {
   AdminDataTable,
+  AdminPagination,
   type AdminTableColumn,
 } from "@/components/admin/admin-data-table";
+import type { PageResponse } from "@/types/api";
 import { AdminPageHeader } from "@/components/admin/admin-page-header";
 import {
   FilterInput,
+  useDebouncedValue,
   FilterSelect,
   shortId,
   Toolbar,
@@ -100,6 +103,7 @@ export function AdminPayoutPage() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [month, setMonth] = useState(currentMonth);
   const [reviewerId, setReviewerId] = useState("");
+  const debouncedReviewerId = useDebouncedValue(reviewerId);
   const [statusFilter, setStatusFilter] = useState<AdminPayoutStatus | "">("");
   const [page, setPage] = useState(0);
 
@@ -134,7 +138,7 @@ export function AdminPayoutPage() {
       setError(null);
       if (viewType === "DAILY") {
         return getPayoutIncome(
-          { month, reviewerId: reviewerId || undefined, page, size: PAGE_SIZE, sortDir },
+          { month, reviewerId: debouncedReviewerId || undefined, page, size: PAGE_SIZE, sortDir },
           signal,
         )
           .then((res) => {
@@ -166,7 +170,7 @@ export function AdminPayoutPage() {
           });
       }
     },
-    [viewType, month, reviewerId, statusFilter, page, sortDir],
+    [viewType, month, debouncedReviewerId, statusFilter, page, sortDir],
   );
 
   useEffect(() => {
@@ -177,7 +181,7 @@ export function AdminPayoutPage() {
 
   useEffect(() => {
     setPage(0);
-  }, [month, reviewerId, statusFilter, sortDir]);
+  }, [month, debouncedReviewerId, statusFilter, sortDir]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -316,7 +320,20 @@ export function AdminPayoutPage() {
     [],
   );
 
-  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const currentRowsLength =
+    viewType === "DAILY" ? incomeRows.length : monthlyRows.length;
+  const pageResponse: PageResponse<unknown> | null = total > 0 || currentRowsLength > 0
+    ? {
+        content: [],
+        totalElements: total,
+        totalPages,
+        number: page,
+        size: PAGE_SIZE,
+        first: page === 0,
+        last: page + 1 >= totalPages,
+      }
+    : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -411,31 +428,7 @@ export function AdminPayoutPage() {
         />
       )}
 
-      <div className="flex items-center justify-between rounded-md border border-border bg-surface px-4 py-3 text-sm text-muted">
-        <span>
-          {total} records · Page {page + 1} / {Math.max(totalPages, 1)}
-        </span>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={page <= 0}
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-          >
-            Previous
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={page + 1 >= totalPages}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next
-          </Button>
-        </div>
-      </div>
+      <AdminPagination page={pageResponse} onPageChange={setPage} />
 
       {/* Daily income generate modal */}
       <AdminConfirmDialog
