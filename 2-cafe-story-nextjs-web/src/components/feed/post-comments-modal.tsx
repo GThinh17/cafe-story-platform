@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -666,6 +667,15 @@ export function PostCommentsModal({
                     text={post.caption}
                   />
                 </p>
+                {post.tags.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {post.tags.map((tag) => (
+                      <Badge className="font-bold" key={tag} variant="secondary">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
                 <p className="mt-1 text-xs font-semibold text-muted">
                   {post.time}
                 </p>

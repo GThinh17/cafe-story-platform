@@ -8,6 +8,8 @@ export type BlogFeedResponse = {
   blogId: string;
   contentPreview: string | null;
   imageUrls: string[] | null;
+  /** Tag do AI blog moderation cấp khi bài được duyệt. */
+  tags?: string[] | null;
   allowComment?: boolean | null;
   likeCount: number | null;
   commentCount: number | null;
@@ -48,8 +50,12 @@ export type BlogResponse = {
   pageName?: string | null;
   pageAvatarUrl?: string | null;
   regionId: string | null;
+  regionCity?: string | null;
+  regionProvince?: string | null;
   content: string;
   imageUrls: string[] | null;
+  /** Tag do AI blog moderation cấp khi bài được duyệt. */
+  tags?: string[] | null;
   status: BlogPostStatus;
   isPinned: boolean | null;
   allowComment: boolean | null;

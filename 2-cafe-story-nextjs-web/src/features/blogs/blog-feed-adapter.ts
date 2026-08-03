@@ -47,18 +47,19 @@ function formatRelativeTime(value: string | null) {
   return `${Math.floor(diffHours / 24)} d`;
 }
 
-function buildTags(item: BlogFeedResponse) {
-  const tags = ["For you"];
+/**
+ * Tag hiển thị = tag do AI blog moderation cấp, cộng thêm chip khu vực.
+ * Bài chưa có tag thì trả mảng rỗng để post card không render chip nào.
+ */
+function buildTags(
+  aiTags: string[] | null | undefined,
+  regionCity: string | null | undefined,
+) {
+  const tags = [...(aiTags ?? []), regionCity]
+    .map((tag) => tag?.trim())
+    .filter((tag): tag is string => Boolean(tag));
 
-  if (item.regionCity) {
-    tags.push(item.regionCity);
-  }
-
-  if (item.rankPosition) {
-    tags.push(`Rank #${item.rankPosition}`);
-  }
-
-  return tags;
+  return Array.from(new Set(tags));
 }
 
 function formatCount(value: number | null | undefined) {
@@ -163,7 +164,7 @@ export function mapBlogFeedToFeedPosts(feed: BlogFeedResponse[]): FeedPost[] {
       saves: formatCount(item.saveCount),
       saveCount: item.saveCount ?? 0,
       isSaved: item.isSave ?? false,
-      tags: buildTags(item),
+      tags: buildTags(item.tags, item.regionCity),
       time: formatRelativeTime(item.createdAt),
       isAuthorFollowing: item.isAuthorFollowing ?? false,
       isPageFollowing: item.isPageFollowing ?? false,
@@ -280,12 +281,7 @@ export function mapBlogResponsesToFeedPosts(blogs: BlogResponse[]): FeedPost[] {
       status: item.status,
       isAuthorFollowing: item.isAuthorFollowing ?? false,
       isPageFollowing: item.isPageFollowing ?? false,
-      tags: [
-        "Profile",
-        ...[item.pageName, item.status].filter(
-          (value): value is string => Boolean(value?.trim()),
-        ),
-      ],
+      tags: buildTags(item.tags, item.regionCity),
       time: formatRelativeTime(item.createdAt),
     };
   });

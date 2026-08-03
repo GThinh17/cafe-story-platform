@@ -271,7 +271,10 @@ export function ChatPanel({
                 className={getMessageSpacingClass(message, messages[index - 1])}
                 key={message.id}
               >
-                <ChatBubble message={message} />
+                <ChatBubble
+                  isAssistant={conversation?.isAssistant ?? false}
+                  message={message}
+                />
               </div>
             ))}
             <div ref={messageEndRef} />

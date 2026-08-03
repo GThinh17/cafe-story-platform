@@ -29,6 +29,7 @@ public interface BlogMapper {
     @Mapping(target = "ratingCount", ignore = true)
     @Mapping(target = "saveCount", ignore = true)
     @Mapping(target = "taggedUsers", ignore = true)
+    @Mapping(target = "tags", ignore = true)
     @Mapping(target = "displayAuthorType", expression = "java(resolveDisplayAuthorType(blog))")
     @Mapping(target = "displayName", expression = "java(resolveDisplayName(blog))")
     @Mapping(target = "displayAvatarUrl", expression = "java(resolveDisplayAvatarUrl(blog))")

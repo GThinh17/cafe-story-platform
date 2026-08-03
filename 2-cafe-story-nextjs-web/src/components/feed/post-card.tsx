@@ -227,13 +227,15 @@ export function PostCard({ currentUserId, eagerMedia, onCommentClick, onLikeClic
           </Link>{" "}
           <MentionText text={post.caption} />
         </p>
-        <div className="flex flex-wrap gap-2">
-          {post.tags.map((tag) => (
-            <Badge className="font-bold" key={tag} variant="secondary">
-              {tag}
-            </Badge>
-          ))}
-        </div>
+        {post.tags.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {post.tags.map((tag) => (
+              <Badge className="font-bold" key={tag} variant="secondary">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );

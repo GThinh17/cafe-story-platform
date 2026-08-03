@@ -11,6 +11,7 @@ public class BlogFeedResponse {
     private UUID blogId;
     private String contentPreview;
     private List<String> imageUrls;
+    private List<String> tags;
     private Integer likeCount;
     private Integer commentCount;
     private Integer shareCount;

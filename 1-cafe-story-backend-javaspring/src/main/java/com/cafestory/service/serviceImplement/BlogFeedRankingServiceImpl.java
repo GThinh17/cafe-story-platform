@@ -9,7 +9,6 @@ import com.cafestory.dto.responseDTO.FeedItemResponseDTO;
 import com.cafestory.dto.responseDTO.FeedResponseDTO;
 import com.cafestory.entity.Blog;
 import com.cafestory.entity.BlogRecommendationScore;
-import com.cafestory.entity.AiModerationResult;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.User;
@@ -35,6 +34,7 @@ import com.cafestory.repository.RegionRepository;
 import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.BlogFeedRankingService;
+import com.cafestory.service.serviceInterface.BlogModerationTagService;
 import com.cafestory.service.serviceInterface.BlogRecommendationScoreBatchWriter;
 import com.cafestory.service.serviceInterface.FeedScoreCalculationService;
 import com.cafestory.validation.UserValidator;
@@ -108,6 +108,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
     private final UserValidator userValidator;
     private final CacheManager cacheManager;
     private final FeedScoreCalculationService feedScoreCalculationService;
+    private final BlogModerationTagService blogModerationTagService;
     private final BlogRecommendationScoreBatchWriter recommendationScoreBatchWriter;
     private final TaskExecutor taskExecutor;
     private final TransactionTemplate transactionTemplate;
@@ -131,6 +132,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             UserValidator userValidator,
             CacheManager cacheManager,
             FeedScoreCalculationService feedScoreCalculationService,
+            BlogModerationTagService blogModerationTagService,
             BlogRecommendationScoreBatchWriter recommendationScoreBatchWriter,
             @Qualifier(FeedRebuildExecutorConfig.FEED_REBUILD_EXECUTOR) TaskExecutor taskExecutor,
             PlatformTransactionManager transactionManager) {
@@ -152,6 +154,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         this.userValidator = userValidator;
         this.cacheManager = cacheManager;
         this.feedScoreCalculationService = feedScoreCalculationService;
+        this.blogModerationTagService = blogModerationTagService;
         this.recommendationScoreBatchWriter = recommendationScoreBatchWriter;
         this.taskExecutor = taskExecutor;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
@@ -567,23 +570,12 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
     }
 
     private Map<UUID, Set<String>> tagsByBlogId(List<UUID> blogIds) {
-        if (blogIds.isEmpty()) {
-            return Map.of();
-        }
-        Map<UUID, Set<String>> tagsByBlogId = new HashMap<>();
-        for (AiModerationResult result : aiModerationResultRepository.findWithTagsByBlogIds(blogIds)) {
-            if (result.getBlog() == null || result.getBlog().getId() == null
-                    || tagsByBlogId.containsKey(result.getBlog().getId())) {
-                continue;
-            }
-            Set<String> tags = result.getTags() == null
-                    ? Set.of()
-                    : result.getTags().stream()
-                    .filter(tag -> tag != null && !tag.isBlank())
-                    .collect(Collectors.toUnmodifiableSet());
-            tagsByBlogId.put(result.getBlog().getId(), tags);
-        }
-        return Map.copyOf(tagsByBlogId);
+        return blogModerationTagService.getTagsByBlogIds(blogIds)
+                .entrySet()
+                .stream()
+                .collect(Collectors.toUnmodifiableMap(
+                        Map.Entry::getKey,
+                        entry -> Set.copyOf(entry.getValue())));
     }
 
     private Map<UUID, Long> activeReportCountsByBlogId(List<UUID> blogIds) {
@@ -878,6 +870,8 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
                 .distinct()
                 .toList();
         Map<UUID, List<String>> imageUrlsByBlogId = imageUrlsByBlogId(blogIds);
+        // 1 query batch cho cả trang feed (chống N+1), tag do AI blog moderation cấp.
+        Map<UUID, List<String>> tagsByBlogId = blogModerationTagService.getTagsByBlogIds(blogIds);
         List<UUID> pageIds = scores.stream()
                 .map(score -> score.getBlog().getPageId())
                 .filter(pageId -> pageId != null)
@@ -897,7 +891,8 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         ViewerFeedContext viewerContext = buildViewerFeedContext(viewerUserId, scores, pageIds, blogIds);
 
         return scores.stream()
-                .map(score -> toFeedResponse(score, cafePagesById, regionsById, imageUrlsByBlogId, viewerContext))
+                .map(score -> toFeedResponse(
+                        score, cafePagesById, regionsById, imageUrlsByBlogId, tagsByBlogId, viewerContext))
                 .toList();
     }
 
@@ -990,6 +985,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             Map<UUID, CafePage> cafePagesById,
             Map<UUID, Region> regionsById,
             Map<UUID, List<String>> imageUrlsByBlogId,
+            Map<UUID, List<String>> tagsByBlogId,
             ViewerFeedContext viewerContext) {
         Blog blog = score.getBlog();
         User author = blog.getAuthor();
@@ -999,6 +995,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         response.setBlogId(blog.getId());
         response.setContentPreview(toPreview(blog.getContent()));
         response.setImageUrls(imageUrlsByBlogId.getOrDefault(blog.getId(), List.of()));
+        response.setTags(tagsByBlogId.getOrDefault(blog.getId(), List.of()));
         response.setLikeCount(blog.getLikeCount());
         response.setCommentCount(blog.getCommentCount());
         response.setShareCount(blog.getShareCount());

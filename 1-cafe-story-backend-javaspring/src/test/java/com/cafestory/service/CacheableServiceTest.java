@@ -35,6 +35,7 @@ import com.cafestory.service.serviceImplement.UserProfileCacheService;
 import com.cafestory.service.serviceImplement.UserServiceImpl;
 import com.cafestory.service.serviceInterface.BlogService;
 import com.cafestory.service.serviceInterface.AiBlogModerationService;
+import com.cafestory.service.serviceInterface.BlogModerationTagService;
 import com.cafestory.service.serviceInterface.BlogTagService;
 import com.cafestory.service.serviceInterface.RegionService;
 import com.cafestory.service.serviceInterface.ReportReasonService;
@@ -485,6 +486,7 @@ class CacheableServiceTest {
                 CafePageValidator cafePageValidator,
                 UserValidator userValidator,
                 BlogTagService blogTagService,
+                BlogModerationTagService blogModerationTagService,
                 UserFollowRepository userFollowRepository,
                 PageFollowRepository pageFollowRepository) {
             return new BlogServiceImpl(
@@ -501,6 +503,7 @@ class CacheableServiceTest {
                     cafePageValidator,
                     userValidator,
                     blogTagService,
+                    blogModerationTagService,
                     userFollowRepository,
                     pageFollowRepository);
         }
@@ -508,6 +511,11 @@ class CacheableServiceTest {
         @Bean
         AiBlogModerationService aiBlogModerationService() {
             return Mockito.mock(AiBlogModerationService.class);
+        }
+
+        @Bean
+        BlogModerationTagService blogModerationTagService() {
+            return Mockito.mock(BlogModerationTagService.class);
         }
 
         @Bean

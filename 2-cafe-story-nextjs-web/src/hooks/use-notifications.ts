@@ -87,15 +87,9 @@ export function useNotifications() {
   useEffect(() => {
     if (!user?.userId) return;
 
-    if (!stompClientRef.current || !stompClientRef.current.connected) {
-      const client = createStompClient();
-      stompClientRef.current = client;
-      client.activate();
-    }
-
-    const client = stompClientRef.current;
-
-    function subscribe() {
+    function subscribe(client: Client) {
+      // Reconnect sẽ gọi lại onConnect; huỷ subscription cũ để không nhận trùng frame.
+      stompSubscriptionRef.current?.unsubscribe();
       stompSubscriptionRef.current = client.subscribe(
         "/user/queue/notifications",
         (frame) => {
@@ -120,14 +114,18 @@ export function useNotifications() {
       );
     }
 
-    if (client.connected) {
-      subscribe();
+    const existingClient = stompClientRef.current;
+
+    if (existingClient) {
+      if (existingClient.connected) {
+        subscribe(existingClient);
+      }
     } else {
-      const originalOnConnect = client.onConnect;
-      client.onConnect = (receipt) => {
-        originalOnConnect?.(receipt);
-        subscribe();
-      };
+      const client = createStompClient();
+      // Gán onConnect trước activate() để không phải monkey-patch chồng handler sau này.
+      client.onConnect = () => subscribe(client);
+      stompClientRef.current = client;
+      client.activate();
     }
 
     return () => {

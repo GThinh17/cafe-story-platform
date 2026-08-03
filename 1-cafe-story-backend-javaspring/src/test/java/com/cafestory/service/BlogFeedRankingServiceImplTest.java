@@ -31,6 +31,7 @@ import com.cafestory.repository.RegionRepository;
 import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceImplement.BlogFeedRankingServiceImpl;
+import com.cafestory.service.serviceImplement.BlogModerationTagServiceImpl;
 import com.cafestory.service.serviceImplement.FeedScoreCalculationServiceImpl;
 import com.cafestory.service.serviceInterface.BlogRecommendationScoreBatchWriter;
 import com.cafestory.service.serviceInterface.FeedScoreCalculationService;
@@ -1067,6 +1068,7 @@ class BlogFeedRankingServiceImplTest {
                         CacheConfig.ORGANIC_FEED_CACHE,
                         CacheConfig.PERSONALIZED_FEED_RANKING_CACHE),
                 new FeedScoreCalculationServiceImpl(),
+                new BlogModerationTagServiceImpl(aiModerationResultRepository),
                 recommendationScoreBatchWriter,
                 taskExecutor,
                 transactionManager);

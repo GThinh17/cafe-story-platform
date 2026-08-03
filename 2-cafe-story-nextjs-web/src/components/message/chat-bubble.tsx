@@ -1,17 +1,20 @@
 import { CircleAlertIcon, LoaderCircleIcon } from "lucide-react";
+import { MarkdownBoldText } from "@/components/message/markdown-bold-text";
 import type { ChatMessage } from "@/types/message";
 
 type ChatBubbleProps = {
+  isAssistant?: boolean;
   message: ChatMessage;
 };
 
-export function ChatBubble({ message }: ChatBubbleProps) {
+export function ChatBubble({ isAssistant = false, message }: ChatBubbleProps) {
   const isMine = message.author === "me";
   const imageUrls = message.imageUrls ?? [];
   const hasText = Boolean(message.body?.trim());
   const isSending = message.localStatus === "sending";
   const isError = message.localStatus === "error";
-  const sources = message.sources ?? [];
+  // Chỉ reply của assistant mới là markdown; tin nhắn người dùng giữ nguyên literal.
+  const hasMarkdown = isAssistant && !isMine;
   // Assistant reply với localStatus="sending" và body rỗng → chấm loading.
   const showThinkingIndicator = !isMine && isSending && !hasText;
 
@@ -48,7 +51,11 @@ export function ChatBubble({ message }: ChatBubbleProps) {
             </p>
           ) : hasText ? (
             <p className="whitespace-pre-wrap break-words px-4 pt-2.5">
-              {message.body}
+              {hasMarkdown ? (
+                <MarkdownBoldText text={message.body} />
+              ) : (
+                message.body
+              )}
             </p>
           ) : null}
           <p
@@ -70,18 +77,6 @@ export function ChatBubble({ message }: ChatBubbleProps) {
             ) : null}
           </p>
         </div>
-        {sources.length > 0 ? (
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {sources.map((source) => (
-              <span
-                className="rounded-md bg-surface-muted px-2.5 py-1 text-[11px] font-medium text-primary-strong"
-                key={`${source.sourceType}:${source.sourceId}`}
-              >
-                {source.title}
-              </span>
-            ))}
-          </div>
-        ) : null}
         {isError && isMine ? (
           <p className="mt-1 text-right text-xs font-semibold text-destructive">
             Unable to send message.

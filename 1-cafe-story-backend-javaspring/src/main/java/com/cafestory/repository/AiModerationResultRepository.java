@@ -38,9 +38,11 @@ public interface AiModerationResultRepository
     @Query("""
             select result
             from AiModerationResult result
-            where result.blog.id in :blogIds
+            join fetch result.blog blog
+            where blog.id in :blogIds
+            and result.contentReport is null
             and result.tags is not null
-            order by result.blog.id, result.createdAt desc
+            order by blog.id, result.createdAt desc
             """)
     List<AiModerationResult> findWithTagsByBlogIds(@Param("blogIds") Collection<UUID> blogIds);
 

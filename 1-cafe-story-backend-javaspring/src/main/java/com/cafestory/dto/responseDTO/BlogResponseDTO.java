@@ -22,6 +22,7 @@ public class BlogResponseDTO {
     private String regionProvince;
     private String content;
     private List<String> imageUrls;
+    private List<String> tags;
     private PostStatus status;
     private Boolean isPinned;
     private Boolean allowComment;

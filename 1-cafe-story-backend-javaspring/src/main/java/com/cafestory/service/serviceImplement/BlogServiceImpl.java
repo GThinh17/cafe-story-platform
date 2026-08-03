@@ -23,6 +23,7 @@ import com.cafestory.repository.RegionRepository;
 import com.cafestory.repository.PageFollowRepository;
 import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.service.serviceInterface.AiBlogModerationService;
+import com.cafestory.service.serviceInterface.BlogModerationTagService;
 import com.cafestory.service.serviceInterface.BlogService;
 import com.cafestory.service.serviceInterface.BlogTagService;
 import com.cafestory.service.serviceInterface.RegionService;
@@ -65,6 +66,7 @@ public class BlogServiceImpl implements BlogService {
     private final CafePageValidator cafePageValidator;
     private final UserValidator userValidator;
     private final BlogTagService blogTagService;
+    private final BlogModerationTagService blogModerationTagService;
     private final UserFollowRepository userFollowRepository;
     private final PageFollowRepository pageFollowRepository;
 
@@ -82,6 +84,7 @@ public class BlogServiceImpl implements BlogService {
             CafePageValidator cafePageValidator,
             UserValidator userValidator,
             BlogTagService blogTagService,
+            BlogModerationTagService blogModerationTagService,
             UserFollowRepository userFollowRepository,
             PageFollowRepository pageFollowRepository) {
         this.blogRepository = blogRepository;
@@ -97,6 +100,7 @@ public class BlogServiceImpl implements BlogService {
         this.cafePageValidator = cafePageValidator;
         this.userValidator = userValidator;
         this.blogTagService = blogTagService;
+        this.blogModerationTagService = blogModerationTagService;
         this.userFollowRepository = userFollowRepository;
         this.pageFollowRepository = pageFollowRepository;
     }
@@ -383,6 +387,8 @@ public class BlogServiceImpl implements BlogService {
         response.setRatingScore(resolveRatingScore(blogId));
         response.setRatingCount(blogRatingRepository.countByBlogId(blogId));
         response.setTaggedUsers(blogTagService.getTaggedUsers(blogId));
+        response.setTags(blogModerationTagService.getTagsByBlogIds(List.of(blogId))
+                .getOrDefault(blogId, List.of()));
         if (viewerUserId == null) {
             response.setIsRating(false);
             response.setMyRating(null);
@@ -423,6 +429,8 @@ public class BlogServiceImpl implements BlogService {
         Map<UUID, BlogRatingRepository.BlogRatingSummaryRow> ratingSummariesByBlogId = loadRatingSummariesByBlogId(blogIds);
         Map<UUID, Integer> myRatingsByBlogId = loadMyRatingsByBlogId(viewerUserId, blogIds);
         Map<UUID, List<BlogTaggedUserResponseDTO>> taggedUsersByBlogId = loadTaggedUsersByBlogId(blogIds);
+        // 1 query batch cho cả trang (chống N+1), tag do AI blog moderation cấp.
+        Map<UUID, List<String>> tagsByBlogId = blogModerationTagService.getTagsByBlogIds(blogIds);
 
         List<BlogResponseDTO> responses = new ArrayList<>(safeBlogs.size());
         for (Blog blog : safeBlogs) {
@@ -452,6 +460,7 @@ public class BlogServiceImpl implements BlogService {
             response.setIsRating(myRating != null);
             response.setMyRating(myRating);
             response.setTaggedUsers(taggedUsersByBlogId.getOrDefault(blogId, List.of()));
+            response.setTags(tagsByBlogId.getOrDefault(blogId, List.of()));
             responses.add(response);
         }
 
