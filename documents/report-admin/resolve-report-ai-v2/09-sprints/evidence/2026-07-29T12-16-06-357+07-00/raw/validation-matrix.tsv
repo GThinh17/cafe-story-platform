@@ -1,0 +1,11 @@
+criterion	expected	actual	status
+Project structure	Required CafeStory areas/manifests exist	check_project warnings=0	PASS
+JSON parse	All audit/live state JSON valid	3/3	PASS
+Approval ledger	G0-12A through F and audit approved; DONE absent	A-F=6/6; AUDIT_APPROVAL=1; DONE=0	PASS
+Source HEAD	9c155ff	9c155ff	PASS
+Source fingerprint	G0-12F 12/12 hashes match	12/12	PASS
+Audit count	15 pass-scoped, 1 partial, 5 blocked	15/1/5	PASS
+Production readiness	9 pass, 5 open	9/5	PASS
+UTF-8	No decode error or replacement char	15 files; errors=0; replacement=0	PASS
+Secret scan	No secret value	0 hit	PASS
+Source boundary	No production/test source change	0 tracked source diff	PASS

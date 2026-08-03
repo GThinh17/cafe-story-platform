@@ -14,6 +14,7 @@ const secret = 'test-only-report-ai-hmac-secret';
 const correlationId = crypto.randomUUID();
 const staticData = {};
 const nonceDirectory = mkdtempSync(join(tmpdir(), 'cafestory-report-ai-nonce-'));
+const hash = `sha256:${'a'.repeat(64)}`;
 process.on('exit', () => rmSync(nonceDirectory, { recursive: true, force: true }));
 
 const canonicalize = (value) => {
@@ -76,21 +77,148 @@ const executeCodeNode = async (nodeName, json, dollar = undefined) => {
   );
 };
 
+const evidenceItem = (evidenceId, evidenceKind, value, intendedUse = 'CONTEXT_ONLY') => ({
+  evidenceId,
+  envelopeVersion: '1.0.0-rc.1',
+  evidenceKind,
+  subject: {
+    targetType: 'BLOG',
+    targetAlias: 'target-blog-security-test',
+    snapshotVersion: '1',
+    snapshotHash: hash,
+  },
+  source: {
+    sourceType: 'TARGET_SNAPSHOT',
+    sourceSystem: 'CAFE_STORY_BACKEND',
+    verificationStatus: 'SYSTEM_CAPTURED',
+    authorityScope: 'PLATFORM_OWNED_FIELD',
+  },
+  capture: {
+    collectorName: 'cafestory-backend',
+    collectorVersion: 's2-security-test',
+    capturedAt: '2026-07-30T09:00:00Z',
+    transformations: [],
+  },
+  integrity: {
+    canonicalization: 'JCS',
+    digestAlgorithm: 'SHA-256',
+    payloadDigest: hash,
+    sourceDigest: hash,
+  },
+  availability: {
+    status: 'AVAILABLE',
+  },
+  quality: {
+    level: 'HIGH',
+    reasonCodes: ['SYNTHETIC_SECURITY_TEST'],
+  },
+  privacy: {
+    classification: 'PUBLIC_CONTENT',
+    containsPersonalData: false,
+    redactionStatus: 'NOT_REQUIRED',
+    retentionClass: 'REPORT_EVIDENCE_90D',
+  },
+  intendedUse,
+  collectedForRuleIds: ['CSR.SPAM.001'],
+  payload: {
+    representation: 'INLINE',
+    mediaType: 'application/json',
+    value,
+    truncated: false,
+  },
+});
+
+const reportId = crypto.randomUUID();
+const targetId = crypto.randomUUID();
 const requestBody = {
   contractVersion: '2.0',
   correlationId,
   idempotencyKey: 'a'.repeat(64),
+  requestedAt: '2026-07-30T09:00:00Z',
   automationMode: 'A0_RECOMMEND_ONLY',
-  reportClaim: { reportId: crypto.randomUUID() },
-  targetSnapshot: { targetType: 'BLOG', targetId: crypto.randomUUID() },
-  evidence: [{ evidenceId: 'EV-TARGET-CONTENT' }],
+  reportId,
+  targetType: 'BLOG',
+  targetId,
+  reasonCode: 'SPAM',
+  reportClaim: {
+    reportId,
+    status: 'OPEN',
+    reasonCode: 'SPAM',
+    reasonCatalogVersion: 'IRC-2.0.0-proposed.1',
+    description: 'Synthetic security test claim.',
+    trustLevel: 'UNTRUSTED_REPORTER_CLAIM',
+  },
+  targetSnapshot: {
+    targetType: 'BLOG',
+    targetId,
+    targetAlias: 'target-blog-security-test',
+    snapshotVersion: '1',
+    capturedAt: '2026-07-30T09:00:00Z',
+    observableFields: {
+      contentText: 'Synthetic security test content.',
+      imageUrls: [],
+      status: 'ACTIVE',
+      createdAt: '2026-07-30T08:00:00',
+      updatedAt: '2026-07-30T08:30:00',
+    },
+    snapshotHash: hash,
+  },
+  evidence: [
+    evidenceItem(
+      'EV-TARGET-IDENTITY',
+      'TARGET_IDENTITY',
+      { targetType: 'BLOG', targetAlias: 'target-blog-security-test' },
+    ),
+    evidenceItem('EV-TARGET-STATE', 'TARGET_STATE', { status: 'ACTIVE' }),
+    evidenceItem(
+      'EV-TARGET-CONTENT',
+      'TARGET_TEXT_CONTENT',
+      { sanitizedText: 'Synthetic security test content.' },
+      'RULE_EVALUATION_CANDIDATE',
+    ),
+  ],
   policyContext: {
-    policyVersion: 'PF-test',
-    ruleCatalogVersion: 'RC-test',
-    candidateRules: [{ ruleId: 'CSR.SPAM.001' }],
+    contextSchemaVersion: 'RRC-1.0.0-rc.1',
+    policyVersion: 'PF-2.0.0-proposed.1',
+    policyStatus: 'PROPOSED',
+    ruleCatalogVersion: 'RC-2.0.0-proposed.2',
+    ruleCatalogStatus: 'PROPOSED',
+    requirementMatrixVersion: '1.0.0-rc.1',
+    evidenceKindCatalogVersion: '1.0.0-rc.1',
+    evaluationMode: 'PROPOSED_EVALUATION_ONLY',
+    candidateRules: [{
+      ruleId: 'CSR.SPAM.001',
+      ruleVersion: '1.0.0-proposed.2',
+      ruleStatus: 'PROPOSED',
+      ruleFamily: 'SPAM',
+      ruleType: 'VIOLATION',
+      material: true,
+      applicableTargetTypes: ['BLOG', 'COMMENT'],
+      requirementProfileIds: ['RP-TEXT-CONTEXT'],
+      requiredEvidenceKinds: ['TARGET_IDENTITY', 'TARGET_STATE', 'TARGET_TEXT_CONTENT'],
+      conditionalRequirements: [],
+      semanticRequirementCodes: ['SEM-EXCEPTION-CONTEXT', 'SEM-COMPLETE-EVALUATION-SCOPE'],
+      counterEvidenceRequired: true,
+      exceptionCodes: ['CONTEXTUAL_EXCEPTION'],
+      evaluationCeiling: 'NEEDS_MANUAL_REVIEW',
+      allowedOutcomes: [
+        'SUBSTANTIATED',
+        'NOT_SUBSTANTIATED',
+        'NOT_APPLICABLE',
+        'UNASSESSABLE',
+        'CONFLICTED',
+        'POLICY_INVALID',
+      ],
+      allowedCandidateActions: ['KEEP_VISIBLE', 'HIDE', 'REMOVE', 'NO_ACTION'],
+    }],
+    availableEvidenceKinds: ['TARGET_IDENTITY', 'TARGET_STATE', 'TARGET_TEXT_CONTENT'],
+    missingRequirements: [],
+    currentEvaluationCeiling: 'NEEDS_MANUAL_REVIEW',
   },
   executionConstraints: {
     recommendationOnly: true,
+    allowedCandidateActions: ['NO_ACTION', 'KEEP_VISIBLE', 'HIDE', 'REMOVE'],
+    criticalMissingBehavior: 'NEEDS_MANUAL_REVIEW',
     criticalEvidenceMissing: false,
   },
   existingModerationResult: {
@@ -190,7 +318,7 @@ const providerResult = {
   findings: [
     {
       ruleId: 'CSR.SPAM.001',
-      ruleVersion: '1.0.0',
+      ruleVersion: '1.0.0-proposed.2',
       outcome: 'SUPPORTED',
       evidenceIds: ['EV-TARGET-CONTENT'],
       counterEvidenceIds: [],

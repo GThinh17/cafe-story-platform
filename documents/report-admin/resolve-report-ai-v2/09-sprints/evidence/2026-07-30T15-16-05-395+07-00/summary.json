@@ -1,0 +1,62 @@
+{
+  "package": "S2-04",
+  "status": "COMPLETED_VERIFIED_APPROVED",
+  "approval": "APPROVE_S2_04",
+  "candidateVersion": "report-ai-v2-sprint2.4-candidate.1",
+  "lifecycle": "PROPOSED",
+  "runtimeAuthority": false,
+  "automationMode": "A0_RECOMMEND_ONLY",
+  "selectedRuleIds": [
+    "CSR.HAR.001"
+  ],
+  "branches": [
+    "DIRECT_TEXT",
+    "CONTEXT_DEPENDENT_TEXT"
+  ],
+  "focused": {
+    "schemaPassed": 1,
+    "profilesPassed": 1,
+    "branchesPassed": 2,
+    "untrustedMutationsPassed": 4,
+    "assemblerNegativeGuardsPassed": 5,
+    "specNegativeGuardsPassed": 6,
+    "datasetRefsPassed": 5,
+    "promptDigest": "1e5deb6a2e6cee4262d07ea72fc6338e25fc8d4ffaa9d0e10b20700a49f3bb0d"
+  },
+  "coverage": {
+    "measuredArtifact": "validate-admin-report-ai-prompt-pilot.mjs",
+    "linePercent": 100.0,
+    "branchPercent": 97.44,
+    "functionPercent": 96.55,
+    "assemblerSeparateCoverageMeasured": false
+  },
+  "regression": {
+    "s2_03HardSafetyPercent": 100.0,
+    "schemaTestsPassed": 7,
+    "adversarialTestsPassed": 12,
+    "evidenceFixturesPassed": 18,
+    "crossReviewPassed": 16,
+    "backendFocusedPassed": 50,
+    "backendFullTests": 638,
+    "backendFullFailures": 0,
+    "backendFullErrors": 0,
+    "backendFullSkipped": 1
+  },
+  "issues": {
+    "detected": 4,
+    "fixedVerified": 3,
+    "openRouted": 1
+  },
+  "providerCalled": false,
+  "runtimePublished": false,
+  "productionSourceChangedByS2_04": false,
+  "databaseChanged": false,
+  "frontendChangedByS2_04": false,
+  "productionDeploymentAuthorized": false,
+  "deliverable": "10-verification/prompt-pilot-design.md",
+  "nextRequiredApproval": null,
+  "nextGateOptions": [
+    "IMPLEMENT_S2_05",
+    "IMPLEMENT_S2_DONE_AUDIT"
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "statusCode": 200,
+  "status": "Success",
+  "message": "Request processed successfully",
+  "data": {
+    "id": "e77df3e4-af3f-4b92-807d-c9ef9783f34b",
+    "contentReportId": "77b8021d-f01b-4383-b529-a6459aa5ce81",
+    "targetType": "BLOG",
+    "targetId": "555e9a98-998a-4dde-b02c-df1ce51cd743",
+    "reportDecision": "NEEDS_MANUAL_REVIEW",
+    "targetAction": "NONE",
+    "confidenceScore": 50,
+    "riskScore": 3,
+    "labels": [
+      "SCAM_FRAUD_OR_SPAM"
+    ],
+    "ruleCode": "BLOG_SPAM",
+    "explanation": "The report indicates potential scam or spam, but the content is not clearly a violation and requires further review to determine appropriate action.",
+    "modelName": "gpt-4o-mini-2024-07-18",
+    "rawResponse": {
+      "openaiResponseId": "resp_08095dee4914c794006a5f992f64f0819abde1d2b807263a8e",
+      "reportId": "77b8021d-f01b-4383-b529-a6459aa5ce81",
+      "targetType": "BLOG",
+      "targetId": "555e9a98-998a-4dde-b02c-df1ce51cd743",
+      "sourceDecision": {
+        "reportDecision": "NEEDS_MANUAL_REVIEW",
+        "targetAction": "NONE",
+        "confidenceScore": 0.5,
+        "riskScore": 3,
+        "labels": [
+          "SCAM_FRAUD_OR_SPAM"
+        ],
+        "ruleCode": "BLOG_SPAM",
+        "explanation": "The report indicates potential scam or spam, but the content is not clearly a violation and requires further review to determine appropriate action."
+      }
+    },
+    "createdAt": "2026-07-21T23:07:12.8790011",
+    "autoApplyJob": null,
+    "autoApplyWarning": "AI recommendation needs manual review; auto apply was not scheduled."
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "statusCode": 201,
+  "status": "Success",
+  "message": "Request processed successfully",
+  "data": {
+    "id": "49c1e77e-1d05-48b7-992a-785de1e2fb83",
+    "reporterUserId": "efc94458-2220-453f-b581-c7d075cf27cd",
+    "reporterUserName": "thinh.dev",
+    "reporterUserAvatar": "https://res.cloudinary.com/dwdjlzl9h/image/upload/v1784280836/cafestory/avatars/mltw9gcjciktvkcgdepk.jpg",
+    "targetType": "CAFE_PAGE",
+    "targetId": "e17dcc33-beae-412a-854d-b6c284b7fa87",
+    "blogId": null,
+    "commentId": null,
+    "reportedUserId": null,
+    "cafePageId": "e17dcc33-beae-412a-854d-b6c284b7fa87",
+    "reasonId": "eb501d75-2579-45f5-b179-fec64d1de137",
+    "reasonCode": "SCAM_FRAUD_OR_SPAM",
+    "reason": "Lua dao, gian lan hoac spam",
+    "reasonLabel": "Lua dao, gian lan hoac spam",
+    "reasonSeverity": 4,
+    "description": "E2E Report Admin AI RAI-04 CAFE_PAGE 1784650345856",
+    "status": "OPEN",
+    "createdAt": "2026-07-21T23:12:26.5204579",
+    "resolvedAt": null
+  }
+}

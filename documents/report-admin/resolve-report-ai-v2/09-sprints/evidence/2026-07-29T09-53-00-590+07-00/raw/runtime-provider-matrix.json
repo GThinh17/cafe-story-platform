@@ -1,0 +1,42 @@
+{
+  "status": "PASS",
+  "validRequestStatus": 200,
+  "providerResponseReceived": true,
+  "responseSignatureVerified": true,
+  "reportDecision": "NEEDS_MANUAL_REVIEW",
+  "targetAction": "NO_ACTION",
+  "recommendationState": "NEEDS_MANUAL_REVIEW",
+  "modelNameConfigured": true,
+  "scoreFieldsAbsent": true,
+  "replayRejected": {
+    "transportStatus": 200,
+    "emptyBody": true,
+    "signedResponseAbsent": true
+  },
+  "staleRejected": {
+    "transportStatus": 200,
+    "emptyBody": true,
+    "signedResponseAbsent": true
+  },
+  "futureRejected": {
+    "transportStatus": 200,
+    "emptyBody": true,
+    "signedResponseAbsent": true
+  },
+  "invalidSignatureRejected": {
+    "transportStatus": 200,
+    "emptyBody": true,
+    "signedResponseAbsent": true
+  },
+  "tamperedBodyRejected": {
+    "transportStatus": 200,
+    "emptyBody": true,
+    "signedResponseAbsent": true
+  },
+  "missingHeadersRejected": {
+    "transportStatus": 200,
+    "emptyBody": true,
+    "signedResponseAbsent": true
+  },
+  "secretValuesPrinted": false
+}

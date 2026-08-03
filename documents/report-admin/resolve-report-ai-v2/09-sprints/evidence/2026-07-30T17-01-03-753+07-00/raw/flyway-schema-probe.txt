@@ -1,0 +1,20 @@
+Flyway startup:
+- PostgreSQL: 17.10
+- Validated migrations: 11
+- Previous version: 20260723.01
+- Applied: 20260730.01 - admin report ai snapshot hash length
+- Apply result: success
+
+PostgreSQL metadata:
+target_snapshot_hash|character varying|71
+
+Flyway history latest:
+20260730.01|admin report ai snapshot hash length|true
+20260723.01|admin report ai contract v2|true
+
+JPA/API:
+- JPA ddl-auto: validate
+- EntityManagerFactory initialized: true
+- Backend /v3/api-docs: HTTP 200
+
+No production or external database was accessed.

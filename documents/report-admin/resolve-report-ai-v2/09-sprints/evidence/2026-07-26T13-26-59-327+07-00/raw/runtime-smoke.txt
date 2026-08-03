@@ -1,0 +1,21 @@
+Backend runtime:
+- Package: BUILD SUCCESS
+- PostgreSQL/JPA validate: PASS
+- First migration start: PASS
+- Restart with Flyway validation: PASS
+- /v3/api-docs: 200
+- /swagger-ui.html: 302
+- /api/admin/reports without authentication: 401
+- POST /api/admin/reports/{id}/ai-resolution without authentication: 401
+
+No-mutation observation:
+- admin_report_ai_resolutions before request: 0
+- admin_report_ai_resolutions after request: 0
+- admin_report_ai_auto_apply_jobs after restart: 0
+
+Cleanup:
+- Backend port 18080 closed
+- Disposable PostgreSQL container stopped
+- Localhost port 55432 closed
+- Existing n8n container left running and unchanged
+

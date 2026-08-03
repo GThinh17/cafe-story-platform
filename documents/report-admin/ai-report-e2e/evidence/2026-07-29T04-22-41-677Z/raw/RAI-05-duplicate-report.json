@@ -1,0 +1,6 @@
+{
+  "statusCode": 409,
+  "status": "Fail",
+  "message": "Report already exists for this blog",
+  "data": null
+}

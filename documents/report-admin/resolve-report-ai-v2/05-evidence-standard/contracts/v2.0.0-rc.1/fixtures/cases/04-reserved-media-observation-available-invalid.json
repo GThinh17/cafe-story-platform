@@ -1,0 +1,13 @@
+{
+  "id": "M07-FX-04",
+  "description": "VERIFIED_MEDIA_OBSERVATION còn RESERVED_MISSING_ONLY nên AVAILABLE phải bị semantic validator chặn.",
+  "base": "blog-resolve.json",
+  "operations": [
+    {"op":"add","path":"/evidence/-","value":{"evidenceId":"EV-INVALID-VERIFIED-MEDIA","envelopeVersion":"1.0.0-rc.1","evidenceKind":"VERIFIED_MEDIA_OBSERVATION","subject":{"targetType":"BLOG","targetAlias":"target-blog-1","snapshotVersion":"blog-1.0.0","snapshotHash":"sha256:blog-snapshot-001"},"source":{"sourceType":"VERIFIED_MEDIA_OBSERVATION","sourceSystem":"UNAPPROVED_COLLECTOR","verificationStatus":"TOOL_VERIFIED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"UnapprovedCollector","collectorVersion":"0.0.1","capturedAt":"2026-07-26T03:00:00Z","transformations":[]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:invalid-media-observation"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"HIGH","reasonCodes":["UNAPPROVED_COLLECTOR"]},"privacy":{"classification":"INTERNAL_MODERATION","containsPersonalData":false,"redactionStatus":"APPLIED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"RULE_EVALUATION_CANDIDATE","collectedForRuleIds":["CSR.SAF.001"],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"structuredObservations":[]},"reference":null,"truncated":false}}}
+  ],
+  "expected": {
+    "schemaValid": true,
+    "semanticValid": false,
+    "errorCodes": ["RESERVED_KIND_AVAILABLE"]
+  }
+}

@@ -10,12 +10,29 @@ type ApiFetchOptions = Omit<RequestInit, "body"> & {
 export class ApiError extends Error {
   statusCode: number;
   payload: ApiErrorPayload | null;
+  code: string | null;
+  correlationId: string | null;
+  retryable: boolean | null;
+  stage: string | null;
 
   constructor(message: string, statusCode: number, payload: ApiErrorPayload | null) {
     super(message);
     this.name = "ApiError";
     this.statusCode = statusCode;
     this.payload = payload;
+    const structuredPayload: Record<string, unknown> = isRecord(payload)
+      ? (payload as Record<string, unknown>)
+      : {};
+    this.code = typeof structuredPayload.code === "string" ? structuredPayload.code : null;
+    this.correlationId =
+      typeof structuredPayload.correlationId === "string"
+        ? structuredPayload.correlationId
+        : null;
+    this.retryable =
+      typeof structuredPayload.retryable === "boolean"
+        ? structuredPayload.retryable
+        : null;
+    this.stage = typeof structuredPayload.stage === "string" ? structuredPayload.stage : null;
   }
 }
 

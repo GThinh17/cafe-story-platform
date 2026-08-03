@@ -1,0 +1,36 @@
+{
+  "contractVersion": "2.0.0-rc.1",
+  "schemaVersion": "1.0.0-rc.1",
+  "lifecycle": "PROPOSED",
+  "runtimeAuthority": false,
+  "validator": {
+    "engine": "Ajv",
+    "version": "8.20.0",
+    "draft": "2020-12",
+    "strict": true
+  },
+  "manifestMatchesFiles": true,
+  "requiredScenarioCount": 15,
+  "actualScenarioCount": 16,
+  "passed": 16,
+  "failed": 0,
+  "allPassed": true,
+  "caseResults": [
+    {"id":"M07-FX-01","pass":true,"actualErrorCodes":[]},
+    {"id":"M07-FX-02","pass":true,"actualErrorCodes":[]},
+    {"id":"M07-FX-03","pass":true,"actualErrorCodes":[]},
+    {"id":"M07-FX-04","pass":true,"actualErrorCodes":["RESERVED_KIND_AVAILABLE"]},
+    {"id":"M07-FX-05","pass":true,"actualErrorCodes":[]},
+    {"id":"M07-FX-06","pass":true,"actualErrorCodes":[]},
+    {"id":"M07-FX-07","pass":true,"actualErrorCodes":[]},
+    {"id":"M07-FX-08","pass":true,"actualErrorCodes":[]},
+    {"id":"M07-FX-09","pass":true,"actualErrorCodes":[]},
+    {"id":"M07-FX-10","pass":true,"actualErrorCodes":["REJECT_EVD004_MISSING","REJECT_SCOPE_INCOMPLETE"]},
+    {"id":"M07-FX-11","pass":true,"actualErrorCodes":[]},
+    {"id":"M07-FX-12","pass":true,"actualErrorCodes":["SCHEMA_INVALID"]},
+    {"id":"M07-FX-13","pass":true,"actualErrorCodes":[]},
+    {"id":"M07-FX-14","pass":true,"actualErrorCodes":[]},
+    {"id":"M07-FX-15","pass":true,"actualErrorCodes":[]},
+    {"id":"M07-FX-16","pass":true,"actualErrorCodes":[]}
+  ]
+}

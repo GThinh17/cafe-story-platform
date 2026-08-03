@@ -1,0 +1,21 @@
+{
+  "gate": "G0-12M-07",
+  "status": "READY_FOR_REVIEW",
+  "contractVersion": "2.0.0-rc.1",
+  "schemaVersion": "1.0.0-rc.1",
+  "runtimeAuthority": false,
+  "schemaCompile": "PASS",
+  "fixtureValidation": {
+    "required": 15,
+    "actual": 16,
+    "passed": 16,
+    "failed": 0
+  },
+  "issues": {
+    "fixed": 1,
+    "routed": 1,
+    "open": 0
+  },
+  "sourceRuntimeMutation": "NONE",
+  "nextRequiredApproval": "APPROVE_G0-12M-07"
+}

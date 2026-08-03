@@ -1,0 +1,13 @@
+GATE=G0-12B
+COMMAND=mvn -Dtest=AdminReportAiResolutionServiceImplTest,AdminReportAiAutoApplyJobServiceImplTest,AdminReportAiWebhookSignerTest,AdminContentReportControllerTest test
+TESTS=44
+FAILURES=0
+ERRORS=0
+SKIPPED=0
+BUILD=SUCCESS
+
+AdminReportAiAutoApplyJobServiceImpl LINE=71/71 100.00% BRANCH=23/30 76.67%
+AdminReportAiResolutionServiceImpl LINE=354/418 84.69% BRANCH=104/181 57.46%
+AdminReportAiPolicyCatalog LINE=35/35 100.00% BRANCH=1/2 50.00%
+AdminReportAiSemanticValidator LINE=65/72 90.28% BRANCH=50/81 61.73%
+AdminReportAiWebhookSigner LINE=88/88 100.00% BRANCH=48/56 85.71%

@@ -1,4 +1,14 @@
-import { expect, request, test, type APIRequestContext, type APIResponse, type Page } from "@playwright/test";
+import {
+  expect,
+  request,
+  test,
+  type APIRequestContext,
+  type APIResponse,
+  type Page,
+  type Response as PlaywrightResponse,
+} from "@playwright/test";
+import { execFileSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -133,6 +143,17 @@ type AiResolution = {
   targetSnapshotHash: string | null;
 };
 
+type AdminReportAiOperationalError = {
+  statusCode: number;
+  status: "Fail";
+  message: string;
+  data: null;
+  code: "AI_PROVIDER_BOUNDARY_FAILED";
+  correlationId: string;
+  retryable: true;
+  stage: "N8N_PROVIDER";
+};
+
 type AutoApplyJob = {
   id: string;
   contentReportId: string;
@@ -201,6 +222,10 @@ const reportAiWebhookUrl = `${n8nBaseUrl.replace(/\/$/, "")}/webhook/cafestory-a
 const TEST_MARKER = "E2E Report Admin AI";
 const LATENCY_PASS_MS = 30_000;
 const LATENCY_FAIL_MS = 45_000;
+const REPORT_AI_TEST_POSTGRES_CONTAINER =
+  process.env.ADMIN_REPORT_AI_TEST_POSTGRES_CONTAINER ?? "cafestory-g0-12c-postgres";
+const REPORT_AI_N8N_CONTAINER =
+  process.env.ADMIN_REPORT_AI_N8N_CONTAINER ?? "cafestory-n8n";
 
 const scenarioDefinitions = [
   ["RAI-01", "Seed BLOG report va thay trong /reports", "Report OPEN, BLOG, visible in table/detail."],
@@ -593,6 +618,238 @@ async function createReportWithSelfHeal(
   return { report: second.data, raw: { first: first.raw, staleReports, second: second.raw }, selfHealed: true };
 }
 
+function psqlForReportAiFixture(sql: string) {
+  const databaseUser = execFileSync(
+    "docker",
+    ["exec", REPORT_AI_TEST_POSTGRES_CONTAINER, "printenv", "POSTGRES_USER"],
+    { encoding: "utf8" },
+  ).trim();
+  const databaseName = execFileSync(
+    "docker",
+    ["exec", REPORT_AI_TEST_POSTGRES_CONTAINER, "printenv", "POSTGRES_DB"],
+    { encoding: "utf8" },
+  ).trim();
+  if (!databaseUser || !databaseName) {
+    throw new Error("Disposable PostgreSQL fixture container is missing POSTGRES_USER or POSTGRES_DB.");
+  }
+  return execFileSync(
+    "docker",
+    [
+      "exec",
+      REPORT_AI_TEST_POSTGRES_CONTAINER,
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-U",
+      databaseUser,
+      "-d",
+      databaseName,
+      "-At",
+      "-c",
+      sql,
+    ],
+    { encoding: "utf8" },
+  ).trim();
+}
+
+function assertUuid(value: string, label: string) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+    throw new Error(`${label} must be a UUID.`);
+  }
+}
+
+function createMissingCriticalCommentContextFixture(adminUserId: string) {
+  assertUuid(adminUserId, "adminUserId");
+  const targetOwnerId = psqlForReportAiFixture(
+    `select user_id from users where account_status=true and user_id <> '${adminUserId}'::uuid order by user_id limit 1;`,
+  );
+  assertUuid(targetOwnerId, "targetOwnerId");
+  const blogId = randomUUID();
+  const commentId = randomUUID();
+  psqlForReportAiFixture(`
+    insert into blogs (
+      allow_comment, comment_count, is_pinned, like_count, share_count,
+      created_at, author_user_id, id, content, status
+    ) values (
+      true, 1, false, 0, 0,
+      now(), '${targetOwnerId}'::uuid, '${blogId}'::uuid, '   ', 'PUBLISHED'
+    );
+    insert into comments (
+      created_at, blog_id, id, user_id, actor_context_type, content, status
+    ) values (
+      now(), '${blogId}'::uuid, '${commentId}'::uuid, '${targetOwnerId}'::uuid,
+      'USER', 'Đúng vậy.', 'PUBLISHED'
+    );
+  `);
+  return { blogId, commentId, targetOwnerId };
+}
+
+function cleanupMissingCriticalCommentContextFixture(
+  fixture: { blogId: string; commentId: string },
+  reportId?: string,
+) {
+  assertUuid(fixture.blogId, "blogId");
+  assertUuid(fixture.commentId, "commentId");
+  if (reportId) assertUuid(reportId, "reportId");
+  psqlForReportAiFixture(`
+    ${reportId ? `delete from admin_report_ai_auto_apply_jobs where content_report_id='${reportId}'::uuid;` : ""}
+    ${reportId ? `delete from admin_report_ai_resolutions where content_report_id='${reportId}'::uuid;` : ""}
+    ${reportId ? `delete from report_moderation_jobs where content_report_id='${reportId}'::uuid;` : ""}
+    ${reportId ? `delete from ai_moderation_results where content_report_id='${reportId}'::uuid;` : ""}
+    ${reportId ? `delete from content_reports where id='${reportId}'::uuid;` : ""}
+    delete from ai_moderation_results where comment_id='${fixture.commentId}'::uuid;
+    delete from comments where id='${fixture.commentId}'::uuid;
+    delete from blogs where id='${fixture.blogId}'::uuid;
+  `);
+}
+
+function createProviderUnavailableBlogFixture(adminUserId: string) {
+  assertUuid(adminUserId, "adminUserId");
+  const targetOwnerId = psqlForReportAiFixture(
+    `select user_id from users where account_status=true and user_id <> '${adminUserId}'::uuid order by user_id limit 1;`,
+  );
+  assertUuid(targetOwnerId, "targetOwnerId");
+  const blogId = randomUUID();
+  psqlForReportAiFixture(`
+    insert into blogs (
+      allow_comment, comment_count, is_pinned, like_count, share_count,
+      created_at, author_user_id, id, content, status
+    ) values (
+      true, 0, false, 0, 0,
+      now(), '${targetOwnerId}'::uuid, '${blogId}'::uuid,
+      'Bài viết fixture dùng để kiểm chứng lỗi vận hành provider.', 'PUBLISHED'
+    );
+  `);
+  return { blogId, targetOwnerId };
+}
+
+function cleanupProviderUnavailableBlogFixture(
+  fixture: { blogId: string },
+  reportId?: string,
+) {
+  assertUuid(fixture.blogId, "blogId");
+  if (reportId) assertUuid(reportId, "reportId");
+  psqlForReportAiFixture(`
+    ${reportId ? `delete from admin_report_ai_auto_apply_jobs where content_report_id='${reportId}'::uuid;` : ""}
+    ${reportId ? `delete from admin_report_ai_resolutions where content_report_id='${reportId}'::uuid;` : ""}
+    ${reportId ? `delete from report_moderation_jobs where content_report_id='${reportId}'::uuid;` : ""}
+    ${reportId ? `delete from ai_moderation_results where content_report_id='${reportId}'::uuid;` : ""}
+    ${reportId ? `delete from content_reports where id='${reportId}'::uuid;` : ""}
+    delete from ai_moderation_results where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_daily_metrics where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_events where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_images where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_likes where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_ranking_overrides where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_ratings where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_recommendation_scores where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_saves where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_shares where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_tagged_users where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_trending_scores where blog_id='${fixture.blogId}'::uuid;
+    delete from feed_impressions where blog_id='${fixture.blogId}'::uuid;
+    delete from blogs where id='${fixture.blogId}'::uuid;
+  `);
+}
+
+function assertSafeDockerContainerName(containerName: string) {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]+$/.test(containerName)) {
+    throw new Error("ADMIN_REPORT_AI_N8N_CONTAINER contains an unsafe container name.");
+  }
+}
+
+function stopN8nForProviderBoundaryTest() {
+  assertSafeDockerContainerName(REPORT_AI_N8N_CONTAINER);
+  execFileSync("docker", ["stop", REPORT_AI_N8N_CONTAINER], {
+    encoding: "utf8",
+    timeout: 30_000,
+  });
+}
+
+function startN8nAfterProviderBoundaryTest() {
+  assertSafeDockerContainerName(REPORT_AI_N8N_CONTAINER);
+  execFileSync("docker", ["start", REPORT_AI_N8N_CONTAINER], {
+    encoding: "utf8",
+    timeout: 30_000,
+  });
+}
+
+async function waitForN8nRecovery(apiContext: APIRequestContext) {
+  for (let attempt = 1; attempt <= 30; attempt += 1) {
+    try {
+      const response = await apiContext.get(`${n8nBaseUrl.replace(/\/$/, "")}/healthz`, {
+        failOnStatusCode: false,
+        timeout: 5_000,
+      });
+      if (response.ok()) {
+        const webhook = await checkWebhookActive(apiContext);
+        if (webhook.ok) return;
+      }
+    } catch {
+      // Expected while the disposable n8n container is restarting.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
+  throw new Error("n8n did not recover after the injected provider-boundary outage.");
+}
+
+function createFix03EvidenceDir() {
+  const configured = process.env.DOD_FIX03_EVIDENCE_DIR;
+  const evidenceDir = configured
+    ? path.resolve(configured)
+    : path.resolve(
+        process.cwd(),
+        "..",
+        "documents",
+        "report-admin",
+        "resolve-report-ai-v2",
+        "09-sprints",
+        "evidence",
+        new Date().toISOString().replace(/[:.]/g, "-"),
+      );
+  fs.mkdirSync(path.join(evidenceDir, "screenshots"), { recursive: true });
+  fs.mkdirSync(path.join(evidenceDir, "raw"), { recursive: true });
+  return evidenceDir;
+}
+
+function createFix04EvidenceDir() {
+  const configured = process.env.DOD_FIX04_EVIDENCE_DIR;
+  const evidenceDir = configured
+    ? path.resolve(configured)
+    : path.resolve(
+        process.cwd(),
+        "..",
+        "documents",
+        "report-admin",
+        "resolve-report-ai-v2",
+        "09-sprints",
+        "evidence",
+        new Date().toISOString().replace(/[:.]/g, "-"),
+      );
+  fs.mkdirSync(path.join(evidenceDir, "screenshots"), { recursive: true });
+  fs.mkdirSync(path.join(evidenceDir, "raw"), { recursive: true });
+  return evidenceDir;
+}
+
+function createRemediationEvidenceDir(envName: "DOD_FIX05_EVIDENCE_DIR" | "DOD_FIX06_EVIDENCE_DIR") {
+  const configured = process.env[envName];
+  const evidenceDir = configured
+    ? path.resolve(configured)
+    : path.resolve(
+        process.cwd(),
+        "..",
+        "documents",
+        "report-admin",
+        "resolve-report-ai-v2",
+        "09-sprints",
+        "evidence",
+        new Date().toISOString().replace(/[:.]/g, "-"),
+      );
+  fs.mkdirSync(path.join(evidenceDir, "screenshots"), { recursive: true });
+  fs.mkdirSync(path.join(evidenceDir, "raw"), { recursive: true });
+  return evidenceDir;
+}
+
 function allowedActionForTarget(targetType: ReportTargetType, action: TargetAction) {
   if (action === "NO_ACTION" || action === "NONE") return true;
   if (targetType === "BLOG" || targetType === "COMMENT") {
@@ -702,6 +959,31 @@ async function fetchTargetSnapshot(
 
 function targetWasNotMutated(before: TargetSnapshot, after: TargetSnapshot) {
   return JSON.stringify(before) === JSON.stringify(after);
+}
+
+function reportStateSnapshot(report: ContentReport) {
+  return {
+    id: report.id,
+    reporterUserId: report.reporterUserId,
+    targetType: report.targetType,
+    targetId: report.targetId,
+    blogId: report.blogId,
+    commentId: report.commentId,
+    reportedUserId: report.reportedUserId,
+    cafePageId: report.cafePageId,
+    reasonId: report.reasonId,
+    reasonCode: report.reasonCode,
+    reasonLabel: report.reasonLabel,
+    reasonSeverity: report.reasonSeverity,
+    description: report.description,
+    status: report.status,
+    createdAt: report.createdAt,
+    resolvedAt: report.resolvedAt,
+  };
+}
+
+function reportWasNotMutated(before: ContentReport, after: ContentReport) {
+  return JSON.stringify(reportStateSnapshot(before)) === JSON.stringify(reportStateSnapshot(after));
 }
 
 async function openReportDetail(page: Page, report: ContentReport) {
@@ -821,6 +1103,654 @@ function buildReport(evidenceDir: string, records: ScenarioRecord[], seedData: S
 }
 
 test.describe("admin report AI E2E evidence", () => {
+  test("E2E-S1-09 bulk partial failure keeps success and has no AI mutation", async ({ page }) => {
+    test.setTimeout(10 * 60_000);
+    loadLocalEnv();
+    const adminEmail = requireEnv("ADMIN_TEST_EMAIL");
+    const adminPassword = requireEnv("ADMIN_TEST_PASSWORD");
+    const evidenceDir = createRemediationEvidenceDir("DOD_FIX05_EVIDENCE_DIR");
+    const fixtures: Array<ReturnType<typeof createProviderUnavailableBlogFixture>> = [];
+    const reports: ContentReport[] = [];
+
+    try {
+      const preflight = await request.newContext();
+      await assertReachable(preflight, adminBaseUrl, "Admin UI");
+      await assertReachable(preflight, `${apiBaseUrl.replace(/\/$/, "")}/api/auth/me`, "Backend API");
+      await assertReachable(preflight, `${n8nBaseUrl.replace(/\/$/, "")}/healthz`, "n8n");
+      const webhookPreflight = await checkWebhookActive(preflight);
+      await preflight.dispose();
+      expect(webhookPreflight.ok, webhookPreflight.message).toBe(true);
+
+      await loginAsAdmin(page, adminEmail, adminPassword);
+      const auth = await apiFetch<AuthResponse>(page, "/api/auth/me");
+      const adminUserId = auth.data?.user.userId ?? "";
+      if (!adminUserId) throw new Error("Unable to resolve current admin user id.");
+
+      const reason = await chooseReason(page, "BLOG");
+      for (const label of ["success", "terminal-failure"] as const) {
+        const fixture = createProviderUnavailableBlogFixture(adminUserId);
+        fixtures.push(fixture);
+        const seed: TargetSeed = {
+          targetType: "BLOG",
+          targetId: fixture.blogId,
+          reason,
+          source: {
+            id: fixture.blogId,
+            authorUserId: fixture.targetOwnerId,
+            status: "PUBLISHED",
+            content: `Bulk partial failure fixture ${label}.`,
+          },
+        };
+        const created = await createReportWithSelfHeal(
+          page,
+          seed,
+          `${TEST_MARKER} E2E-S1-09 ${label} ${Date.now()} ${randomUUID()}`,
+          adminUserId,
+        );
+        reports.push(created.report);
+      }
+
+      const [successfulReport, failingReport] = reports;
+      const targetBefore = await Promise.all(
+        reports.map((report) => fetchTargetSnapshot(page, report.targetType, report.targetId)),
+      );
+      const reportBefore = await Promise.all(
+        reports.map((report) =>
+          apiFetch<ContentReport>(page, `/api/admin/reports/${encodeURIComponent(report.id)}`)),
+      );
+      const historyBefore = await Promise.all(
+        reports.map((report) =>
+          apiFetch<PageResponse<AiResolution>>(
+            page,
+            withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-resolutions`, {
+              page: 0,
+              size: 20,
+            }),
+          )),
+      );
+
+      await page.goto("/reports");
+      await expect(page.getByRole("heading", { name: "Reports" })).toBeVisible();
+      await page.getByRole("button", { name: "Generate AI recommendations" }).click();
+      const bulkDialog = page.getByRole("dialog").filter({ hasText: "Generate AI recommendations" });
+      await bulkDialog.getByRole("button", { name: "Selected reports" }).click();
+      for (const report of reports) {
+        const reportRow = bulkDialog.locator("label").filter({ hasText: report.description ?? report.id });
+        await expect(reportRow).toBeVisible();
+        await reportRow.getByRole("checkbox").check();
+      }
+      await expect(bulkDialog.getByText("Selected: 2 of", { exact: false })).toBeVisible();
+
+      const terminalReport = await updateReportStatus(page, failingReport.id, "RESOLVED");
+      expect(terminalReport.status).toBe("RESOLVED");
+      const terminalReportBeforeBulk = await apiFetch<ContentReport>(
+        page,
+        `/api/admin/reports/${encodeURIComponent(failingReport.id)}`,
+      );
+      expect(terminalReportBeforeBulk.data?.status).toBe("RESOLVED");
+      const reportBeforeBulk = [reportBefore[0].data!, terminalReportBeforeBulk.data!];
+
+      const itemResponses: Array<{ reportId: string; status: number }> = [];
+      const responseListener = (response: PlaywrightResponse) => {
+        if (response.request().method() !== "POST") return;
+        const match = response.url().match(/\/api\/admin\/reports\/([^/]+)\/ai-resolution(?:\?|$)/);
+        if (match) itemResponses.push({ reportId: match[1], status: response.status() });
+      };
+      page.on("response", responseListener);
+      await bulkDialog.getByRole("button", { name: "Run AI", exact: true }).click();
+      await expect(bulkDialog.getByText("Total: 2", { exact: true })).toBeVisible({ timeout: 30_000 });
+      await expect(bulkDialog.getByText("Remaining: 0", { exact: true })).toBeVisible({ timeout: 180_000 });
+      page.off("response", responseListener);
+
+      await expect(bulkDialog.getByText("Completed: 1", { exact: true })).toBeVisible();
+      await expect(bulkDialog.getByText("Failed: 1", { exact: true })).toBeVisible();
+      const failureAlert = bulkDialog.getByRole("alert");
+      await expect(failureAlert).toContainText("1 report failed. Successful recommendations were kept.");
+      await expect(bulkDialog.getByText(failingReport.id.slice(0, 8), { exact: true })).toBeVisible();
+      const recommended = Number((await bulkDialog.getByText(/^Recommended:/).textContent())?.split(":")[1].trim());
+      const manualReview = Number((await bulkDialog.getByText(/^Needs manual review:/).textContent())?.split(":")[1].trim());
+      expect(recommended + manualReview).toBe(1);
+      await failureAlert.scrollIntoViewIfNeeded();
+      const partialFailureScreenshot = await screenshot(
+        page,
+        evidenceDir,
+        "E2E-S1-09",
+        "bulk-partial-failure",
+      );
+
+      const historyAfter = await Promise.all(
+        reports.map((report) =>
+          apiFetch<PageResponse<AiResolution>>(
+            page,
+            withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-resolutions`, {
+              page: 0,
+              size: 20,
+            }),
+          )),
+      );
+      const targetAfter = await Promise.all(
+        reports.map((report) => fetchTargetSnapshot(page, report.targetType, report.targetId)),
+      );
+      const reportAfter = await Promise.all(
+        reports.map((report) =>
+          apiFetch<ContentReport>(page, `/api/admin/reports/${encodeURIComponent(report.id)}`)),
+      );
+      const jobsAfter = await Promise.all(
+        reports.map((report) =>
+          apiFetch<PageResponse<AutoApplyJob>>(
+            page,
+            withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-auto-resolutions`, {
+              page: 0,
+              size: 20,
+            }),
+            { failOnStatusCode: false },
+          )),
+      );
+
+      const result = {
+        itemResponses,
+        successfulReport: {
+          id: successfulReport.id,
+          resolutionCountBefore: historyBefore[0].data?.totalElements ?? 0,
+          resolutionCountAfter: historyAfter[0].data?.totalElements ?? 0,
+          reportStatusBefore: reportBefore[0].data?.status,
+          reportStatusAfter: reportAfter[0].data?.status,
+          reportStateBefore: reportStateSnapshot(reportBeforeBulk[0]),
+          reportStateAfter: reportStateSnapshot(reportAfter[0].data!),
+          reportMutation: !reportWasNotMutated(reportBeforeBulk[0], reportAfter[0].data!),
+          targetMutation: !targetWasNotMutated(targetBefore[0], targetAfter[0]),
+          autoApplyJobCount: jobsAfter[0].data?.totalElements ?? 0,
+        },
+        failedReport: {
+          id: failingReport.id,
+          injectedStatus: terminalReport.status,
+          resolutionCountBefore: historyBefore[1].data?.totalElements ?? 0,
+          resolutionCountAfter: historyAfter[1].data?.totalElements ?? 0,
+          reportStatusAfter: reportAfter[1].data?.status,
+          reportStateBefore: reportStateSnapshot(reportBeforeBulk[1]),
+          reportStateAfter: reportStateSnapshot(reportAfter[1].data!),
+          reportMutation: !reportWasNotMutated(reportBeforeBulk[1], reportAfter[1].data!),
+          targetMutation: !targetWasNotMutated(targetBefore[1], targetAfter[1]),
+          autoApplyJobCount: jobsAfter[1].data?.totalElements ?? 0,
+        },
+        ui: {
+          completed: 1,
+          recommended,
+          manualReview,
+          failed: 1,
+          remaining: 0,
+        },
+        screenshots: [partialFailureScreenshot],
+      };
+      rawFile(evidenceDir, "E2E-S1-09", "bulk-partial-failure-result", result);
+
+      expect(itemResponses.map((item) => item.status).sort()).toEqual([200, 409]);
+      expect(historyAfter[0].data?.totalElements ?? 0).toBe(
+        (historyBefore[0].data?.totalElements ?? 0) + 1,
+      );
+      expect(historyAfter[1].data?.totalElements ?? 0).toBe(
+        historyBefore[1].data?.totalElements ?? 0,
+      );
+      expect(reportWasNotMutated(reportBeforeBulk[0], reportAfter[0].data!)).toBe(true);
+      expect(reportWasNotMutated(reportBeforeBulk[1], reportAfter[1].data!)).toBe(true);
+      expect(targetWasNotMutated(targetBefore[0], targetAfter[0])).toBe(true);
+      expect(targetWasNotMutated(targetBefore[1], targetAfter[1])).toBe(true);
+      expect(jobsAfter.flatMap((resultItem) => resultItem.data?.content ?? [])).toEqual([]);
+    } finally {
+      for (const report of reports) {
+        await cancelScheduledJobs(page, report.id).catch(() => undefined);
+      }
+      for (const [index, fixture] of fixtures.entries()) {
+        cleanupProviderUnavailableBlogFixture(fixture, reports[index]?.id);
+      }
+      if (fixtures.length) {
+        const blogIds = fixtures.map((fixture) => `'${fixture.blogId}'::uuid`).join(",");
+        const reportIds = reports.map((report) => `'${report.id}'::uuid`).join(",");
+        const cleanupCounts = psqlForReportAiFixture(`
+          select count(*) from blogs where id in (${blogIds});
+          ${reportIds ? `select count(*) from content_reports where id in (${reportIds});` : ""}
+        `);
+        rawFile(evidenceDir, "E2E-S1-09", "cleanup-verification", {
+          remainingRowCounts: cleanupCounts.split(/\r?\n/).filter(Boolean).map(Number),
+        });
+      }
+    }
+  });
+
+  test("E2E-S1-10 terminal report disables Ask AI and Backend rejects bypass", async ({ page }) => {
+    test.setTimeout(5 * 60_000);
+    loadLocalEnv();
+    const adminEmail = requireEnv("ADMIN_TEST_EMAIL");
+    const adminPassword = requireEnv("ADMIN_TEST_PASSWORD");
+    const evidenceDir = createRemediationEvidenceDir("DOD_FIX06_EVIDENCE_DIR");
+    let fixture: ReturnType<typeof createProviderUnavailableBlogFixture> | null = null;
+    let report: ContentReport | null = null;
+
+    try {
+      const preflight = await request.newContext();
+      await assertReachable(preflight, adminBaseUrl, "Admin UI");
+      await assertReachable(preflight, `${apiBaseUrl.replace(/\/$/, "")}/api/auth/me`, "Backend API");
+      await preflight.dispose();
+
+      await loginAsAdmin(page, adminEmail, adminPassword);
+      const auth = await apiFetch<AuthResponse>(page, "/api/auth/me");
+      const adminUserId = auth.data?.user.userId ?? "";
+      if (!adminUserId) throw new Error("Unable to resolve current admin user id.");
+
+      fixture = createProviderUnavailableBlogFixture(adminUserId);
+      const reason = await chooseReason(page, "BLOG");
+      const created = await createReportWithSelfHeal(
+        page,
+        {
+          targetType: "BLOG",
+          targetId: fixture.blogId,
+          reason,
+          source: {
+            id: fixture.blogId,
+            authorUserId: fixture.targetOwnerId,
+            status: "PUBLISHED",
+            content: "Terminal report FE guard fixture.",
+          },
+        },
+        `${TEST_MARKER} E2E-S1-10 terminal FE guard ${Date.now()}`,
+        adminUserId,
+      );
+      report = created.report;
+      const targetBefore = await fetchTargetSnapshot(page, report.targetType, report.targetId);
+      const terminalReport = await updateReportStatus(page, report.id, "RESOLVED");
+      const persistedTerminalReport = await apiFetch<ContentReport>(
+        page,
+        `/api/admin/reports/${encodeURIComponent(report.id)}`,
+      );
+      expect(persistedTerminalReport.data?.status).toBe("RESOLVED");
+      const historyBefore = await apiFetch<PageResponse<AiResolution>>(
+        page,
+        withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-resolutions`, {
+          page: 0,
+          size: 20,
+        }),
+      );
+
+      let uiAiRequestCount = 0;
+      const requestListener = (outgoingRequest: { method: () => string; url: () => string }) => {
+        if (
+          outgoingRequest.method() === "POST" &&
+          outgoingRequest.url().includes(`/api/admin/reports/${report!.id}/ai-resolution`)
+        ) {
+          uiAiRequestCount += 1;
+        }
+      };
+      page.on("request", requestListener);
+      await openReportDetail(page, persistedTerminalReport.data!);
+      const detailDialog = page.getByRole("dialog").filter({ hasText: "Report detail" });
+      const askAiButton = detailDialog.getByRole("button", { name: "Ask AI" });
+      await expect(askAiButton).toBeDisabled();
+      await askAiButton.evaluate((button: HTMLButtonElement) => button.click());
+      await page.waitForTimeout(300);
+      page.off("request", requestListener);
+      expect(uiAiRequestCount).toBe(0);
+      const terminalGuardScreenshot = await screenshot(
+        page,
+        evidenceDir,
+        "E2E-S1-10",
+        "terminal-report-ask-ai-disabled",
+      );
+
+      const bypassAttempt = await createAiResolution(page, persistedTerminalReport.data!);
+      const historyAfter = await apiFetch<PageResponse<AiResolution>>(
+        page,
+        withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-resolutions`, {
+          page: 0,
+          size: 20,
+        }),
+      );
+      const reportAfter = await apiFetch<ContentReport>(
+        page,
+        `/api/admin/reports/${encodeURIComponent(report.id)}`,
+      );
+      const targetAfter = await fetchTargetSnapshot(page, report.targetType, report.targetId);
+      const jobsAfter = await apiFetch<PageResponse<AutoApplyJob>>(
+        page,
+        withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-auto-resolutions`, {
+          page: 0,
+          size: 20,
+        }),
+        { failOnStatusCode: false },
+      );
+      rawFile(evidenceDir, "E2E-S1-10", "terminal-report-guard-result", {
+        terminalStatus: terminalReport.status,
+        askAiDisabled: await askAiButton.isDisabled(),
+        uiAiRequestCount,
+        bypassHttpStatus: bypassAttempt.response.status(),
+        bypassResponse: bypassAttempt.raw,
+        resolutionCountBefore: historyBefore.data?.totalElements ?? 0,
+        resolutionCountAfter: historyAfter.data?.totalElements ?? 0,
+        reportStatusAfter: reportAfter.data?.status,
+        reportStateBefore: reportStateSnapshot(persistedTerminalReport.data!),
+        reportStateAfter: reportStateSnapshot(reportAfter.data!),
+        reportMutation: !reportWasNotMutated(persistedTerminalReport.data!, reportAfter.data!),
+        targetMutation: !targetWasNotMutated(targetBefore, targetAfter),
+        autoApplyJobCount: jobsAfter.data?.totalElements ?? 0,
+        screenshots: [terminalGuardScreenshot],
+      });
+
+      expect(bypassAttempt.response.status()).toBe(409);
+      expect(historyAfter.data?.totalElements ?? 0).toBe(historyBefore.data?.totalElements ?? 0);
+      expect(reportWasNotMutated(persistedTerminalReport.data!, reportAfter.data!)).toBe(true);
+      expect(targetWasNotMutated(targetBefore, targetAfter)).toBe(true);
+      expect(jobsAfter.data?.content ?? []).toEqual([]);
+    } finally {
+      if (report) {
+        await cancelScheduledJobs(page, report.id).catch(() => undefined);
+      }
+      if (fixture) {
+        cleanupProviderUnavailableBlogFixture(fixture, report?.id);
+        const cleanupCounts = psqlForReportAiFixture(`
+          select count(*) from blogs where id='${fixture.blogId}'::uuid;
+          ${report ? `select count(*) from content_reports where id='${report.id}'::uuid;` : ""}
+        `);
+        rawFile(evidenceDir, "E2E-S1-10", "cleanup-verification", {
+          remainingRowCounts: cleanupCounts.split(/\r?\n/).filter(Boolean).map(Number),
+        });
+      }
+    }
+  });
+
+  test("E2E-S1-13 provider boundary unavailable is operational error and retryable", async ({ page }) => {
+    test.setTimeout(10 * 60_000);
+    loadLocalEnv();
+    const adminEmail = requireEnv("ADMIN_TEST_EMAIL");
+    const adminPassword = requireEnv("ADMIN_TEST_PASSWORD");
+    const evidenceDir = createFix04EvidenceDir();
+    let fixture: ReturnType<typeof createProviderUnavailableBlogFixture> | null = null;
+    let report: ContentReport | null = null;
+    let n8nStopped = false;
+
+    try {
+      const preflight = await request.newContext();
+      await assertReachable(preflight, adminBaseUrl, "Admin UI");
+      await assertReachable(preflight, `${apiBaseUrl.replace(/\/$/, "")}/api/auth/me`, "Backend API");
+      await assertReachable(preflight, `${n8nBaseUrl.replace(/\/$/, "")}/healthz`, "n8n");
+      const webhookPreflight = await checkWebhookActive(preflight);
+      await preflight.dispose();
+      expect(webhookPreflight.ok, webhookPreflight.message).toBe(true);
+
+      await loginAsAdmin(page, adminEmail, adminPassword);
+      const auth = await apiFetch<AuthResponse>(page, "/api/auth/me");
+      const adminUserId = auth.data?.user.userId ?? "";
+      if (!adminUserId) throw new Error("Unable to resolve current admin user id.");
+
+      fixture = createProviderUnavailableBlogFixture(adminUserId);
+      const reason = await chooseReason(page, "BLOG");
+      const seed: TargetSeed = {
+        targetType: "BLOG",
+        targetId: fixture.blogId,
+        reason,
+        source: {
+          id: fixture.blogId,
+          authorUserId: fixture.targetOwnerId,
+          status: "PUBLISHED",
+          content: "Bài viết fixture dùng để kiểm chứng lỗi vận hành provider.",
+        },
+      };
+      const created = await createReportWithSelfHeal(
+        page,
+        seed,
+        `${TEST_MARKER} E2E-S1-13 provider unavailable ${Date.now()}`,
+        adminUserId,
+      );
+      report = created.report;
+      const targetBefore = await fetchTargetSnapshot(page, "BLOG", fixture.blogId);
+      const reportBefore = await apiFetch<ContentReport>(
+        page,
+        `/api/admin/reports/${encodeURIComponent(report.id)}`,
+      );
+      const historyBefore = await apiFetch<PageResponse<AiResolution>>(
+        page,
+        withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-resolutions`, {
+          page: 0,
+          size: 20,
+        }),
+      );
+
+      await openReportDetail(page, report);
+      const detailDialog = page.getByRole("dialog").filter({ hasText: "Report detail" });
+      await detailDialog.getByRole("button", { name: "Ask AI" }).click();
+      const askDialog = page.getByRole("dialog").filter({ hasText: "Ask AI for report resolution" });
+      await expect(askDialog).toBeVisible();
+
+      stopN8nForProviderBoundaryTest();
+      n8nStopped = true;
+      const failureResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes(`/api/admin/reports/${report!.id}/ai-resolution`) &&
+          response.request().method() === "POST",
+        { timeout: 120_000 },
+      );
+      await askDialog.getByRole("button", { name: "Ask AI" }).click();
+      const failureResponse = await failureResponsePromise;
+      const failureParsed = await parseResponse<AdminReportAiOperationalError>(failureResponse);
+      const historyAfterFailure = await apiFetch<PageResponse<AiResolution>>(
+        page,
+        withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-resolutions`, {
+          page: 0,
+          size: 20,
+        }),
+      );
+      rawFile(evidenceDir, "E2E-S1-13", "provider-boundary-failure", {
+        httpStatus: failureResponse.status(),
+        error: failureParsed.raw,
+        resolutionCountBefore: historyBefore.data?.totalElements ?? 0,
+        resolutionCountAfterFailure: historyAfterFailure.data?.totalElements ?? 0,
+      });
+
+      expect(historyAfterFailure.data?.totalElements ?? 0).toBe(
+        historyBefore.data?.totalElements ?? 0,
+      );
+
+      const alert = askDialog.getByRole("alert");
+      const failureScreenshot = await screenshot(
+        page,
+        evidenceDir,
+        "E2E-S1-13",
+        "provider-boundary-operational-error",
+      );
+      await expect(alert).toContainText("AI recommendation was not created.");
+      await expect(alert).toContainText("AI recommendation service is unavailable.");
+      await expect(alert).toContainText("AI_PROVIDER_BOUNDARY_FAILED");
+      await expect(alert).toContainText("Retry available");
+      await expect(alert).toContainText((failureParsed.raw as AdminReportAiOperationalError).correlationId);
+      expect(failureResponse.status()).toBe(502);
+      expect(failureParsed.raw).toMatchObject({
+        code: "AI_PROVIDER_BOUNDARY_FAILED",
+        message: "AI recommendation service is unavailable.",
+        retryable: true,
+        stage: "N8N_PROVIDER",
+      });
+      expect((failureParsed.raw as AdminReportAiOperationalError).correlationId).toMatch(
+        /^[0-9a-f-]{36}$/i,
+      );
+
+      startN8nAfterProviderBoundaryTest();
+      n8nStopped = false;
+      await waitForN8nRecovery(page.request);
+      await expect(askDialog.getByRole("button", { name: "Ask AI" })).toBeEnabled();
+
+      const retryResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes(`/api/admin/reports/${report!.id}/ai-resolution`) &&
+          response.request().method() === "POST",
+        { timeout: 120_000 },
+      );
+      await askDialog.getByRole("button", { name: "Ask AI" }).click();
+      const retryResponse = await retryResponsePromise;
+      const retryParsed = await parseResponse<AiResolution>(retryResponse);
+      await expect(askDialog).toBeHidden();
+
+      const targetAfter = await fetchTargetSnapshot(page, "BLOG", fixture.blogId);
+      const reportAfter = await apiFetch<ContentReport>(
+        page,
+        `/api/admin/reports/${encodeURIComponent(report.id)}`,
+      );
+      const historyAfterRetry = await apiFetch<PageResponse<AiResolution>>(
+        page,
+        withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-resolutions`, {
+          page: 0,
+          size: 20,
+        }),
+      );
+      const jobs = await apiFetch<PageResponse<AutoApplyJob>>(
+        page,
+        withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-auto-resolutions`, {
+          page: 0,
+          size: 20,
+        }),
+        { failOnStatusCode: false },
+      );
+      const noTargetMutation = targetWasNotMutated(targetBefore, targetAfter);
+      const noReportMutation = reportBefore.data?.status === reportAfter.data?.status;
+      rawFile(evidenceDir, "E2E-S1-13", "retry-recovery", {
+        httpStatus: retryResponse.status(),
+        resolution: retryParsed.data,
+        resolutionCountAfterRetry: historyAfterRetry.data?.totalElements ?? 0,
+        noTargetMutation,
+        noReportMutation,
+        autoApplyJobCount: jobs.data?.totalElements ?? jobs.data?.content.length ?? 0,
+        screenshots: [failureScreenshot],
+      });
+
+      expect(retryResponse.ok()).toBe(true);
+      expect(resolutionContractOk(retryParsed.data)).toBe(true);
+      expect(historyAfterRetry.data?.totalElements ?? 0).toBe(
+        (historyBefore.data?.totalElements ?? 0) + 1,
+      );
+      expect(noTargetMutation).toBe(true);
+      expect(noReportMutation).toBe(true);
+      expect(jobs.data?.content ?? []).toEqual([]);
+    } finally {
+      if (n8nStopped) {
+        startN8nAfterProviderBoundaryTest();
+        await waitForN8nRecovery(page.request).catch(() => undefined);
+      }
+      if (report) {
+        await cancelScheduledJobs(page, report.id).catch(() => undefined);
+        await closeReport(page, report.id, "REJECTED").catch(() => undefined);
+      }
+      if (fixture) {
+        cleanupProviderUnavailableBlogFixture(fixture, report?.id);
+        const cleanupCounts = psqlForReportAiFixture(`
+          select count(*) from blogs where id='${fixture.blogId}'::uuid;
+          ${report ? `select count(*) from content_reports where id='${report.id}'::uuid;` : ""}
+        `);
+        rawFile(evidenceDir, "E2E-S1-13", "cleanup-verification", {
+          remainingRowCounts: cleanupCounts.split(/\r?\n/).filter(Boolean).map(Number),
+        });
+      }
+    }
+  });
+
+  test("E2E-S1-04 COMMENT missing critical parent context is manual and has no mutation", async ({ page }) => {
+    test.setTimeout(10 * 60_000);
+    loadLocalEnv();
+    const adminEmail = requireEnv("ADMIN_TEST_EMAIL");
+    const adminPassword = requireEnv("ADMIN_TEST_PASSWORD");
+    const evidenceDir = createFix03EvidenceDir();
+    let fixture: ReturnType<typeof createMissingCriticalCommentContextFixture> | null = null;
+    let report: ContentReport | null = null;
+
+    try {
+      const preflight = await request.newContext();
+      await assertReachable(preflight, adminBaseUrl, "Admin UI");
+      await assertReachable(preflight, `${apiBaseUrl.replace(/\/$/, "")}/api/auth/me`, "Backend API");
+      await assertReachable(preflight, `${n8nBaseUrl.replace(/\/$/, "")}/healthz`, "n8n");
+      const webhookPreflight = await checkWebhookActive(preflight);
+      await preflight.dispose();
+      expect(webhookPreflight.ok, webhookPreflight.message).toBe(true);
+
+      await loginAsAdmin(page, adminEmail, adminPassword);
+      const auth = await apiFetch<AuthResponse>(page, "/api/auth/me");
+      const adminUserId = auth.data?.user.userId ?? "";
+      if (!adminUserId) throw new Error("Unable to resolve current admin user id.");
+
+      fixture = createMissingCriticalCommentContextFixture(adminUserId);
+      const reason = await chooseReason(page, "COMMENT");
+      const seed: TargetSeed = {
+        targetType: "COMMENT",
+        targetId: fixture.commentId,
+        reason,
+        source: {
+          id: fixture.commentId,
+          blogId: fixture.blogId,
+          userId: fixture.targetOwnerId,
+          status: "PUBLISHED",
+          content: "Đúng vậy.",
+        },
+      };
+      const created = await createReportWithSelfHeal(
+        page,
+        seed,
+        `${TEST_MARKER} E2E-S1-04 missing critical parent context ${Date.now()}`,
+        adminUserId,
+      );
+      report = created.report;
+      const targetBefore = await fetchTargetSnapshot(page, "COMMENT", fixture.commentId);
+      const result = await createAiResolution(page, report);
+      const targetAfter = await fetchTargetSnapshot(page, "COMMENT", fixture.commentId);
+      const jobs = await apiFetch<PageResponse<AutoApplyJob>>(
+        page,
+        withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-auto-resolutions`, {
+          page: 0,
+          size: 20,
+        }),
+        { failOnStatusCode: false },
+      );
+      const noMutation = targetWasNotMutated(targetBefore, targetAfter);
+      const resolution = result.data;
+      rawFile(evidenceDir, "E2E-S1-04", "runtime-result", {
+        httpStatus: result.response.status(),
+        resolution,
+        noMutation,
+        autoApplyJobCount: jobs.data?.totalElements ?? jobs.data?.content.length ?? 0,
+      });
+
+      await openReportDetail(page, report);
+      await expect(page.getByText("CRITICAL_EVIDENCE_MISSING")).toBeVisible();
+      await expect(page.getByText("UNASSESSABLE", { exact: true })).toBeVisible();
+      const screenshotFile = await screenshot(
+        page,
+        evidenceDir,
+        "E2E-S1-04",
+        "comment-missing-critical-context-manual",
+      );
+      rawFile(evidenceDir, "E2E-S1-04", "ui-result", { screenshotFile });
+
+      expect(result.response.ok()).toBe(true);
+      expect(resolution?.reportDecision).toBe("NEEDS_MANUAL_REVIEW");
+      expect(resolution?.targetAction).toBe("NO_ACTION");
+      expect(resolution?.findings ?? []).toEqual([]);
+      expect(resolution?.blockedReasons).toContain("CRITICAL_EVIDENCE_MISSING");
+      expect(resolution?.evidenceSufficiency).toBe("UNASSESSABLE");
+      expect(noMutation).toBe(true);
+      expect(jobs.data?.content ?? []).toEqual([]);
+    } finally {
+      if (report) {
+        await cancelScheduledJobs(page, report.id).catch(() => undefined);
+        await closeReport(page, report.id, "REJECTED").catch(() => undefined);
+      }
+      if (fixture) {
+        cleanupMissingCriticalCommentContextFixture(fixture, report?.id);
+        const cleanupCounts = psqlForReportAiFixture(`
+          select count(*) from comments where id='${fixture.commentId}'::uuid;
+          select count(*) from blogs where id='${fixture.blogId}'::uuid;
+          ${report ? `select count(*) from content_reports where id='${report.id}'::uuid;` : ""}
+        `);
+        rawFile(evidenceDir, "E2E-S1-04", "cleanup-verification", {
+          remainingRowCounts: cleanupCounts.split(/\r?\n/).filter(Boolean).map(Number),
+        });
+      }
+    }
+  });
+
   test("creates reports, asks AI, evaluates 30 scenarios, and cleans up", async ({ page }) => {
     test.setTimeout(45 * 60_000);
     loadLocalEnv();

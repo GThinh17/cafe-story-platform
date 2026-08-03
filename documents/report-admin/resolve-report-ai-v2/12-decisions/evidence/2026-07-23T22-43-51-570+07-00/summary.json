@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "1.0",
+  "gate": "G0-10G",
+  "approval": "APPROVE_G0-10G",
+  "status": "PARTIAL_WAITING_USER_APPROVAL",
+  "approvedDecision": {
+    "decisionId": "BD-007",
+    "selectedOption": "G1_NARROW_MATERIAL_OBJECTIVELY_VERIFIABLE"
+  },
+  "progress": {
+    "approved": 7,
+    "total": 12,
+    "current": "G0-10H"
+  },
+  "currentProposal": {
+    "decisionId": "BD-008",
+    "recommendedOption": "H1_VERSIONED_TWO_TIER_RESTRICTED_REGISTRY",
+    "prohibitedBaselineCount": 7,
+    "regulatedManualCount": 4
+  },
+  "nextRequiredApproval": "APPROVE_G0-10H",
+  "sourceOrDataMutation": false,
+  "g0_11Authorized": false
+}

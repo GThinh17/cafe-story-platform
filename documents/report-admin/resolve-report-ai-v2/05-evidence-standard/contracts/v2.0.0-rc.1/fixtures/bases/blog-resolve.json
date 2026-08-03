@@ -1,0 +1,85 @@
+{
+  "contractVersion": "2.0.0-rc.1",
+  "schemaVersion": "1.0.0-rc.1",
+  "correlationId": "COR-BLOG-BASE",
+  "policyContext": {
+    "policyVersion": "POLICY-2.0.0-ACTIVE-FIXTURE",
+    "policyStatus": "ACTIVE",
+    "ruleCatalogVersion": "RC-2.0.0-ACTIVE-FIXTURE",
+    "ruleCatalogStatus": "ACTIVE",
+    "evidenceKindCatalogVersion": "1.0.0-rc.1",
+    "candidateRuleIds": ["CSR.SAF.001"]
+  },
+  "targetSnapshot": {
+    "targetType": "BLOG",
+    "targetAlias": "target-blog-1",
+    "snapshotVersion": "blog-1.0.0",
+    "snapshotHash": "sha256:blog-snapshot-001",
+    "capturedAt": "2026-07-26T03:00:00Z",
+    "freshness": "CURRENT",
+    "reportTargetAssociation": {
+      "reportAlias": "report-1",
+      "targetAlias": "target-blog-1",
+      "associationValidated": true
+    },
+    "data": {
+      "state": {
+        "status": "PUBLISHED",
+        "createdAt": "2026-07-25T02:00:00Z",
+        "updatedAt": "2026-07-26T02:55:00Z"
+      },
+      "content": {
+        "sanitizedText": "Direct threat text used only as deterministic fixture data.",
+        "sourceLength": 59,
+        "capturedLength": 59,
+        "truncated": false,
+        "sanitizerVersion": "blog-content-sanitizer-1.0.0",
+        "contentDigest": "sha256:blog-content-001"
+      },
+      "media": []
+    }
+  },
+  "providerExecution": {
+    "eligible": true,
+    "called": true,
+    "route": "N8N_PROVIDER"
+  },
+  "evidence": [
+    {"evidenceId":"EV-BLOG-IDENTITY","envelopeVersion":"1.0.0-rc.1","evidenceKind":"TARGET_IDENTITY","subject":{"targetType":"BLOG","targetAlias":"target-blog-1","snapshotVersion":"blog-1.0.0","snapshotHash":"sha256:blog-snapshot-001"},"source":{"sourceType":"TARGET_SNAPSHOT","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"FixtureCollector","collectorVersion":"1.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-blog-identity"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"HIGH","reasonCodes":["DIRECT_PLATFORM_RECORD"]},"privacy":{"classification":"RESTRICTED","containsPersonalData":false,"redactionStatus":"APPLIED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":[],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"targetType":"BLOG","targetRef":"target-blog-1","referenceKind":"REQUEST_SCOPED_ALIAS"},"reference":null,"truncated":false}},
+    {"evidenceId":"EV-BLOG-REPORT-ASSOCIATION","envelopeVersion":"1.0.0-rc.1","evidenceKind":"REPORT_TARGET_ASSOCIATION","subject":{"targetType":"BLOG","targetAlias":"target-blog-1","snapshotVersion":"blog-1.0.0","snapshotHash":"sha256:blog-snapshot-001"},"source":{"sourceType":"PLATFORM_RECORD","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"FixtureCollector","collectorVersion":"1.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-blog-association"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"HIGH","reasonCodes":["DIRECT_PLATFORM_RECORD"]},"privacy":{"classification":"RESTRICTED","containsPersonalData":false,"redactionStatus":"APPLIED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":[],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"reportAlias":"report-1","associationValidated":true},"reference":null,"truncated":false}},
+    {"evidenceId":"EV-BLOG-STATE","envelopeVersion":"1.0.0-rc.1","evidenceKind":"TARGET_STATE","subject":{"targetType":"BLOG","targetAlias":"target-blog-1","snapshotVersion":"blog-1.0.0","snapshotHash":"sha256:blog-snapshot-001"},"source":{"sourceType":"TARGET_SNAPSHOT","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"FixtureCollector","collectorVersion":"1.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-blog-state"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"HIGH","reasonCodes":["FRESH_AT_CAPTURE"]},"privacy":{"classification":"INTERNAL_MODERATION","containsPersonalData":false,"redactionStatus":"NOT_REQUIRED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":[],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"status":"PUBLISHED"},"reference":null,"truncated":false}},
+    {"evidenceId":"EV-BLOG-TEXT","envelopeVersion":"1.0.0-rc.1","evidenceKind":"TARGET_TEXT_CONTENT","subject":{"targetType":"BLOG","targetAlias":"target-blog-1","snapshotVersion":"blog-1.0.0","snapshotHash":"sha256:blog-snapshot-001"},"source":{"sourceType":"TARGET_SNAPSHOT","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"FixtureCollector","collectorVersion":"1.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[{"type":"SANITIZE_CONTENT","version":"1.0.0","materiality":"NON_MATERIAL"}]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-blog-text"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"HIGH","reasonCodes":["AUTHORITATIVE_PLATFORM_FIELD"]},"privacy":{"classification":"PUBLIC_CONTENT","containsPersonalData":false,"redactionStatus":"APPLIED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"RULE_EVALUATION_CANDIDATE","collectedForRuleIds":["CSR.SAF.001"],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"sanitizedText":"Direct threat text used only as deterministic fixture data."},"reference":null,"truncated":false}},
+    {"evidenceId":"EV-BLOG-ACTOR","envelopeVersion":"1.0.0-rc.1","evidenceKind":"TARGET_ACTOR_ASSOCIATION","subject":{"targetType":"BLOG","targetAlias":"target-blog-1","snapshotVersion":"blog-1.0.0","snapshotHash":"sha256:blog-snapshot-001"},"source":{"sourceType":"TARGET_SNAPSHOT","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"FixtureCollector","collectorVersion":"1.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-blog-actor"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"HIGH","reasonCodes":["DIRECT_PLATFORM_RECORD"]},"privacy":{"classification":"RESTRICTED","containsPersonalData":true,"redactionStatus":"APPLIED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":[],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"underlyingUserAlias":"actor-user-1","relationIntegrity":"CONSISTENT"},"reference":null,"truncated":false}},
+    {"evidenceId":"EV-BLOG-PAGE","envelopeVersion":"1.0.0-rc.1","evidenceKind":"TARGET_PAGE_ASSOCIATION","subject":{"targetType":"BLOG","targetAlias":"target-blog-1","snapshotVersion":"blog-1.0.0","snapshotHash":"sha256:blog-snapshot-001"},"source":{"sourceType":"TARGET_SNAPSHOT","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"FixtureCollector","collectorVersion":"1.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-blog-page"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"HIGH","reasonCodes":["DIRECT_PLATFORM_RECORD"]},"privacy":{"classification":"RESTRICTED","containsPersonalData":false,"redactionStatus":"APPLIED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":[],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"associationPresent":false,"pageAlias":null},"reference":null,"truncated":false}},
+    {"evidenceId":"EV-BLOG-REGION","envelopeVersion":"1.0.0-rc.1","evidenceKind":"TARGET_REGION_ASSOCIATION","subject":{"targetType":"BLOG","targetAlias":"target-blog-1","snapshotVersion":"blog-1.0.0","snapshotHash":"sha256:blog-snapshot-001"},"source":{"sourceType":"TARGET_SNAPSHOT","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"FixtureCollector","collectorVersion":"1.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-blog-region"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"MEDIUM","reasonCodes":["CONTEXT_ONLY"]},"privacy":{"classification":"RESTRICTED","containsPersonalData":false,"redactionStatus":"APPLIED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":[],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"regionAlias":"region-1","jurisdictionProof":false},"reference":null,"truncated":false}}
+  ],
+  "ruleEvaluations": [
+    {
+      "ruleId": "CSR.SAF.001",
+      "material": true,
+      "outcome": "SUBSTANTIATED",
+      "supportingEvidenceIds": ["EV-BLOG-TEXT"],
+      "counterEvidenceIds": [],
+      "missingEvidenceIds": []
+    }
+  ],
+  "missingEvidence": [],
+  "conflicts": [],
+  "scopeEvaluation": {
+    "complete": false,
+    "evidenceControlRuleIds": []
+  },
+  "recommendation": {
+    "operationalStatus": "VALID",
+    "reportDecision": "RESOLVE",
+    "candidateTargetAction": "HIDE",
+    "evidenceSufficiency": "SUFFICIENT",
+    "findings": [
+      {
+        "ruleId": "CSR.SAF.001",
+        "evidenceIds": ["EV-BLOG-TEXT"]
+      }
+    ],
+    "assessmentConfidence": 0.85
+  }
+}

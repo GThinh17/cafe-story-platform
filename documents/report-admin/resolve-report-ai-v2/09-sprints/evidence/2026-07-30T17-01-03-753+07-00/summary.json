@@ -1,0 +1,46 @@
+{
+  "gate": "S2-DONE-FIX-02-DB-HASH-LENGTH",
+  "token": "IMPLEMENT_S2_DONE_FIX_02_DB_HASH_LENGTH",
+  "status": "COMPLETED_VERIFIED_AWAITING_APPROVAL",
+  "migration": {
+    "version": "20260730.01",
+    "description": "admin report ai snapshot hash length",
+    "applied": true,
+    "previousMigrationModified": false,
+    "databaseColumnLength": 71,
+    "entityColumnLength": 71
+  },
+  "tests": {
+    "schemaContract": {
+      "status": "PASS",
+      "tests": 1
+    },
+    "backendFocused": {
+      "status": "PASS",
+      "tests": 54,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "backendFull": {
+      "status": "PASS",
+      "tests": 642,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "securityHarness": "PASS",
+    "e2eProviderRecovery": "PASS",
+    "e2eCriticalEvidenceManual": "PASS",
+    "noMutation": "PASS",
+    "autoApplyJobCount": 0,
+    "cleanup": "PASS"
+  },
+  "issues": {
+    "codeBugsResolvedVerified": 1,
+    "testBugsResolvedVerified": 1,
+    "configEnvObservedNonBlocking": 1,
+    "codeBugsOutOfScopeNonBlocking": 1
+  },
+  "nextToken": "APPROVE_S2_DONE"
+}

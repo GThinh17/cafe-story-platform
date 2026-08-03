@@ -1,0 +1,46 @@
+{
+  "gate": "G0-10",
+  "status": "PASS",
+  "validation": {
+    "passed": 19,
+    "total": 19,
+    "failed": 0
+  },
+  "decisionProgress": {
+    "approved": 12,
+    "total": 12,
+    "open": 0
+  },
+  "approvalModes": {
+    "explicitSubGate": 7,
+    "userDelegatedRecommendedOptions": 5
+  },
+  "selectedOptions": [
+    "A1_ROLE_BASED_OWNERSHIP",
+    "B1_A0_RECOMMEND_ONLY",
+    "C1_RISK_TIERED_QUORUM",
+    "D1_NO_NUMERIC_BUSINESS_THRESHOLD",
+    "E1_VERSIONED_PROTECTED_LIST",
+    "F1_CONSERVATIVE_PUBLIC_PLATFORM",
+    "G1_NARROW_MATERIAL_OBJECTIVELY_VERIFIABLE",
+    "H1_VERSIONED_TWO_TIER_RESTRICTED_REGISTRY",
+    "I1_DUAL_LANE_HUMAN_LEGAL_TRIAGE",
+    "J1_VERSIONED_COMPATIBLE_ALIAS_DEPRECATION",
+    "K1_GENERAL_CONTRACT_CONTENT_FIRST",
+    "L1_MINIMUM_SAFE_OPERATING_BASELINE"
+  ],
+  "intakeDisposition": {
+    "activePolicyRoute": 16,
+    "deprecatedMixedRoute": 2,
+    "routingOnlyNonViolation": 4,
+    "total": 22
+  },
+  "sourceChanges": {
+    "backend": 0,
+    "frontend": 0,
+    "n8n": 0
+  },
+  "runtimeVerified": false,
+  "nextRequiredApproval": "APPROVE_G0-11",
+  "evidenceTimestamp": "2026-07-23T22-49-15-555+07:00"
+}

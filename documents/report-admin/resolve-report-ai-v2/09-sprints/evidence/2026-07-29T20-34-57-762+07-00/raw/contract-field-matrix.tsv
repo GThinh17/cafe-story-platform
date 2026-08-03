@@ -1,0 +1,11 @@
+area	current	proposed	owner	failure_behavior
+policy lifecycle	version string only	policyStatus ruleCatalogStatus ruleStatus evaluationMode	Backend	manual no-action when not ACTIVE
+candidate rule	ruleId ruleVersion	typed family type material requirements exceptions ceiling actions	Backend	reject or manual on missing/unknown
+evidence	generic map	M07-compatible evidence envelope with Evidence Kind and snapshot binding	Backend	manual or operational failure
+provider input	full request JSON	safe allowlisted projection	n8n from Backend-signed context	no provider call on invalid projection
+provider output	closed enum schema	bounded closed schema with unique IDs	n8n canonical schema	structured boundary failure
+rule validation	ruleId and evidence references	ruleVersion burden counter exception completeness ceiling	Backend	manual no-action
+decision aggregation	model returns decision/action	provider returns per-rule evaluation; Backend aggregates	Backend	manual no-action on unresolved scope
+persistence	existing version and JSONB fields	reuse existing fields; normalized typed findings	Backend	no migration in core
+admin response	existing evidence/findings/version UI	stable endpoint; add evaluation-only/missing copy only if required	Backend/Admin	no action authority
+evaluation	security/runtime scenarios	layered contract semantic adversarial provider E2E harness	Test harness	no aggregate accuracy claim

@@ -1,0 +1,30 @@
+{
+  "featureSlug": "backend-flyway-missing-migration-20260721",
+  "status": "DONE",
+  "attachedError": "Detected applied migration not resolved locally: 20260721.01",
+  "changedFiles": [
+    "1-cafe-story-backend-javaspring/src/main/resources/db/migration/V20260721_01__performance_indexes.sql"
+  ],
+  "databaseProbe": {
+    "mode": "read-only",
+    "version": "20260721.01",
+    "description": "performance indexes",
+    "script": "V20260721_01__performance_indexes.sql",
+    "checksum": 698173291,
+    "success": true
+  },
+  "runtimeSmoke": {
+    "command": ".\\mvnw.cmd spring-boot:run '-Dspring-boot.run.arguments=--server.port=18080'",
+    "apiDocsStatus": 200,
+    "apiDocsResponseLength": 155424,
+    "cleanup": "port 18080 had no listener afterward"
+  },
+  "backendVerify": {
+    "status": "PASS",
+    "tests": 643,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1
+  },
+  "dbMetadataMutation": "NOT_PERFORMED"
+}

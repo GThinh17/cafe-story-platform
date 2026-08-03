@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "1.0",
+  "gate": "G0-06C",
+  "approval": "APPROVE_G0-06C",
+  "status": "DONE",
+  "mode": "DATABASE_READ_ONLY_AUDIT",
+  "database": {
+    "engine": "PostgreSQL",
+    "serverVersion": "17.6",
+    "schema": "public",
+    "transactionReadOnly": true,
+    "rollbackComplete": true
+  },
+  "counts": {
+    "reportReasons": 22,
+    "activeReportReasons": 22,
+    "contentReports": 19,
+    "aiResolutions": 23,
+    "autoApplyJobs": 1,
+    "databaseFindings": 16
+  },
+  "criticalObservations": [
+    "Runtime report reason catalog has 22 entries while source initializer has 9",
+    "Sixteen of seventeen RESOLVE recommendations have riskScore below the backend legacy threshold of 70",
+    "Database schema has no canonical evidence or policy-version fields"
+  ],
+  "privacy": {
+    "piiCaptured": false,
+    "reportContentCaptured": false,
+    "rawAiResponseCaptured": false,
+    "credentialsCaptured": false
+  },
+  "nextRequiredApproval": "APPROVE_G0-06D"
+}

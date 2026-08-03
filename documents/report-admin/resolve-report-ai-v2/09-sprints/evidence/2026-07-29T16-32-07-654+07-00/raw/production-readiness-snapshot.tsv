@@ -1,0 +1,15 @@
+id	criterion	result	scope
+PR-01	APPROVE_G0-12 recorded	PASS	governance
+PR-02	Named Policy Security Backend Operations owners	OPEN_NOT_EVIDENCED	production
+PR-03	A0 default and kill-switch tests	PASS	implementation
+PR-04	Active legacy jobs inventoried on target environment	OPEN_TARGET_ENV	production
+PR-05	Flyway history/schema verified on external target	OPEN_TARGET_ENV	production
+PR-06	Changed-file coverage gate	PASS	implementation
+PR-07	HMAC positive negative replay tests	PASS	implementation
+PR-08	Exact published webhook readiness	PASS_LOCAL_RUNTIME	local-runtime
+PR-09	BLOG and COMMENT E2E	PASS	local-runtime
+PR-10	USER/PAGE provider suppression	PASS	implementation
+PR-11	Raw and secret scan	PASS	verification
+PR-12	Four-target report/target no mutation	PASS	local-runtime
+PR-13	Rollback drill	OPEN_NOT_DRILLED	production
+PR-14	Monitoring alert retention runtime readiness	OPEN_DESIGN_ONLY	production

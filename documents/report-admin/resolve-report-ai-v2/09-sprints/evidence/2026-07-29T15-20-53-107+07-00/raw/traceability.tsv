@@ -1,0 +1,10 @@
+requirement	test_or_evidence	result
+DOD-18	E2E-S1-09	PASS
+SAF-011	bulk-partial-failure-result.json	PASS
+PER-ITEM-ISOLATION	HTTP-200-and-409	PASS
+SUCCESS-KEPT	success-resolution-0-to-1	PASS
+FAILED-NOT-PERSISTED	failed-resolution-0-to-0	PASS
+NO-TARGET-MUTATION	both-target-snapshots	PASS
+NO-REPORT-AI-MUTATION	success-OPEN-failed-RESOLVED	PASS
+A0-NO-AUTO-JOB	job-count-0	PASS
+CLEANUP	cleanup-verification.json	PASS-0-0

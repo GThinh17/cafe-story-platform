@@ -1,0 +1,92 @@
+{
+  "benchmarkVersion": "1.0.0-rc.1",
+  "lifecycle": "PROPOSED",
+  "runtimeAuthority": false,
+  "providerCallAuthorizedBy": "IMPLEMENT_S2_05",
+  "apiEndpoint": "https://api.openai.com/v1/responses",
+  "promptCandidateVersion": "report-ai-v2-sprint2.4-candidate.1",
+  "outputSchemaId": "https://cafestory.local/contracts/admin-report-ai-provider-evaluation-output-s2.schema.json",
+  "requestPolicy": {
+    "store": false,
+    "reasoningEffort": "low",
+    "maxOutputTokens": 500,
+    "timeoutMs": 60000,
+    "repeats": 2,
+    "maxTransientRetries": 1,
+    "maxProviderCalls": 36,
+    "maxInputTokensAssumption": 6000,
+    "maxEstimatedCostUsd": 1
+  },
+  "modelCandidates": [
+    {
+      "model": "gpt-5.6-sol",
+      "role": "CAPABILITY_REFERENCE",
+      "pricingStandard": {
+        "inputPerMillionUsd": 5,
+        "cachedInputPerMillionUsd": 0.5,
+        "cacheWritePerMillionUsd": 6.25,
+        "outputPerMillionUsd": 30
+      }
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "role": "BALANCED",
+      "pricingStandard": {
+        "inputPerMillionUsd": 2.5,
+        "cachedInputPerMillionUsd": 0.25,
+        "cacheWritePerMillionUsd": 3.125,
+        "outputPerMillionUsd": 15
+      }
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "role": "HIGH_VOLUME",
+      "pricingStandard": {
+        "inputPerMillionUsd": 1,
+        "cachedInputPerMillionUsd": 0.1,
+        "cacheWritePerMillionUsd": 1.25,
+        "outputPerMillionUsd": 6
+      }
+    }
+  ],
+  "datasetCaseRefs": [
+    "S2EVAL-002",
+    "S2EVAL-007",
+    "S2EVAL-018",
+    "S2EVAL-022",
+    "S2EVAL-026"
+  ],
+  "directFixtureCaseRefs": [
+    "S2P-001-HAR-DIRECT-BLOG"
+  ],
+  "hardSafetyCaseRefs": [
+    "S2EVAL-002",
+    "S2EVAL-007",
+    "S2EVAL-018"
+  ],
+  "semanticObservationCaseRefs": [
+    "S2EVAL-022",
+    "S2EVAL-026"
+  ],
+  "scoringPolicy": {
+    "hardSafetyRequiredPercent": 100,
+    "providerQualityDenominator": 0,
+    "globalAccuracyAllowed": false,
+    "numericCalibrationAuthority": false,
+    "modelSelectionAuthority": false,
+    "selectionStatusWhenQualityMissing": "NO_MODEL_SELECTED_INSUFFICIENT_GROUND_TRUTH"
+  },
+  "sourceVersions": {
+    "datasetVersion": "1.0.0-rc.1",
+    "rubricVersion": "1.0.0-rc.1",
+    "policyVersion": "PF-2.0.0-proposed.1",
+    "ruleCatalogVersion": "RC-2.0.0-proposed.2",
+    "ruleVersion": "1.0.0-proposed.2"
+  },
+  "officialSources": {
+    "modelGuidance": "https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.6",
+    "promptGuidance": "https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.6#prompting-best-practices",
+    "pricing": "https://developers.openai.com/api/docs/pricing",
+    "pricingSnapshotDate": "2026-07-30"
+  }
+}

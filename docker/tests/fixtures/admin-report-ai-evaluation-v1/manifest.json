@@ -1,0 +1,29 @@
+{
+  "manifestVersion": "1.0.0",
+  "datasetVersion": "1.0.0-rc.1",
+  "rubricVersion": "1.0.0-rc.1",
+  "lifecycle": "PROPOSED",
+  "runtimeAuthority": false,
+  "artifactHashes": {
+    "docker/tests/fixtures/admin-report-ai-evaluation-v1/dataset.schema.json": "b62084d396b7006988a4d142a51755f715ef5117d77529feae5cca01096029cd",
+    "docker/tests/fixtures/admin-report-ai-evaluation-v1/dataset.json": "e42d57559ed00be22dbbf1311aa070255ca7499f0c2095d8145361d73e3895f1",
+    "docker/tests/fixtures/admin-report-ai-evaluation-v1/rubric.json": "200a14e477d85893f81a409b9648ff174772dd31c8a50053e02e15ea372ab39a"
+  },
+  "dependencyHashes": {
+    "docker/contracts/admin-report-ai-runtime-request-s2.schema.json": "9abca5c2155ccee5385bab1681a131457acde74ee721b4f1f88581b68715cfa6",
+    "docker/contracts/admin-report-ai-provider-output-s2.schema.json": "1600cbaf9c4963213de86a8fb581dac0fdb19e3291e032ca2df463e4c9144e75",
+    "docker/tests/fixtures/admin-report-ai-prompt-adversarial-vectors.json": "b422517992adafca99a2be6eef37d0fe6d662f16a2a789cf45e7fb3aac2221a0",
+    "1-cafe-story-backend-javaspring/src/main/java/com/cafestory/service/serviceImplement/AdminReportAiPolicyCatalog.java": "2dcddb9a457e4e1bfb9b98d8074e46d4e8421781303b1590994b4928f4ce94d4",
+    "documents/report-admin/resolve-report-ai-v2/05-evidence-standard/contracts/v2.0.0-rc.1/contract-manifest.json": "03d3f957791e5c0fdfe2ef6ae2054cfc5b6e8af0a077753ead9b588933ec2870"
+  },
+  "expectedCounts": {
+    "records": 26,
+    "evidenceBundles": 9,
+    "hardSafety": 20,
+    "semanticCandidates": 4,
+    "disagreements": 2
+  },
+  "providerQualityStatus": "NOT_EVALUATED_NO_PROVIDER_CALL",
+  "providerQualityDenominator": 0,
+  "providerCalled": false
+}

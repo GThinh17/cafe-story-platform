@@ -1,0 +1,54 @@
+{
+  "httpStatus": 200,
+  "resolution": {
+    "id": "99f7242f-f6ea-471f-96b8-5e0fb89b9b18",
+    "contractVersion": "2.0",
+    "correlationId": "4c0c642f-d401-4732-abe2-48b6e90deedc",
+    "automationMode": "A0_RECOMMEND_ONLY",
+    "recommendationState": "NEEDS_MANUAL_REVIEW",
+    "contentReportId": "1992f2a8-c812-44c2-8340-6d29268ad823",
+    "targetType": "COMMENT",
+    "targetId": "a7bd9ba7-5672-43ae-8e16-db3cb4c4b4df",
+    "reportDecision": "NEEDS_MANUAL_REVIEW",
+    "targetAction": "NO_ACTION",
+    "confidenceScore": null,
+    "riskScore": null,
+    "labels": [],
+    "ruleCode": null,
+    "explanation": "Due to the essential missing parent context that influences the comment's violation assessment, the case requires further manual review.",
+    "modelName": "gpt-4o-mini-2024-07-18",
+    "createdAt": "2026-07-30T17:08:57.3298106",
+    "autoApplyJob": null,
+    "autoApplyWarning": null,
+    "findings": [],
+    "evidenceSummary": {
+      "usedEvidenceIds": [
+        "EV-TARGET-IDENTITY",
+        "EV-TARGET-CONTENT",
+        "EV-TARGET-STATE"
+      ],
+      "missingEvidenceIds": [
+        "EV-PARENT-CONTEXT"
+      ],
+      "counterEvidenceIds": []
+    },
+    "blockedReasons": [
+      "VERSION_PIN_MISMATCH",
+      "POLICY_OR_RULE_CATALOG_NOT_ACTIVE",
+      "EVIDENCE_NOT_SUFFICIENT",
+      "CRITICAL_EVIDENCE_MISSING"
+    ],
+    "evidenceQuality": "HIGH",
+    "evidenceSufficiency": "UNASSESSABLE",
+    "violationLikelihood": "UNKNOWN",
+    "harmSeverity": "HIGH",
+    "actionRisk": "LOW",
+    "policyVersion": "PF-2.0.0-proposed.1",
+    "ruleCatalogVersion": "RC-2.0.0-proposed.2",
+    "promptVersion": "report-ai-v2-sprint2.2",
+    "workflowVersion": "cafestory-admin-report-ai-resolution-v2-s2.2",
+    "targetSnapshotHash": "sha256:9eda0e82161f67fbab62f84958e3ba190b152f88c3c0659b96ef4e4202e8d727"
+  },
+  "noMutation": true,
+  "autoApplyJobCount": 0
+}

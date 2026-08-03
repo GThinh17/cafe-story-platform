@@ -1,0 +1,672 @@
+{
+  "generatedAt": "2026-07-29T04:16:13.356Z",
+  "evidenceDir": "E:\\LuanVanToTNghiep\\cafe-story-platform\\documents\\report-admin\\ai-report-e2e\\evidence\\2026-07-29T04-15-20-496Z",
+  "totalCriteria": 150,
+  "passedCriteria": 144,
+  "totalPercent": 96,
+  "bottleneck": "No obvious bottleneck. All measured AI/UI scenarios were under the pass threshold.",
+  "records": [
+    {
+      "id": "RAI-01",
+      "title": "Seed BLOG report va thay trong /reports",
+      "expected": "Report OPEN, BLOG, visible in table/detail.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 981,
+      "screenshots": [
+        "screenshots/RAI-01-blog-report-visible.png"
+      ],
+      "rawFiles": [
+        "raw/RAI-01-create-report.json"
+      ],
+      "notes": [],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-02",
+      "title": "Seed COMMENT report",
+      "expected": "Report OPEN, COMMENT, visible.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 752,
+      "screenshots": [
+        "screenshots/RAI-02-comment-report-visible.png"
+      ],
+      "rawFiles": [
+        "raw/RAI-02-create-report.json"
+      ],
+      "notes": [],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-03",
+      "title": "Seed USER report",
+      "expected": "Report OPEN, USER, visible.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 697,
+      "screenshots": [
+        "screenshots/RAI-03-user-report-visible.png"
+      ],
+      "rawFiles": [
+        "raw/RAI-03-create-report.json"
+      ],
+      "notes": [],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-04",
+      "title": "Seed CAFE_PAGE report",
+      "expected": "Report OPEN, CAFE_PAGE, visible.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 806,
+      "screenshots": [
+        "screenshots/RAI-04-cafe-page-report-visible.png"
+      ],
+      "rawFiles": [
+        "raw/RAI-04-create-report.json"
+      ],
+      "notes": [],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-05",
+      "title": "Duplicate report cung reporter/target",
+      "expected": "BE conflict, runner self-heal stale test data.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 127,
+      "screenshots": [],
+      "rawFiles": [
+        "raw/RAI-05-duplicate-report.json"
+      ],
+      "notes": [
+        "Duplicate create returned HTTP 409."
+      ],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-06",
+      "title": "Mo detail report moi",
+      "expected": "Detail shows reporter, target, reason, severity, description.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 1164,
+      "screenshots": [
+        "screenshots/RAI-06-report-detail.png"
+      ],
+      "rawFiles": [],
+      "notes": [],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-07",
+      "title": "Ask AI cho BLOG",
+      "expected": "AI recommendation exists, BLOG action valid.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 7752,
+      "screenshots": [
+        "screenshots/RAI-07-ai-resolution-blog.png"
+      ],
+      "rawFiles": [
+        "raw/RAI-07-ai-resolution-blog.json"
+      ],
+      "notes": [
+        "pass: 7256ms"
+      ],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-08",
+      "title": "Ask AI cho COMMENT",
+      "expected": "AI recommendation exists, COMMENT action valid.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 7845,
+      "screenshots": [
+        "screenshots/RAI-08-ai-resolution-comment.png"
+      ],
+      "rawFiles": [
+        "raw/RAI-08-ai-resolution-comment.json"
+      ],
+      "notes": [
+        "pass: 6598ms"
+      ],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-09",
+      "title": "Ask AI cho USER",
+      "expected": "AI recommendation exists, USER action valid.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 1253,
+      "screenshots": [
+        "screenshots/RAI-09-ai-resolution-user.png"
+      ],
+      "rawFiles": [
+        "raw/RAI-09-ai-resolution-user.json"
+      ],
+      "notes": [
+        "pass: 55ms"
+      ],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-10",
+      "title": "Ask AI cho CAFE_PAGE",
+      "expected": "AI recommendation exists, CAFE_PAGE action valid.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 1943,
+      "screenshots": [
+        "screenshots/RAI-10-ai-resolution-cafe-page.png"
+      ],
+      "rawFiles": [
+        "raw/RAI-10-ai-resolution-cafe-page.json"
+      ],
+      "notes": [
+        "pass: 61ms"
+      ],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-11",
+      "title": "AI history refresh",
+      "expected": "Latest recommendation appears in history.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 1526,
+      "screenshots": [
+        "screenshots/RAI-11-ai-history-refresh.png"
+      ],
+      "rawFiles": [],
+      "notes": [],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-12",
+      "title": "AI response Contract V2",
+      "expected": "Evidence, findings, categorical risk, versions, and no raw provider payload.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 0,
+      "screenshots": [],
+      "rawFiles": [
+        "raw/RAI-12-contract-resolution.json"
+      ],
+      "notes": [],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-13",
+      "title": "n8n/OpenAI latency",
+      "expected": "Ask AI <30s pass, 30-45s warn, >45s fail.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 7256,
+      "screenshots": [],
+      "rawFiles": [],
+      "notes": [
+        "Max AI duration: pass: 7256ms"
+      ],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-14",
+      "title": "UI khong tao auto apply",
+      "expected": "No auto-apply creation control; A0 notice is visible.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 1719,
+      "screenshots": [
+        "screenshots/RAI-14-a0-recommendation-only-ui.png"
+      ],
+      "rawFiles": [],
+      "notes": [],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-15",
+      "title": "Legacy request bi chan A0",
+      "expected": "autoApply=true returns warning and creates no job.",
+      "status": "WARN",
+      "score": 80,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": false,
+        "performance": true
+      },
+      "durationMs": 430,
+      "screenshots": [
+        "screenshots/RAI-15-a0-blocked-auto-apply-ui.png"
+      ],
+      "rawFiles": [
+        "raw/RAI-15-a0-blocked-auto-apply.json"
+      ],
+      "notes": [
+        "No A0 warning returned."
+      ],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-16",
+      "title": "Cancel legacy auto apply",
+      "expected": "Existing SCHEDULED job can still be cancelled when fixture exists.",
+      "status": "BLOCKED",
+      "score": 0,
+      "criteria": {
+        "setup": false,
+        "ui": false,
+        "apiAi": false,
+        "safety": false,
+        "performance": false
+      },
+      "durationMs": 0,
+      "screenshots": [],
+      "rawFiles": [],
+      "notes": [
+        "No pre-existing SCHEDULED legacy job fixture exists; cancel endpoint remains covered by Backend tests."
+      ],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-17",
+      "title": "A0 safety invariant",
+      "expected": "AI creates no job and does not mutate report or target.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 0,
+      "screenshots": [],
+      "rawFiles": [
+        "raw/RAI-17-a0-safety-invariant.json"
+      ],
+      "notes": [],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-18",
+      "title": "Lap lai legacy request",
+      "expected": "Repeated autoApply=true still creates no job.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 36,
+      "screenshots": [],
+      "rawFiles": [
+        "raw/RAI-18-repeat-a0-request.json"
+      ],
+      "notes": [],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-19",
+      "title": "Legacy auto job history",
+      "expected": "History remains readable while creation stays disabled.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 0,
+      "screenshots": [],
+      "rawFiles": [
+        "raw/RAI-19-legacy-auto-job-history.json"
+      ],
+      "notes": [],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-20",
+      "title": "Resolve report",
+      "expected": "Report becomes RESOLVED.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 31,
+      "screenshots": [],
+      "rawFiles": [
+        "raw/RAI-20-status-report-created.json"
+      ],
+      "notes": [],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-21",
+      "title": "Reopen report",
+      "expected": "Report becomes OPEN.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 23,
+      "screenshots": [],
+      "rawFiles": [],
+      "notes": [],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-22",
+      "title": "Mark reviewing",
+      "expected": "Report becomes REVIEWING.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 25,
+      "screenshots": [],
+      "rawFiles": [],
+      "notes": [],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-23",
+      "title": "Reject report",
+      "expected": "Report becomes REJECTED and resolvedAt is set.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 26,
+      "screenshots": [],
+      "rawFiles": [],
+      "notes": [],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-24",
+      "title": "Bulk dialog selected mode",
+      "expected": "Dialog opens and selected mode can be used.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 639,
+      "screenshots": [
+        "screenshots/RAI-24-bulk-dialog-selected.png"
+      ],
+      "rawFiles": [],
+      "notes": [],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-25",
+      "title": "Bulk Ask AI selected",
+      "expected": "Progress separates recommended/manual/failed.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 11465,
+      "screenshots": [
+        "screenshots/RAI-25-bulk-run-selected.png"
+      ],
+      "rawFiles": [],
+      "notes": [
+        "pass: 11465ms"
+      ],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-26",
+      "title": "Bulk A0 notice",
+      "expected": "Automation-disabled notice is visible and no auto-apply control exists.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 0,
+      "screenshots": [
+        "screenshots/RAI-26-bulk-a0-notice.png"
+      ],
+      "rawFiles": [],
+      "notes": [],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-27",
+      "title": "Bulk recommendation only",
+      "expected": "Bulk creates recommendations/manual outcomes and no jobs.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 1736,
+      "screenshots": [
+        "screenshots/RAI-27-bulk-recommendation-only.png"
+      ],
+      "rawFiles": [],
+      "notes": [],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-28",
+      "title": "Security check",
+      "expected": "No token/password/API key appears in UI/raw evidence.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 0,
+      "screenshots": [],
+      "rawFiles": [],
+      "notes": [],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-29",
+      "title": "Performance classification",
+      "expected": "Report contains UI/BE/n8n/OpenAI bottleneck classification.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 0,
+      "screenshots": [],
+      "rawFiles": [],
+      "notes": [
+        "No obvious bottleneck. All measured AI/UI scenarios were under the pass threshold."
+      ],
+      "fixRecommendations": []
+    },
+    {
+      "id": "RAI-30",
+      "title": "Cleanup verification",
+      "expected": "Test reports are not left OPEN/REVIEWING and jobs are cancelled.",
+      "status": "PASSED",
+      "score": 100,
+      "criteria": {
+        "setup": true,
+        "ui": true,
+        "apiAi": true,
+        "safety": true,
+        "performance": true
+      },
+      "durationMs": 506,
+      "screenshots": [],
+      "rawFiles": [
+        "raw/RAI-30-cleanup-verification.json"
+      ],
+      "notes": [
+        "Closed report fc476a7b-de29-49e7-a5de-148ce766af51",
+        "Closed report 98f8cd57-9f14-4f80-a013-842cb7d2a6e4",
+        "Closed report f0f94f21-59cf-4c92-a9e9-a1679b9ee506",
+        "Closed report 008c54b6-8396-4d73-98b4-0d98fb2a941f",
+        "Closed report 1a906352-6763-4ea8-918a-629be5af9a40",
+        "Closed report 97d17287-0f5f-4ac9-ba9a-9ea79ad00fcc",
+        "Closed report fd326fe5-f20c-4615-9489-5b17ae94b08c"
+      ],
+      "fixRecommendations": []
+    }
+  ]
+}

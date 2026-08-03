@@ -1,0 +1,20 @@
+{
+  "id": "M07-FX-09",
+  "description": "REJECT chỉ hợp lệ khi scope complete, không substantiated/missing/conflict và EVD.004 đạt.",
+  "base": "blog-resolve.json",
+  "operations": [
+    {"op":"replace","path":"/ruleEvaluations/0/outcome","value":"NOT_SUBSTANTIATED"},
+    {"op":"replace","path":"/ruleEvaluations/0/supportingEvidenceIds","value":[]},
+    {"op":"replace","path":"/scopeEvaluation/complete","value":true},
+    {"op":"replace","path":"/scopeEvaluation/evidenceControlRuleIds","value":["CSR.EVD.004"]},
+    {"op":"replace","path":"/recommendation/reportDecision","value":"REJECT"},
+    {"op":"replace","path":"/recommendation/candidateTargetAction","value":"KEEP_VISIBLE"},
+    {"op":"replace","path":"/recommendation/findings","value":[]},
+    {"op":"replace","path":"/recommendation/assessmentConfidence","value":0.91}
+  ],
+  "expected": {
+    "schemaValid": true,
+    "semanticValid": true,
+    "errorCodes": []
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "gate": "G0-12C",
+  "status": "IMPLEMENTED_RUNTIME_VERIFIED_AWAITING_APPROVAL",
+  "date": "2026-07-26",
+  "branch": "n8n/Ai-agent/fix-bug-report-admin",
+  "head": "f608528",
+  "sourceChanged": false,
+  "externalDatabaseTouched": false,
+  "database": {
+    "engine": "PostgreSQL",
+    "version": "17.10",
+    "scope": "local disposable",
+    "baselineVersion": "20260719.01",
+    "appliedVersion": "20260723.01",
+    "migrationSuccess": true,
+    "restartValidation": true,
+    "v2Columns": 17,
+    "validatedCheckConstraints": 8,
+    "validUniqueIndexes": 2
+  },
+  "runtime": {
+    "jpaValidate": "PASS",
+    "apiDocsStatus": 200,
+    "swaggerStatus": 302,
+    "adminUnauthenticatedStatus": 401,
+    "aiPostUnauthenticatedStatus": 401,
+    "resolutionRowsAfterCleanup": 0,
+    "autoApplyRowsAfterCleanup": 0
+  },
+  "tests": {
+    "focused": {
+      "run": 63,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "full": {
+      "run": 617,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    }
+  },
+  "issues": {
+    "testBugFixed": 1,
+    "configEnvironmentOpen": 1,
+    "testDataResidualRisk": 1
+  },
+  "productionDeploymentAuthorized": false,
+  "nextToken": "APPROVE_G0-12C"
+}
+

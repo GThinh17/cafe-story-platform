@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cafestory.local/contracts/admin-report-ai-provider-evaluation-output-s2.schema.json",
+  "title": "CafeStory Admin Report AI S2-05 Provider Evaluation Output",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "ruleId": {
+      "const": "CSR.HAR.001"
+    },
+    "ruleVersion": {
+      "const": "1.0.0-proposed.2"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "SUBSTANTIATED",
+        "NOT_SUBSTANTIATED",
+        "NOT_APPLICABLE",
+        "UNASSESSABLE",
+        "CONFLICTED",
+        "POLICY_INVALID"
+      ]
+    },
+    "evidenceIds": {
+      "$ref": "#/$defs/evidenceReferences"
+    },
+    "counterEvidenceIds": {
+      "$ref": "#/$defs/evidenceReferences"
+    },
+    "missingEvidenceIds": {
+      "$ref": "#/$defs/evidenceReferences"
+    },
+    "violationLikelihood": {
+      "type": "string",
+      "enum": ["HIGH", "MEDIUM", "LOW", "UNKNOWN"]
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1200
+    }
+  },
+  "required": [
+    "ruleId",
+    "ruleVersion",
+    "outcome",
+    "evidenceIds",
+    "counterEvidenceIds",
+    "missingEvidenceIds",
+    "violationLikelihood",
+    "rationale"
+  ],
+  "$defs": {
+    "code": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "evidenceReferences": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/code"
+      }
+    }
+  }
+}

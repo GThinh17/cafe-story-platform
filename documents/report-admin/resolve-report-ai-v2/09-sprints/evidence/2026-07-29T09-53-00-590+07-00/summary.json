@@ -1,0 +1,75 @@
+{
+  "gate": "G0-12D",
+  "status": "COMPLETED_RUNTIME_APPROVED",
+  "date": "2026-07-29",
+  "branch": "n8n/Ai-agent/fix-bug-report-admin",
+  "headBeforeCommit": "f608528",
+  "sourceChanged": true,
+  "n8nRuntimeChanged": true,
+  "productionDeploymentAuthorized": false,
+  "secretReadiness": {
+    "providerKeyRotatedByUser": true,
+    "providerKeyValueRecorded": false,
+    "providerApiPreflightStatus": 200,
+    "n8nKeyMatchesDockerEnv": true,
+    "aiPythonKeyMatchesDockerEnv": true,
+    "backendOpenAiKeyPresent": false,
+    "frontendOpenAiKeyPresent": false,
+    "mobileOpenAiKeyPresent": false,
+    "sharedHmacConfigured": true,
+    "sharedHmacMatchesBackendAndN8n": true,
+    "secretValuesPrinted": false
+  },
+  "workflow": {
+    "id": "cafestory-admin-report-ai-resolution-v2",
+    "publishedVersionId": "4e221ccf-12a3-4583-8336-c4fda22b5b70",
+    "active": true,
+    "canonicalNodeParity": "5/5",
+    "providerResponseReceived": true,
+    "responseSignatureVerified": true,
+    "scoreFieldsAbsent": true,
+    "reportDecision": "NEEDS_MANUAL_REVIEW",
+    "targetAction": "NO_ACTION"
+  },
+  "nonceRuntimeFix": {
+    "oldVersionId": "102dc461-bebe-4dcc-b0a0-a9c337b01cb6",
+    "oldReplayBehavior": "SUCCESS_SUCCESS",
+    "newStore": "ATOMIC_HASHED_NONCE_FILES_ON_PERSISTED_N8N_VOLUME",
+    "ttlSeconds": 300,
+    "newValidExecutionId": 215,
+    "newReplayExecutionId": 216,
+    "newReplayBehavior": "SUCCESS_ERROR",
+    "persistsAcrossRestart": true
+  },
+  "securityStatic": {
+    "validRequest": "PASS",
+    "replayRejected": "PASS",
+    "expiredNonceReaccepted": "PASS",
+    "atomicReplayClaim": "PASS",
+    "staleTimestampRejected": "PASS",
+    "tamperedBodyRejected": "PASS",
+    "invalidSignatureRejected": "PASS",
+    "signedResponse": "PASS"
+  },
+  "runtimeNegativeExecutions": {
+    "replay": "ERROR_BEFORE_PROVIDER",
+    "stale": "ERROR_BEFORE_PROVIDER",
+    "future": "ERROR_BEFORE_PROVIDER",
+    "invalidSignature": "ERROR_BEFORE_PROVIDER",
+    "tamperedBody": "ERROR_BEFORE_PROVIDER",
+    "missingHeaders": "ERROR_BEFORE_PROVIDER"
+  },
+  "backendFocusedTests": {
+    "tests": 37,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "openNonBlockingHardening": [
+    "G012D-CODE-011",
+    "G012D-OPS-004"
+  ],
+  "approvalReceived": "APPROVE_G0-12D",
+  "nextRequiredAction": "IMPLEMENT_G0_12E",
+  "nextApproval": null
+}

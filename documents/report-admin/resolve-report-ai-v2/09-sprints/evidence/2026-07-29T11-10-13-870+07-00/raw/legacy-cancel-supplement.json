@@ -1,0 +1,24 @@
+{
+  "scenario": "RAI-16-SUPPLEMENT",
+  "environment": "LOCAL_DISPOSABLE_POSTGRESQL_17",
+  "fixture": {
+    "jobId": "e012e000-0000-4000-8000-000000000016",
+    "reportId": "1d503577-900c-4399-b83e-87236077d8dc",
+    "targetType": "BLOG",
+    "initialStatus": "SCHEDULED",
+    "scheduledAt": "2099-01-01T00:00:00"
+  },
+  "ui": {
+    "scheduledVisible": true,
+    "cancelButtonVisible": true,
+    "cancelledVisibleAfterAction": true
+  },
+  "databaseAfter": {
+    "status": "CANCELLED",
+    "cancelledAtPresent": true,
+    "cancelledByAdminPresent": true,
+    "cancellationReason": "ADMIN_CANCELLED",
+    "appliedAt": null
+  },
+  "status": "PASS"
+}

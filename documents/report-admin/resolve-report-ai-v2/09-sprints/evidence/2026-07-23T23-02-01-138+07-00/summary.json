@@ -1,0 +1,42 @@
+{
+  "gate": "G0-11",
+  "status": "PASS",
+  "validation": {
+    "passed": 30,
+    "total": 30,
+    "failed": 0
+  },
+  "deliverable": "Sprint 1 Evidence-first Safety Contract Detailed Design",
+  "designCoverage": {
+    "coreFiles": 59,
+    "skeletonFiles": 0,
+    "mainSections": 27,
+    "contractJsonExamplesParsed": 2
+  },
+  "traceability": {
+    "businessDecisions": {
+      "covered": 12,
+      "total": 12
+    },
+    "currentGaps": {
+      "routed": 19,
+      "total": 19
+    }
+  },
+  "verificationDesign": {
+    "contract": 18,
+    "semantic": 15,
+    "safety": 15,
+    "adversarial": 12,
+    "e2e": 15,
+    "total": 75
+  },
+  "sourceChanges": {
+    "backend": 0,
+    "adminFrontend": 0,
+    "n8n": 0
+  },
+  "runtimeVerified": false,
+  "nextRequiredApproval": "APPROVE_G0-12",
+  "evidenceTimestamp": "2026-07-23T23-02-01-138+07:00"
+}

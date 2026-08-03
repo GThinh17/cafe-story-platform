@@ -1,0 +1,11 @@
+requirement	test_or_evidence	result
+ERROR-CONTRACT-PROVIDER	AdminReportAiExceptionAdviceTest	PASS
+PROVIDER-NON2XX-TYPED	AdminReportAiResolutionServiceImplTest-TC013	PASS
+E2E-S1-13	Playwright-provider-unavailable-recovery	PASS
+NO-FAKE-RESOLUTION	E2E-S1-13-provider-boundary-failure.json	PASS-0-to-0
+RETRY-AFTER-RECOVERY	E2E-S1-13-retry-recovery.json	PASS-HTTP-200
+NO-TARGET-MUTATION	E2E-S1-13-retry-recovery.json	PASS
+NO-REPORT-MUTATION	E2E-S1-13-retry-recovery.json	PASS
+A0-NO-AUTO-JOB	E2E-S1-13-retry-recovery.json	PASS-0
+UI-OPERATIONAL-METADATA	E2E-S1-13-provider-boundary-operational-error.png	PASS
+CLEANUP	E2E-S1-13-cleanup-verification.json	PASS-0-0

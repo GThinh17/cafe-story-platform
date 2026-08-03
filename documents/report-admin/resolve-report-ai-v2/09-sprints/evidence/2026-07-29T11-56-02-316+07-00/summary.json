@@ -1,0 +1,44 @@
+{
+  "gate": "G0-12F",
+  "status": "COMPLETED_VERIFIED_APPROVED",
+  "finalClassification": "DONE",
+  "date": "2026-07-29",
+  "branch": "n8n/Ai-agent/fix-bug-report-admin",
+  "sourceHead": "9c155ff",
+  "sourceChanged": false,
+  "runtimeChanged": false,
+  "databaseChanged": false,
+  "secretChanged": false,
+  "deliverable": "09-sprints/g0-12-implementation-detailed-design.vi.md",
+  "scope": [
+    "Backend",
+    "n8n/OpenAI",
+    "Backend response validation and persistence",
+    "Admin UI",
+    "evidence traceability G0-12A through G0-12E"
+  ],
+  "verification": {
+    "sourceCrossCheck": "PASS",
+    "evidenceTraceability": "PASS",
+    "jsonParse": "PASS",
+    "utf8ReplacementCharacterScan": "PASS",
+    "staleClaimScan": "PASS",
+    "secretScan": "PASS",
+    "sourceBoundary": "PASS"
+  },
+  "priorRuntimeEvidenceReused": {
+    "g0_12a": "2026-07-26T12-14-52-989+07-00",
+    "g0_12b": "2026-07-26T12-58-33-831+07-00",
+    "g0_12c": "2026-07-26T13-26-59-327+07-00",
+    "g0_12d": "2026-07-29T09-53-00-590+07-00",
+    "g0_12e": "2026-07-29T11-10-13-870+07-00"
+  },
+  "approvals": {
+    "g0_12e": "APPROVED",
+    "g0_12f": "APPROVED"
+  },
+  "approval": "APPROVE_G0-12F",
+  "approvalDate": "2026-07-29",
+  "productionDeploymentAuthorized": false,
+  "nextRequiredAction": "IMPLEMENT_G0_12_DONE_AUDIT"
+}

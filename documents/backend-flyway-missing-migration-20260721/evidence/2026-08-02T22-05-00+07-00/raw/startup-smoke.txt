@@ -1,0 +1,11 @@
+Backend runtime smoke after restoring V20260721_01__performance_indexes.sql:
+
+- command: .\mvnw.cmd spring-boot:run '-Dspring-boot.run.arguments=--server.port=18080'
+- expected: backend starts without Flyway BeanCreationException.
+- observed: process listened on port 18080.
+- API smoke: GET http://localhost:18080/v3/api-docs returned HTTP 200 with response length 155424.
+- cleanup: Java processes created for the smoke run were stopped; port 18080 had no listener afterward.
+
+Note:
+
+- The direct spring-boot:run command timed out at the shell wrapper because a running server does not exit by itself. This timeout is not treated as startup failure because the API smoke returned HTTP 200 before cleanup.

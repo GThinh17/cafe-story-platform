@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "1.0",
+  "gate": "G0-10B",
+  "approval": "APPROVE_G0-10B",
+  "status": "PARTIAL_WAITING_USER_APPROVAL",
+  "approvedDecision": {
+    "decisionId": "BD-002",
+    "selectedOption": "B1_A0_RECOMMEND_ONLY",
+    "autoTargetMutationAllowlist": [],
+    "autoReportClosureAllowed": false
+  },
+  "progress": {
+    "approved": 2,
+    "total": 12,
+    "current": "G0-10C"
+  },
+  "currentProposal": {
+    "decisionId": "BD-003",
+    "recommendedOption": "C1_RISK_TIERED_QUORUM"
+  },
+  "nextRequiredApproval": "APPROVE_G0-10C",
+  "sourceOrDataMutation": false,
+  "g0_11Authorized": false
+}

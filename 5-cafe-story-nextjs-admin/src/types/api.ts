@@ -7,8 +7,20 @@ export type ApiEnvelope<T> = {
   data: T;
 };
 
+export type AdminReportAiOperationalErrorPayload = {
+  statusCode: number;
+  status: "Fail";
+  message: string;
+  data: null;
+  code: string;
+  correlationId: string;
+  retryable: boolean;
+  stage: string;
+};
+
 export type ApiErrorPayload =
   | ApiEnvelope<null>
+  | AdminReportAiOperationalErrorPayload
   | {
       detail?: string;
       error?: string;

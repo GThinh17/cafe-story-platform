@@ -1,0 +1,55 @@
+{
+  "package": "S2-02",
+  "status": "COMPLETED_VERIFIED_APPROVED",
+  "implementationToken": "IMPLEMENT_S2_02",
+  "approval": "APPROVE_S2_02",
+  "nextAction": "IMPLEMENT_S2_03",
+  "versions": {
+    "contract": "2.0",
+    "ruleCatalog": "RC-2.0.0-proposed.2",
+    "rule": "1.0.0-proposed.2",
+    "prompt": "report-ai-v2-sprint2.2",
+    "workflow": "cafestory-admin-report-ai-resolution-v2-s2.2"
+  },
+  "verification": {
+    "backendFocused": {
+      "passed": 50,
+      "failed": 0
+    },
+    "backendFull": {
+      "tests": 638,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "semanticValidatorCoverage": {
+      "linePercent": 100.0,
+      "branchPercent": 88.49
+    },
+    "policyCatalogCoverage": {
+      "linePercent": 100.0,
+      "branchPercent": 100.0
+    },
+    "schemaBoundariesPassed": 7,
+    "n8nNestedBoundary": "PASS",
+    "providerSchemaParity": "PASS",
+    "adversarialPassed": 12,
+    "contractGuardsPassed": 3,
+    "m07FixturesPassed": 18,
+    "m07CrossReviewPassed": 16
+  },
+  "issues": {
+    "detected": 5,
+    "fixedVerified": 5,
+    "openRequired": 0
+  },
+  "authority": {
+    "policyActivated": false,
+    "providerCalled": false,
+    "workflowPublished": false,
+    "databaseChanged": false,
+    "frontendChangedByPackage": false,
+    "productionDeploymentAuthorized": false,
+    "nextPackageOpened": false
+  }
+}

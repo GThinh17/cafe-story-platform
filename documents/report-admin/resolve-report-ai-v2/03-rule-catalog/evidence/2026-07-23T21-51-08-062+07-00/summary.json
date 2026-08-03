@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0",
+  "gate": "G0-09",
+  "approval": "APPROVE_G0-09",
+  "status": "DONE",
+  "matrixStatus": "PROPOSED",
+  "matrixVersion": "TM-2.0.0-proposed.1",
+  "coverage": {
+    "currentGaps": {
+      "source": 19,
+      "traced": 19,
+      "missing": 0,
+      "unknown": 0
+    },
+    "theoryDecisions": {
+      "source": 74,
+      "traced": 74,
+      "missing": 0,
+      "unknown": 0
+    },
+    "policyClauses": {
+      "source": 92,
+      "traced": 92,
+      "missing": 0,
+      "unknown": 0
+    },
+    "rulesAndControls": {
+      "source": 24,
+      "traced": 24,
+      "missing": 0,
+      "unknown": 0
+    },
+    "uniqueTraceRows": 59,
+    "businessDecisionPackages": 12
+  },
+  "implementedRequirementsClaimed": 0,
+  "runtimeVerifiedClaimed": 0,
+  "businessAdopted": false,
+  "productionActive": false,
+  "sourceOrDataMutation": false,
+  "nextRequiredApproval": "APPROVE_G0-10"
+}

@@ -1,0 +1,30 @@
+{
+  "contractVersion": "2.0.0-rc.1",
+  "schemaVersion": "1.0.0-rc.1",
+  "validator": {
+    "engine": "Ajv",
+    "version": "8.20.0",
+    "draft": "2020-12",
+    "strict": true
+  },
+  "manifestMatchesFiles": true,
+  "requiredScenarioCount": 15,
+  "actualScenarioCount": 18,
+  "passed": 18,
+  "failed": 0,
+  "newHardeningCases": [
+    {
+      "id": "M08-FX-17",
+      "expectedErrorCodes": ["FORBIDDEN_FIELD_PRESENT"],
+      "actualErrorCodes": ["FORBIDDEN_FIELD_PRESENT"],
+      "pass": true
+    },
+    {
+      "id": "M08-FX-18",
+      "expectedErrorCodes": [],
+      "actualErrorCodes": [],
+      "pass": true
+    }
+  ],
+  "allPassed": true
+}

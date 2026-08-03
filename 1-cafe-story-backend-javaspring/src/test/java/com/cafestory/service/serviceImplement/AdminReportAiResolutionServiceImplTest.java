@@ -1,6 +1,8 @@
 package com.cafestory.service.serviceImplement;
 
 import com.cafestory.dto.requestDTO.AdminReportAiResolutionCreateRequestDTO;
+import com.cafestory.dto.requestDTO.AdminReportAiEvidenceItemRequestDTO;
+import com.cafestory.dto.requestDTO.AdminReportAiPolicyContextRequestDTO;
 import com.cafestory.dto.requestDTO.AdminReportAiResolutionRequestDTO;
 import com.cafestory.dto.responseDTO.AdminReportAiResolutionResponseDTO;
 import com.cafestory.dto.responseDTO.AdminReportAiResolutionWebhookResponseDTO;
@@ -19,6 +21,7 @@ import com.cafestory.entity.enums.PageStatus;
 import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.entity.enums.ReportStatus;
 import com.cafestory.entity.enums.ReportTargetType;
+import com.cafestory.exception.AdminReportAiProviderBoundaryException;
 import com.cafestory.repository.AdminReportAiResolutionRepository;
 import com.cafestory.repository.AiModerationResultRepository;
 import com.cafestory.repository.ContentReportRepository;
@@ -26,6 +29,8 @@ import com.cafestory.service.serviceInterface.AdminReportAiAutoApplyJobService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
@@ -52,6 +57,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -71,6 +77,7 @@ class AdminReportAiResolutionServiceImplTest {
     private AdminReportAiAutoApplyJobService autoApplyJobService;
     private ObjectMapper objectMapper;
     private AdminReportAiWebhookSigner webhookSigner;
+    private EntityManager entityManager;
 
     @BeforeEach
     void setUp() {
@@ -80,6 +87,7 @@ class AdminReportAiResolutionServiceImplTest {
         autoApplyJobService = mock(AdminReportAiAutoApplyJobService.class);
         objectMapper = new ObjectMapper().findAndRegisterModules();
         webhookSigner = new AdminReportAiWebhookSigner(objectMapper, "unit-test-secret", 120, 300, Clock.systemUTC());
+        entityManager = mock(EntityManager.class);
         when(resolutionRepository.findByIdempotencyKey(any())).thenReturn(Optional.empty());
         when(resolutionRepository.save(any(AdminReportAiResolution.class))).thenAnswer(invocation -> {
             AdminReportAiResolution resolution = invocation.getArgument(0);
@@ -105,20 +113,160 @@ class AdminReportAiResolutionServiceImplTest {
         assertThat(result.getAutomationMode()).isEqualTo("A0_RECOMMEND_ONLY");
         assertThat(result.getReportDecision()).isEqualTo(AdminReportAiReportDecision.RESOLVE);
         assertThat(result.getTargetAction()).isEqualTo(AdminReportAiTargetAction.HIDE);
-        assertThat(result.getFindings()).hasSize(1);
+        assertThat(result.getFindings()).hasSize(2);
         assertThat(result.getEvidenceSufficiency()).isEqualTo("SUFFICIENT");
-        assertThat(result.getTargetSnapshotHash()).hasSize(64);
+        assertThat(result.getTargetSnapshotHash()).startsWith("sha256:").hasSize(71);
         assertThat(saved.get().getRawResponse()).isNull();
         assertThat(saved.get().getConfidenceScore()).isNull();
         assertThat(saved.get().getRiskScore()).isNull();
         assertThat(report.getStatus()).isEqualTo(ReportStatus.OPEN);
         assertThat(report.getBlog().getStatus()).isEqualTo(PostStatus.PUBLISHED);
-        assertThat(service.lastRequest.getPolicyContext()).containsKeys(
-                "policyVersion", "ruleCatalogVersion", "candidateRules");
+        assertThat(service.lastRequest.getPolicyContext().getContextSchemaVersion())
+                .isEqualTo(AdminReportAiPolicyCatalog.CONTEXT_SCHEMA_VERSION);
+        assertThat(service.lastRequest.getPolicyContext().getCandidateRules()).isNotEmpty();
         assertThat(service.lastRequest.getEvidence())
-                .extracting(item -> item.get("evidenceId"))
-                .contains("EV-TARGET-IDENTITY", "EV-TARGET-CONTENT", "EV-TARGET-STATE", "EV-REASON-ROUTE");
+                .extracting(AdminReportAiEvidenceItemRequestDTO::getEvidenceId)
+                .contains("EV-TARGET-IDENTITY", "EV-TARGET-CONTENT", "EV-TARGET-STATE")
+                .doesNotContain("EV-REASON-ROUTE", "EV-DERIVED-MODERATION");
         verify(contentReportRepository, never()).save(any(ContentReport.class));
+    }
+
+    @Test
+    void toWebhookRequest_buildsProposedTypedRuleContextAndSnapshotBoundEvidence_S201_TC001() {
+        ContentReport report = blogReport("Bounded evidence text");
+        CapturingService service = serviceReturning(request -> validResponse(
+                request,
+                AdminReportAiReportDecision.RESOLVE,
+                AdminReportAiTargetAction.HIDE));
+
+        AdminReportAiResolutionRequestDTO request =
+                ReflectionTestUtils.invokeMethod(service, "toWebhookRequest", report);
+
+        assertThat(request.getPolicyContext().getPolicyStatus()).isEqualTo("PROPOSED");
+        assertThat(request.getPolicyContext().getRuleCatalogStatus()).isEqualTo("PROPOSED");
+        assertThat(request.getPolicyContext().getEvaluationMode()).isEqualTo("PROPOSED_EVALUATION_ONLY");
+        assertThat(request.getPolicyContext().getCurrentEvaluationCeiling())
+                .isEqualTo("NEEDS_MANUAL_REVIEW");
+        assertThat(request.getPolicyContext().getCandidateRules())
+                .allSatisfy(rule -> {
+                    assertThat(rule.getRuleId()).isNotBlank();
+                    assertThat(rule.getRuleStatus()).isEqualTo("PROPOSED");
+                    assertThat(rule.getRequiredEvidenceKinds()).isNotEmpty();
+                    assertThat(rule.getAllowedCandidateActions())
+                            .contains("NO_ACTION", "KEEP_VISIBLE");
+                });
+        assertThat(request.getEvidence())
+                .extracting(AdminReportAiEvidenceItemRequestDTO::getEvidenceId)
+                .doesNotHaveDuplicates();
+        assertThat(request.getEvidence())
+                .allSatisfy(item -> {
+                    assertThat(item.getEnvelopeVersion())
+                            .isEqualTo(AdminReportAiPolicyCatalog.EVIDENCE_ENVELOPE_VERSION);
+                    assertThat(item.getSubject().getTargetType()).isEqualTo(request.getTargetType());
+                    assertThat(item.getSubject().getSnapshotHash())
+                            .isEqualTo(request.getTargetSnapshot().get("snapshotHash"));
+                    assertThat(item.getPayload()).isNotNull();
+                    assertThat(item.getIntegrity().getCanonicalization()).isEqualTo("JCS");
+                });
+    }
+
+    @Test
+    void toWebhookRequest_longContentMarksBoundedEvidenceAsTruncated_S2DONE_TC001() {
+        ContentReport report = blogReport("x".repeat(4_001));
+        CapturingService service = serviceReturning(request -> validResponse(
+                request,
+                AdminReportAiReportDecision.NEEDS_MANUAL_REVIEW,
+                AdminReportAiTargetAction.NO_ACTION));
+
+        AdminReportAiResolutionRequestDTO request =
+                ReflectionTestUtils.invokeMethod(service, "toWebhookRequest", report);
+
+        AdminReportAiEvidenceItemRequestDTO contentEvidence = request.getEvidence().stream()
+                .filter(item -> "EV-TARGET-CONTENT".equals(item.getEvidenceId()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(contentEvidence.getPayload().getTruncated()).isTrue();
+        assertThat(contentEvidence.getPayload().getValue().get("sanitizedText").toString())
+                .hasSize(4_000);
+    }
+
+    @Test
+    void toWebhookRequest_inappropriateImageWithoutVisionMarksCriticalEvidenceMissing_S2DONE_TC002() {
+        ContentReport report = blogReport("Reported image context");
+        report.getReason().setCode("INAPPROPRIATE_IMAGE");
+        report.getBlog().setImageUrls(List.of("https://example.com/report-image.png"));
+        CapturingService service = serviceReturning(request -> validResponse(
+                request,
+                AdminReportAiReportDecision.NEEDS_MANUAL_REVIEW,
+                AdminReportAiTargetAction.NO_ACTION));
+
+        AdminReportAiResolutionRequestDTO request =
+                ReflectionTestUtils.invokeMethod(service, "toWebhookRequest", report);
+
+        assertThat(request.getExecutionConstraints())
+                .containsEntry("criticalEvidenceMissing", true);
+    }
+
+    @Test
+    void validateWebhookResponse_defenseInDepthClampsUnexpectedDecisionAction_S2DONE_TC003() {
+        AdminReportAiResolutionServiceImpl service = serviceWithRestClient(null);
+        AdminReportAiResolutionRequestDTO request = newRequestFor(blogReport("content"));
+        AdminReportAiResolutionWebhookResponseDTO response = validResponse(
+                request,
+                AdminReportAiReportDecision.REJECT,
+                AdminReportAiTargetAction.HIDE);
+
+        try (MockedStatic<AdminReportAiSemanticValidator> semanticValidator =
+                     mockStatic(AdminReportAiSemanticValidator.class)) {
+            semanticValidator.when(() -> AdminReportAiSemanticValidator.validate(request, response))
+                    .thenReturn(new AdminReportAiSemanticValidator.ValidationResult(response, false));
+            semanticValidator.when(() -> AdminReportAiSemanticValidator.isDecisionActionAllowed(
+                            request.getTargetType(),
+                            AdminReportAiReportDecision.REJECT,
+                            AdminReportAiTargetAction.HIDE))
+                    .thenReturn(false);
+
+            ReflectionTestUtils.invokeMethod(service, "validateWebhookResponse", request, response);
+        }
+
+        assertThat(response.getRecommendationState()).isEqualTo("NEEDS_MANUAL_REVIEW");
+        assertThat(response.getReportDecision())
+                .isEqualTo(AdminReportAiReportDecision.NEEDS_MANUAL_REVIEW);
+        assertThat(response.getTargetAction()).isEqualTo(AdminReportAiTargetAction.NO_ACTION);
+        assertThat(response.getBlockedReasons()).containsExactly("DECISION_ACTION_NOT_ALLOWED");
+        assertThat(response.getFindings()).isEmpty();
+    }
+
+    @Test
+    void resolutionRequest_legacyConstructorRetainsPublicCompatibility_S201_TC002() {
+        UUID reportId = UUID.randomUUID();
+        UUID targetId = UUID.randomUUID();
+        AdminReportAiResolutionRequestDTO request = new AdminReportAiResolutionRequestDTO(
+                reportId,
+                ReportTargetType.BLOG,
+                targetId,
+                "SPAM",
+                "Spam",
+                3,
+                "Claim",
+                "Content",
+                List.of("https://example.com/image.png"),
+                ReportStatus.OPEN,
+                Map.of("decision", "SAFE"),
+                2L);
+
+        assertThat(request.getReportId()).isEqualTo(reportId);
+        assertThat(request.getTargetType()).isEqualTo(ReportTargetType.BLOG);
+        assertThat(request.getTargetId()).isEqualTo(targetId);
+        assertThat(request.getReasonCode()).isEqualTo("SPAM");
+        assertThat(request.getReasonLabel()).isEqualTo("Spam");
+        assertThat(request.getReasonSeverity()).isEqualTo(3);
+        assertThat(request.getDescription()).isEqualTo("Claim");
+        assertThat(request.getContentText()).isEqualTo("Content");
+        assertThat(request.getImageUrls()).containsExactly("https://example.com/image.png");
+        assertThat(request.getReportStatus()).isEqualTo(ReportStatus.OPEN);
+        assertThat(request.getExistingModerationResult()).containsEntry("decision", "SAFE");
+        assertThat(request.getSameTargetOpenReportCount()).isEqualTo(2L);
     }
 
     @Test
@@ -257,6 +405,104 @@ class AdminReportAiResolutionServiceImplTest {
         assertThat(result.getAutoApplyWarning()).contains("A0_RECOMMEND_ONLY");
         assertThat(service.providerCalls).isZero();
         verify(autoApplyJobService).scheduleIfRequested(report, existing, createRequest, adminUserId);
+        verify(resolutionRepository, never()).save(any(AdminReportAiResolution.class));
+    }
+
+    @Test
+    void createResolution_changedSnapshotDoesNotReusePreviouslyMatchedCache_CT010_SAF010() {
+        ContentReport report = blogReport("snapshot-v1");
+        stubReport(report);
+        CapturingService probe = serviceReturning(request -> validResponse(
+                request,
+                AdminReportAiReportDecision.RESOLVE,
+                AdminReportAiTargetAction.HIDE));
+        AdminReportAiResolutionRequestDTO snapshotV1 =
+                ReflectionTestUtils.invokeMethod(probe, "toWebhookRequest", report);
+        String snapshotV1Hash = String.valueOf(snapshotV1.getTargetSnapshot().get("snapshotHash"));
+        AdminReportAiResolution existing = existingResolution(report);
+        existing.setIdempotencyKey(snapshotV1.getIdempotencyKey());
+        existing.setTargetSnapshotHash(snapshotV1Hash);
+
+        when(resolutionRepository.findByIdempotencyKey(any())).thenAnswer(invocation -> {
+            String requestedKey = invocation.getArgument(0);
+            if (snapshotV1.getIdempotencyKey().equals(requestedKey)) {
+                report.getBlog().setContent("snapshot-v2");
+                report.getBlog().setUpdatedAt(LocalDateTime.now());
+                return Optional.of(existing);
+            }
+            return Optional.empty();
+        });
+        CapturingService service = serviceReturning(request -> validResponse(
+                request,
+                AdminReportAiReportDecision.RESOLVE,
+                AdminReportAiTargetAction.HIDE));
+
+        AdminReportAiResolutionResponseDTO result = service.createResolution(report.getId());
+
+        assertThat(result.getId()).isNotEqualTo(existing.getId());
+        assertThat(service.providerCalls).isOne();
+        assertThat(service.lastRequest.getIdempotencyKey()).isNotEqualTo(snapshotV1.getIdempotencyKey());
+        assertThat(service.lastRequest.getTargetSnapshot().get("snapshotHash")).isNotEqualTo(snapshotV1Hash);
+        verify(resolutionRepository).save(any(AdminReportAiResolution.class));
+    }
+
+    @Test
+    void createResolution_targetChangesDuringProviderClampsStaleResult_CT010_1_SAF010() {
+        ContentReport report = blogReport("snapshot-before-provider");
+        stubReport(report);
+        AtomicReference<AdminReportAiResolution> saved = captureSavedResolution();
+        CapturingService service = serviceReturning(request -> {
+            report.getBlog().setContent("snapshot-after-provider");
+            report.getBlog().setUpdatedAt(LocalDateTime.now());
+            return validResponse(
+                    request,
+                    AdminReportAiReportDecision.RESOLVE,
+                    AdminReportAiTargetAction.HIDE);
+        });
+
+        AdminReportAiResolutionResponseDTO result = service.createResolution(report.getId());
+
+        assertThat(service.providerCalls).isOne();
+        assertThat(result.getReportDecision())
+                .isEqualTo(AdminReportAiReportDecision.NEEDS_MANUAL_REVIEW);
+        assertThat(result.getTargetAction()).isEqualTo(AdminReportAiTargetAction.NO_ACTION);
+        assertThat(result.getFindings()).isEmpty();
+        assertThat(result.getBlockedReasons()).contains("TARGET_SNAPSHOT_CHANGED_DURING_EVALUATION");
+        assertThat(saved.get().getReportDecision())
+                .isEqualTo(AdminReportAiReportDecision.NEEDS_MANUAL_REVIEW);
+        assertThat(report.getStatus()).isEqualTo(ReportStatus.OPEN);
+        assertThat(report.getBlog().getStatus()).isEqualTo(PostStatus.PUBLISHED);
+    }
+
+    @Test
+    void refreshSnapshotSources_supportsNoEntityManagerAndMissingTargetConflict_CT010_2() {
+        ContentReport report = blogReport("freshness compatibility");
+        stubReport(report);
+        AdminReportAiResolutionServiceImpl withoutEntityManager =
+                new AdminReportAiResolutionServiceImpl(
+                        resolutionRepository,
+                        contentReportRepository,
+                        moderationResultRepository,
+                        autoApplyJobService,
+                        objectMapper,
+                        webhookSigner,
+                        (RestClient) null);
+
+        ReflectionTestUtils.invokeMethod(withoutEntityManager, "refreshSnapshotSources", report);
+
+        doThrow(new EntityNotFoundException("deleted target")).when(entityManager).refresh(report);
+        CapturingService service = serviceReturning(request -> validResponse(
+                request,
+                AdminReportAiReportDecision.RESOLVE,
+                AdminReportAiTargetAction.HIDE));
+
+        assertThatThrownBy(() -> service.createResolution(report.getId()))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> {
+                    ResponseStatusException responseError = (ResponseStatusException) error;
+                    assertThat(responseError.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(responseError.getReason()).contains("target changed");
+                });
         verify(resolutionRepository, never()).save(any(AdminReportAiResolution.class));
     }
 
@@ -428,9 +674,15 @@ class AdminReportAiResolutionServiceImplTest {
         non2xxServer.expect(requestTo("http://localhost"))
                 .andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
         assertThatThrownBy(() -> serviceWithRestClient(non2xxBuilder.build()).callWebhook(request))
-                .isInstanceOf(ResponseStatusException.class)
-                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
-                        .isEqualTo(HttpStatus.BAD_GATEWAY));
+                .isInstanceOf(AdminReportAiProviderBoundaryException.class)
+                .satisfies(error -> {
+                    AdminReportAiProviderBoundaryException providerError =
+                            (AdminReportAiProviderBoundaryException) error;
+                    assertThat(providerError.getMessage())
+                            .isEqualTo(AdminReportAiProviderBoundaryException.SAFE_MESSAGE);
+                    assertThat(providerError.getCorrelationId()).isEqualTo(request.getCorrelationId());
+                    assertThat(providerError.getCause()).isInstanceOf(IllegalStateException.class);
+                });
         non2xxServer.verify();
 
         RestClient.Builder emptyBuilder = RestClient.builder().baseUrl("http://localhost");
@@ -518,8 +770,9 @@ class AdminReportAiResolutionServiceImplTest {
         assertThat(parentService.lastRequest.getTargetSnapshot().get("observableFields").toString())
                 .contains("parentBlogId", "parentBlogExcerpt");
         assertThat(parentService.lastRequest.getEvidence())
-                .extracting(item -> item.get("evidenceId"))
-                .contains("EV-PARENT-CONTEXT", "EV-TARGET-MEDIA", "EV-DERIVED-MODERATION");
+                .extracting(AdminReportAiEvidenceItemRequestDTO::getEvidenceId)
+                .contains("EV-PARENT-CONTEXT", "EV-TARGET-MEDIA")
+                .doesNotContain("EV-DERIVED-MODERATION");
         assertThat(parentService.lastRequest.getExistingModerationResult())
                 .containsKeys("id", "decision", "score", "labels", "explanation", "aiStatus",
                         "priorityScore", "riskScore", "resolved");
@@ -538,11 +791,43 @@ class AdminReportAiResolutionServiceImplTest {
                 .isEqualTo(AdminReportAiReportDecision.NEEDS_MANUAL_REVIEW);
         assertThat(missingParentService.lastRequest.getExecutionConstraints())
                 .containsEntry("criticalEvidenceMissing", true);
-        Map<String, Object> parentEvidence = missingParentService.lastRequest.getEvidence().stream()
-                .filter(item -> "EV-PARENT-CONTEXT".equals(item.get("evidenceId")))
+        AdminReportAiEvidenceItemRequestDTO parentEvidence =
+                missingParentService.lastRequest.getEvidence().stream()
+                .filter(item -> "EV-PARENT-CONTEXT".equals(item.getEvidenceId()))
                 .findFirst()
                 .orElseThrow();
-        assertThat(parentEvidence).containsEntry("availability", "MISSING");
+        assertThat(parentEvidence.getAvailability().getStatus()).isEqualTo("MISSING");
+        assertThat(parentEvidence.getPayload().getRepresentation()).isEqualTo("NONE");
+
+        ContentReport blankParent = commentReport(true);
+        blankParent.getComment().getBlog().setContent("   ");
+        stubReport(blankParent);
+        CapturingService blankParentService = serviceReturning(request -> validResponse(
+                request,
+                AdminReportAiReportDecision.RESOLVE,
+                AdminReportAiTargetAction.HIDE));
+
+        AdminReportAiResolutionResponseDTO blankParentResult =
+                blankParentService.createResolution(blankParent.getId());
+
+        assertThat(blankParentResult.getReportDecision())
+                .isEqualTo(AdminReportAiReportDecision.NEEDS_MANUAL_REVIEW);
+        assertThat(blankParentResult.getTargetAction())
+                .isEqualTo(AdminReportAiTargetAction.NO_ACTION);
+        assertThat(blankParentResult.getBlockedReasons())
+                .contains("CRITICAL_EVIDENCE_MISSING");
+        assertThat(blankParentResult.getEvidenceSufficiency())
+                .isEqualTo("UNASSESSABLE");
+        assertThat(blankParentService.lastRequest.getExecutionConstraints())
+                .containsEntry("criticalEvidenceMissing", true);
+        AdminReportAiEvidenceItemRequestDTO blankParentEvidence =
+                blankParentService.lastRequest.getEvidence().stream()
+                .filter(item -> "EV-PARENT-CONTEXT".equals(item.getEvidenceId()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(blankParentEvidence.getQuality().getLevel()).isEqualTo("UNUSABLE");
+        assertThat(blankParentEvidence.getAvailability().getStatus()).isEqualTo("MISSING");
+        assertThat(blankParentEvidence.getPayload().getValue()).isNull();
     }
 
     @Test
@@ -745,9 +1030,89 @@ class AdminReportAiResolutionServiceImplTest {
         request.setCorrelationId(UUID.randomUUID());
         request.setTargetType(report.getTargetType());
         request.setReasonCode(report.getReason() == null ? null : report.getReason().getCode());
-        request.setEvidence(List.of(Map.of("evidenceId", "EV-TARGET-CONTENT")));
+        request.setTargetSnapshot(Map.of(
+                "snapshotHash", "sha256:test-snapshot",
+                "snapshotVersion", "1"));
+        request.setEvidence(List.of(evidenceItem("EV-TARGET-CONTENT", report.getTargetType(), "sha256:test-snapshot")));
+        request.setPolicyContext(activePolicyContext(request.getReasonCode()));
         request.setExecutionConstraints(Map.of("criticalEvidenceMissing", false));
         return request;
+    }
+
+    private AdminReportAiPolicyContextRequestDTO activePolicyContext(String reasonCode) {
+        AdminReportAiPolicyContextRequestDTO context = AdminReportAiPolicyContextRequestDTO.builder()
+                .contextSchemaVersion(AdminReportAiPolicyCatalog.CONTEXT_SCHEMA_VERSION)
+                .policyVersion(AdminReportAiPolicyCatalog.POLICY_VERSION)
+                .policyStatus("ACTIVE")
+                .ruleCatalogVersion(AdminReportAiPolicyCatalog.RULE_CATALOG_VERSION)
+                .ruleCatalogStatus("ACTIVE")
+                .requirementMatrixVersion(AdminReportAiPolicyCatalog.REQUIREMENT_MATRIX_VERSION)
+                .evidenceKindCatalogVersion(AdminReportAiPolicyCatalog.EVIDENCE_KIND_CATALOG_VERSION)
+                .evaluationMode("ACTIVE_RUNTIME")
+                .candidateRules(AdminReportAiPolicyCatalog.candidateRules(reasonCode))
+                .availableEvidenceKinds(List.of("TARGET_TEXT_CONTENT"))
+                .missingRequirements(List.of())
+                .currentEvaluationCeiling("RESOLVE_OR_REJECT")
+                .build();
+        context.getCandidateRules().forEach(rule -> {
+            rule.setRuleStatus("ACTIVE");
+            rule.setEvaluationCeiling("RESOLVE_OR_REJECT");
+        });
+        return context;
+    }
+
+    private AdminReportAiEvidenceItemRequestDTO evidenceItem(
+            String evidenceId,
+            ReportTargetType targetType,
+            String snapshotHash) {
+        return AdminReportAiEvidenceItemRequestDTO.builder()
+                .evidenceId(evidenceId)
+                .envelopeVersion(AdminReportAiPolicyCatalog.EVIDENCE_ENVELOPE_VERSION)
+                .evidenceKind("TARGET_TEXT_CONTENT")
+                .subject(AdminReportAiEvidenceItemRequestDTO.Subject.builder()
+                        .targetType(targetType)
+                        .targetAlias("target-test-1")
+                        .snapshotVersion("1")
+                        .snapshotHash(snapshotHash)
+                        .build())
+                .source(AdminReportAiEvidenceItemRequestDTO.Source.builder()
+                        .sourceType("TARGET_SNAPSHOT")
+                        .sourceSystem("CAFE_STORY_BACKEND")
+                        .verificationStatus("SYSTEM_CAPTURED")
+                        .authorityScope("PLATFORM_OWNED_FIELD")
+                        .build())
+                .capture(AdminReportAiEvidenceItemRequestDTO.Capture.builder()
+                        .collectorName("test")
+                        .collectorVersion("1")
+                        .transformations(List.of())
+                        .build())
+                .integrity(AdminReportAiEvidenceItemRequestDTO.Integrity.builder()
+                        .canonicalization("JCS")
+                        .digestAlgorithm("SHA-256")
+                        .payloadDigest("sha256:test-payload")
+                        .build())
+                .availability(AdminReportAiEvidenceItemRequestDTO.Availability.builder()
+                        .status("AVAILABLE")
+                        .build())
+                .quality(AdminReportAiEvidenceItemRequestDTO.Quality.builder()
+                        .level("HIGH")
+                        .reasonCodes(List.of("TEST"))
+                        .build())
+                .privacy(AdminReportAiEvidenceItemRequestDTO.Privacy.builder()
+                        .classification("PUBLIC_CONTENT")
+                        .containsPersonalData(false)
+                        .redactionStatus("NOT_REQUIRED")
+                        .retentionClass("REPORT_EVIDENCE_90D")
+                        .build())
+                .intendedUse("RULE_EVALUATION_CANDIDATE")
+                .collectedForRuleIds(List.of("CSR.INT.003"))
+                .payload(AdminReportAiEvidenceItemRequestDTO.Payload.builder()
+                        .representation("INLINE")
+                        .mediaType("application/json")
+                        .value(Map.of("sanitizedText", "test"))
+                        .truncated(false)
+                        .build())
+                .build();
     }
 
     private AtomicReference<AdminReportAiResolution> captureSavedResolution() {
@@ -781,6 +1146,35 @@ class AdminReportAiResolutionServiceImplTest {
             AdminReportAiResolutionRequestDTO request,
             AdminReportAiReportDecision decision,
             AdminReportAiTargetAction action) {
+        List<com.cafestory.dto.requestDTO.AdminReportAiCandidateRuleRequestDTO> candidates =
+                request.getPolicyContext() == null
+                        ? AdminReportAiPolicyCatalog.candidateRules("SPAM")
+                        : request.getPolicyContext().getCandidateRules();
+        List<com.cafestory.dto.requestDTO.AdminReportAiCandidateRuleRequestDTO> materialRules =
+                candidates.stream()
+                        .filter(rule -> Boolean.TRUE.equals(rule.getMaterial()))
+                        .toList();
+        if (materialRules.isEmpty()) {
+            materialRules = AdminReportAiPolicyCatalog.candidateRules("SPAM");
+        }
+        List<Map<String, Object>> findings = new java.util.ArrayList<>();
+        for (int index = 0; index < materialRules.size(); index++) {
+            var rule = materialRules.get(index);
+            String outcome = decision == AdminReportAiReportDecision.REJECT
+                    ? "NOT_SUBSTANTIATED"
+                    : index == 0 ? "SUBSTANTIATED" : "NOT_SUBSTANTIATED";
+            findings.add(new java.util.LinkedHashMap<>(Map.of(
+                    "ruleId", rule.getRuleId(),
+                    "ruleVersion", rule.getRuleVersion(),
+                    "outcome", outcome,
+                    "evidenceIds", "SUBSTANTIATED".equals(outcome)
+                            ? List.of("EV-TARGET-CONTENT")
+                            : List.of(),
+                    "counterEvidenceIds", List.of(),
+                    "missingEvidenceIds", List.of(),
+                    "violationLikelihood", "SUBSTANTIATED".equals(outcome) ? "HIGH" : "LOW",
+                    "rationale", "Derived explanation, not evidence.")));
+        }
         AdminReportAiResolutionWebhookResponseDTO response = new AdminReportAiResolutionWebhookResponseDTO();
         response.setContractVersion("2.0");
         response.setCorrelationId(request.getCorrelationId());
@@ -790,15 +1184,7 @@ class AdminReportAiResolutionServiceImplTest {
         response.setLabels(List.of("policy-review"));
         response.setExplanation("AI rationale based on referenced platform evidence; this is not evidence itself.");
         response.setModelName("gpt-4o-mini");
-        response.setFindings(List.of(new java.util.LinkedHashMap<>(Map.of(
-                "ruleId", "CSR.INT.003",
-                "ruleVersion", "1.0.0-proposed.1",
-                "outcome", decision == AdminReportAiReportDecision.REJECT ? "NOT_SUPPORTED" : "SUPPORTED",
-                "evidenceIds", List.of("EV-TARGET-CONTENT"),
-                "counterEvidenceIds", List.of(),
-                "missingEvidenceIds", List.of(),
-                "violationLikelihood", decision == AdminReportAiReportDecision.REJECT ? "LOW" : "HIGH",
-                "rationale", "Derived explanation, not evidence."))));
+        response.setFindings(findings);
         response.setEvidenceSummary(Map.of(
                 "usedEvidenceIds", List.of("EV-TARGET-CONTENT"),
                 "counterEvidenceIds", List.of(),
@@ -931,7 +1317,8 @@ class AdminReportAiResolutionServiceImplTest {
                     autoApplyJobService,
                     objectMapper,
                     webhookSigner,
-                    (RestClient) null);
+                    (RestClient) null,
+                    entityManager);
             this.responder = responder;
         }
 
@@ -939,6 +1326,15 @@ class AdminReportAiResolutionServiceImplTest {
         protected AdminReportAiResolutionWebhookResponseDTO callWebhook(AdminReportAiResolutionRequestDTO request) {
             providerCalls++;
             lastRequest = request;
+            request.getPolicyContext().setPolicyStatus("ACTIVE");
+            request.getPolicyContext().setRuleCatalogStatus("ACTIVE");
+            request.getPolicyContext().setEvaluationMode("ACTIVE_RUNTIME");
+            request.getPolicyContext().getCandidateRules()
+                    .forEach(rule -> {
+                        rule.setRuleStatus("ACTIVE");
+                        rule.setEvaluationCeiling("RESOLVE_OR_REJECT");
+                    });
+            request.getPolicyContext().setCurrentEvaluationCeiling("RESOLVE_OR_REJECT");
             return responder.apply(request);
         }
     }

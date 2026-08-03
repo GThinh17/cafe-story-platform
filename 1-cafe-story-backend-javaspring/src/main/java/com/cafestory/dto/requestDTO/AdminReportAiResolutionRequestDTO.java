@@ -80,9 +80,9 @@ public class AdminReportAiResolutionRequestDTO {
 
     private Map<String, Object> targetSnapshot;
 
-    private List<Map<String, Object>> evidence;
+    private List<AdminReportAiEvidenceItemRequestDTO> evidence;
 
-    private Map<String, Object> policyContext;
+    private AdminReportAiPolicyContextRequestDTO policyContext;
 
     private Map<String, Object> executionConstraints;
 }

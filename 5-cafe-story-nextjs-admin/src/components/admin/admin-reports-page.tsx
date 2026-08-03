@@ -55,6 +55,7 @@ import {
   resolveReport,
   updateReportStatus,
 } from "@/lib/api/admin";
+import { ApiError } from "@/lib/api/client";
 import type { PageResponse } from "@/types/api";
 import type {
   AdminReportAiAutoApplyJob,
@@ -93,6 +94,13 @@ type BulkAiProgress = {
 type BulkAiFailure = {
   reportId: string;
   reason: string;
+};
+
+type AiOperationalError = {
+  code: string;
+  correlationId: string;
+  retryable: boolean;
+  stage: string;
 };
 
 function reportReason(report: ContentReport) {
@@ -171,6 +179,8 @@ export function AdminReportsPage() {
   const [pendingAction, setPendingAction] = useState<PendingReportAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [aiActionError, setAiActionError] = useState<string | null>(null);
+  const [aiOperationalError, setAiOperationalError] =
+    useState<AiOperationalError | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [aiLoadingReportId, setAiLoadingReportId] = useState<string | null>(null);
   const [aiHistory, setAiHistory] = useState<AdminReportAiResolution[]>([]);
@@ -444,12 +454,14 @@ export function AdminReportsPage() {
   function openAskAiDialog(report: ContentReport) {
     setAskAiReport(report);
     setAiActionError(null);
+    setAiOperationalError(null);
     setAskAiDialogOpen(true);
   }
 
   async function handleAskAi(report: ContentReport) {
     setAiLoadingReportId(report.id);
     setAiActionError(null);
+    setAiOperationalError(null);
 
     try {
       const createdResolution = await createReportAiResolution(report.id);
@@ -474,6 +486,20 @@ export function AdminReportsPage() {
         requestError instanceof Error
           ? requestError.message
           : "AI recommendation failed.",
+      );
+      setAiOperationalError(
+        requestError instanceof ApiError &&
+          requestError.code &&
+          requestError.correlationId &&
+          requestError.retryable !== null &&
+          requestError.stage
+          ? {
+              code: requestError.code,
+              correlationId: requestError.correlationId,
+              retryable: requestError.retryable,
+              stage: requestError.stage,
+            }
+          : null,
       );
     } finally {
       setAiLoadingReportId(null);
@@ -922,6 +948,14 @@ export function AdminReportsPage() {
               <div role="alert" className="mt-4 rounded-md border border-accent/30 bg-accent/10 p-3 text-sm text-accent">
                 <p className="font-semibold">AI recommendation was not created.</p>
                 <p className="mt-1 break-words">{aiActionError}</p>
+                {aiOperationalError ? (
+                  <div className="mt-2 space-y-1 text-foreground">
+                    <p>Error code: {aiOperationalError.code}</p>
+                    <p>Stage: {aiOperationalError.stage}</p>
+                    <p>Support reference: {aiOperationalError.correlationId}</p>
+                    <p>{aiOperationalError.retryable ? "Retry available" : "Retry unavailable"}</p>
+                  </div>
+                ) : null}
                 <p className="mt-1 text-foreground">
                   Check the service status, then select Ask AI to retry this report.
                 </p>

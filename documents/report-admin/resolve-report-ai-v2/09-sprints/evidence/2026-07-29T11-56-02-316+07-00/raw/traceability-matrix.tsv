@@ -1,0 +1,14 @@
+claim	source_or_evidence	status	note
+A0 không tạo auto-apply job mới	AdminReportAiAutoApplyJobServiceImpl.java; G0-12E evidence	PASS	Request legacy chỉ nhận warning
+Legacy due job không mutate target/report	AdminReportAiAutoApplyJobServiceImpl.java; G0-12A/B evidence	PASS	Job chuyển SKIPPED
+BLOG/COMMENT gọi signed n8n	AdminReportAiResolutionServiceImpl.java; AdminReportAiWebhookSigner.java; G0-12D evidence	PASS	Runtime exact webhook đã kiểm chứng
+USER/CAFE_PAGE manual-only	AdminReportAiResolutionServiceImpl.java; G0-12E evidence	PASS	Không gọi provider
+Unknown Rule/Evidence bị clamp	AdminReportAiSemanticValidator.java; G0-12B evidence	PASS	Manual/no action
+Migration V2 tồn tại và validate	V20260723_01__admin_report_ai_contract_v2.sql; G0-12C evidence	PASS	17 cột, 8 CHECK, 2 index
+n8n chống replay runtime	workflow export; G0-12D evidence	PASS	Atomic nonce file, local volume scope
+n8n/provider signed response	workflow export; G0-12D evidence	PASS	Published runtime version đã kiểm chứng
+Admin UI evidence-first	admin-reports-page.tsx; G0-12E evidence	PASS	Rationale được ghi rõ không phải evidence
+AI recommendation không mutate 4 target	admin-report-ai.spec.ts; G0-12E evidence	PASS	BLOG, COMMENT, USER, CAFE_PAGE
+Production ready	G0-12A-E evidence	NOT_PROVEN	Local/disposable verification only
+Policy final	AdminReportAiPolicyCatalog.java	NOT_PROVEN	Versions vẫn mang proposed
+

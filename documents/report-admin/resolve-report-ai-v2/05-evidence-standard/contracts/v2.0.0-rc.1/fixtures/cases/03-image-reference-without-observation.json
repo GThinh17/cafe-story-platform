@@ -1,0 +1,23 @@
+{
+  "id": "M07-FX-03",
+  "description": "Image URL/reference không phải verified observation; media-dependent rule phải manual.",
+  "base": "blog-resolve.json",
+  "operations": [
+    {"op":"replace","path":"/policyContext/candidateRuleIds","value":["CSR.SEX.001"]},
+    {"op":"replace","path":"/evidence/3/collectedForRuleIds","value":["CSR.SEX.001"]},
+    {"op":"add","path":"/targetSnapshot/data/media/-","value":{"mediaAlias":"media-1","referenceDigest":"sha256:media-ref-001","mediaTypeHint":"image/unknown","fetched":false,"evaluated":false}},
+    {"op":"add","path":"/evidence/-","value":{"evidenceId":"EV-BLOG-MEDIA-REFERENCE","envelopeVersion":"1.0.0-rc.1","evidenceKind":"TARGET_MEDIA_REFERENCE","subject":{"targetType":"BLOG","targetAlias":"target-blog-1","snapshotVersion":"blog-1.0.0","snapshotHash":"sha256:blog-snapshot-001"},"source":{"sourceType":"TARGET_SNAPSHOT","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"FixtureCollector","collectorVersion":"1.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:media-ref-001"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"MEDIUM","reasonCodes":["REFERENCE_ONLY"]},"privacy":{"classification":"INTERNAL_MODERATION","containsPersonalData":false,"redactionStatus":"APPLIED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":["CSR.SEX.001"],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"mediaAlias":"media-1","referenceDigest":"sha256:media-ref-001","fetched":false,"evaluated":false},"reference":null,"truncated":false}}},
+    {"op":"add","path":"/evidence/-","value":{"evidenceId":"EV-BLOG-VERIFIED-MEDIA","envelopeVersion":"1.0.0-rc.1","evidenceKind":"VERIFIED_MEDIA_OBSERVATION","subject":{"targetType":"BLOG","targetAlias":"target-blog-1","snapshotVersion":"blog-1.0.0","snapshotHash":"sha256:blog-snapshot-001"},"source":{"sourceType":"VERIFIED_MEDIA_OBSERVATION","sourceSystem":"RESERVED_COLLECTOR","verificationStatus":"TOOL_VERIFIED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"RESERVED","collectorVersion":"RESERVED","capturedAt":"2026-07-26T03:00:00Z","transformations":[]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":null},"availability":{"status":"NOT_COLLECTED","reasonCode":"VERIFIED_MEDIA_COLLECTOR_NOT_AVAILABLE"},"quality":{"level":"UNUSABLE","reasonCodes":["MEDIA_NOT_FETCHED_OR_EVALUATED"]},"privacy":{"classification":"INTERNAL_MODERATION","containsPersonalData":false,"redactionStatus":"NOT_REQUIRED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"RULE_EVALUATION_CANDIDATE","collectedForRuleIds":["CSR.SEX.001"],"payload":{"representation":"NONE","mediaType":null,"value":null,"reference":null,"truncated":false}}},
+    {"op":"replace","path":"/ruleEvaluations/0","value":{"ruleId":"CSR.SEX.001","material":true,"outcome":"UNASSESSABLE","supportingEvidenceIds":[],"counterEvidenceIds":[],"missingEvidenceIds":["ME-SEX-VERIFIED-MEDIA"]}},
+    {"op":"add","path":"/missingEvidence/-","value":{"missingEvidenceId":"ME-SEX-VERIFIED-MEDIA","requiredByRuleId":"CSR.SEX.001","requirementType":"EVIDENCE_KIND","requiredEvidenceKind":"VERIFIED_MEDIA_OBSERVATION","semanticRequirementCode":null,"triggerCondition":"TARGET_HAS_MATERIAL_IMAGE","critical":true,"availability":"NOT_COLLECTED","reasonCode":"VERIFIED_MEDIA_COLLECTOR_NOT_AVAILABLE","recommendedNextStep":"HUMAN_REVIEW_MEDIA","decisionEffect":"NEEDS_MANUAL_REVIEW"}},
+    {"op":"replace","path":"/recommendation/reportDecision","value":"NEEDS_MANUAL_REVIEW"},
+    {"op":"replace","path":"/recommendation/candidateTargetAction","value":"NO_ACTION"},
+    {"op":"replace","path":"/recommendation/evidenceSufficiency","value":"UNASSESSABLE"},
+    {"op":"replace","path":"/recommendation/findings","value":[]}
+  ],
+  "expected": {
+    "schemaValid": true,
+    "semanticValid": true,
+    "errorCodes": []
+  }
+}

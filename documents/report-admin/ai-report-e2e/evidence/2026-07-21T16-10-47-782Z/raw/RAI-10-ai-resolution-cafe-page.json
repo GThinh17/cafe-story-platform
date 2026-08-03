@@ -1,0 +1,43 @@
+{
+  "statusCode": 200,
+  "status": "Success",
+  "message": "Request processed successfully",
+  "data": {
+    "id": "68b64dfd-5786-45fb-9b6b-1bfb5feca388",
+    "contentReportId": "49c1e77e-1d05-48b7-992a-785de1e2fb83",
+    "targetType": "CAFE_PAGE",
+    "targetId": "e17dcc33-beae-412a-854d-b6c284b7fa87",
+    "reportDecision": "RESOLVE",
+    "targetAction": "SUSPEND_PAGE",
+    "confidenceScore": 85,
+    "riskScore": 8.5,
+    "labels": [
+      "SCAM_FRAUD_OR_SPAM",
+      "SEVERE"
+    ],
+    "ruleCode": "CAFE_PAGE_POLICY",
+    "explanation": "The report indicates potential scam or spam with a high severity rating. This suggests a significant violation of our policies, warranting immediate suspension of the page.",
+    "modelName": "gpt-4o-mini-2024-07-18",
+    "rawResponse": {
+      "openaiResponseId": "resp_0194bc09cd8eff9d006a5f9a979a44819a9f96317ddc04e6a4",
+      "reportId": "49c1e77e-1d05-48b7-992a-785de1e2fb83",
+      "targetType": "CAFE_PAGE",
+      "targetId": "e17dcc33-beae-412a-854d-b6c284b7fa87",
+      "sourceDecision": {
+        "reportDecision": "RESOLVE",
+        "targetAction": "SUSPEND_PAGE",
+        "confidenceScore": 0.85,
+        "riskScore": 8.5,
+        "labels": [
+          "SCAM_FRAUD_OR_SPAM",
+          "SEVERE"
+        ],
+        "ruleCode": "CAFE_PAGE_POLICY",
+        "explanation": "The report indicates potential scam or spam with a high severity rating. This suggests a significant violation of our policies, warranting immediate suspension of the page."
+      }
+    },
+    "createdAt": "2026-07-21T23:13:12.706929",
+    "autoApplyJob": null,
+    "autoApplyWarning": null
+  }
+}

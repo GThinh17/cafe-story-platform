@@ -1,0 +1,25 @@
+{
+  "schemaVersion": "1.0",
+  "gate": "G0-10D",
+  "approval": "APPROVE_G0-10D",
+  "status": "PARTIAL_WAITING_USER_APPROVAL",
+  "approvedDecision": {
+    "decisionId": "BD-004",
+    "selectedOption": "D1_NO_NUMERIC_BUSINESS_THRESHOLD_IN_SPRINT1",
+    "scoreBasedDecisionAuthority": "NONE",
+    "scoreBasedActionAuthority": "NONE"
+  },
+  "progress": {
+    "approved": 4,
+    "total": 12,
+    "current": "G0-10E"
+  },
+  "currentProposal": {
+    "decisionId": "BD-005",
+    "recommendedOption": "E1_VERSIONED_PROTECTED_LIST_WITH_FALLBACK",
+    "protectedCharacteristicCount": 13
+  },
+  "nextRequiredApproval": "APPROVE_G0-10E",
+  "sourceOrDataMutation": false,
+  "g0_11Authorized": false
+}

@@ -1,0 +1,16 @@
+Flyway first start:
+Database: PostgreSQL 17.10
+Successfully baselined schema with version: 20260719.01
+Migrating schema to version 20260723.01 - admin report ai contract v2
+Successfully applied 1 migration
+Tomcat started on port 18080
+
+Flyway restart:
+Successfully validated 10 migrations
+Current schema version: 20260723.01
+Schema is up to date
+Tomcat started on port 18080
+
+Sanitization:
+Datasource password and HMAC secret are intentionally omitted.
+

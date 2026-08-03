@@ -1,0 +1,34 @@
+{
+  "workflowId": "cafestory-admin-report-ai-resolution-v2",
+  "publishedVersionId": "4e221ccf-12a3-4583-8336-c4fda22b5b70",
+  "active": true,
+  "matchedNodes": 5,
+  "totalNodes": 5,
+  "nodes": [
+    {
+      "name": "Admin Report AI Resolution Webhook",
+      "parameterHash": "e9192de4c5dc1842b0881536379399cdf284c97fc0db7468799dbb7da2b182a2",
+      "matched": true
+    },
+    {
+      "name": "Validate Contract V2 And Build Request",
+      "parameterHash": "a608a2b2b0963ac543c77921833315438775afc3090e8553ac2306d80b39b4d7",
+      "matched": true
+    },
+    {
+      "name": "OpenAI Evidence Recommendation",
+      "parameterHash": "fc4c5430c93e119443b102aa03c1288dc7cffe80bca52ad6404f0192a3d1991a",
+      "matched": true
+    },
+    {
+      "name": "Validate And Normalize Recommendation V2",
+      "parameterHash": "b205788250c6a60098fadc4421f99b4510725152153b8bf40eab90ac13028880",
+      "matched": true
+    },
+    {
+      "name": "Respond To Backend",
+      "parameterHash": "b51824e927f78ab72d1129ac0536e37d863ce4434a73fd50929a6db4f1786106",
+      "matched": true
+    }
+  ]
+}

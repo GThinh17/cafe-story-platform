@@ -187,6 +187,18 @@ class UserServiceImplTest {
     }
 
     @Test
+    void getUserByUsername_fail_notFound_TC006_2() {
+        String username = "missing_user";
+
+        when(userRepository.findByUserName(username)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.getUserByUsername(username, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.NOT_FOUND));
+    }
+
+    @Test
     void getUserById_fail_notFound_TC007() {
         UUID userId = UUID.randomUUID();
 
@@ -231,6 +243,8 @@ class UserServiceImplTest {
         assertThat(result.getUserAvatar()).isEqualTo("https://example.com/updated.png");
         assertThat(result.getAccountStatus()).isTrue();
         assertThat(user.getAccountStatus()).isTrue();
+        assertThat(user.getUserDescription()).isEqualTo("Updated description");
+        assertThat(user.getHideCafePageOnProfile()).isTrue();
         assertThat(user.getUserPassword()).isEqualTo("encoded-updated-password");
         assertThat(user.getRegion()).isEqualTo(region);
         verify(userRepository).save(user);
@@ -429,7 +443,9 @@ class UserServiceImplTest {
         request.setUserEmail("updated@example.com");
         request.setUserPhone(123456789L);
         request.setUserAvatar("https://example.com/updated.png");
+        request.setUserDescription("Updated description");
         request.setAccountStatus(false);
+        request.setHideCafePageOnProfile(true);
         return request;
     }
 

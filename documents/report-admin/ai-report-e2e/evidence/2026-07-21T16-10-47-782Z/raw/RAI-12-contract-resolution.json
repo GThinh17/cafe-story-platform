@@ -1,0 +1,36 @@
+{
+  "id": "5509dd22-ce7c-4834-8d10-27201c834302",
+  "contentReportId": "616adbd4-db8f-4e3d-b56a-3575155abac9",
+  "targetType": "BLOG",
+  "targetId": "555e9a98-998a-4dde-b02c-df1ce51cd743",
+  "reportDecision": "RESOLVE",
+  "targetAction": "HIDE",
+  "confidenceScore": 85,
+  "riskScore": 7,
+  "labels": [
+    "SCAM_FRAUD_OR_SPAM"
+  ],
+  "ruleCode": "SCAM_POLICY_VIOLATION",
+  "explanation": "The content exhibits clear signs of spam, considering the report and the existing open report count. It should be hidden to maintain content integrity.",
+  "modelName": "gpt-4o-mini-2024-07-18",
+  "rawResponse": {
+    "openaiResponseId": "resp_0107dea39540b49b006a5f9a89c59c819bb9d4d4a455063cd0",
+    "reportId": "616adbd4-db8f-4e3d-b56a-3575155abac9",
+    "targetType": "BLOG",
+    "targetId": "555e9a98-998a-4dde-b02c-df1ce51cd743",
+    "sourceDecision": {
+      "reportDecision": "RESOLVE",
+      "targetAction": "HIDE",
+      "confidenceScore": 0.85,
+      "riskScore": 7,
+      "labels": [
+        "SCAM_FRAUD_OR_SPAM"
+      ],
+      "ruleCode": "SCAM_POLICY_VIOLATION",
+      "explanation": "The content exhibits clear signs of spam, considering the report and the existing open report count. It should be hidden to maintain content integrity."
+    }
+  },
+  "createdAt": "2026-07-21T23:12:58.790546",
+  "autoApplyJob": null,
+  "autoApplyWarning": null
+}

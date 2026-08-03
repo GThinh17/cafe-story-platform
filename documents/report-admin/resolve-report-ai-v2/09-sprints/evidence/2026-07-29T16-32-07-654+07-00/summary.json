@@ -1,0 +1,60 @@
+{
+  "gate": "G0-12-DONE-REAUDIT",
+  "status": "COMPLETED_REAUDIT_PASS_AWAITING_APPROVAL",
+  "date": "2026-07-29",
+  "branch": "n8n/Ai-agent/fix-bug-report-admin",
+  "sourceHead": "9c155ff46570b0e1d3a151c4a64fa8e2dc5fd6cf",
+  "worktreeDirty": true,
+  "sourceChangedByReaudit": false,
+  "runtimeChangedByReaudit": false,
+  "databaseChangedByReaudit": false,
+  "issues": {
+    "testBugsFixedVerified": 1,
+    "codeBugs": 0,
+    "openInScope": 0,
+    "configResiduals": 2
+  },
+  "remediation": {
+    "total": 6,
+    "approved": 6,
+    "failed": 0
+  },
+  "sprint1Dod": {
+    "total": 21,
+    "passOrScopedPass": 21,
+    "partial": 0,
+    "blocked": 0,
+    "eligibleForClosureApproval": true,
+    "approved": false
+  },
+  "currentVerification": {
+    "backendTests": 625,
+    "backendFailures": 0,
+    "backendErrors": 0,
+    "backendSkipped": 1,
+    "adminTypecheck": "PASS",
+    "adminBuild": "PASS",
+    "adminStaticPages": 21,
+    "adversarialPassed": 12,
+    "adversarialTotal": 12,
+    "providerCalledByAdversarialSuite": false,
+    "n8nWorkflowJson": "PASS"
+  },
+  "runtimeEvidenceReused": [
+    "E2E-S1-04",
+    "E2E-S1-13",
+    "E2E-S1-09",
+    "E2E-S1-10"
+  ],
+  "sourceFingerprintFiles": 15,
+  "productionReadiness": {
+    "total": 14,
+    "passed": 9,
+    "open": 5,
+    "status": "NOT_READY"
+  },
+  "productionDeploymentAuthorized": false,
+  "deliverable": "09-sprints/g0-12-done-reaudit.vi.md",
+  "nextRequiredAction": null,
+  "nextRequiredApproval": "APPROVE_G0-12-DONE"
+}

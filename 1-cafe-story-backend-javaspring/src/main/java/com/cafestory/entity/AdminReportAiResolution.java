@@ -115,7 +115,7 @@ public class AdminReportAiResolution {
     @Column(name = "workflow_version", length = 80)
     private String workflowVersion;
 
-    @Column(name = "target_snapshot_hash", length = 64)
+    @Column(name = "target_snapshot_hash", length = 71)
     private String targetSnapshotHash;
 
     @Column(name = "evidence_quality", length = 24)

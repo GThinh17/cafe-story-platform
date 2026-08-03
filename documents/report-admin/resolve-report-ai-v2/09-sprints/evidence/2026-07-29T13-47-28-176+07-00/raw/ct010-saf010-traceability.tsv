@@ -1,0 +1,4 @@
+requirement	scenario	executable_test	baseline	final	expected_behavior
+CT-010/SAF-010	cache matched snapshot V1 then target changes to V2	createResolution_changedSnapshotDoesNotReusePreviouslyMatchedCache_CT010_SAF010	FAIL	PASS	do not return V1 cache; provider uses V2 key/hash
+CT-010/SAF-010	target changes while provider evaluates	createResolution_targetChangesDuringProviderClampsStaleResult_CT010_1_SAF010	FAIL	PASS	manual/no-action; no findings; stale blocker; no target/report mutation
+CT-010	target disappears during authoritative refresh	refreshSnapshotSources_supportsNoEntityManagerAndMissingTargetConflict_CT010_2	NOT_PRESENT	PASS	409 conflict; no resolution persisted
