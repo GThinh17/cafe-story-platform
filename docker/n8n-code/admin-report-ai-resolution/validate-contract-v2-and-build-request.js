@@ -188,8 +188,11 @@ assertExactRequiredKeys(
   ],
   'Execution constraints',
 );
-if (body.automationMode !== 'A0_RECOMMEND_ONLY' || body.executionConstraints.recommendationOnly !== true) {
-  throw new Error('Only A0_RECOMMEND_ONLY requests are accepted');
+if (
+  !['A0_RECOMMEND_ONLY', 'A1_AUTO_HIDE_BLOG_COMMENT'].includes(body.automationMode) ||
+  body.executionConstraints.recommendationOnly !== true
+) {
+  throw new Error('Only approved recommendation-only automation modes are accepted');
 }
 const targetType = String(body.targetSnapshot.targetType || '');
 if (!['BLOG', 'COMMENT'].includes(targetType)) {
@@ -432,6 +435,9 @@ const safePayload = (item) => {
   const value = item.payload && item.payload.value && typeof item.payload.value === 'object'
     ? item.payload.value
     : {};
+  const boundedList = (values, limit, maxLength) => Array.isArray(values)
+    ? values.slice(0, limit).map((entry) => String(entry || '').slice(0, maxLength))
+    : [];
   if (item.evidenceKind === 'TARGET_TEXT_CONTENT') {
     return { sanitizedText: String(value.sanitizedText || '').slice(0, 4000) };
   }
@@ -442,7 +448,66 @@ const safePayload = (item) => {
     return { status: value.status ?? null };
   }
   if (item.evidenceKind === 'TARGET_MEDIA_REFERENCE') {
-    return { referenceCount: Number.isSafeInteger(value.referenceCount) ? value.referenceCount : 0 };
+    return {
+      referenceCount: Number.isSafeInteger(value.referenceCount) ? value.referenceCount : 0,
+      imageUrls: boundedList(value.imageUrls, 8, 500),
+      invalidUrlCount: Number.isSafeInteger(value.invalidUrlCount) ? value.invalidUrlCount : 0,
+      verificationMethod: String(value.verificationMethod || '').slice(0, 80),
+      contentFetched: value.contentFetched === true,
+      visionScanned: value.visionScanned === true,
+    };
+  }
+  if (item.evidenceKind === 'TARGET_AUTHOR_CONTEXT') {
+    return {
+      authorType: String(value.authorType || '').slice(0, 80),
+      userId: value.userId ?? null,
+      userName: String(value.userName || '').slice(0, 160),
+      displayName: String(value.displayName || '').slice(0, 160),
+      accountStatus: value.accountStatus ?? null,
+      userLike: Number.isFinite(value.userLike) ? value.userLike : null,
+      userFollower: Number.isFinite(value.userFollower) ? value.userFollower : null,
+      actorContextType: value.actorContextType ?? null,
+    };
+  }
+  if (item.evidenceKind === 'TARGET_REPORT_HISTORY') {
+    return {
+      sameTargetOpenReportCount: Number.isFinite(value.sameTargetOpenReportCount)
+        ? value.sameTargetOpenReportCount
+        : 0,
+      currentReportStatus: value.currentReportStatus ?? null,
+      reasonCode: String(value.reasonCode || '').slice(0, 120),
+      reasonSeverity: Number.isFinite(value.reasonSeverity) ? value.reasonSeverity : null,
+    };
+  }
+  if (item.evidenceKind === 'TARGET_MODERATION_HISTORY') {
+    return {
+      decision: value.decision ?? null,
+      score: Number.isFinite(value.score) ? value.score : null,
+      captionScore: Number.isFinite(value.captionScore) ? value.captionScore : null,
+      imageScore: Number.isFinite(value.imageScore) ? value.imageScore : null,
+      tags: boundedList(value.tags, 10, 80),
+      aiStatus: String(value.aiStatus || '').slice(0, 80),
+      resolved: value.resolved === true,
+      resolvedAction: value.resolvedAction ?? null,
+    };
+  }
+  if (item.evidenceKind === 'COMMENT_THREAD_CONTEXT') {
+    const compactComment = (entry) => entry && typeof entry === 'object'
+      ? {
+        status: entry.status ?? null,
+        createdAt: String(entry.createdAt || '').slice(0, 40),
+        sanitizedExcerpt: String(entry.sanitizedExcerpt || '').slice(0, 500),
+      }
+      : {};
+    return {
+      parentComment: compactComment(value.parentComment),
+      previousComments: Array.isArray(value.previousComments)
+        ? value.previousComments.slice(0, 2).map(compactComment)
+        : [],
+      nextComments: Array.isArray(value.nextComments)
+        ? value.nextComments.slice(0, 2).map(compactComment)
+        : [],
+    };
   }
   return {};
 };
@@ -613,6 +678,7 @@ const policy = [
   'Evaluate only candidateRules supplied by the Backend. Never invent a Rule ID or version.',
   'Every finding must cite only supplied Evidence IDs. AI rationale is not evidence.',
   'Reporter reason, report count, and prior AI signals do not prove a violation.',
+  'Backend alone decides auto-apply eligibility and persistence; do not claim that you applied, hid, removed, or resolved anything.',
   'Missing, unreadable, conflicting, or insufficient critical evidence requires NEEDS_MANUAL_REVIEW + NO_ACTION.',
   'Use per-rule outcomes only from SUBSTANTIATED, NOT_SUBSTANTIATED, NOT_APPLICABLE, UNASSESSABLE, CONFLICTED, or POLICY_INVALID.',
   'Every material candidate rule needs exactly one evaluation before a non-manual decision.',

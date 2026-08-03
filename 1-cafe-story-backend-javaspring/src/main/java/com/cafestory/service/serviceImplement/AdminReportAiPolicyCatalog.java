@@ -24,7 +24,7 @@ public final class AdminReportAiPolicyCatalog {
     public static final String WORKFLOW_VERSION = "cafestory-admin-report-ai-resolution-v2-s2.2";
     public static final String RULE_VERSION = "1.0.0-proposed.2";
     public static final String RULE_STATUS = "PROPOSED";
-    public static final String EVALUATION_CEILING = "NEEDS_MANUAL_REVIEW";
+    public static final String EVALUATION_CEILING = "RESOLVE_OR_REJECT";
 
     private static final List<ReportTargetType> RUNTIME_TARGET_TYPES =
             List.of(ReportTargetType.BLOG, ReportTargetType.COMMENT);

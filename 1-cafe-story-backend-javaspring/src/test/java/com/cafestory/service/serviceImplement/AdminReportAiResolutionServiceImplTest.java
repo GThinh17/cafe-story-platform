@@ -95,6 +95,8 @@ class AdminReportAiResolutionServiceImplTest {
             resolution.setCreatedAt(LocalDateTime.now());
             return resolution;
         });
+        when(autoApplyJobService.scheduleIfRequested(any(), any(), any(), any()))
+                .thenReturn(new AdminReportAiAutoApplyJobService.ScheduleResult(null, null));
     }
 
     @Test
@@ -146,7 +148,7 @@ class AdminReportAiResolutionServiceImplTest {
         assertThat(request.getPolicyContext().getRuleCatalogStatus()).isEqualTo("PROPOSED");
         assertThat(request.getPolicyContext().getEvaluationMode()).isEqualTo("PROPOSED_EVALUATION_ONLY");
         assertThat(request.getPolicyContext().getCurrentEvaluationCeiling())
-                .isEqualTo("NEEDS_MANUAL_REVIEW");
+                .isEqualTo("RESOLVE_OR_REJECT");
         assertThat(request.getPolicyContext().getCandidateRules())
                 .allSatisfy(rule -> {
                     assertThat(rule.getRuleId()).isNotBlank();
@@ -759,6 +761,8 @@ class AdminReportAiResolutionServiceImplTest {
         moderation.setResolved(false);
         when(moderationResultRepository.findTopByContentReportIdOrderByCreatedAtDesc(withParent.getId()))
                 .thenReturn(Optional.of(moderation));
+        when(moderationResultRepository.findTopByCommentIdOrderByCreatedAtDesc(withParent.getComment().getId()))
+                .thenReturn(Optional.of(moderation));
         CapturingService parentService = serviceReturning(request -> validResponse(
                 request,
                 AdminReportAiReportDecision.RESOLVE,
@@ -771,8 +775,23 @@ class AdminReportAiResolutionServiceImplTest {
                 .contains("parentBlogId", "parentBlogExcerpt");
         assertThat(parentService.lastRequest.getEvidence())
                 .extracting(AdminReportAiEvidenceItemRequestDTO::getEvidenceId)
-                .contains("EV-PARENT-CONTEXT", "EV-TARGET-MEDIA")
+                .contains(
+                        "EV-PARENT-CONTEXT",
+                        "EV-COMMENT-THREAD",
+                        "EV-TARGET-MEDIA",
+                        "EV-TARGET-AUTHOR",
+                        "EV-TARGET-REPORT-HISTORY",
+                        "EV-TARGET-MODERATION-HISTORY")
                 .doesNotContain("EV-DERIVED-MODERATION");
+        AdminReportAiEvidenceItemRequestDTO mediaEvidence = parentService.lastRequest.getEvidence().stream()
+                .filter(item -> "EV-TARGET-MEDIA".equals(item.getEvidenceId()))
+                .findFirst()
+                .orElseThrow();
+        assertThat(mediaEvidence.getAvailability().getStatus()).isEqualTo("AVAILABLE");
+        assertThat(mediaEvidence.getQuality().getLevel()).isEqualTo("MEDIUM");
+        assertThat(mediaEvidence.getPayload().getValue())
+                .containsEntry("verificationMethod", "PLATFORM_URL_METADATA_ONLY")
+                .containsEntry("visionScanned", false);
         assertThat(parentService.lastRequest.getExistingModerationResult())
                 .containsKeys("id", "decision", "score", "labels", "explanation", "aiStatus",
                         "priorityScore", "riskScore", "resolved");

@@ -21,7 +21,8 @@
       "format": "date-time"
     },
     "automationMode": {
-      "const": "A0_RECOMMEND_ONLY"
+      "type": "string",
+      "enum": ["A0_RECOMMEND_ONLY", "A1_AUTO_HIDE_BLOG_COMMENT"]
     },
     "reportId": {
       "type": "string",

@@ -100,7 +100,7 @@ const runtimeRequest = () => ({
   correlationId: crypto.randomUUID(),
   idempotencyKey: crypto.randomBytes(32).toString('hex'),
   requestedAt: '2026-07-29T14:00:00Z',
-  automationMode: 'A0_RECOMMEND_ONLY',
+  automationMode: 'A1_AUTO_HIDE_BLOG_COMMENT',
   reportId: crypto.randomUUID(),
   targetType: 'BLOG',
   targetId: crypto.randomUUID(),
@@ -145,6 +145,33 @@ const runtimeRequest = () => ({
       { sanitizedText: 'Synthetic target text.' },
       'RULE_EVALUATION_CANDIDATE',
     ),
+    evidence(
+      'EV-TARGET-AUTHOR',
+      'TARGET_AUTHOR_CONTEXT',
+      { authorType: 'BLOG_AUTHOR', userId: crypto.randomUUID(), userName: 'author', accountStatus: true },
+    ),
+    evidence(
+      'EV-TARGET-REPORT-HISTORY',
+      'TARGET_REPORT_HISTORY',
+      { sameTargetOpenReportCount: 2, currentReportStatus: 'OPEN', reasonCode: 'SPAM', reasonSeverity: 4 },
+    ),
+    evidence(
+      'EV-TARGET-MODERATION-HISTORY',
+      'TARGET_MODERATION_HISTORY',
+      { decision: 'VIOLATION', score: 91, tags: ['spam'], aiStatus: 'COMPLETED', resolved: false },
+    ),
+    evidence(
+      'EV-TARGET-MEDIA',
+      'TARGET_MEDIA_REFERENCE',
+      {
+        verificationMethod: 'PLATFORM_URL_METADATA_ONLY',
+        referenceCount: 1,
+        imageUrls: ['https://example.com/platform-image.jpg'],
+        invalidUrlCount: 0,
+        contentFetched: false,
+        visionScanned: false,
+      },
+    ),
   ],
   policyContext: {
     contextSchemaVersion: 'RRC-1.0.0-rc.1',
@@ -169,7 +196,7 @@ const runtimeRequest = () => ({
       semanticRequirementCodes: ['SEM-EXCEPTION-CONTEXT', 'SEM-COMPLETE-EVALUATION-SCOPE'],
       counterEvidenceRequired: true,
       exceptionCodes: ['CONTEXTUAL_EXCEPTION'],
-      evaluationCeiling: 'NEEDS_MANUAL_REVIEW',
+      evaluationCeiling: 'RESOLVE_OR_REJECT',
       allowedOutcomes: [
         'SUBSTANTIATED',
         'NOT_SUBSTANTIATED',
@@ -180,9 +207,17 @@ const runtimeRequest = () => ({
       ],
       allowedCandidateActions: ['KEEP_VISIBLE', 'HIDE', 'REMOVE', 'NO_ACTION'],
     }],
-    availableEvidenceKinds: ['TARGET_IDENTITY', 'TARGET_STATE', 'TARGET_TEXT_CONTENT'],
+    availableEvidenceKinds: [
+      'TARGET_IDENTITY',
+      'TARGET_STATE',
+      'TARGET_TEXT_CONTENT',
+      'TARGET_AUTHOR_CONTEXT',
+      'TARGET_REPORT_HISTORY',
+      'TARGET_MODERATION_HISTORY',
+      'TARGET_MEDIA_REFERENCE',
+    ],
     missingRequirements: [],
-    currentEvaluationCeiling: 'NEEDS_MANUAL_REVIEW',
+    currentEvaluationCeiling: 'RESOLVE_OR_REJECT',
   },
   executionConstraints: {
     recommendationOnly: true,
@@ -324,6 +359,17 @@ const executeSigned = async (request) => {
   );
 };
 const builtItems = await executeSigned(validRuntime);
+const builtEvidenceById = new Map(
+  builtItems[0].json.providerInput.evidence.map((item) => [item.evidenceId, item]),
+);
+assert.equal(
+  builtEvidenceById.get('EV-TARGET-MEDIA').sanitizedPayload.verificationMethod,
+  'PLATFORM_URL_METADATA_ONLY',
+);
+assert.equal(
+  builtEvidenceById.get('EV-TARGET-REPORT-HISTORY').sanitizedPayload.sameTargetOpenReportCount,
+  2,
+);
 await assert.rejects(
   () => executeSigned(runtimeNestedUnknown),
   /Report claim contains unknown properties: unknownAuthority/,

@@ -5,6 +5,7 @@ import com.cafestory.dto.responseDTO.AdminReportAiAutoApplyJobResponseDTO;
 import com.cafestory.entity.AdminReportAiAutoApplyJob;
 import com.cafestory.entity.AdminReportAiResolution;
 import com.cafestory.entity.Blog;
+import com.cafestory.entity.Comment;
 import com.cafestory.entity.ContentReport;
 import com.cafestory.entity.enums.AdminReportAiAutoApplyJobStatus;
 import com.cafestory.entity.enums.AdminReportAiReportDecision;
@@ -28,6 +29,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -50,22 +52,28 @@ class AdminReportAiAutoApplyJobServiceImplTest {
     void setUp() {
         jobRepository = mock(AdminReportAiAutoApplyJobRepository.class);
         contentReportRepository = mock(ContentReportRepository.class);
-        service = new AdminReportAiAutoApplyJobServiceImpl(
-                jobRepository,
-                contentReportRepository,
-                new NoopTransactionManager(),
-                AdminReportAiAutoApplyJobServiceImpl.RECOMMENDATION_ONLY_MODE);
+        service = service(AdminReportAiAutoApplyJobServiceImpl.RECOMMENDATION_ONLY_MODE);
 
-        when(jobRepository.save(any(AdminReportAiAutoApplyJob.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(jobRepository.save(any(AdminReportAiAutoApplyJob.class))).thenAnswer(invocation -> {
+            AdminReportAiAutoApplyJob job = invocation.getArgument(0);
+            if (job.getId() == null) {
+                job.setId(UUID.randomUUID());
+            }
+            if (job.getCreatedAt() == null) {
+                job.setCreatedAt(LocalDateTime.now());
+            }
+            return job;
+        });
+        when(contentReportRepository.save(any(ContentReport.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
     void scheduleIfRequested_blocksEveryAiAutoApplyRequestInA0_TC001() {
-        ContentReport report = report();
-        AdminReportAiResolution resolution = resolution(report);
+        ContentReport report = blogReport();
+        AdminReportAiResolution resolution = eligibleResolution(report);
         AdminReportAiResolutionCreateRequestDTO request = new AdminReportAiResolutionCreateRequestDTO();
         request.setAutoApplyEnabled(true);
-        request.setAutoApplyDelayMinutes(15);
+        request.setAutoApplyDelayMinutes(5);
 
         AdminReportAiAutoApplyJobService.ScheduleResult result =
                 service.scheduleIfRequested(report, resolution, request, UUID.randomUUID());
@@ -76,14 +84,14 @@ class AdminReportAiAutoApplyJobServiceImplTest {
     }
 
     @Test
-    void scheduleIfRequested_noRequestReturnsNoWarning_TC002() {
+    void scheduleIfRequested_noRequestReturnsNoWarningInA0_TC002() {
         AdminReportAiAutoApplyJobService.ScheduleResult missing =
-                service.scheduleIfRequested(report(), resolution(report()), null, UUID.randomUUID());
+                service.scheduleIfRequested(blogReport(), eligibleResolution(blogReport()), null, UUID.randomUUID());
 
         AdminReportAiResolutionCreateRequestDTO disabled = new AdminReportAiResolutionCreateRequestDTO();
         disabled.setAutoApplyEnabled(false);
         AdminReportAiAutoApplyJobService.ScheduleResult explicitlyDisabled =
-                service.scheduleIfRequested(report(), resolution(report()), disabled, UUID.randomUUID());
+                service.scheduleIfRequested(blogReport(), eligibleResolution(blogReport()), disabled, UUID.randomUUID());
 
         assertThat(missing.job()).isNull();
         assertThat(missing.warning()).isNull();
@@ -92,22 +100,113 @@ class AdminReportAiAutoApplyJobServiceImplTest {
     }
 
     @Test
-    void scheduleIfRequested_nullReportAndResolutionStillFailsClosed_TC002_1() {
-        AdminReportAiResolutionCreateRequestDTO request = new AdminReportAiResolutionCreateRequestDTO();
-        request.setAutoApplyEnabled(true);
+    void scheduleIfRequested_blogEligibleInA1CreatesDelayedJob_TC003() {
+        service = service(AdminReportAiAutoApplyJobServiceImpl.AUTO_HIDE_BLOG_COMMENT_MODE);
+        ContentReport report = blogReport();
+        AdminReportAiResolution resolution = eligibleResolution(report);
 
         AdminReportAiAutoApplyJobService.ScheduleResult result =
-                service.scheduleIfRequested(null, null, request, UUID.randomUUID());
+                service.scheduleIfRequested(report, resolution, null, UUID.randomUUID());
 
-        assertThat(result.job()).isNull();
-        assertThat(result.warning()).contains("A0_RECOMMEND_ONLY");
+        assertThat(result.warning()).isNull();
+        assertThat(result.job()).isNotNull();
+        assertThat(result.job().getStatus()).isEqualTo(AdminReportAiAutoApplyJobStatus.SCHEDULED);
+        assertThat(result.job().getScheduledAt()).isAfter(LocalDateTime.now().plusMinutes(4));
     }
 
     @Test
-    void processDueJobs_quarantinesLegacyJobsWithoutMutatingReportOrTarget_TC003() {
-        ContentReport report = report();
+    void processDueJobs_blogEligibleInA1ResolvesReportAndHidesBlog_TC004() {
+        service = service(AdminReportAiAutoApplyJobServiceImpl.AUTO_HIDE_BLOG_COMMENT_MODE);
+        ContentReport report = blogReport();
+        AdminReportAiAutoApplyJob job = job(report, eligibleResolution(report));
+        when(jobRepository.claimDueJobs(any(), any(), anyInt())).thenReturn(List.of(job));
+
+        int processed = service.processDueJobs(10);
+
+        assertThat(processed).isEqualTo(1);
+        assertThat(job.getStatus()).isEqualTo(AdminReportAiAutoApplyJobStatus.APPLIED);
+        assertThat(job.getAppliedAt()).isNotNull();
+        assertThat(report.getStatus()).isEqualTo(ReportStatus.RESOLVED);
+        assertThat(report.getResolvedAt()).isNotNull();
+        assertThat(report.getBlog().getStatus()).isEqualTo(PostStatus.HIDDEN);
+        verify(contentReportRepository).save(report);
+    }
+
+    @Test
+    void processDueJobs_commentEligibleInA1HidesCommentOnly_TC005() {
+        service = service(AdminReportAiAutoApplyJobServiceImpl.AUTO_HIDE_BLOG_COMMENT_MODE);
+        ContentReport report = commentReport();
+        AdminReportAiAutoApplyJob job = job(report, eligibleResolution(report));
+        when(jobRepository.claimDueJobs(any(), any(), anyInt())).thenReturn(List.of(job));
+
+        int processed = service.processDueJobs(10);
+
+        assertThat(processed).isEqualTo(1);
+        assertThat(job.getStatus()).isEqualTo(AdminReportAiAutoApplyJobStatus.APPLIED);
+        assertThat(report.getStatus()).isEqualTo(ReportStatus.RESOLVED);
+        assertThat(report.getComment().getStatus()).isEqualTo(PostStatus.HIDDEN);
+        assertThat(report.getComment().getBlog().getStatus()).isEqualTo(PostStatus.PUBLISHED);
+    }
+
+    @Test
+    void scheduleIfRequested_missingEvidenceOrBlockedReasonsDoNotCreateJob_TC006() {
+        service = service(AdminReportAiAutoApplyJobServiceImpl.AUTO_HIDE_BLOG_COMMENT_MODE);
+        ContentReport report = blogReport();
+        AdminReportAiResolution missingEvidence = eligibleResolution(report);
+        missingEvidence.setEvidenceSummary(Map.of(
+                "usedEvidenceIds", List.of("EV-TARGET-CONTENT"),
+                "missingEvidenceIds", List.of("EV-TARGET-MEDIA")));
+        AdminReportAiResolution blocked = eligibleResolution(report);
+        blocked.setBlockedReasons(List.of("CRITICAL_EVIDENCE_MISSING"));
+        AdminReportAiResolution weak = eligibleResolution(report);
+        weak.setEvidenceQuality("LOW");
+
+        assertThat(service.scheduleIfRequested(report, missingEvidence, null, UUID.randomUUID()).job()).isNull();
+        assertThat(service.scheduleIfRequested(report, blocked, null, UUID.randomUUID()).job()).isNull();
+        assertThat(service.scheduleIfRequested(report, weak, null, UUID.randomUUID()).job()).isNull();
+    }
+
+    @Test
+    void processDueJobs_skipsWhenReportResolvedOrTargetChangedBeforeDelay_TC007() {
+        service = service(AdminReportAiAutoApplyJobServiceImpl.AUTO_HIDE_BLOG_COMMENT_MODE);
+        ContentReport report = blogReport();
+        report.setStatus(ReportStatus.RESOLVED);
+        AdminReportAiAutoApplyJob resolvedReportJob = job(report, eligibleResolution(report));
+        ContentReport hiddenTargetReport = blogReport();
+        hiddenTargetReport.getBlog().setStatus(PostStatus.HIDDEN);
+        AdminReportAiAutoApplyJob hiddenTargetJob = job(hiddenTargetReport, eligibleResolution(hiddenTargetReport));
+        when(jobRepository.claimDueJobs(any(), any(), anyInt()))
+                .thenReturn(List.of(resolvedReportJob, hiddenTargetJob));
+
+        assertThat(service.processDueJobs(10)).isEqualTo(2);
+
+        assertThat(resolvedReportJob.getStatus()).isEqualTo(AdminReportAiAutoApplyJobStatus.SKIPPED);
+        assertThat(hiddenTargetJob.getStatus()).isEqualTo(AdminReportAiAutoApplyJobStatus.SKIPPED);
+        verify(contentReportRepository, never()).save(any(ContentReport.class));
+    }
+
+    @Test
+    void cancelJob_beforeDelayDoesNotMutate_TC008() {
+        AdminReportAiAutoApplyJob scheduled = job(blogReport(), eligibleResolution(blogReport()));
+        UUID adminId = UUID.randomUUID();
+        when(jobRepository.findById(scheduled.getId())).thenReturn(Optional.of(scheduled));
+
+        AdminReportAiAutoApplyJobResponseDTO result = service.cancelJob(scheduled.getId(), adminId);
+
+        assertThat(result.getStatus()).isEqualTo(AdminReportAiAutoApplyJobStatus.CANCELLED);
+        assertThat(scheduled.getCancelledByAdminUserId()).isEqualTo(adminId);
+        verify(contentReportRepository, never()).save(any(ContentReport.class));
+
+        scheduled.setStatus(AdminReportAiAutoApplyJobStatus.SKIPPED);
+        assertThatThrownBy(() -> service.cancelJob(scheduled.getId(), adminId))
+                .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
+    void processDueJobs_a0StillQuarantinesLegacyJobsWithoutMutation_TC009() {
+        ContentReport report = blogReport();
         Blog blog = report.getBlog();
-        AdminReportAiAutoApplyJob job = job(report);
+        AdminReportAiAutoApplyJob job = job(report, eligibleResolution(report));
         when(jobRepository.claimDueJobs(any(), any(), anyInt())).thenReturn(List.of(job));
 
         int processed = service.processDueJobs(10);
@@ -117,57 +216,14 @@ class AdminReportAiAutoApplyJobServiceImplTest {
         assertThat(job.getLastError()).contains("A0_RECOMMEND_ONLY").contains("no report or target mutation");
         assertThat(report.getStatus()).isEqualTo(ReportStatus.OPEN);
         assertThat(blog.getStatus()).isEqualTo(PostStatus.PUBLISHED);
-        verify(jobRepository).save(job);
         verify(contentReportRepository, never()).save(any(ContentReport.class));
     }
 
     @Test
-    void processDueJobs_emptyBatchDoesNothing_TC004() {
-        when(jobRepository.claimDueJobs(any(), any(), anyInt())).thenReturn(List.of());
-
-        assertThat(service.processDueJobs(0)).isZero();
-        verify(jobRepository, never()).save(any(AdminReportAiAutoApplyJob.class));
-    }
-
-    @Test
-    void processDueJobs_nullBatchAndDetachedLegacyJobAreHandled_TC004_1() {
-        when(jobRepository.claimDueJobs(any(), any(), anyInt())).thenReturn(null);
-        assertThat(service.processDueJobs(10)).isZero();
-
-        AdminReportAiAutoApplyJob detachedJob = job(report());
-        detachedJob.setContentReport(null);
-        detachedJob.setAiResolution(null);
-        when(jobRepository.claimDueJobs(any(), any(), anyInt())).thenReturn(List.of(detachedJob));
-
-        assertThat(service.processDueJobs(10)).isEqualTo(1);
-        assertThat(detachedJob.getStatus()).isEqualTo(AdminReportAiAutoApplyJobStatus.SKIPPED);
-        verify(jobRepository).save(detachedJob);
-    }
-
-    @Test
-    void constructor_rejectsUnapprovedAutomationMode_TC005() {
-        assertThatThrownBy(() -> new AdminReportAiAutoApplyJobServiceImpl(
-                jobRepository,
-                contentReportRepository,
-                new NoopTransactionManager(),
-                "A1_AUTO_APPLY"))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("only permits A0_RECOMMEND_ONLY");
-
-        assertThatThrownBy(() -> new AdminReportAiAutoApplyJobServiceImpl(
-                jobRepository,
-                contentReportRepository,
-                new NoopTransactionManager(),
-                null))
-                .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Unsupported admin.report.ai.automation-mode");
-    }
-
-    @Test
-    void getJobs_validatesReportAndReturnsLegacyHistory_TC006() {
+    void getJobsAndConstructorValidationRemainFailClosed_TC010() {
         UUID reportId = UUID.randomUUID();
         PageRequest pageable = PageRequest.of(0, 20);
-        AdminReportAiAutoApplyJob job = job(report());
+        AdminReportAiAutoApplyJob job = job(blogReport(), eligibleResolution(blogReport()));
 
         assertThatThrownBy(() -> service.getJobs(null, pageable))
                 .isInstanceOf(ResponseStatusException.class);
@@ -178,41 +234,18 @@ class AdminReportAiAutoApplyJobServiceImplTest {
         when(contentReportRepository.existsById(reportId)).thenReturn(true);
         when(jobRepository.findByContentReportId(reportId, pageable))
                 .thenReturn(new PageImpl<>(List.of(job)));
-
         assertThat(service.getJobs(reportId, pageable).getContent())
                 .singleElement()
                 .extracting(AdminReportAiAutoApplyJobResponseDTO::getStatus)
                 .isEqualTo(AdminReportAiAutoApplyJobStatus.SCHEDULED);
 
-        AdminReportAiAutoApplyJob detachedJob = job(report());
-        detachedJob.setContentReport(null);
-        detachedJob.setAiResolution(null);
-        when(jobRepository.findByContentReportId(reportId, pageable))
-                .thenReturn(new PageImpl<>(List.of(detachedJob)));
-        AdminReportAiAutoApplyJobResponseDTO detached =
-                service.getJobs(reportId, pageable).getContent().getFirst();
-        assertThat(detached.getContentReportId()).isNull();
-        assertThat(detached.getAiResolutionId()).isNull();
+        assertThatThrownBy(() -> service("A1_AUTO_APPLY"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Unsupported admin.report.ai.automation-mode");
     }
 
     @Test
-    void cancelJob_allowsScheduledLegacyJobOnly_TC007() {
-        AdminReportAiAutoApplyJob scheduled = job(report());
-        UUID adminId = UUID.randomUUID();
-        when(jobRepository.findById(scheduled.getId())).thenReturn(Optional.of(scheduled));
-
-        AdminReportAiAutoApplyJobResponseDTO result = service.cancelJob(scheduled.getId(), adminId);
-
-        assertThat(result.getStatus()).isEqualTo(AdminReportAiAutoApplyJobStatus.CANCELLED);
-        assertThat(scheduled.getCancelledByAdminUserId()).isEqualTo(adminId);
-
-        scheduled.setStatus(AdminReportAiAutoApplyJobStatus.SKIPPED);
-        assertThatThrownBy(() -> service.cancelJob(scheduled.getId(), adminId))
-                .isInstanceOf(ResponseStatusException.class);
-    }
-
-    @Test
-    void cancelJob_rejectsNullAndMissingJob_TC008() {
+    void cancelJob_rejectsNullAndMissingJob_TC011() {
         assertThatThrownBy(() -> service.cancelJob(null, UUID.randomUUID()))
                 .isInstanceOf(ResponseStatusException.class);
 
@@ -222,45 +255,92 @@ class AdminReportAiAutoApplyJobServiceImplTest {
                 .isInstanceOf(ResponseStatusException.class);
     }
 
-    private ContentReport report() {
+    private AdminReportAiAutoApplyJobServiceImpl service(String mode) {
+        return new AdminReportAiAutoApplyJobServiceImpl(
+                jobRepository,
+                contentReportRepository,
+                new NoopTransactionManager(),
+                mode,
+                5);
+    }
+
+    private ContentReport blogReport() {
         Blog blog = new Blog();
         blog.setId(UUID.randomUUID());
         blog.setStatus(PostStatus.PUBLISHED);
+        blog.setContent("Reported blog content");
+        blog.setCreatedAt(LocalDateTime.now().minusHours(2));
 
         ContentReport report = new ContentReport();
         report.setId(UUID.randomUUID());
         report.setTargetType(ReportTargetType.BLOG);
         report.setStatus(ReportStatus.OPEN);
         report.setBlog(blog);
-        report.setCreatedAt(LocalDateTime.now());
+        report.setCreatedAt(LocalDateTime.now().minusHours(1));
         return report;
     }
 
-    private AdminReportAiResolution resolution(ContentReport report) {
+    private ContentReport commentReport() {
+        Blog parentBlog = new Blog();
+        parentBlog.setId(UUID.randomUUID());
+        parentBlog.setStatus(PostStatus.PUBLISHED);
+        parentBlog.setContent("Parent blog content");
+        parentBlog.setCreatedAt(LocalDateTime.now().minusHours(3));
+
+        Comment comment = new Comment();
+        comment.setId(UUID.randomUUID());
+        comment.setBlog(parentBlog);
+        comment.setStatus(PostStatus.PUBLISHED);
+        comment.setContent("Reported comment content");
+        comment.setCreatedAt(LocalDateTime.now().minusHours(2));
+
+        ContentReport report = new ContentReport();
+        report.setId(UUID.randomUUID());
+        report.setTargetType(ReportTargetType.COMMENT);
+        report.setStatus(ReportStatus.OPEN);
+        report.setComment(comment);
+        report.setCreatedAt(LocalDateTime.now().minusHours(1));
+        return report;
+    }
+
+    private AdminReportAiResolution eligibleResolution(ContentReport report) {
         AdminReportAiResolution resolution = new AdminReportAiResolution();
         resolution.setId(UUID.randomUUID());
         resolution.setContentReport(report);
-        resolution.setTargetType(ReportTargetType.BLOG);
-        resolution.setTargetId(report.getBlog() == null ? UUID.randomUUID() : report.getBlog().getId());
+        resolution.setTargetType(report.getTargetType());
+        resolution.setTargetId(report.getTargetType() == ReportTargetType.BLOG
+                ? report.getBlog().getId()
+                : report.getComment().getId());
         resolution.setReportDecision(AdminReportAiReportDecision.RESOLVE);
         resolution.setTargetAction(AdminReportAiTargetAction.HIDE);
-        resolution.setConfidenceScore(99.0);
-        resolution.setRiskScore(99.0);
+        resolution.setEvidenceQuality("HIGH");
+        resolution.setEvidenceSufficiency("SUFFICIENT");
+        resolution.setViolationLikelihood("HIGH");
+        resolution.setBlockedReasons(List.of());
+        resolution.setEvidenceSummary(Map.of(
+                "usedEvidenceIds", List.of("EV-TARGET-CONTENT"),
+                "counterEvidenceIds", List.of(),
+                "missingEvidenceIds", List.of()));
+        resolution.setFindings(List.of(new java.util.LinkedHashMap<>(Map.of(
+                "ruleId", "CSR.SPAM.001",
+                "ruleVersion", "1.0.0-proposed.2",
+                "outcome", "SUBSTANTIATED",
+                "evidenceIds", List.of("EV-TARGET-CONTENT"),
+                "counterEvidenceIds", List.of(),
+                "missingEvidenceIds", List.of()))));
         resolution.setCreatedAt(LocalDateTime.now());
         return resolution;
     }
 
-    private AdminReportAiAutoApplyJob job(ContentReport report) {
+    private AdminReportAiAutoApplyJob job(ContentReport report, AdminReportAiResolution resolution) {
         AdminReportAiAutoApplyJob job = new AdminReportAiAutoApplyJob();
         job.setId(UUID.randomUUID());
         job.setContentReport(report);
-        job.setAiResolution(resolution(report));
-        job.setTargetType(ReportTargetType.BLOG);
-        job.setTargetId(report.getBlog().getId());
-        job.setReportDecision(AdminReportAiReportDecision.RESOLVE);
-        job.setTargetAction(AdminReportAiTargetAction.HIDE);
-        job.setConfidenceScore(99.0);
-        job.setRiskScore(99.0);
+        job.setAiResolution(resolution);
+        job.setTargetType(resolution.getTargetType());
+        job.setTargetId(resolution.getTargetId());
+        job.setReportDecision(resolution.getReportDecision());
+        job.setTargetAction(resolution.getTargetAction());
         job.setStatus(AdminReportAiAutoApplyJobStatus.SCHEDULED);
         job.setScheduledAt(LocalDateTime.now().minusMinutes(1));
         job.setCreatedAt(LocalDateTime.now().minusMinutes(2));

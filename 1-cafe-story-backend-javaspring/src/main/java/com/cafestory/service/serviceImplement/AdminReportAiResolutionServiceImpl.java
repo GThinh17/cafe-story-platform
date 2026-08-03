@@ -22,6 +22,7 @@ import com.cafestory.entity.enums.ReportTargetType;
 import com.cafestory.exception.AdminReportAiProviderBoundaryException;
 import com.cafestory.repository.AdminReportAiResolutionRepository;
 import com.cafestory.repository.AiModerationResultRepository;
+import com.cafestory.repository.CommentRepository;
 import com.cafestory.repository.ContentReportRepository;
 import com.cafestory.service.serviceInterface.AdminReportAiAutoApplyJobService;
 import com.cafestory.service.serviceInterface.AdminReportAiResolutionService;
@@ -33,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -44,6 +46,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -67,33 +70,38 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
     private static final List<ReportStatus> ACTIVE_REPORT_STATUSES =
             List.of(ReportStatus.OPEN, ReportStatus.REVIEWING);
     private static final String CONTRACT_VERSION = "2.0";
-    private static final String AUTOMATION_MODE = "A0_RECOMMEND_ONLY";
+    private static final String DEFAULT_AUTOMATION_MODE = "A0_RECOMMEND_ONLY";
 
     private final AdminReportAiResolutionRepository resolutionRepository;
     private final ContentReportRepository contentReportRepository;
     private final AiModerationResultRepository moderationResultRepository;
+    private final CommentRepository commentRepository;
     private final AdminReportAiAutoApplyJobService autoApplyJobService;
     private final ObjectMapper objectMapper;
     private final RestClient restClient;
     private final AdminReportAiWebhookSigner webhookSigner;
     private final EntityManager entityManager;
+    private final String automationMode;
 
     @Autowired
     public AdminReportAiResolutionServiceImpl(
             AdminReportAiResolutionRepository resolutionRepository,
             ContentReportRepository contentReportRepository,
             AiModerationResultRepository moderationResultRepository,
+            CommentRepository commentRepository,
             AdminReportAiAutoApplyJobService autoApplyJobService,
             ObjectMapper objectMapper,
             AdminReportAiWebhookSigner webhookSigner,
             EntityManager entityManager,
             @Value("${admin.report.ai.webhook-url:http://localhost:5678/webhook/cafestory-admin-report-ai-resolution}")
             String webhookUrl,
-            @Value("${admin.report.ai.timeout-ms:40000}") int timeoutMs) {
+            @Value("${admin.report.ai.timeout-ms:40000}") int timeoutMs,
+            @Value("${admin.report.ai.automation-mode:A0_RECOMMEND_ONLY}") String automationMode) {
         this(
                 resolutionRepository,
                 contentReportRepository,
                 moderationResultRepository,
+                commentRepository,
                 autoApplyJobService,
                 objectMapper,
                 webhookSigner,
@@ -101,7 +109,8 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
                         .baseUrl(webhookUrl)
                         .requestFactory(requestFactory(timeoutMs))
                         .build(),
-                entityManager);
+                entityManager,
+                automationMode);
     }
 
     public AdminReportAiResolutionServiceImpl(
@@ -117,12 +126,16 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
                 resolutionRepository,
                 contentReportRepository,
                 moderationResultRepository,
+                null,
                 autoApplyJobService,
                 objectMapper,
                 webhookSigner,
+                RestClient.builder()
+                        .baseUrl(webhookUrl)
+                        .requestFactory(requestFactory(timeoutMs))
+                        .build(),
                 null,
-                webhookUrl,
-                timeoutMs);
+                DEFAULT_AUTOMATION_MODE);
     }
 
     AdminReportAiResolutionServiceImpl(
@@ -137,11 +150,13 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
                 resolutionRepository,
                 contentReportRepository,
                 moderationResultRepository,
+                null,
                 autoApplyJobService,
                 objectMapper,
                 webhookSigner,
                 restClient,
-                null);
+                null,
+                DEFAULT_AUTOMATION_MODE);
     }
 
     AdminReportAiResolutionServiceImpl(
@@ -153,14 +168,64 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
             AdminReportAiWebhookSigner webhookSigner,
             RestClient restClient,
             EntityManager entityManager) {
+        this(
+                resolutionRepository,
+                contentReportRepository,
+                moderationResultRepository,
+                null,
+                autoApplyJobService,
+                objectMapper,
+                webhookSigner,
+                restClient,
+                entityManager,
+                DEFAULT_AUTOMATION_MODE);
+    }
+
+    AdminReportAiResolutionServiceImpl(
+            AdminReportAiResolutionRepository resolutionRepository,
+            ContentReportRepository contentReportRepository,
+            AiModerationResultRepository moderationResultRepository,
+            CommentRepository commentRepository,
+            AdminReportAiAutoApplyJobService autoApplyJobService,
+            ObjectMapper objectMapper,
+            AdminReportAiWebhookSigner webhookSigner,
+            RestClient restClient) {
+        this(
+                resolutionRepository,
+                contentReportRepository,
+                moderationResultRepository,
+                commentRepository,
+                autoApplyJobService,
+                objectMapper,
+                webhookSigner,
+                restClient,
+                null,
+                DEFAULT_AUTOMATION_MODE);
+    }
+
+    AdminReportAiResolutionServiceImpl(
+            AdminReportAiResolutionRepository resolutionRepository,
+            ContentReportRepository contentReportRepository,
+            AiModerationResultRepository moderationResultRepository,
+            CommentRepository commentRepository,
+            AdminReportAiAutoApplyJobService autoApplyJobService,
+            ObjectMapper objectMapper,
+            AdminReportAiWebhookSigner webhookSigner,
+            RestClient restClient,
+            EntityManager entityManager,
+            String automationMode) {
         this.resolutionRepository = resolutionRepository;
         this.contentReportRepository = contentReportRepository;
         this.moderationResultRepository = moderationResultRepository;
+        this.commentRepository = commentRepository;
         this.autoApplyJobService = autoApplyJobService;
         this.objectMapper = objectMapper;
         this.webhookSigner = webhookSigner;
         this.restClient = restClient;
         this.entityManager = entityManager;
+        this.automationMode = automationMode == null || automationMode.isBlank()
+                ? DEFAULT_AUTOMATION_MODE
+                : automationMode.trim();
     }
 
     @Override
@@ -224,7 +289,7 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
             AdminReportAiResolutionResponseDTO response,
             AdminReportAiResolutionCreateRequestDTO request,
             UUID adminUserId) {
-        if (autoApplyJobService != null && request != null && request.isAutoApplyEnabled()) {
+        if (autoApplyJobService != null) {
             AdminReportAiAutoApplyJobService.ScheduleResult scheduleResult =
                     autoApplyJobService.scheduleIfRequested(report, resolution, request, adminUserId);
             response.setAutoApplyJob(scheduleResult.job());
@@ -360,7 +425,7 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
         request.setContractVersion(CONTRACT_VERSION);
         request.setCorrelationId(UUID.randomUUID());
         request.setRequestedAt(OffsetDateTime.now(ZoneOffset.UTC));
-        request.setAutomationMode(AUTOMATION_MODE);
+        request.setAutomationMode(automationMode);
         request.setReportId(report.getId());
         request.setTargetType(report.getTargetType());
         request.setTargetId(targetId(report));
@@ -403,7 +468,7 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
         resolution.setContractVersion(CONTRACT_VERSION);
         resolution.setCorrelationId(webhookResponse.getCorrelationId());
         resolution.setIdempotencyKey(webhookRequest.getIdempotencyKey());
-        resolution.setAutomationMode(AUTOMATION_MODE);
+        resolution.setAutomationMode(automationMode);
         resolution.setTargetType(report.getTargetType());
         resolution.setTargetId(targetId(report));
         resolution.setReportDecision(webhookResponse.getReportDecision());
@@ -537,6 +602,57 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
                 null,
                 "CONTEXT_ONLY",
                 candidateRuleIds));
+        Map<String, Object> authorPayload = targetAuthorContext(report);
+        boolean authorAvailable = !authorPayload.isEmpty();
+        evidence.add(evidenceItem(
+                "EV-TARGET-AUTHOR",
+                "TARGET_AUTHOR_CONTEXT",
+                request,
+                report,
+                "PLATFORM_RECORD",
+                report.getTargetType() == ReportTargetType.BLOG ? "blog.author" : "comment.user",
+                authorAvailable ? authorPayload : null,
+                false,
+                "SANITIZE_ACCOUNT_CONTEXT",
+                authorAvailable ? "HIGH" : "LOW",
+                authorAvailable ? "PLATFORM_ACCOUNT_CONTEXT" : "AUTHOR_CONTEXT_UNAVAILABLE",
+                authorAvailable ? "AVAILABLE" : "MISSING",
+                authorAvailable ? null : "AUTHOR_CONTEXT_NOT_AVAILABLE",
+                "CONTEXT_ONLY",
+                candidateRuleIds));
+        evidence.add(evidenceItem(
+                "EV-TARGET-REPORT-HISTORY",
+                "TARGET_REPORT_HISTORY",
+                request,
+                report,
+                "PLATFORM_RECORD",
+                "content_reports",
+                reportHistoryPayload(report, request),
+                false,
+                null,
+                "HIGH",
+                "PLATFORM_REPORT_HISTORY",
+                "AVAILABLE",
+                null,
+                "CONTEXT_ONLY",
+                candidateRuleIds));
+        Optional<AiModerationResult> latestModeration = latestTargetModerationResult(report);
+        evidence.add(evidenceItem(
+                "EV-TARGET-MODERATION-HISTORY",
+                "TARGET_MODERATION_HISTORY",
+                request,
+                report,
+                "PLATFORM_RECORD",
+                "ai_moderation_results",
+                latestModeration.map(this::moderationHistoryPayload).orElse(null),
+                false,
+                "SANITIZE_MODERATION_HISTORY",
+                latestModeration.isPresent() ? "MEDIUM" : "LOW",
+                latestModeration.isPresent() ? "PRIOR_PLATFORM_MODERATION" : "NO_PRIOR_MODERATION_RESULT",
+                latestModeration.isPresent() ? "AVAILABLE" : "MISSING",
+                latestModeration.isPresent() ? null : "MODERATION_HISTORY_NOT_AVAILABLE",
+                "CONTEXT_ONLY",
+                candidateRuleIds));
         if (report.getTargetType() == ReportTargetType.COMMENT) {
             Blog parentBlog = report.getComment().getBlog();
             boolean parentContextAvailable = hasUsableParentContext(parentBlog);
@@ -558,8 +674,28 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
                     parentContextAvailable ? null : "PARENT_CONTEXT_UNAVAILABLE_OR_INVALID",
                     "CONTEXT_ONLY",
                     candidateRuleIds));
+            Map<String, Object> threadPayload = commentThreadContextPayload(report.getComment());
+            boolean threadAvailable = !threadPayload.isEmpty();
+            evidence.add(evidenceItem(
+                    "EV-COMMENT-THREAD",
+                    "COMMENT_THREAD_CONTEXT",
+                    request,
+                    report,
+                    "PLATFORM_RECORD",
+                    "comment.threadContext",
+                    threadAvailable ? threadPayload : null,
+                    false,
+                    "SANITIZE_AND_BOUND_CONTEXT",
+                    threadAvailable ? "MEDIUM" : "LOW",
+                    threadAvailable ? "BOUNDED_THREAD_CONTEXT" : "THREAD_CONTEXT_UNAVAILABLE",
+                    threadAvailable ? "AVAILABLE" : "MISSING",
+                    threadAvailable ? null : "COMMENT_THREAD_CONTEXT_NOT_AVAILABLE",
+                    "CONTEXT_ONLY",
+                    candidateRuleIds));
         }
         if (!request.getImageUrls().isEmpty()) {
+            Map<String, Object> mediaPayload = mediaMetadataPayload(request.getImageUrls());
+            boolean hasValidUrl = Boolean.TRUE.equals(mediaPayload.get("hasValidPlatformUrl"));
             evidence.add(evidenceItem(
                     "EV-TARGET-MEDIA",
                     "TARGET_MEDIA_REFERENCE",
@@ -567,13 +703,13 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
                     report,
                     "TARGET_SNAPSHOT",
                     "observableFields.imageUrls",
-                    Map.of("referenceCount", request.getImageUrls().size()),
+                    mediaPayload,
                     false,
                     null,
-                    "UNUSABLE",
-                    "MEDIA_NOT_FETCHED_OR_VERIFIED",
-                    "NOT_COLLECTED",
-                    "VERIFIED_MEDIA_OBSERVATION_NOT_AVAILABLE",
+                    hasValidUrl ? "MEDIUM" : "UNUSABLE",
+                    hasValidUrl ? "PLATFORM_URL_METADATA_ONLY" : "NO_VALID_PLATFORM_URL",
+                    hasValidUrl ? "AVAILABLE" : "UNREADABLE",
+                    hasValidUrl ? null : "VALID_PLATFORM_MEDIA_URL_NOT_AVAILABLE",
                     "CONTEXT_ONLY",
                     candidateRuleIds));
         }
@@ -648,6 +784,166 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
         return parentBlog != null
                 && parentBlog.getContent() != null
                 && !parentBlog.getContent().isBlank();
+    }
+
+    private Map<String, Object> targetAuthorContext(ContentReport report) {
+        if (report.getTargetType() == ReportTargetType.BLOG) {
+            return userContext(report.getBlog() == null ? null : report.getBlog().getAuthor(), "BLOG_AUTHOR");
+        }
+        if (report.getTargetType() == ReportTargetType.COMMENT) {
+            Map<String, Object> value = userContext(
+                    report.getComment() == null ? null : report.getComment().getUser(),
+                    "COMMENT_AUTHOR");
+            Comment comment = report.getComment();
+            if (comment != null) {
+                value.put("actorContextType", comment.getActorContextType());
+                if (comment.getActorCafePage() != null) {
+                    value.put("actorCafePageId", comment.getActorCafePage().getId());
+                    value.put("actorCafePageName", truncate(comment.getActorCafePage().getName(), 160));
+                }
+            }
+            return value;
+        }
+        return Map.of();
+    }
+
+    private Map<String, Object> userContext(User user, String authorType) {
+        Map<String, Object> value = new LinkedHashMap<>();
+        if (user == null) {
+            return value;
+        }
+        value.put("authorType", authorType);
+        value.put("userId", user.getUserId());
+        value.put("userName", truncate(user.getUserName(), 160));
+        value.put("displayName", truncate(user.getUserFullName(), 160));
+        value.put("avatarUrl", validUrlOrNull(user.getUserAvatar()));
+        value.put("accountStatus", user.getAccountStatus());
+        value.put("userLike", user.getUserLike());
+        value.put("userFollower", user.getUserFollower());
+        value.put("regionId", user.getRegion() == null ? null : user.getRegion().getRegionId());
+        return value;
+    }
+
+    private Map<String, Object> reportHistoryPayload(
+            ContentReport report,
+            AdminReportAiResolutionRequestDTO request) {
+        Map<String, Object> value = new LinkedHashMap<>();
+        value.put("sameTargetOpenReportCount", request.getSameTargetOpenReportCount());
+        value.put("currentReportStatus", report.getStatus());
+        value.put("reasonCode", request.getReasonCode());
+        value.put("reasonSeverity", request.getReasonSeverity());
+        value.put("reportedAt", isoTimestamp(report.getCreatedAt()));
+        return value;
+    }
+
+    private Optional<AiModerationResult> latestTargetModerationResult(ContentReport report) {
+        UUID id = targetId(report);
+        if (id == null) {
+            return Optional.empty();
+        }
+        return switch (report.getTargetType()) {
+            case BLOG -> moderationResultRepository.findTopByBlogIdOrderByCreatedAtDesc(id);
+            case COMMENT -> moderationResultRepository.findTopByCommentIdOrderByCreatedAtDesc(id);
+            case USER, CAFE_PAGE -> Optional.empty();
+        };
+    }
+
+    private Map<String, Object> moderationHistoryPayload(AiModerationResult result) {
+        Map<String, Object> value = new LinkedHashMap<>();
+        value.put("id", result.getId());
+        value.put("decision", result.getDecision());
+        value.put("score", result.getScore());
+        value.put("captionScore", result.getCaptionScore());
+        value.put("imageScore", result.getImageScore());
+        value.put("tags", result.getTags() == null ? List.of() : result.getTags().stream().limit(10).toList());
+        value.put("aiStatus", result.getAiStatus());
+        value.put("modelName", truncate(result.getModelName(), 120));
+        value.put("priorityScore", result.getPriorityScore());
+        value.put("riskScore", result.getRiskScore());
+        value.put("resolved", result.getResolved());
+        value.put("resolvedAction", result.getResolvedAction());
+        value.put("createdAt", isoTimestamp(result.getCreatedAt()));
+        return value;
+    }
+
+    private Map<String, Object> commentThreadContextPayload(Comment comment) {
+        Map<String, Object> value = new LinkedHashMap<>();
+        if (comment == null || comment.getBlog() == null || comment.getCreatedAt() == null) {
+            return value;
+        }
+        if (comment.getParentComment() != null) {
+            value.put("parentComment", commentContextPayload(comment.getParentComment()));
+        }
+        if (commentRepository != null) {
+            value.put("previousComments", commentRepository.findContextBeforeInBlog(
+                            comment.getBlog().getId(),
+                            comment.getId(),
+                            comment.getCreatedAt(),
+                            PageRequest.of(0, 2)).stream()
+                    .map(this::commentContextPayload)
+                    .toList());
+            value.put("nextComments", commentRepository.findContextAfterInBlog(
+                            comment.getBlog().getId(),
+                            comment.getId(),
+                            comment.getCreatedAt(),
+                            PageRequest.of(0, 2)).stream()
+                    .map(this::commentContextPayload)
+                    .toList());
+        }
+        value.put("blogId", comment.getBlog().getId());
+        value.put("targetCommentCreatedAt", isoTimestamp(comment.getCreatedAt()));
+        return value;
+    }
+
+    private Map<String, Object> commentContextPayload(Comment comment) {
+        Map<String, Object> value = new LinkedHashMap<>();
+        if (comment == null) {
+            return value;
+        }
+        value.put("commentId", comment.getId());
+        value.put("authorAlias", comment.getUser() == null || comment.getUser().getUserId() == null
+                ? null
+                : "user-" + sha256(comment.getUser().getUserId().toString()).substring(0, 12));
+        value.put("status", comment.getStatus());
+        value.put("createdAt", isoTimestamp(comment.getCreatedAt()));
+        value.put("sanitizedExcerpt", truncate(comment.getContent(), 500));
+        return value;
+    }
+
+    private Map<String, Object> mediaMetadataPayload(List<String> imageUrls) {
+        List<String> validUrls = imageUrls.stream()
+                .map(value -> value == null ? "" : value.trim())
+                .filter(value -> !value.isBlank())
+                .filter(this::isHttpUrl)
+                .limit(8)
+                .toList();
+        Map<String, Object> value = new LinkedHashMap<>();
+        value.put("verificationMethod", "PLATFORM_URL_METADATA_ONLY");
+        value.put("referenceCount", imageUrls.size());
+        value.put("imageUrls", validUrls);
+        value.put("invalidUrlCount", Math.max(0, imageUrls.size() - validUrls.size()));
+        value.put("hasValidPlatformUrl", !validUrls.isEmpty());
+        value.put("contentFetched", false);
+        value.put("visionScanned", false);
+        return value;
+    }
+
+    private String validUrlOrNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return isHttpUrl(trimmed) ? trimmed : null;
+    }
+
+    private boolean isHttpUrl(String value) {
+        try {
+            URI uri = URI.create(value);
+            return ("http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme()))
+                    && uri.getHost() != null;
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
     }
 
     private AdminReportAiEvidenceItemRequestDTO evidenceItem(
@@ -985,7 +1281,7 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
         response.setId(resolution.getId());
         response.setContractVersion(resolution.getContractVersion() == null ? "legacy-v1" : resolution.getContractVersion());
         response.setCorrelationId(resolution.getCorrelationId());
-        response.setAutomationMode(resolution.getAutomationMode() == null ? AUTOMATION_MODE : resolution.getAutomationMode());
+        response.setAutomationMode(resolution.getAutomationMode() == null ? DEFAULT_AUTOMATION_MODE : resolution.getAutomationMode());
         response.setRecommendationState(resolution.getReportDecision() == null
                 ? null
                 : resolution.getReportDecision().name());
