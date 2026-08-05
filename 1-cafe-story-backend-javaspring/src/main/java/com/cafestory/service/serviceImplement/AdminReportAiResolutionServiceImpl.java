@@ -644,13 +644,13 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
                 report,
                 "PLATFORM_RECORD",
                 "ai_moderation_results",
-                latestModeration.map(this::moderationHistoryPayload).orElse(null),
+                latestModeration.map(this::moderationHistoryPayload).orElseGet(this::emptyModerationHistoryPayload),
                 false,
                 "SANITIZE_MODERATION_HISTORY",
-                latestModeration.isPresent() ? "MEDIUM" : "LOW",
+                latestModeration.isPresent() ? "MEDIUM" : "HIGH",
                 latestModeration.isPresent() ? "PRIOR_PLATFORM_MODERATION" : "NO_PRIOR_MODERATION_RESULT",
-                latestModeration.isPresent() ? "AVAILABLE" : "MISSING",
-                latestModeration.isPresent() ? null : "MODERATION_HISTORY_NOT_AVAILABLE",
+                "AVAILABLE",
+                null,
                 "CONTEXT_ONLY",
                 candidateRuleIds));
         if (report.getTargetType() == ReportTargetType.COMMENT) {
@@ -850,6 +850,7 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
 
     private Map<String, Object> moderationHistoryPayload(AiModerationResult result) {
         Map<String, Object> value = new LinkedHashMap<>();
+        value.put("noPriorModerationResult", false);
         value.put("id", result.getId());
         value.put("decision", result.getDecision());
         value.put("score", result.getScore());
@@ -863,6 +864,25 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
         value.put("resolved", result.getResolved());
         value.put("resolvedAction", result.getResolvedAction());
         value.put("createdAt", isoTimestamp(result.getCreatedAt()));
+        return value;
+    }
+
+    private Map<String, Object> emptyModerationHistoryPayload() {
+        Map<String, Object> value = new LinkedHashMap<>();
+        value.put("noPriorModerationResult", true);
+        value.put("id", null);
+        value.put("decision", null);
+        value.put("score", null);
+        value.put("captionScore", null);
+        value.put("imageScore", null);
+        value.put("tags", List.of());
+        value.put("aiStatus", "NO_PRIOR_MODERATION_RESULT");
+        value.put("modelName", null);
+        value.put("priorityScore", null);
+        value.put("riskScore", null);
+        value.put("resolved", false);
+        value.put("resolvedAction", null);
+        value.put("createdAt", null);
         return value;
     }
 

@@ -481,6 +481,7 @@ const safePayload = (item) => {
   }
   if (item.evidenceKind === 'TARGET_MODERATION_HISTORY') {
     return {
+      noPriorModerationResult: value.noPriorModerationResult === true,
       decision: value.decision ?? null,
       score: Number.isFinite(value.score) ? value.score : null,
       captionScore: Number.isFinite(value.captionScore) ? value.captionScore : null,
@@ -496,7 +497,7 @@ const safePayload = (item) => {
       ? {
         status: entry.status ?? null,
         createdAt: String(entry.createdAt || '').slice(0, 40),
-        sanitizedExcerpt: String(entry.sanitizedExcerpt || '').slice(0, 500),
+        excerptAvailable: Boolean(entry.sanitizedExcerpt),
       }
       : {};
     return {
@@ -612,14 +613,12 @@ const schema = {
       type: 'array',
       minItems: 0,
       maxItems: 16,
-      uniqueItems: true,
       items: { $ref: '#/$defs/code' },
     },
     evidenceReferences: {
       type: 'array',
       minItems: 0,
       maxItems: 32,
-      uniqueItems: true,
       items: { $ref: '#/$defs/code' },
     },
     likelihood: {
@@ -678,6 +677,15 @@ const policy = [
   'Evaluate only candidateRules supplied by the Backend. Never invent a Rule ID or version.',
   'Every finding must cite only supplied Evidence IDs. AI rationale is not evidence.',
   'Reporter reason, report count, and prior AI signals do not prove a violation.',
+  'The current open report status is the case being evaluated; it is not counter-evidence and is not a reason for manual review.',
+  'A TARGET_MODERATION_HISTORY payload with noPriorModerationResult=true means the platform has no prior moderation record; it is available context, not missing critical evidence.',
+  'If TARGET_TEXT_CONTENT directly contains phishing links, OTP/password requests, money-transfer requests, guaranteed-profit investment claims, or fake-prize/voucher instructions, text evidence can be sufficient to substantiate spam, scam, or fraud rules.',
+  'For CSR.INT.003, SUBSTANTIATED is appropriate when target text requests bank OTP/passwords, tells users to transfer money, advertises guaranteed profit, impersonates investment/reward flows, or links to a phishing/fake reward page.',
+  'For CSR.SPAM.001, SUBSTANTIATED is appropriate when target text contains unsolicited deceptive calls to click, claim prizes/vouchers, join fake investment schemes, or follow phishing/scam URLs.',
+  'A benign parent blog or cafe discussion context does not negate a target comment that directly asks for OTP/passwords, money transfer, or phishing-link clicks.',
+  'For direct phishing/OTP/money-transfer scam text, return RESOLVE + HIDE, evidenceSufficiency=SUFFICIENT, violationLikelihood=HIGH, and include one complete finding for every material candidate rule.',
+  'If supplied BLOG or COMMENT text is ordinary cafe discussion without those indicators, use NOT_SUBSTANTIATED or NOT_APPLICABLE findings and REJECT + KEEP_VISIBLE when every material rule is complete.',
+  'Do not require image vision analysis when the possible violation is in text/caption and TARGET_TEXT_CONTENT is available.',
   'Backend alone decides auto-apply eligibility and persistence; do not claim that you applied, hid, removed, or resolved anything.',
   'Missing, unreadable, conflicting, or insufficient critical evidence requires NEEDS_MANUAL_REVIEW + NO_ACTION.',
   'Use per-rule outcomes only from SUBSTANTIATED, NOT_SUBSTANTIATED, NOT_APPLICABLE, UNASSESSABLE, CONFLICTED, or POLICY_INVALID.',

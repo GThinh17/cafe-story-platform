@@ -268,7 +268,7 @@ class AdminReportAiAutoApplyJobServiceImplTest {
         Blog blog = new Blog();
         blog.setId(UUID.randomUUID());
         blog.setStatus(PostStatus.PUBLISHED);
-        blog.setContent("Reported blog content");
+        blog.setContent("Reported blog content asks for bank OTP and transfer money through a phishing link.");
         blog.setCreatedAt(LocalDateTime.now().minusHours(2));
 
         ContentReport report = new ContentReport();
@@ -291,7 +291,7 @@ class AdminReportAiAutoApplyJobServiceImplTest {
         comment.setId(UUID.randomUUID());
         comment.setBlog(parentBlog);
         comment.setStatus(PostStatus.PUBLISHED);
-        comment.setContent("Reported comment content");
+        comment.setContent("Reported comment asks for bank OTP and transfer money through a phishing link.");
         comment.setCreatedAt(LocalDateTime.now().minusHours(2));
 
         ContentReport report = new ContentReport();

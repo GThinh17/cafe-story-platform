@@ -667,13 +667,8 @@ class AdminReportAiSemanticValidatorTest {
         assertThat(AdminReportAiPolicyCatalog.containsRule("SPAM", "CSR.INT.003")).isFalse();
 
         var firstRead = AdminReportAiPolicyCatalog.candidateRules("SPAM").getFirst();
-        firstRead.getConditionalRequirements().getFirst().setTrigger("CALLER_MUTATION");
-        assertThat(AdminReportAiPolicyCatalog.candidateRules("SPAM")
-                .getFirst()
-                .getConditionalRequirements()
-                .getFirst()
-                .getTrigger())
-                .isEqualTo("COMMENT_MEANING_DEPENDS_ON_PARENT");
+        assertThat(firstRead.getConditionalRequirements()).isEmpty();
+        assertThat(firstRead.getRequirementProfileIds()).containsExactly("RP-TEXT-CONTEXT");
     }
 
     @Test

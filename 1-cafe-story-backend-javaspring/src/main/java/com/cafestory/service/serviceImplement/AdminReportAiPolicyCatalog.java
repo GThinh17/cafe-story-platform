@@ -12,18 +12,18 @@ public final class AdminReportAiPolicyCatalog {
 
     public static final String CONTEXT_SCHEMA_VERSION = "RRC-1.0.0-rc.1";
     public static final String POLICY_VERSION = "PF-2.0.0-proposed.1";
-    public static final String POLICY_STATUS = "PROPOSED";
+    public static final String POLICY_STATUS = "ACTIVE";
     public static final String RULE_CATALOG_VERSION = "RC-2.0.0-proposed.2";
-    public static final String RULE_CATALOG_STATUS = "PROPOSED";
+    public static final String RULE_CATALOG_STATUS = "ACTIVE";
     public static final String REASON_CATALOG_VERSION = "IRC-2.0.0-proposed.1";
     public static final String REQUIREMENT_MATRIX_VERSION = "1.0.0-rc.1";
     public static final String EVIDENCE_KIND_CATALOG_VERSION = "1.0.0-rc.1";
     public static final String EVIDENCE_ENVELOPE_VERSION = "1.0.0-rc.1";
-    public static final String EVALUATION_MODE = "PROPOSED_EVALUATION_ONLY";
+    public static final String EVALUATION_MODE = "ACTIVE_RUNTIME";
     public static final String PROMPT_VERSION = "report-ai-v2-sprint2.2";
     public static final String WORKFLOW_VERSION = "cafestory-admin-report-ai-resolution-v2-s2.2";
     public static final String RULE_VERSION = "1.0.0-proposed.2";
-    public static final String RULE_STATUS = "PROPOSED";
+    public static final String RULE_STATUS = "ACTIVE";
     public static final String EVALUATION_CEILING = "RESOLVE_OR_REJECT";
 
     private static final List<ReportTargetType> RUNTIME_TARGET_TYPES =
@@ -116,22 +116,12 @@ public final class AdminReportAiPolicyCatalog {
                             !routing,
                             profiles,
                             requiredEvidenceKinds,
-                            List.of(parentContextRequirement()),
+                            List.of(),
                             semanticRequirements(family),
                             !routing,
                             routing ? List.of() : List.of("CONTEXTUAL_EXCEPTION")));
                 });
         return Map.copyOf(values);
-    }
-
-    private static AdminReportAiRuleRequirementRequestDTO parentContextRequirement() {
-        return AdminReportAiRuleRequirementRequestDTO.builder()
-                .requirementCode("REQ-PARENT-CONTEXT-WHEN-MATERIAL")
-                .evidenceKind("PARENT_BLOG_CONTEXT")
-                .requirementType("CONDITIONAL")
-                .trigger("COMMENT_MEANING_DEPENDS_ON_PARENT")
-                .missingBehavior("NEEDS_MANUAL_REVIEW")
-                .build();
     }
 
     private static List<String> semanticRequirements(String family) {

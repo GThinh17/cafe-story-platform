@@ -1,0 +1,11 @@
+{
+  "status": "DONE_CANDIDATE",
+  "evidenceDir": "E:\\LuanVanToTNghiep\\cafe-story-platform\\documents\\admin-report-ai-runtime-evidence\\evidence\\20260805-135400-final-a1-thread-projection",
+  "marker": "REAL-AI-20260805065411",
+  "caseCount": 5,
+  "screenshots": [
+    "screenshots/01-runtime-ai-summary.png",
+    "screenshots/02-admin-reports-ui.png"
+  ],
+  "errors": []
+}

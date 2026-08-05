@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Service
 public class AdminReportAiAutoApplyJobServiceImpl implements AdminReportAiAutoApplyJobService {
@@ -44,6 +45,9 @@ public class AdminReportAiAutoApplyJobServiceImpl implements AdminReportAiAutoAp
             "Skipped by A0_RECOMMEND_ONLY safety mode; no report or target mutation was performed.";
     private static final List<ReportStatus> ACTIVE_REPORT_STATUSES =
             List.of(ReportStatus.OPEN, ReportStatus.REVIEWING);
+    private static final Pattern EXPLICIT_SCAM_TEXT = Pattern.compile(
+            "\\b(otp|password|bank|transfer\\s+money|guaranteed\\s+profit|phishing|fake\\s+(voucher|prize)|claim\\s+fake|click\\s+https?://|https?://[^\\s]*(phishing|scam))\\b",
+            Pattern.CASE_INSENSITIVE);
     private static final Logger log = LoggerFactory.getLogger(AdminReportAiAutoApplyJobServiceImpl.class);
 
     private final AdminReportAiAutoApplyJobRepository jobRepository;
@@ -156,28 +160,29 @@ public class AdminReportAiAutoApplyJobServiceImpl implements AdminReportAiAutoAp
     @Override
     public int processDueJobs(int limit) {
         int batchSize = Math.max(1, limit);
-        List<AdminReportAiAutoApplyJob> dueJobs = transactionTemplate.execute(status ->
-                jobRepository.claimDueJobs(
+        Integer processed = transactionTemplate.execute(status -> {
+            List<AdminReportAiAutoApplyJob> dueJobs = jobRepository.claimDueJobs(
                         AdminReportAiAutoApplyJobStatus.SCHEDULED.name(),
                         LocalDateTime.now(),
-                        batchSize));
-        if (dueJobs == null || dueJobs.isEmpty()) {
-            return 0;
-        }
-
-        transactionTemplate.executeWithoutResult(status -> dueJobs.forEach(job -> {
-            if (RECOMMENDATION_ONLY_MODE.equals(automationMode)) {
-                skipJob(job, LEGACY_JOB_QUARANTINE_REASON);
-                log.warn(
-                        "Quarantined legacy Admin Report AI auto apply job jobId={} reportId={} mode={}",
-                        job.getId(),
-                        job.getContentReport() == null ? null : job.getContentReport().getId(),
-                        automationMode);
-                return;
+                        batchSize);
+            if (dueJobs == null || dueJobs.isEmpty()) {
+                return 0;
             }
-            applyAutoHide(job);
-        }));
-        return dueJobs.size();
+            dueJobs.forEach(job -> {
+                if (RECOMMENDATION_ONLY_MODE.equals(automationMode)) {
+                    skipJob(job, LEGACY_JOB_QUARANTINE_REASON);
+                    log.warn(
+                            "Quarantined legacy Admin Report AI auto apply job jobId={} reportId={} mode={}",
+                            job.getId(),
+                            job.getContentReport() == null ? null : job.getContentReport().getId(),
+                            automationMode);
+                    return;
+                }
+                applyAutoHide(job);
+            });
+            return dueJobs.size();
+        });
+        return processed == null ? 0 : processed;
     }
 
     private void applyAutoHide(AdminReportAiAutoApplyJob job) {
@@ -256,7 +261,23 @@ public class AdminReportAiAutoApplyJobServiceImpl implements AdminReportAiAutoAp
         if (!materialFindingsAreSubstantiatedWithEvidence(resolution.getFindings())) {
             return EligibilityResult.skipped("Material findings are missing valid evidence references");
         }
+        if (isScamOrSpamResolution(resolution) && !hasExplicitScamIndicators(targetText(report))) {
+            return EligibilityResult.skipped("Target text does not contain explicit scam or spam indicators");
+        }
         return EligibilityResult.allowed();
+    }
+
+    private boolean isScamOrSpamResolution(AdminReportAiResolution resolution) {
+        return resolution.getFindings() != null
+                && resolution.getFindings().stream()
+                .map(finding -> finding.get("ruleId"))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .anyMatch(ruleId -> "CSR.INT.003".equals(ruleId) || "CSR.SPAM.001".equals(ruleId));
+    }
+
+    private boolean hasExplicitScamIndicators(String text) {
+        return text != null && EXPLICIT_SCAM_TEXT.matcher(text).find();
     }
 
     private boolean hasMissingEvidence(Map<String, Object> evidenceSummary) {
@@ -293,6 +314,14 @@ public class AdminReportAiAutoApplyJobServiceImpl implements AdminReportAiAutoAp
         return switch (report.getTargetType()) {
             case BLOG -> report.getBlog() == null ? null : report.getBlog().getStatus();
             case COMMENT -> report.getComment() == null ? null : report.getComment().getStatus();
+            case USER, CAFE_PAGE -> null;
+        };
+    }
+
+    private String targetText(ContentReport report) {
+        return switch (report.getTargetType()) {
+            case BLOG -> report.getBlog() == null ? null : report.getBlog().getContent();
+            case COMMENT -> report.getComment() == null ? null : report.getComment().getContent();
             case USER, CAFE_PAGE -> null;
         };
     }

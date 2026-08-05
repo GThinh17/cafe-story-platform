@@ -134,7 +134,7 @@ class AdminReportAiResolutionServiceImplTest {
     }
 
     @Test
-    void toWebhookRequest_buildsProposedTypedRuleContextAndSnapshotBoundEvidence_S201_TC001() {
+    void toWebhookRequest_buildsActiveRuntimeTypedRuleContextAndSnapshotBoundEvidence_S201_TC001() {
         ContentReport report = blogReport("Bounded evidence text");
         CapturingService service = serviceReturning(request -> validResponse(
                 request,
@@ -144,15 +144,15 @@ class AdminReportAiResolutionServiceImplTest {
         AdminReportAiResolutionRequestDTO request =
                 ReflectionTestUtils.invokeMethod(service, "toWebhookRequest", report);
 
-        assertThat(request.getPolicyContext().getPolicyStatus()).isEqualTo("PROPOSED");
-        assertThat(request.getPolicyContext().getRuleCatalogStatus()).isEqualTo("PROPOSED");
-        assertThat(request.getPolicyContext().getEvaluationMode()).isEqualTo("PROPOSED_EVALUATION_ONLY");
+        assertThat(request.getPolicyContext().getPolicyStatus()).isEqualTo("ACTIVE");
+        assertThat(request.getPolicyContext().getRuleCatalogStatus()).isEqualTo("ACTIVE");
+        assertThat(request.getPolicyContext().getEvaluationMode()).isEqualTo("ACTIVE_RUNTIME");
         assertThat(request.getPolicyContext().getCurrentEvaluationCeiling())
                 .isEqualTo("RESOLVE_OR_REJECT");
         assertThat(request.getPolicyContext().getCandidateRules())
                 .allSatisfy(rule -> {
                     assertThat(rule.getRuleId()).isNotBlank();
-                    assertThat(rule.getRuleStatus()).isEqualTo("PROPOSED");
+                    assertThat(rule.getRuleStatus()).isEqualTo("ACTIVE");
                     assertThat(rule.getRequiredEvidenceKinds()).isNotEmpty();
                     assertThat(rule.getAllowedCandidateActions())
                             .contains("NO_ACTION", "KEEP_VISIBLE");

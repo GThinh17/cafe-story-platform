@@ -80,7 +80,6 @@
       "type": "array",
       "minItems": 0,
       "maxItems": 16,
-      "uniqueItems": true,
       "items": {
         "$ref": "#/$defs/code"
       }
@@ -89,7 +88,6 @@
       "type": "array",
       "minItems": 0,
       "maxItems": 32,
-      "uniqueItems": true,
       "items": {
         "$ref": "#/$defs/code"
       }
