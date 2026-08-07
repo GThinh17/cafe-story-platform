@@ -1,6 +1,7 @@
 export const routes = {
   adsManager: "AdsManager",
   auth: "Auth",
+  aiAssistant: "AiAssistant",
   blogDetail: "BlogDetail",
   cafeDetail: "CafeDetail",
   chatDetail: "ChatDetail",

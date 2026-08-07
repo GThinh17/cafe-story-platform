@@ -20,6 +20,20 @@ import { getCafePageConversations, getConversations } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type { ChatTargetType, ConversationListItem, ConversationResponse } from "../../types";
 
+const ASSISTANT_CONVERSATION_ID = "__cafestory_assistant__";
+
+const assistantConversation: ConversationListItem = {
+  avatarUri: null,
+  id: ASSISTANT_CONVERSATION_ID,
+  initials: "AI",
+  isOnline: true,
+  lastMessage:
+    "Ask about CafeStory, cafe pages, reviewers, payments, or reports.",
+  name: "CafeStory Assistant",
+  time: "",
+  userName: "cafestory_ai",
+};
+
 function formatConversationTime(value: string | null) {
   if (!value) {
     return "";
@@ -183,20 +197,28 @@ export function ConversationScreen() {
 
   const conversations = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
+    const baseItems = cafePageId
+      ? conversationItems
+      : [assistantConversation, ...conversationItems];
 
     if (!normalizedQuery) {
-      return conversationItems;
+      return baseItems;
     }
 
-    return conversationItems.filter(
+    return baseItems.filter(
       (conversation) =>
         conversation.name.toLowerCase().includes(normalizedQuery) ||
         conversation.userName.toLowerCase().includes(normalizedQuery) ||
         conversation.lastMessage.toLowerCase().includes(normalizedQuery),
     );
-  }, [conversationItems, query]);
+  }, [cafePageId, conversationItems, query]);
 
   function handleConversationPress(conversation: ConversationListItem) {
+    if (conversation.id === ASSISTANT_CONVERSATION_ID) {
+      navigation.navigate(routes.aiAssistant);
+      return;
+    }
+
     navigation.navigate(routes.chatDetail, {
       chatAvatar: conversation.avatarUri,
       chatName: conversation.name,
@@ -225,7 +247,13 @@ export function ConversationScreen() {
             <Text style={styles.sectionTitle}>
               {cafePageId ? "Cafe page conversations" : "Conversations"}
             </Text>
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
           </View>
+        }
+        ListFooterComponent={
+          isLoading && !error && conversations.length > 0 ? (
+            <ListRowSkeletonList padded={false} />
+          ) : null
         }
         contentContainerStyle={styles.content}
         data={conversations}
@@ -286,6 +314,12 @@ const styles = StyleSheet.create({
     color: colors.foreground,
     fontSize: typography.body,
     fontWeight: "800",
+    textAlign: "center",
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: typography.label,
+    fontWeight: "600",
     textAlign: "center",
   },
   headerContent: {

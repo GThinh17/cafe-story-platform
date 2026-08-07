@@ -1,5 +1,6 @@
 export * from "./ad-fees";
 export * from "./ad-campaigns";
+export * from "./ai-chat";
 export * from "./auth";
 export * from "./api-cache";
 export * from "./blog-mappers";

@@ -1,4 +1,5 @@
 export * from "./ads";
+export * from "./ai-assistant";
 export * from "./cafe-page";
 export * from "./create-post";
 export * from "./explore";

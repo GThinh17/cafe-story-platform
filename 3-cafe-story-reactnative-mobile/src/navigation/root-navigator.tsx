@@ -3,6 +3,7 @@ import { LoadingState, Screen } from "../components";
 import { useAuth } from "../features/auth";
 import {
   AdsManagerScreen,
+  AiAssistantScreen,
   BlogDetailScreen,
   ChatDetailScreen,
   CafePageScreen,
@@ -43,6 +44,10 @@ export function RootNavigator() {
         <>
           <Stack.Screen component={MainTabs} name={routes.main} />
           <Stack.Screen component={AdsManagerScreen} name={routes.adsManager} />
+          <Stack.Screen
+            component={AiAssistantScreen}
+            name={routes.aiAssistant}
+          />
           <Stack.Screen
             component={ConversationScreen}
             name={routes.conversations}

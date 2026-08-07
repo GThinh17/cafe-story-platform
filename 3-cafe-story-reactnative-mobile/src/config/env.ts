@@ -1,4 +1,5 @@
 export const env = {
+  aiBaseUrl: process.env.EXPO_PUBLIC_AI_BASE_URL,
   apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL,
   cloudinaryCloudName: process.env.EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME,
   cloudinaryUploadPreset: process.env.EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET,
@@ -12,6 +13,14 @@ export function getApiBaseUrl() {
   }
 
   return env.apiBaseUrl;
+}
+
+export function getAiBaseUrl() {
+  if (!env.aiBaseUrl) {
+    throw new Error("EXPO_PUBLIC_AI_BASE_URL is not configured");
+  }
+
+  return env.aiBaseUrl;
 }
 
 export function getCloudinaryConfig() {

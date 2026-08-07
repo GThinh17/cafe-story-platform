@@ -3,6 +3,10 @@ function pathId(id: string) {
 }
 
 export const apiEndpoints = {
+  aiChat: {
+    ask: (baseUrl: string) =>
+      `${baseUrl.replace(/\/$/, "")}/api/ai/chat/ask`,
+  },
   adFees: {
     list: "/api/ad-fees",
   },

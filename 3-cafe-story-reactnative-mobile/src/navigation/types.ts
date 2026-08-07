@@ -26,6 +26,7 @@ export type RootStackParamList = {
   [routes.adsManager]: {
     paymentId?: string;
   } | undefined;
+  [routes.aiAssistant]: undefined;
   [routes.auth]: NavigatorScreenParams<AuthStackParamList>;
   [routes.main]: NavigatorScreenParams<MainTabParamList>;
   [routes.createPostModal]: undefined;
