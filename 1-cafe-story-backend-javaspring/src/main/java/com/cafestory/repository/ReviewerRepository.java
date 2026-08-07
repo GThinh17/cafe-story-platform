@@ -19,7 +19,20 @@ public interface ReviewerRepository extends JpaRepository<Reviewer, UUID> {
     @Query("select r from Reviewer r left join fetch r.user")
     List<Reviewer> findAllWithUser();
 
+    /**
+     * Như findAllWithUser nhưng fetch luôn region.
+     *
+     * <p>Bảng xếp hạng reviewer đọc user.region khi chấm điểm vùng, nên thiếu
+     * fetch join này sẽ sinh thêm N query lazy. Cố ý KHÔNG lọc reviewerActive
+     * để giữ đúng tập reviewer mà bảng xếp hạng vẫn dùng.
+     */
+    @Query("select r from Reviewer r left join fetch r.user u left join fetch u.region region")
+    List<Reviewer> findAllWithUserAndRegion();
+
     long countByReviewerActive(Boolean reviewerActive);
+
+    /** Reviewer còn bật cờ active nhưng gói đã quá hạn — job hằng ngày hạ cờ. */
+    List<Reviewer> findByReviewerActiveTrueAndReviewerExpiresAtBefore(LocalDateTime cutoff);
 
     @Query("""
             select r

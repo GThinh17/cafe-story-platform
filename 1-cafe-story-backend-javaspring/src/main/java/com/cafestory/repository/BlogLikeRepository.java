@@ -108,20 +108,38 @@ public interface BlogLikeRepository extends JpaRepository<BlogLike, UUID> {
         Long getEventCount();
     }
 
+    // Chống quét toàn bảng: cũ = findAll() toàn bộ blog_likes rồi lọc bằng Java,
+    // mới = 1 query gom theo tác giả, trả luôn cả tổng và tổng gần đây.
     @Query("""
-            select like.user.userId as userId, count(like) as eventCount
+            select b.author.userId as authorUserId,
+                   count(like) as totalCount,
+                   sum(case when like.createdAt >= :recentStart and like.createdAt < :recentEnd
+                            then 1L else 0L end) as recentCount
             from BlogLike like
-            where like.createdAt >= :startAt
-            and like.createdAt < :endAt
-            group by like.user.userId
+            join like.blog b
+            where b.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
+            and b.author is not null
+            group by b.author.userId
             """)
-    List<UserInteractionCountRow> countByUserAndCreatedAtBetween(
+    List<AuthorEngagementCountRow> countByBlogAuthor(
+            @Param("recentStart") LocalDateTime recentStart,
+            @Param("recentEnd") LocalDateTime recentEnd);
+
+    // Engagement tác giả NHẬN được trong khoảng [startAt, endAt). Dùng cho
+    // income/ranking/payout — chiều ngược với countByUserAndCreatedAtBetween.
+    // Tự like bài mình không tính.
+    @Query("""
+            select b.author.userId as authorUserId, count(like) as eventCount
+            from BlogLike like
+            join like.blog b
+            where b.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
+            and b.author is not null
+            and like.user.userId <> b.author.userId
+            and like.createdAt >= :startAt
+            and like.createdAt < :endAt
+            group by b.author.userId
+            """)
+    List<AuthorInteractionCountRow> countByBlogAuthorBetween(
             @Param("startAt") LocalDateTime startAt,
             @Param("endAt") LocalDateTime endAt);
-
-    interface UserInteractionCountRow {
-        UUID getUserId();
-
-        Long getEventCount();
-    }
 }

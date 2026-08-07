@@ -18,16 +18,11 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useCurrentUser } from "@/hooks/use-current-user";
-import { getAdFees } from "@/lib/api/ad-fees";
-import { getCafePagesByOwnerId } from "@/lib/api/cafes";
 import { ApiError } from "@/lib/api/client";
 import { getExtraFees } from "@/lib/api/extra-fees";
 import { createPayment } from "@/lib/api/payments";
 import { useI18n } from "@/components/providers/locale-provider";
 import type { TranslationKey } from "@/lib/i18n";
-import { cn } from "@/lib/utils";
-import type { AdFeeResponse, AdFeeType } from "@/types/ad-fee";
 import type { ExtraFeeResponse, ExtraFeeType } from "@/types/extra-fee";
 import type { PaymentMethod } from "@/types/payment";
 
@@ -36,43 +31,31 @@ type PricingPlanModalProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-type MembershipPlan = {
-  featureKeys: TranslationKey[];
-  feeType: ExtraFeeType | AdFeeType;
-  kind: "extra" | "ad";
-  ownersOnly?: boolean;
-  highlighted?: boolean;
-  nameKey: TranslationKey;
+/**
+ * Ad packages are bought on /ads, which fetches them itself — this modal only
+ * sells extra fees and deliberately does not load ad fees.
+ *
+ * Cards are driven by whatever getExtraFees() returns: one card per active
+ * package, so a backend that sells three tiers renders three cards without a
+ * frontend change. Copy per fee type lives in `planPresentations`; an unknown
+ * fee type still renders with the API's own name/description.
+ */
+type PlanPresentation = {
   audienceKey: TranslationKey;
   ctaKey: TranslationKey;
-  price: string;
-  billingSuffixKey: TranslationKey;
+  featureKeys: TranslationKey[];
+  nameKey: TranslationKey;
 };
 
-type ModalStep = "plans" | "payment";
+type PlanCard = {
+  fee: ExtraFeeResponse;
+  presentation: PlanPresentation;
+};
 
-const membershipPlans: MembershipPlan[] = [
-  {
-    audienceKey: "pricing.audience.personal",
-    ctaKey: "pricing.cta.choosePlan",
-    feeType: "REVIEWER_REGISTRATION",
-    kind: "extra",
-    featureKeys: [
-      "pricing.reviewer.feature1",
-      "pricing.reviewer.feature2",
-      "pricing.reviewer.feature3",
-      "pricing.reviewer.feature4",
-      "pricing.reviewer.feature5",
-    ],
-    nameKey: "pricing.reviewer.name",
-    price: "199,000 VND",
-    billingSuffixKey: "pricing.billing.perMonth",
-  },
-  {
+const planPresentations: Partial<Record<ExtraFeeType, PlanPresentation>> = {
+  CAFE_PAGE_OPENING: {
     audienceKey: "pricing.audience.business",
     ctaKey: "pricing.cta.choosePlan",
-    feeType: "CAFE_PAGE_OPENING",
-    kind: "extra",
     featureKeys: [
       "pricing.owner.feature1",
       "pricing.owner.feature2",
@@ -81,28 +64,27 @@ const membershipPlans: MembershipPlan[] = [
       "pricing.owner.feature5",
     ],
     nameKey: "pricing.owner.name",
-    price: "499,000 VND",
-    billingSuffixKey: "pricing.billing.perMonth",
   },
-  {
-    audienceKey: "pricing.audience.boost",
-    ctaKey: "pricing.cta.boost",
-    feeType: "FEED_10000_IMPRESSIONS_OR_30_DAYS",
-    kind: "ad",
-    ownersOnly: true,
-    highlighted: true,
+  REVIEWER_REGISTRATION: {
+    audienceKey: "pricing.audience.personal",
+    ctaKey: "pricing.cta.choosePlan",
     featureKeys: [
-      "pricing.ad.feature1",
-      "pricing.ad.feature2",
-      "pricing.ad.feature3",
-      "pricing.ad.feature4",
-      "pricing.ad.feature5",
+      "pricing.reviewer.feature1",
+      "pricing.reviewer.feature2",
+      "pricing.reviewer.feature3",
+      "pricing.reviewer.feature4",
+      "pricing.reviewer.feature5",
     ],
-    nameKey: "pricing.ad.name",
-    price: "299,000 VND",
-    billingSuffixKey: "pricing.billing.perCampaign",
+    nameKey: "pricing.reviewer.name",
   },
-];
+};
+
+const fallbackPresentation: PlanPresentation = {
+  audienceKey: "pricing.audience.general",
+  ctaKey: "pricing.cta.choosePlan",
+  featureKeys: [],
+  nameKey: "pricing.description.membership",
+};
 
 const paymentMethods: {
   descriptionKey: TranslationKey;
@@ -123,6 +105,8 @@ const paymentMethods: {
     method: "VNPAY",
   },
 ];
+
+type ModalStep = "plans" | "payment";
 
 function formatVnd(price: number) {
   return new Intl.NumberFormat("vi-VN", {
@@ -145,29 +129,29 @@ export function PricingPlanModal({
   onOpenChange,
 }: PricingPlanModalProps) {
   const { t } = useI18n();
-  const { user } = useCurrentUser();
   const [step, setStep] = useState<ModalStep>("plans");
   const [extraFees, setExtraFees] = useState<ExtraFeeResponse[]>([]);
-  const [adFees, setAdFees] = useState<AdFeeResponse[]>([]);
-  const [ownsCafePage, setOwnsCafePage] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<MembershipPlan | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<PlanCard | null>(null);
   const [isLoadingFees, setIsLoadingFees] = useState(false);
   const [isCreatingPayment, setIsCreatingPayment] = useState(false);
   const [activeMethod, setActiveMethod] = useState<PaymentMethod | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const activeExtraFees = useMemo(
-    () => extraFees.filter((fee) => fee.status !== false),
+  /** Grouped by fee type, cheapest tier first inside each group. */
+  const visiblePlans = useMemo<PlanCard[]>(
+    () =>
+      extraFees
+        .filter((fee) => fee.status !== false)
+        .slice()
+        .sort(
+          (a, b) =>
+            a.feeType.localeCompare(b.feeType) || a.price - b.price,
+        )
+        .map((fee) => ({
+          fee,
+          presentation: planPresentations[fee.feeType] ?? fallbackPresentation,
+        })),
     [extraFees],
-  );
-  const activeAdFees = useMemo(
-    () => adFees.filter((fee) => fee.status !== false),
-    [adFees],
-  );
-
-  const visiblePlans = useMemo(
-    () => membershipPlans.filter((plan) => !plan.ownersOnly || ownsCafePage),
-    [ownsCafePage],
   );
 
   useEffect(() => {
@@ -186,14 +170,10 @@ export function PricingPlanModal({
       setError(null);
 
       try {
-        const [extra, ad] = await Promise.all([
-          getExtraFees(),
-          getAdFees().catch(() => [] as AdFeeResponse[]),
-        ]);
+        const extra = await getExtraFees();
 
         if (!isMounted) return;
         setExtraFees(extra);
-        setAdFees(ad);
       } catch (loadError) {
         if (isMounted) {
           setError(getErrorMessage(loadError, t("pricing.loadError")));
@@ -205,62 +185,25 @@ export function PricingPlanModal({
       }
     }
 
-    async function loadOwnership() {
-      if (!user?.userId) {
-        if (isMounted) setOwnsCafePage(false);
-        return;
-      }
-      try {
-        const cafes = await getCafePagesByOwnerId(user.userId);
-        if (isMounted) setOwnsCafePage(cafes.length > 0);
-      } catch {
-        if (isMounted) setOwnsCafePage(false);
-      }
-    }
-
     void loadPlans();
-    void loadOwnership();
 
     return () => {
       isMounted = false;
     };
-  }, [isOpen, user?.userId]);
+  }, [isOpen]);
 
-  function getFeeForPlan(plan: MembershipPlan): {
-    id: string;
-    price: number;
-    name: string;
-    description: string | null;
-  } | null {
-    if (plan.kind === "ad") {
-      const fee = activeAdFees.find((f) => f.feeType === plan.feeType);
-      if (!fee) return null;
-      return {
-        id: fee.adFeeId,
-        price: fee.price,
-        name: t(plan.nameKey),
-        description: null,
-      };
+  function getBillingSuffix(fee: ExtraFeeResponse) {
+    if (!fee.durationMonths) {
+      return t("pricing.billing.oneTime");
     }
-    const fee = activeExtraFees.find((f) => f.feeType === plan.feeType);
-    if (!fee) return null;
-    return {
-      id: fee.extraFeeId,
-      price: fee.price,
-      name: fee.name,
-      description: fee.description,
-    };
+
+    return fee.durationMonths === 1
+      ? t("pricing.billing.perMonth")
+      : t("pricing.billing.perMonths", { count: fee.durationMonths });
   }
 
-  function selectPlan(plan: MembershipPlan) {
-    const fee = getFeeForPlan(plan);
-
+  function selectPlan(plan: PlanCard) {
     setError(null);
-    if (!fee) {
-      setError(t("pricing.unavailablePackage"));
-      return;
-    }
-
     setSelectedPlan(plan);
     setStep("payment");
   }
@@ -271,23 +214,15 @@ export function PricingPlanModal({
       return;
     }
 
-    const extraFee = getFeeForPlan(selectedPlan);
-
-    if (!extraFee) {
-      setError(t("pricing.unavailablePackage"));
-      return;
-    }
-
     setActiveMethod(method);
     setIsCreatingPayment(true);
     setError(null);
 
     try {
-      const payment = await createPayment(
-        selectedPlan.kind === "ad"
-          ? { adFeeId: extraFee.id, paymentMethod: method }
-          : { extraFeeId: extraFee.id, paymentMethod: method },
-      );
+      const payment = await createPayment({
+        extraFeeId: selectedPlan.fee.extraFeeId,
+        paymentMethod: method,
+      });
 
       if (!payment.paymentUrl?.trim()) {
         setError(t("pricing.paymentUrlMissing"));
@@ -305,11 +240,11 @@ export function PricingPlanModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[min(95vh,860px)] w-[min(96vw,860px)] max-w-[900px] overflow-y-auto border-border bg-surface px-6 pb-7 pt-6 text-foreground sm:px-8">
+      <DialogContent className="max-h-[min(95vh,860px)] w-[min(96vw,1032px)] max-w-[1080px] overflow-y-auto border-border bg-surface px-6 pb-7 pt-6 text-foreground sm:px-8">
         <DialogClose asChild>
           <Button
             aria-label={t("pricing.close")}
-            className="absolute right-4 top-4"
+            className="absolute right-4 top-4 hover:text-coffee"
             size="icon-sm"
             type="button"
             variant="ghost"
@@ -318,7 +253,7 @@ export function PricingPlanModal({
           </Button>
         </DialogClose>
 
-        <header className="mx-auto flex max-w-[700px] flex-col items-center gap-3 pr-7 text-center">
+        <header className="mx-auto flex max-w-[840px] flex-col items-center gap-3 pr-7 text-center">
           <DialogTitle className="font-heading text-3xl font-bold leading-[1.08] text-foreground sm:text-4xl">
             {t("pricing.title")}
           </DialogTitle>
@@ -335,115 +270,75 @@ export function PricingPlanModal({
         ) : null}
 
         {step === "plans" ? (
-          <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {visiblePlans.map((plan) => {
-              const fee = getFeeForPlan(plan);
-              const displayPrice = fee ? formatVnd(fee.price) : plan.price;
-              const isUnavailable = isLoadingFees || !fee;
-
-              return (
-                <Card
-                  className={cn(
-                    "flex min-h-[500px] flex-col shadow-sm",
-                    plan.highlighted
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "bg-surface",
-                  )}
-                  key={plan.nameKey}
-                >
-                  <CardHeader>
-                    <span
-                      className={cn(
-                        "w-fit rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em]",
-                        plan.highlighted
-                          ? "bg-primary-foreground/15 text-primary-foreground"
-                          : "bg-muted/15 text-muted",
-                      )}
-                    >
-                      {t(plan.audienceKey)}
+          <div className="mt-6 flex flex-wrap justify-center gap-5">
+            {visiblePlans.map(({ fee, presentation }) => (
+              <Card
+                className="flex min-h-[500px] min-w-0 grow basis-[290px] flex-col bg-surface shadow-sm sm:max-w-[400px]"
+                key={fee.extraFeeId}
+              >
+                <CardHeader>
+                  <span className="w-fit rounded-full bg-coffee/12 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-coffee">
+                    {t(presentation.audienceKey)}
+                  </span>
+                  <CardTitle className="mt-2 font-serif text-2xl leading-tight">
+                    {fee.name || t(presentation.nameKey)}
+                  </CardTitle>
+                  <CardDescription>
+                    {fee.description || t("pricing.description.membership")}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-1 flex-col">
+                  <p className="flex items-end gap-1">
+                    <span className="font-serif text-3xl font-bold leading-none">
+                      {formatVnd(fee.price)}
                     </span>
-                    <CardTitle className="mt-2 font-serif text-2xl leading-tight">
-                      {fee?.name || t(plan.nameKey)}
-                    </CardTitle>
-                    <CardDescription
-                      className={cn(
-                        plan.highlighted
-                          ? "text-primary-foreground/75"
-                          : "text-muted",
-                      )}
-                    >
-                      {fee?.description ||
-                        t(
-                          plan.kind === "ad"
-                            ? "pricing.description.ad"
-                            : "pricing.description.membership",
-                        )}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex flex-1 flex-col">
-                    <p className="flex items-end gap-1">
-                      <span className="font-serif text-3xl font-bold leading-none">
-                        {displayPrice}
-                      </span>
-                      <span
-                        className={cn(
-                          "text-sm",
-                          plan.highlighted
-                            ? "text-primary-foreground/72"
-                            : "text-muted",
-                        )}
-                      >
-                        {t(plan.billingSuffixKey)}
-                      </span>
-                    </p>
+                    <span className="text-sm text-muted">
+                      {getBillingSuffix(fee)}
+                    </span>
+                  </p>
 
-                    <ul className="mt-8 flex flex-1 flex-col gap-3.5">
-                      {plan.featureKeys.map((featureKey) => (
-                        <li
-                          className="grid grid-cols-[18px_1fr] gap-3 text-sm leading-5"
-                          key={featureKey}
-                        >
-                          <CheckCircle2
-                            aria-hidden="true"
-                            className={cn(
-                              "mt-0.5",
-                              plan.highlighted
-                                ? "text-primary-foreground"
-                                : "text-primary",
-                            )}
-                          />
-                          <span
-                            className={cn(
-                              plan.highlighted
-                                ? "text-primary-foreground/88"
-                                : "text-muted",
-                            )}
-                          >
-                            {t(featureKey)}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                  <CardFooter>
-                    <Button
-                      className="h-12 w-full font-black"
-                      disabled={isUnavailable}
-                      onClick={() => selectPlan(plan)}
-                      type="button"
-                      variant={plan.highlighted ? "secondary" : "default"}
-                    >
-                      {isLoadingFees ? t("common.loading") : t(plan.ctaKey)}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              );
-            })}
+                  <ul className="mt-8 flex flex-1 flex-col gap-3.5">
+                    {presentation.featureKeys.map((featureKey) => (
+                      <li
+                        className="grid grid-cols-[18px_1fr] gap-3 text-sm leading-5"
+                        key={featureKey}
+                      >
+                        <CheckCircle2
+                          aria-hidden="true"
+                          className="mt-0.5 text-coffee"
+                        />
+                        <span className="text-muted">{t(featureKey)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+                <CardFooter>
+                  <Button
+                    className="h-12 w-full bg-coffee font-black text-coffee-foreground hover:bg-coffee-strong focus-visible:border-coffee focus-visible:ring-coffee/30"
+                    disabled={isLoadingFees}
+                    onClick={() => selectPlan({ fee, presentation })}
+                    type="button"
+                  >
+                    {t(presentation.ctaKey)}
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+
+            {!isLoadingFees && visiblePlans.length === 0 ? (
+              <p className="py-10 text-sm text-muted">
+                {t("pricing.emptyPlans")}
+              </p>
+            ) : null}
+
+            {isLoadingFees && visiblePlans.length === 0 ? (
+              <p className="py-10 text-sm text-muted">{t("common.loading")}</p>
+            ) : null}
           </div>
         ) : (
           <div className="mt-6 flex flex-col gap-4">
             <Button
-              className="w-fit"
+              className="w-fit hover:text-coffee"
               disabled={isCreatingPayment}
               onClick={() => {
                 setStep("plans");
@@ -463,8 +358,8 @@ export function PricingPlanModal({
                   {selectedPlan
                     ? t("pricing.method.package", {
                         name:
-                          getFeeForPlan(selectedPlan)?.name ||
-                          t(selectedPlan.nameKey),
+                          selectedPlan.fee.name ||
+                          t(selectedPlan.presentation.nameKey),
                       })
                     : t("pricing.method.selectHint")}
                 </CardDescription>
@@ -476,7 +371,7 @@ export function PricingPlanModal({
 
                   return (
                     <Button
-                      className="h-auto min-h-28 justify-start p-4 text-left"
+                      className="h-auto min-h-28 justify-start p-4 text-left hover:border-coffee hover:text-coffee"
                       disabled={isCreatingPayment}
                       key={paymentMethod.method}
                       onClick={() => payWith(paymentMethod.method)}
@@ -504,6 +399,7 @@ export function PricingPlanModal({
               </CardContent>
               <CardFooter>
                 <Button
+                  className="hover:text-coffee"
                   disabled={isCreatingPayment}
                   onClick={() => onOpenChange(false)}
                   type="button"

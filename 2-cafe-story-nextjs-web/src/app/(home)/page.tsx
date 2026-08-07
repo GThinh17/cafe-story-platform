@@ -18,6 +18,8 @@ import { imageWidths, optimizeImageUrl } from "@/lib/image-optimizer";
 import { getServerTranslator } from "@/lib/i18n/server";
 import { ACCESS_TOKEN_COOKIE } from "@/lib/routes";
 import type { Translate } from "@/lib/i18n";
+import type { AuthUser } from "@/types/auth";
+import type { CafePageRankingResponse } from "@/types/cafe";
 import type { FeedRenderableItem, StoryItem, TopCafe } from "@/types/feed";
 import type { FollowTargetResponse } from "@/types/user";
 import type { MessageContact, MessageDockData } from "@/types/message";
@@ -37,24 +39,56 @@ const getMeCached = cache((cookieHeader: string) =>
   getMe({ headers: { Cookie: cookieHeader } }).catch(() => null),
 );
 
+/**
+ * Narrowest region the viewer belongs to first, widening only when a level has
+ * no cafe pages. Mirrors the cascade in `explore-content.tsx` so "near you"
+ * means the same thing on both screens. Without this the endpoint ranks
+ * nationally and a Da Nang page can surface for a Can Tho viewer.
+ */
+function buildRegionCascade(user: AuthUser | null) {
+  const params: Array<{ area?: string; city?: string; province?: string }> = [];
+  if (user?.regionArea) params.push({ area: user.regionArea });
+  if (user?.regionCity) params.push({ city: user.regionCity });
+  if (user?.regionProvince) params.push({ province: user.regionProvince });
+  return params;
+}
+
 async function loadTopCafes(
   t: Translate,
   cookieHeader: string,
+  user: AuthUser | null,
 ): Promise<TopCafe[]> {
+  const toTopCafe = (cafe: CafePageRankingResponse): TopCafe => ({
+    id: cafe.id,
+    name: cafe.name,
+    avatarUrl: optimizeImageUrl(cafe.avatarUrl, {
+      width: imageWidths.cafeAvatar,
+    }),
+    rating:
+      typeof cafe.rankingScore === "number"
+        ? cafe.rankingScore.toFixed(1)
+        : t("home.newRating"),
+    type: cafe.regionCity ?? t("home.cafePageLabel"),
+  });
+
+  for (const regionParam of buildRegionCascade(user)) {
+    try {
+      const cafes = await getTopCafePages(
+        { ...regionParam, size: 5 },
+        { headers: { Cookie: cookieHeader } },
+      );
+      if (cafes.length > 0) return cafes.map(toTopCafe);
+    } catch {
+      /* try the next, wider region */
+    }
+  }
+
   try {
     const cafes = await getTopCafePages(
       { size: 5 },
       { headers: { Cookie: cookieHeader } },
     );
-    return cafes.map((cafe) => ({
-      id: cafe.id,
-      name: cafe.name,
-      rating:
-        typeof cafe.rankingScore === "number"
-          ? cafe.rankingScore.toFixed(1)
-          : t("home.newRating"),
-      type: cafe.regionCity ?? t("home.cafePageLabel"),
-    }));
+    return cafes.map(toTopCafe);
   } catch {
     return [];
   }
@@ -275,9 +309,16 @@ async function FeedSection({
   );
 }
 
-async function TopCafesSection({ cookieHeader }: { cookieHeader: string }) {
+async function TopCafesSection({
+  cookieHeader,
+  hasSession,
+}: {
+  cookieHeader: string;
+  hasSession: boolean;
+}) {
   const t = await getServerTranslator();
-  const topCafes = await loadTopCafes(t, cookieHeader);
+  const me = hasSession ? await getMeCached(cookieHeader) : null;
+  const topCafes = await loadTopCafes(t, cookieHeader, me?.user ?? null);
 
   if (topCafes.length === 0) {
     return null;
@@ -328,7 +369,10 @@ export default async function Home() {
             <HomeAccountPanel />
 
             <Suspense fallback={null}>
-              <TopCafesSection cookieHeader={cookieHeader} />
+              <TopCafesSection
+                cookieHeader={cookieHeader}
+                hasSession={hasSession}
+              />
             </Suspense>
 
             <p className="text-xs leading-5 text-muted">

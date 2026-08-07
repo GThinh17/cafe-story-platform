@@ -6,6 +6,7 @@ import com.cafestory.entity.ReviewerBadgeHistory;
 import com.cafestory.entity.ReviewerFormula;
 import com.cafestory.entity.ReviewerRankingSnapshot;
 import com.cafestory.entity.enums.RankingPeriodType;
+import com.cafestory.repository.AuthorInteractionCountRow;
 import com.cafestory.repository.BlogLikeRepository;
 import com.cafestory.repository.BlogShareRepository;
 import com.cafestory.repository.CommentRepository;
@@ -87,23 +88,25 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
             counts.put(reviewer.getReviewerId(), new long[]{0, 0, 0});
         }
 
-        for (BlogLikeRepository.UserInteractionCountRow row
-                : blogLikeRepository.countByUserAndCreatedAtBetween(range.startDate(), range.endDate())) {
-            Reviewer reviewer = reviewersByUserId.get(row.getUserId());
+        // Score/ranking/badge đo engagement blog của reviewer NHẬN được, không
+        // phải engagement reviewer đi thả cho người khác.
+        for (AuthorInteractionCountRow row
+                : blogLikeRepository.countByBlogAuthorBetween(range.startDate(), range.endDate())) {
+            Reviewer reviewer = reviewersByUserId.get(row.getAuthorUserId());
             if (reviewer != null) {
                 counts.get(reviewer.getReviewerId())[0] = row.getEventCount();
             }
         }
-        for (BlogShareRepository.UserShareCountRow row
-                : blogShareRepository.countByUserAndCreatedAtBetween(range.startDate(), range.endDate())) {
-            Reviewer reviewer = reviewersByUserId.get(row.getUserId());
+        for (AuthorInteractionCountRow row
+                : blogShareRepository.countByBlogAuthorBetween(range.startDate(), range.endDate())) {
+            Reviewer reviewer = reviewersByUserId.get(row.getAuthorUserId());
             if (reviewer != null) {
                 counts.get(reviewer.getReviewerId())[1] = row.getEventCount();
             }
         }
-        for (CommentRepository.UserCommentCountRow row
-                : commentRepository.countByUserAndCreatedAtBetween(range.startDate(), range.endDate())) {
-            Reviewer reviewer = reviewersByUserId.get(row.getUserId());
+        for (AuthorInteractionCountRow row
+                : commentRepository.countByBlogAuthorBetween(range.startDate(), range.endDate())) {
+            Reviewer reviewer = reviewersByUserId.get(row.getAuthorUserId());
             if (reviewer != null) {
                 counts.get(reviewer.getReviewerId())[2] = row.getEventCount();
             }
@@ -233,7 +236,10 @@ public class ReviewerRankingSnapshotServiceImpl implements ReviewerRankingSnapsh
     private String resolvePeriod(LocalDate date, RankingPeriodType periodType) {
         return switch (periodType) {
             case DAILY -> date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-            case WEEKLY -> date.getYear() + "-W" + String.format("%02d", date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR));
+            // WEEK_BASED_YEAR, không phải getYear(): tuần ISO bắc qua giao thừa
+            // thuộc về năm của tuần, nên 2027-01-01 phải ra 2026-W53.
+            case WEEKLY -> date.get(IsoFields.WEEK_BASED_YEAR)
+                    + "-W" + String.format("%02d", date.get(IsoFields.WEEK_OF_WEEK_BASED_YEAR));
             case MONTHLY -> YearMonth.from(date).toString();
         };
     }

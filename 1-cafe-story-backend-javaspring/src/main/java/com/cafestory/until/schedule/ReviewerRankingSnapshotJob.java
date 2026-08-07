@@ -30,9 +30,14 @@ public class ReviewerRankingSnapshotJob {
         snapshotService.generateSnapshot(RankingPeriodType.MONTHLY, LocalDate.now().minusDays(1));
     }
 
-    // Weekly on Monday at 3:00 AM — snapshot for previous week (full week data)
-    @Scheduled(cron = "0 0 3 * * MON")
+    // Weekly on Monday at 2:30 AM — snapshot for previous week (full week data).
+    //
+    // Reference date must be yesterday (Sunday), same as the daily/monthly jobs:
+    // resolveDateRange(WEEKLY) does date.with(MONDAY), so passing today (Monday)
+    // would snapshot the week that started two hours ago instead of the one that
+    // just closed. 2:30 also keeps this clear of the 3:00 daily income job.
+    @Scheduled(cron = "0 30 2 * * MON")
     public void generateWeeklySnapshot() {
-        snapshotService.generateSnapshot(RankingPeriodType.WEEKLY);
+        snapshotService.generateSnapshot(RankingPeriodType.WEEKLY, LocalDate.now().minusDays(1));
     }
 }

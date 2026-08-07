@@ -26,7 +26,7 @@ export function ReviewerPayoutPanel({ payouts }: ReviewerPayoutPanelProps) {
             {t("reviewer.earnings.title")}
           </p>
           <h2 className="mt-1 text-2xl font-black text-espresso">
-            {formatVnd(current.totalAmount)}
+            {formatVnd(current.totalFinalAmount)}
           </h2>
         </div>
         <span className="grid size-12 place-items-center rounded-md bg-primary/10 text-primary">
@@ -85,10 +85,10 @@ export function ReviewerPayoutPanel({ payouts }: ReviewerPayoutPanelProps) {
                   })}
                 </td>
                 <td className="py-3 pr-3 font-black text-primary">
-                  {formatVnd(payout.totalAmount)}
+                  {formatVnd(payout.totalFinalAmount)}
                 </td>
                 <td className="py-3">
-                  <Badge variant="outline">{payout.payoutStatus}</Badge>
+                  <Badge variant="outline">{payout.status}</Badge>
                 </td>
               </tr>
             ))}

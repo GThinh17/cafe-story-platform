@@ -3,7 +3,10 @@ package com.cafestory.service.serviceInterface;
 import com.cafestory.dto.responseDTO.ReviewerBadgeResponseDTO;
 import com.cafestory.dto.responseDTO.ReviewerDiscoveryResponseDTO;
 import com.cafestory.dto.responseDTO.ReviewerGeoAnalyticsResponseDTO;
-import com.cafestory.dto.responseDTO.ReviewerPayoutResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerEarningsResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerIncomeResponseDTO;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import com.cafestory.dto.responseDTO.ReviewerRankingResponseDTO;
 import com.cafestory.dto.responseDTO.ReviewerResponseDTO;
 import com.cafestory.dto.responseDTO.ReviewerSegmentResponseDTO;
@@ -53,11 +56,17 @@ public interface ReviewerService {
 
     String calculateReviewerSegment(long score);
 
-    List<ReviewerPayoutResponseDTO> generateMonthlyPayouts(UUID requesterId, String month, boolean overwrite);
-
     List<ReviewerBadgeResponseDTO> generateMonthlyBadges(UUID requesterId, String month, boolean overwrite);
 
-    List<ReviewerPayoutResponseDTO> getReviewerPayoutHistory(UUID requesterId, UUID reviewerId);
+    /**
+     * Lịch sử thu nhập theo tháng của reviewer, đọc từ admin_payout — nguồn duy
+     * nhất do job hằng tháng sinh ra. Chỉ chính chủ hoặc admin xem được.
+     */
+    List<ReviewerEarningsResponseDTO> getReviewerEarnings(UUID requesterId, UUID reviewerId);
+
+    /** Thu nhập chi tiết theo ngày trong một tháng. Chỉ chính chủ hoặc admin. */
+    Page<ReviewerIncomeResponseDTO> getReviewerIncome(
+            UUID requesterId, UUID reviewerId, String month, Pageable pageable);
 
     List<ReviewerBadgeResponseDTO> getReviewerBadgeHistory(UUID requesterId, UUID reviewerId);
 

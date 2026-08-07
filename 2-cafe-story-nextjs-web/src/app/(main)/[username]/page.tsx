@@ -1,7 +1,6 @@
-import { CafeSuggestionList } from "@/components/cafe/cafe-suggestion-list";
 import { PageShell } from "@/components/layout/page-shell";
 import { ProfilePageContent } from "@/components/profile/profile-page-content";
-import { mockCafeSummaries } from "@/mocks/cafes";
+
 export default async function UserProfilePage({
   params,
 }: {
@@ -9,7 +8,7 @@ export default async function UserProfilePage({
 }) {
   const { username } = await params;
   return (
-    <PageShell aside={<CafeSuggestionList cafes={mockCafeSummaries} />}>
+    <PageShell>
       <ProfilePageContent username={username} />
     </PageShell>
   );

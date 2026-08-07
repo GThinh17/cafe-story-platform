@@ -51,6 +51,7 @@ export const apiEndpoints = {
     byId: (cafePageId: string) => `/api/cafe-pages/${pathId(cafePageId)}`,
     blogs: (cafePageId: string) => `/api/cafe-pages/${pathId(cafePageId)}/blogs`,
     likes: (cafePageId: string) => `/api/cafe-pages/${pathId(cafePageId)}/likes`,
+    rating: (cafePageId: string) => `/api/cafe-pages/${pathId(cafePageId)}/rating`,
     likesByUser: (userId: string) => `/api/cafe-pages/likes/users/${pathId(userId)}`,
     follows: (cafePageId: string) => `/api/cafe-pages/${pathId(cafePageId)}/follows`,
     followsByUser: (userId: string) => `/api/cafe-pages/follows/users/${pathId(userId)}`,
@@ -89,6 +90,7 @@ export const apiEndpoints = {
     top: "/api/reviewers/top",
     connect: {
       onboard: "/api/reviewers/connect/onboard",
+      refresh: "/api/reviewers/connect/refresh",
       status: "/api/reviewers/connect/status",
       sync: "/api/reviewers/connect/sync",
     },

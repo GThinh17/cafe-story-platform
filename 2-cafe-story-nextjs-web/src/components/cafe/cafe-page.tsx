@@ -2,7 +2,7 @@
 
 import { InfoIcon, Settings, StarIcon } from "lucide-react";
 import { useState } from "react";
-import type { CafeMenu, CafeSummary } from "@/types/cafe";
+import type { CafeSummary } from "@/types/cafe";
 import { useI18n } from "@/components/providers/locale-provider";
 import { CafeActionButtons } from "@/components/cafe/cafe-action-buttons";
 import { CafeMapModal } from "@/components/cafe/cafe-map-modal";
@@ -19,12 +19,17 @@ import type { FeedPost } from "@/types/feed";
 type CafePageProps = {
   cafe: CafeSummary;
   cafePosts: FeedPost[];
-  menu: CafeMenu;
   hasMorePosts?: boolean;
   isPostsLoading?: boolean;
   onCafeLikeStateChange?: (nextState: {
     isLiked: boolean;
     likeCount: number;
+  }) => void;
+  onCafeRatingChange?: (next: {
+    isRating: boolean;
+    myRating: number;
+    ratingCount: number | null;
+    ratingScore: number | null;
   }) => void;
   onLoadMorePosts?: () => void;
   postsErrorMessage?: string | null;
@@ -43,8 +48,8 @@ export function CafePage({
   cafePosts,
   hasMorePosts = false,
   isPostsLoading = false,
-  menu,
   onCafeLikeStateChange,
+  onCafeRatingChange,
   onLoadMorePosts,
   postsErrorMessage,
 }: CafePageProps) {
@@ -128,12 +133,14 @@ export function CafePage({
 
           <CafeActionButtons
             cafeId={cafe.id}
-            cafeName={cafe.name}
             isLiked={cafe.isLiked}
             isFollowing={cafe.isFollowing ?? false}
             likeCount={cafe.likeCount}
-            menu={menu}
+            myRating={cafe.myRating}
             onLikeStateChange={onCafeLikeStateChange}
+            onRatingChange={onCafeRatingChange}
+            ratingCount={cafe.ratingCount}
+            ratingScore={cafe.ratingScore}
           />
         </div>
         <Separator className="mt-10" />

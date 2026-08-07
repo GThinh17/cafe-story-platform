@@ -18,6 +18,12 @@
   --espresso: #271310;
   --coffee-muted: #504442;
   --line-soft: #d3c3c0;
+  /* Coffee-brown action role, scoped to the pricing plan modal. Unlike
+     --espresso / --coffee-muted (text tokens that invert in dark mode) these
+     stay a usable surface+contrast pair on both themes. */
+  --coffee: #504442;
+  --coffee-strong: #271310;
+  --coffee-foreground: #ffffff;
   --font-cafe-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
     "Segoe UI", Arial, Helvetica, sans-serif;
 
@@ -70,6 +76,9 @@
   --color-rating: var(--rating);
   --color-espresso: var(--espresso);
   --color-coffee-muted: var(--coffee-muted);
+  --color-coffee: var(--coffee);
+  --color-coffee-strong: var(--coffee-strong);
+  --color-coffee-foreground: var(--coffee-foreground);
   --color-line-soft: var(--line-soft);
   --font-sans: var(--font-cafe-sans);
   --font-heading: var(--font-cafe-sans);
@@ -154,6 +163,9 @@ img {
   --espresso: #f4eee7;
   --coffee-muted: #d1c3b9;
   --line-soft: #5c4c44;
+  --coffee: #c8a98a;
+  --coffee-strong: #e0c8ad;
+  --coffee-foreground: #271310;
 
   --card: var(--surface);
   --card-foreground: var(--foreground);

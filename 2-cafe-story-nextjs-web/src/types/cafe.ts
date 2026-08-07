@@ -7,8 +7,14 @@ export type CafeSummary = {
   location: string;
   address: string;
   type: string;
+  /** Pre-formatted average for display (one decimal, or the "New" label). */
   rating: string;
   reviewCount: string;
+  /** Raw rating data, kept numeric so the rating control can update in place. */
+  ratingScore?: number | null;
+  ratingCount?: number | null;
+  myRating?: number | null;
+  isRating?: boolean | null;
   distance: string;
   priceLevel: string;
   hours: string;
@@ -180,23 +186,14 @@ export type CafeCategory = {
   icon: "sparkle" | "laptop" | "coffee" | "gem" | "leaf";
 };
 
-export type CafeMenu = {
-  signature: CafeMenuItem[];
-  seasonal: CafeMenuItem[];
-  classics: CafeMenuItem[];
-  pastries: CafeMenuItem[];
-};
-
-export type CafeMenuItem = {
+/** Response of PUT /api/cafe-pages/{id}/rating — carries the recomputed aggregate. */
+export type CafePageRatingResponse = {
   id: string;
-  name: string;
-  description: string;
-  price: number;
-  image?: string;
-  images?: {
-    src: string;
-    alt: string;
-    label?: string;
-  }[];
-  badge?: string;
+  userId: string;
+  cafePageId: string;
+  rating: number;
+  ratingAverage: number | null;
+  ratingCount: number | null;
+  createdAt: string | null;
+  updatedAt: string | null;
 };

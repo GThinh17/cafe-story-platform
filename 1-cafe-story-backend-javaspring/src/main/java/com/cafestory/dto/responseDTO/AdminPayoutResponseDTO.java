@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -27,6 +28,11 @@ public class AdminPayoutResponseDTO {
     private String note;
     private UUID formulaId;
     private String stripeTransferId;
+    /**
+     * Các trạng thái hợp lệ tiếp theo, suy từ chính luật của server. Trả ra để
+     * admin UI khỏi chép lại luồng trạng thái và trôi lệch theo thời gian.
+     */
+    private List<AdminPayoutStatus> allowedTransitions;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

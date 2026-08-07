@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface AdminPayoutRepository extends JpaRepository<AdminPayout, UUID> {
@@ -29,4 +30,8 @@ public interface AdminPayoutRepository extends JpaRepository<AdminPayout, UUID> 
 
     @EntityGraph(attributePaths = {"reviewer", "reviewer.user", "approvedBy", "formula"})
     Page<AdminPayout> findAll(Pageable pageable);
+
+    /** Dùng bởi webhook transfer.failed để tìm lại payout theo transfer của Stripe. */
+    @EntityGraph(attributePaths = {"reviewer"})
+    Optional<AdminPayout> findByStripeTransferId(String stripeTransferId);
 }

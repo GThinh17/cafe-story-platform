@@ -3,7 +3,12 @@ package com.cafestory.controller;
 import com.cafestory.dto.responseDTO.ReviewerBadgeResponseDTO;
 import com.cafestory.dto.responseDTO.ReviewerDiscoveryResponseDTO;
 import com.cafestory.dto.responseDTO.ReviewerGeoAnalyticsResponseDTO;
-import com.cafestory.dto.responseDTO.ReviewerPayoutResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerEarningsResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerIncomeResponseDTO;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import com.cafestory.dto.responseDTO.ReviewerRankingResponseDTO;
 import com.cafestory.dto.responseDTO.ReviewerResponseDTO;
 import com.cafestory.dto.responseDTO.ReviewerSegmentResponseDTO;
@@ -131,19 +136,26 @@ public class ReviewerController {
         return reviewerService.getGeoAnalytics(period, groupBy);
     }
 
+    /**
+     * Lịch sử thu nhập theo tháng của chính reviewer. Đọc từ admin_payout —
+     * nguồn do job hằng tháng sinh ra, không phải bảng payout thủ công cũ.
+     */
     @GetMapping("/{reviewerId}/payouts")
-    public List<ReviewerPayoutResponseDTO> getReviewerPayouts(
+    public List<ReviewerEarningsResponseDTO> getReviewerEarnings(
             @PathVariable UUID reviewerId,
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
-        return reviewerService.getReviewerPayoutHistory(requireUserId(principal), reviewerId);
+        return reviewerService.getReviewerEarnings(requireUserId(principal), reviewerId);
     }
 
-    @PostMapping("/payouts/generate")
-    public List<ReviewerPayoutResponseDTO> generateMonthlyPayouts(
-            @RequestParam String month,
-            @RequestParam(defaultValue = "false") boolean overwrite,
+    @GetMapping("/{reviewerId}/income")
+    public Page<ReviewerIncomeResponseDTO> getReviewerIncome(
+            @PathVariable UUID reviewerId,
+            @RequestParam(required = false) String month,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "31") int size,
             @AuthenticationPrincipal AuthenticatedUserPrincipal principal) {
-        return reviewerService.generateMonthlyPayouts(requireUserId(principal), month, overwrite);
+        Pageable pageable = PageRequest.of(page, size, Sort.by("incomeDate").descending());
+        return reviewerService.getReviewerIncome(requireUserId(principal), reviewerId, month, pageable);
     }
 
     @PostMapping("/badges/generate")

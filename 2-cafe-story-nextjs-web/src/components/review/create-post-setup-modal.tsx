@@ -19,7 +19,10 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { CreatePostImageCropper } from "@/components/review/create-post-image-cropper";
-import { getCroppedImageFile } from "@/lib/image/crop-image";
+import {
+  getCenteredCropArea,
+  getCroppedImageFile,
+} from "@/lib/image/crop-image";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/providers/locale-provider";
 
@@ -183,10 +186,12 @@ export function CreatePostSetupModal({
     try {
       const cropped: CroppedImage[] = await Promise.all(
         images.map(async (img) => {
-          if (!img.cropAreaPixels) {
-            return { id: img.id, file: img.file, name: img.name };
-          }
-          const file = await getCroppedImageFile(img.file, img.cropAreaPixels);
+          // Images the user never opened in the cropper have no crop area yet;
+          // fall back to a centre crop so every upload honours the chosen ratio.
+          const cropArea =
+            img.cropAreaPixels ??
+            (await getCenteredCropArea(img.file, ratioValue));
+          const file = await getCroppedImageFile(img.file, cropArea);
           return { id: img.id, file, name: img.name };
         }),
       );

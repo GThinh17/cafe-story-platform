@@ -11,6 +11,7 @@ import type {
   CafePageFollowResponse,
   CafePageLikeResponse,
   CafePageRankingResponse,
+  CafePageRatingResponse,
   CafePageResponse,
   CafeTopParams,
   CafePageUpdateRequest,
@@ -211,6 +212,38 @@ export async function unlikeCafePage(
   options: ApiRequestOptions = {},
 ) {
   await apiFetch<void>(apiEndpoints.cafes.likes(cafePageId), {
+    headers: options.headers,
+    method: "DELETE",
+  });
+  invalidateApiCache(`cafes:detail:${cafePageId}`);
+}
+
+/**
+ * Upsert the viewer's 1-5 rating. The backend returns the recomputed average and
+ * count, so callers can refresh the display without refetching the cafe page.
+ */
+export async function rateCafePage(
+  cafePageId: string,
+  rating: number,
+  options: ApiRequestOptions = {},
+) {
+  const response = await apiFetch<CafePageRatingResponse>(
+    apiEndpoints.cafes.rating(cafePageId),
+    {
+      headers: options.headers,
+      method: "PUT",
+      body: { rating },
+    },
+  );
+  invalidateApiCache(`cafes:detail:${cafePageId}`);
+  return response;
+}
+
+export async function deleteCafePageRating(
+  cafePageId: string,
+  options: ApiRequestOptions = {},
+) {
+  await apiFetch<void>(apiEndpoints.cafes.rating(cafePageId), {
     headers: options.headers,
     method: "DELETE",
   });

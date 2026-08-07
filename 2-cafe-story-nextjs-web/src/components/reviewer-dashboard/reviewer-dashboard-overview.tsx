@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ExternalLink, Loader2, Wifi } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -26,12 +27,13 @@ import type {
 } from "@/features/reviewer-dashboard/reviewer-dashboard.types";
 import { reviewerPeriodName } from "@/features/reviewer-dashboard/reviewer-dashboard.types";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { ApiError } from "@/lib/api/client";
 import {
   createOnboardingLink,
   getConnectStatus,
   getReviewerBadges,
   getReviewerByUserId,
-  getReviewerPayouts,
+  getReviewerEarnings,
   getReviewerRanking,
   getReviewerStats,
 } from "@/lib/api/reviewers";
@@ -187,10 +189,10 @@ function deriveActivities(
       id: `payout-${latestPayout.id}`,
       title: t("reviewer.activity.payoutTitle", {
         month: latestPayout.payoutMonth,
-        status: latestPayout.payoutStatus.toLowerCase(),
+        status: latestPayout.status.toLowerCase(),
       }),
       description: t("reviewer.activity.payoutDescription", {
-        amount: new Intl.NumberFormat("vi-VN").format(latestPayout.totalAmount),
+        amount: new Intl.NumberFormat("vi-VN").format(latestPayout.totalFinalAmount),
       }),
       time: latestPayout.payoutMonth,
       type: "payout",
@@ -234,14 +236,19 @@ export function ReviewerDashboardOverview() {
   const [stats, setStats] = useState<ReviewerStatsResponse | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [onboarding, setOnboarding] = useState(false);
+  // 404 nghĩa là user chưa mua gói reviewer — trạng thái hợp lệ, giữ im lặng.
+  // Mọi lỗi khác phải hiện ra: trước đây catch rỗng khiến 403/500 trông y hệt
+  // "chưa có dữ liệu".
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadDashboardData = useCallback(async (userId: string) => {
+    setLoadError(null);
     try {
       const reviewerData = await getReviewerByUserId(userId);
       setReviewer(reviewerData);
 
       const [payoutData, connectData, rankingData, badgesData] = await Promise.allSettled([
-        getReviewerPayouts(reviewerData.reviewerId),
+        getReviewerEarnings(reviewerData.reviewerId),
         getConnectStatus(),
         getReviewerRanking("month"),
         getReviewerBadges(reviewerData.reviewerId),
@@ -251,8 +258,12 @@ export function ReviewerDashboardOverview() {
       if (connectData.status === "fulfilled") setConnectStatus(connectData.value);
       if (rankingData.status === "fulfilled") setRanking(rankingData.value ?? []);
       if (badgesData.status === "fulfilled") setBadges(badgesData.value ?? []);
-    } catch {
-      // reviewer not found or API error — clear all loading states
+    } catch (error) {
+      if (!(error instanceof ApiError && error.statusCode === 404)) {
+        setLoadError(
+          error instanceof Error ? error.message : t("reviewer.earnings.loadError"),
+        );
+      }
       setStatsLoading(false);
     } finally {
       setPayoutsLoading(false);
@@ -260,7 +271,7 @@ export function ReviewerDashboardOverview() {
       setRankingLoading(false);
       setBadgesLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (user?.userId) {
@@ -317,6 +328,22 @@ export function ReviewerDashboardOverview() {
 
   return (
     <div className="flex flex-col gap-6">
+      {loadError ? (
+        <Alert variant="destructive">
+          <AlertTitle>{t("reviewer.earnings.loadError")}</AlertTitle>
+          <AlertDescription className="flex flex-col items-start gap-3">
+            <span>{loadError}</span>
+            <Button
+              onClick={() => user?.userId && void loadDashboardData(user.userId)}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              {t("common.retry")}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      ) : null}
       <section className="flex flex-wrap items-center justify-end gap-2">
         {!connectLoading && (
           <>

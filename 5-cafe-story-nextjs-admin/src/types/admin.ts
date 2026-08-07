@@ -452,6 +452,9 @@ export type AdminPayout = {
   paidAt: string | null;
   note: string | null;
   formulaId: UUID;
+  stripeTransferId: string | null;
+  /** Các trạng thái server cho phép chuyển tiếp từ `status` hiện tại. */
+  allowedTransitions: AdminPayoutStatus[];
   createdAt: string;
   updatedAt: string;
 };

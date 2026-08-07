@@ -60,7 +60,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/admin/assistant/tools/**").permitAll()
                         .requestMatchers("/api/internal/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/reviewers/payouts/**", "/api/reviewers/badges/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/reviewers/badges/**").hasRole("ADMIN")
                         .requestMatchers("/api/reviewers/connect/**").hasRole("REVIEWER")
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

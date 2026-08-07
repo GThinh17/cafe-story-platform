@@ -15,6 +15,40 @@ function loadImageFromUrl(url: string): Promise<HTMLImageElement> {
   });
 }
 
+/**
+ * Centre crop filling the given aspect ratio, in natural source pixels.
+ *
+ * react-easy-crop only reports a crop area for the image currently mounted in
+ * the cropper, so images the user never opened would otherwise upload at their
+ * original aspect ratio. This gives those images the same ratio as the rest.
+ */
+export async function getCenteredCropArea(
+  sourceFile: File,
+  aspect: number,
+): Promise<CropArea> {
+  const objectUrl = URL.createObjectURL(sourceFile);
+
+  try {
+    const image = await loadImageFromUrl(objectUrl);
+    const naturalWidth = image.naturalWidth || image.width;
+    const naturalHeight = image.naturalHeight || image.height;
+    const sourceAspect = naturalWidth / naturalHeight;
+
+    // Wider than target -> trim the sides; taller -> trim top and bottom.
+    const width = sourceAspect > aspect ? naturalHeight * aspect : naturalWidth;
+    const height = sourceAspect > aspect ? naturalHeight : naturalWidth / aspect;
+
+    return {
+      x: (naturalWidth - width) / 2,
+      y: (naturalHeight - height) / 2,
+      width,
+      height,
+    };
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 export async function getCroppedImageFile(
   sourceFile: File,
   croppedAreaPixels: CropArea,

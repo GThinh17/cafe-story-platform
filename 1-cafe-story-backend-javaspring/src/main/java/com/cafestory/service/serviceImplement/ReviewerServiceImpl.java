@@ -3,45 +3,45 @@ package com.cafestory.service.serviceImplement;
 import com.cafestory.dto.responseDTO.ReviewerBadgeResponseDTO;
 import com.cafestory.dto.responseDTO.ReviewerDiscoveryResponseDTO;
 import com.cafestory.dto.responseDTO.ReviewerGeoAnalyticsResponseDTO;
-import com.cafestory.dto.responseDTO.ReviewerPayoutResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerEarningsResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerIncomeResponseDTO;
 import com.cafestory.dto.responseDTO.ReviewerRankingResponseDTO;
 import com.cafestory.dto.responseDTO.ReviewerResponseDTO;
 import com.cafestory.dto.responseDTO.ReviewerSegmentResponseDTO;
 import com.cafestory.dto.responseDTO.ReviewerStatsResponseDTO;
 import com.cafestory.dto.responseDTO.RegionResponseDTO;
-import com.cafestory.entity.Blog;
-import com.cafestory.entity.BlogLike;
-import com.cafestory.entity.BlogSave;
-import com.cafestory.entity.BlogShare;
-import com.cafestory.entity.Comment;
 import com.cafestory.entity.Reviewer;
 import com.cafestory.entity.ReviewerBadgeHistory;
-import com.cafestory.entity.ReviewerPayout;
+import com.cafestory.entity.AdminPayout;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.ReviewerFormula;
 import com.cafestory.entity.Role;
 import com.cafestory.entity.User;
 import com.cafestory.entity.UserRoleAssignment;
 import com.cafestory.entity.enums.ReviewerBadge;
-import com.cafestory.entity.enums.PayoutStatus;
-import com.cafestory.entity.enums.PostStatus;
+import com.cafestory.repository.AuthorEngagementCountRow;
+import com.cafestory.repository.AuthorInteractionCountRow;
 import com.cafestory.repository.BlogLikeRepository;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.repository.BlogSaveRepository;
 import com.cafestory.repository.BlogShareRepository;
 import com.cafestory.repository.CommentRepository;
 import com.cafestory.repository.ReviewerBadgeHistoryRepository;
-import com.cafestory.repository.ReviewerPayoutRepository;
+import com.cafestory.repository.AdminPayoutRepository;
+import com.cafestory.repository.ReviewerIncomeRepository;
 import com.cafestory.repository.ReviewerRepository;
 import com.cafestory.repository.RoleRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRoleAssignmentRepository;
 import com.cafestory.service.serviceInterface.ReviewerBadgeThresholdService;
+import com.cafestory.service.serviceInterface.ReviewerIncomeService;
 import com.cafestory.service.serviceInterface.ReviewerRankingSnapshotService;
 import com.cafestory.service.serviceInterface.ReviewerFormulaService;
 import com.cafestory.service.serviceInterface.ReviewerService;
 import com.cafestory.validation.UserValidator;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,6 +59,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
@@ -73,7 +74,8 @@ public class ReviewerServiceImpl implements ReviewerService {
     private final BlogSaveRepository blogSaveRepository;
     private final BlogShareRepository blogShareRepository;
     private final CommentRepository commentRepository;
-    private final ReviewerPayoutRepository reviewerPayoutRepository;
+    private final AdminPayoutRepository adminPayoutRepository;
+    private final ReviewerIncomeRepository incomeRepository;
     private final ReviewerBadgeHistoryRepository reviewerBadgeHistoryRepository;
     private final ReviewerRepository reviewerRepository;
     private final RoleRepository roleRepository;
@@ -84,6 +86,7 @@ public class ReviewerServiceImpl implements ReviewerService {
     private final ReviewerFormulaService formulaService;
     private final ReviewerBadgeThresholdService badgeThresholdService;
     private final ReviewerRankingSnapshotService snapshotService;
+    private final ReviewerIncomeService incomeService;
 
     public ReviewerServiceImpl(
             BlogLikeRepository blogLikeRepository,
@@ -91,7 +94,8 @@ public class ReviewerServiceImpl implements ReviewerService {
             BlogSaveRepository blogSaveRepository,
             BlogShareRepository blogShareRepository,
             CommentRepository commentRepository,
-            ReviewerPayoutRepository reviewerPayoutRepository,
+            AdminPayoutRepository adminPayoutRepository,
+            ReviewerIncomeRepository incomeRepository,
             ReviewerBadgeHistoryRepository reviewerBadgeHistoryRepository,
             ReviewerRepository reviewerRepository,
             RoleRepository roleRepository,
@@ -101,13 +105,15 @@ public class ReviewerServiceImpl implements ReviewerService {
             UserValidator userValidator,
             ReviewerFormulaService formulaService,
             ReviewerBadgeThresholdService badgeThresholdService,
-            ReviewerRankingSnapshotService snapshotService) {
+            ReviewerRankingSnapshotService snapshotService,
+            ReviewerIncomeService incomeService) {
         this.blogLikeRepository = blogLikeRepository;
         this.blogRepository = blogRepository;
         this.blogSaveRepository = blogSaveRepository;
         this.blogShareRepository = blogShareRepository;
         this.commentRepository = commentRepository;
-        this.reviewerPayoutRepository = reviewerPayoutRepository;
+        this.adminPayoutRepository = adminPayoutRepository;
+        this.incomeRepository = incomeRepository;
         this.reviewerBadgeHistoryRepository = reviewerBadgeHistoryRepository;
         this.reviewerRepository = reviewerRepository;
         this.roleRepository = roleRepository;
@@ -118,6 +124,7 @@ public class ReviewerServiceImpl implements ReviewerService {
         this.formulaService = formulaService;
         this.badgeThresholdService = badgeThresholdService;
         this.snapshotService = snapshotService;
+        this.incomeService = incomeService;
     }
 
     @Override
@@ -317,43 +324,6 @@ public class ReviewerServiceImpl implements ReviewerService {
 
     @Override
     @Transactional
-    public List<ReviewerPayoutResponseDTO> generateMonthlyPayouts(UUID requesterId, String month, boolean overwrite) {
-        validateAdmin(requesterId);
-        YearMonth yearMonth = parseMonth(month);
-        DateRange range = dateRangeForMonth(yearMonth);
-        Map<UUID, EngagementAccumulator> engagement = aggregateEngagementForAllUsers(range.startDate(), range.endDate());
-        ReviewerFormula formula = formulaService.getActiveFormula();
-        Map<UUID, ReviewerPayout> existingByReviewerId = new HashMap<>();
-        for (ReviewerPayout existing : reviewerPayoutRepository.findByPayoutMonth(month)) {
-            existingByReviewerId.put(existing.getReviewer().getReviewerId(), existing);
-        }
-        List<ReviewerPayout> toSave = new ArrayList<>();
-        for (EngagementAccumulator accumulator : engagement.values()) {
-            UUID reviewerId = accumulator.reviewer().getReviewerId();
-            if (existingByReviewerId.containsKey(reviewerId) && !overwrite) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Duplicate payout generation");
-            }
-            ReviewerPayout payout = existingByReviewerId.getOrDefault(reviewerId, new ReviewerPayout());
-            payout.setReviewer(accumulator.reviewer());
-            payout.setPayoutMonth(month);
-            payout.setLikeCount(accumulator.likeCount());
-            payout.setShareCount(accumulator.shareCount());
-            payout.setCommentCount(accumulator.commentCount());
-            payout.setLikeAmount(accumulator.likeCount() * formula.getLikePayoutAmount());
-            payout.setShareAmount(accumulator.shareCount() * formula.getSharePayoutAmount());
-            payout.setCommentAmount(accumulator.commentCount() * formula.getCommentPayoutAmount());
-            payout.setTotalAmount(payout.getLikeAmount() + payout.getShareAmount() + payout.getCommentAmount());
-            payout.setPayoutStatus(PayoutStatus.CALCULATED);
-            toSave.add(payout);
-        }
-        return reviewerPayoutRepository.saveAll(toSave)
-                .stream()
-                .map(this::toPayoutResponse)
-                .toList();
-    }
-
-    @Override
-    @Transactional
     public List<ReviewerBadgeResponseDTO> generateMonthlyBadges(UUID requesterId, String month, boolean overwrite) {
         validateAdmin(requesterId);
         YearMonth yearMonth = parseMonth(month);
@@ -387,12 +357,37 @@ public class ReviewerServiceImpl implements ReviewerService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<ReviewerPayoutResponseDTO> getReviewerPayoutHistory(UUID requesterId, UUID reviewerId) {
+    public List<ReviewerEarningsResponseDTO> getReviewerEarnings(UUID requesterId, UUID reviewerId) {
         validateSelfOrAdmin(requesterId, reviewerId);
-        return reviewerPayoutRepository.findByReviewerReviewerIdOrderByPayoutMonthDesc(reviewerId)
+
+        // Số tiền chốt nằm ở admin_payout; phần bóc tách theo loại tương tác
+        // phải gom lại từ reviewer_income vì admin_payout không lưu chi tiết.
+        Map<String, ReviewerIncomeRepository.ReviewerMonthlyCountRow> countsByMonth = new HashMap<>();
+        for (ReviewerIncomeRepository.ReviewerMonthlyCountRow row
+                : incomeRepository.sumCountsByReviewerGroupByMonth(reviewerId)) {
+            countsByMonth.put(
+                    YearMonth.of(row.getYear(), row.getMonth()).toString(),
+                    row);
+        }
+
+        ReviewerFormula formula = formulaService.getActiveFormula();
+
+        return adminPayoutRepository
+                .findByReviewerReviewerId(reviewerId, Pageable.unpaged())
+                .getContent()
                 .stream()
-                .map(this::toPayoutResponse)
+                .sorted(Comparator.comparing(AdminPayout::getPayoutMonth).reversed())
+                .map(payout -> toEarningsResponse(payout, countsByMonth.get(payout.getPayoutMonth()), formula))
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ReviewerIncomeResponseDTO> getReviewerIncome(
+            UUID requesterId, UUID reviewerId, String month, Pageable pageable) {
+        validateSelfOrAdmin(requesterId, reviewerId);
+        String resolvedMonth = month != null && !month.isBlank() ? month : YearMonth.now().toString();
+        return incomeService.getIncomeByReviewer(reviewerId, resolvedMonth, pageable);
     }
 
     @Override
@@ -486,17 +481,19 @@ public class ReviewerServiceImpl implements ReviewerService {
             int likeWeight,
             int shareWeight,
             int commentWeight) {
-        for (BlogLikeRepository.UserInteractionCountRow row
-                : blogLikeRepository.countByUserAndCreatedAtBetween(startDate, endDate)) {
-            accumulator(engagement, reviewersByUserId.get(row.getUserId()), likeWeight, shareWeight, commentWeight).addLikes(row.getEventCount());
+        // Engagement blog của reviewer NHẬN được, không phải engagement reviewer
+        // đi thả cho người khác.
+        for (AuthorInteractionCountRow row
+                : blogLikeRepository.countByBlogAuthorBetween(startDate, endDate)) {
+            accumulator(engagement, reviewersByUserId.get(row.getAuthorUserId()), likeWeight, shareWeight, commentWeight).addLikes(row.getEventCount());
         }
-        for (BlogShareRepository.UserShareCountRow row
-                : blogShareRepository.countByUserAndCreatedAtBetween(startDate, endDate)) {
-            accumulator(engagement, reviewersByUserId.get(row.getUserId()), likeWeight, shareWeight, commentWeight).addShares(row.getEventCount());
+        for (AuthorInteractionCountRow row
+                : blogShareRepository.countByBlogAuthorBetween(startDate, endDate)) {
+            accumulator(engagement, reviewersByUserId.get(row.getAuthorUserId()), likeWeight, shareWeight, commentWeight).addShares(row.getEventCount());
         }
-        for (CommentRepository.UserCommentCountRow row
-                : commentRepository.countByUserAndCreatedAtBetween(startDate, endDate)) {
-            accumulator(engagement, reviewersByUserId.get(row.getUserId()), likeWeight, shareWeight, commentWeight).addComments(row.getEventCount());
+        for (AuthorInteractionCountRow row
+                : commentRepository.countByBlogAuthorBetween(startDate, endDate)) {
+            accumulator(engagement, reviewersByUserId.get(row.getAuthorUserId()), likeWeight, shareWeight, commentWeight).addComments(row.getEventCount());
         }
     }
 
@@ -549,19 +546,35 @@ public class ReviewerServiceImpl implements ReviewerService {
         return response;
     }
 
-    private ReviewerPayoutResponseDTO toPayoutResponse(ReviewerPayout payout) {
-        ReviewerPayoutResponseDTO response = new ReviewerPayoutResponseDTO();
+    /**
+     * @param counts có thể null khi admin_payout có dòng nhưng reviewer_income
+     *               của tháng đó đã bị xoá — khi ấy chỉ mất phần bóc tách, số
+     *               tiền chốt vẫn đúng.
+     */
+    private ReviewerEarningsResponseDTO toEarningsResponse(
+            AdminPayout payout,
+            ReviewerIncomeRepository.ReviewerMonthlyCountRow counts,
+            ReviewerFormula formula) {
+        long likeCount = counts != null ? counts.getLikeCount() : 0L;
+        long shareCount = counts != null ? counts.getShareCount() : 0L;
+        long commentCount = counts != null ? counts.getCommentCount() : 0L;
+
+        ReviewerEarningsResponseDTO response = new ReviewerEarningsResponseDTO();
         response.setId(payout.getId());
         response.setReviewerId(payout.getReviewer().getReviewerId());
         response.setPayoutMonth(payout.getPayoutMonth());
-        response.setLikeCount(payout.getLikeCount());
-        response.setShareCount(payout.getShareCount());
-        response.setCommentCount(payout.getCommentCount());
-        response.setLikeAmount(payout.getLikeAmount());
-        response.setShareAmount(payout.getShareAmount());
-        response.setCommentAmount(payout.getCommentAmount());
-        response.setTotalAmount(payout.getTotalAmount());
-        response.setPayoutStatus(payout.getPayoutStatus());
+        response.setLikeCount(likeCount);
+        response.setShareCount(shareCount);
+        response.setCommentCount(commentCount);
+        response.setLikeAmount(likeCount * formula.getLikePayoutAmount());
+        response.setShareAmount(shareCount * formula.getSharePayoutAmount());
+        response.setCommentAmount(commentCount * formula.getCommentPayoutAmount());
+        response.setTotalBaseAmount(payout.getTotalBaseAmount());
+        response.setBadge(payout.getBadge());
+        response.setBadgeMultiplier(payout.getBadgeMultiplier());
+        response.setTotalFinalAmount(payout.getTotalFinalAmount());
+        response.setStatus(payout.getStatus());
+        response.setPaidAt(payout.getPaidAt());
         return response;
     }
 
@@ -712,39 +725,65 @@ public class ReviewerServiceImpl implements ReviewerService {
         return formulaService.calculateScore(likeCount, shareCount, commentCount);
     }
 
+    /**
+     * Dựng bảng điểm reviewer cho /top, /region, /trending.
+     *
+     * <p>Chống N+1 và quét toàn bảng: cũ = findAll() trên reviewers + blogs +
+     * blog_likes + blog_shares + comments + blog_saves rồi lọc bằng Java, cộng
+     * 2*N query (lazy user + badge từng reviewer). Mới = 1 query reviewer có
+     * fetch join user, 1 query badge theo lô, và 6 query GROUP BY gom sẵn trong DB.
+     */
     private List<ReviewerScoreCard> buildReviewerScoreCards(DateRange recentRange) {
+        List<Reviewer> reviewers = reviewerRepository.findAllWithUserAndRegion();
+
+        Map<UUID, ReviewerBadge> badgeByReviewerId = latestBadgeByReviewerId(reviewers);
+
         Map<UUID, ReviewerScoreAccumulator> accumulatorsByUserId = new HashMap<>();
-        for (Reviewer reviewer : reviewerRepository.findAll()) {
+        for (Reviewer reviewer : reviewers) {
             if (reviewer.getUser() == null || !Boolean.TRUE.equals(reviewer.getUser().getAccountStatus())) {
                 continue;
             }
-            ReviewerBadgeHistory latestBadge = reviewerBadgeHistoryRepository
-                    .findTopByReviewerReviewerIdOrderByMonthDesc(reviewer.getReviewerId())
-                    .orElse(null);
             accumulatorsByUserId.put(
                     reviewer.getUser().getUserId(),
-                    new ReviewerScoreAccumulator(reviewer, latestBadge == null ? ReviewerBadge.IRON : latestBadge.getBadge()));
+                    new ReviewerScoreAccumulator(
+                            reviewer,
+                            badgeByReviewerId.getOrDefault(reviewer.getReviewerId(), ReviewerBadge.IRON)));
         }
 
-        Map<UUID, ReviewerScoreAccumulator> accumulatorsByBlogId = new HashMap<>();
-        List<Blog> publishedBlogs = blogRepository.findAll()
-                .stream()
-                .filter(blog -> blog.getId() != null)
-                .filter(blog -> blog.getAuthor() != null)
-                .filter(blog -> blog.getStatus() == PostStatus.PUBLISHED)
-                .filter(blog -> accumulatorsByUserId.containsKey(blog.getAuthor().getUserId()))
-                .toList();
-        for (Blog blog : publishedBlogs) {
-            ReviewerScoreAccumulator accumulator = accumulatorsByUserId.get(blog.getAuthor().getUserId());
-            accumulator.incrementReviews(blog.getCreatedAt(), recentRange);
-            accumulator.addActiveMonth(blog.getCreatedAt());
-            accumulatorsByBlogId.put(blog.getId(), accumulator);
+        if (accumulatorsByUserId.isEmpty()) {
+            return List.of();
         }
 
-        aggregateLikes(accumulatorsByBlogId, recentRange);
-        aggregateShares(accumulatorsByBlogId, recentRange);
-        aggregateComments(accumulatorsByBlogId, recentRange);
-        aggregateSaves(accumulatorsByBlogId, recentRange);
+        LocalDateTime recentStart = recentRange.startDate();
+        LocalDateTime recentEnd = recentRange.endDate();
+
+        applyCounts(
+                accumulatorsByUserId,
+                blogRepository.countPublishedByAuthor(recentStart, recentEnd),
+                ReviewerScoreAccumulator::addReviews);
+        applyCounts(
+                accumulatorsByUserId,
+                blogLikeRepository.countByBlogAuthor(recentStart, recentEnd),
+                ReviewerScoreAccumulator::addLikes);
+        applyCounts(
+                accumulatorsByUserId,
+                blogShareRepository.countByBlogAuthor(recentStart, recentEnd),
+                ReviewerScoreAccumulator::addShares);
+        applyCounts(
+                accumulatorsByUserId,
+                commentRepository.countByBlogAuthor(recentStart, recentEnd),
+                ReviewerScoreAccumulator::addComments);
+        applyCounts(
+                accumulatorsByUserId,
+                blogSaveRepository.countByBlogAuthor(recentStart, recentEnd),
+                ReviewerScoreAccumulator::addSaves);
+
+        for (BlogRepository.AuthorActiveMonthRow row : blogRepository.findPublishedActiveMonthsByAuthor()) {
+            ReviewerScoreAccumulator accumulator = accumulatorsByUserId.get(row.getAuthorUserId());
+            if (accumulator != null && row.getActiveYear() != null && row.getActiveMonth() != null) {
+                accumulator.addActiveMonth(YearMonth.of(row.getActiveYear(), row.getActiveMonth()));
+            }
+        }
 
         return accumulatorsByUserId.values()
                 .stream()
@@ -752,47 +791,49 @@ public class ReviewerServiceImpl implements ReviewerService {
                 .toList();
     }
 
-    private void aggregateLikes(Map<UUID, ReviewerScoreAccumulator> accumulatorsByBlogId, DateRange recentRange) {
-        for (BlogLike like : blogLikeRepository.findAll()) {
-            ReviewerScoreAccumulator accumulator = accumulatorForInteraction(accumulatorsByBlogId, like.getBlog());
+    /**
+     * Badge mới nhất của từng reviewer bằng 1 query theo lô.
+     * Query đã sort month desc nên phần tử đầu mỗi nhóm là mới nhất.
+     */
+    private Map<UUID, ReviewerBadge> latestBadgeByReviewerId(List<Reviewer> reviewers) {
+        List<UUID> reviewerIds = reviewers.stream()
+                .map(Reviewer::getReviewerId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (reviewerIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<UUID, ReviewerBadge> badges = new HashMap<>();
+        for (ReviewerBadgeHistory history : reviewerBadgeHistoryRepository
+                .findByReviewerReviewerIdInOrderByReviewerReviewerIdAscMonthDesc(reviewerIds)) {
+            if (history.getReviewer() == null) {
+                continue;
+            }
+            badges.putIfAbsent(history.getReviewer().getReviewerId(), history.getBadge());
+        }
+        return badges;
+    }
+
+    private void applyCounts(
+            Map<UUID, ReviewerScoreAccumulator> accumulatorsByUserId,
+            List<AuthorEngagementCountRow> rows,
+            CountApplier applier) {
+        for (AuthorEngagementCountRow row : rows) {
+            ReviewerScoreAccumulator accumulator = accumulatorsByUserId.get(row.getAuthorUserId());
             if (accumulator != null) {
-                accumulator.incrementLikes(like.getCreatedAt(), recentRange);
+                applier.apply(accumulator, defaultCount(row.getTotalCount()), defaultCount(row.getRecentCount()));
             }
         }
     }
 
-    private void aggregateShares(Map<UUID, ReviewerScoreAccumulator> accumulatorsByBlogId, DateRange recentRange) {
-        for (BlogShare share : blogShareRepository.findAll()) {
-            ReviewerScoreAccumulator accumulator = accumulatorForInteraction(accumulatorsByBlogId, share.getBlog());
-            if (accumulator != null) {
-                accumulator.incrementShares(share.getCreatedAt(), recentRange);
-            }
-        }
+    private static long defaultCount(Long value) {
+        return value == null ? 0L : value;
     }
 
-    private void aggregateComments(Map<UUID, ReviewerScoreAccumulator> accumulatorsByBlogId, DateRange recentRange) {
-        for (Comment comment : commentRepository.findAll()) {
-            ReviewerScoreAccumulator accumulator = accumulatorForInteraction(accumulatorsByBlogId, comment.getBlog());
-            if (accumulator != null) {
-                accumulator.incrementComments(comment.getCreatedAt(), recentRange);
-            }
-        }
-    }
-
-    private void aggregateSaves(Map<UUID, ReviewerScoreAccumulator> accumulatorsByBlogId, DateRange recentRange) {
-        for (BlogSave save : blogSaveRepository.findAll()) {
-            ReviewerScoreAccumulator accumulator = accumulatorForInteraction(accumulatorsByBlogId, save.getBlog());
-            if (accumulator != null) {
-                accumulator.incrementSaves(save.getCreatedAt(), recentRange);
-            }
-        }
-    }
-
-    private ReviewerScoreAccumulator accumulatorForInteraction(Map<UUID, ReviewerScoreAccumulator> accumulatorsByBlogId, Blog blog) {
-        if (blog == null || blog.getId() == null) {
-            return null;
-        }
-        return accumulatorsByBlogId.get(blog.getId());
+    @FunctionalInterface
+    private interface CountApplier {
+        void apply(ReviewerScoreAccumulator accumulator, long total, long recent);
     }
 
     private double regionRankingScore(ReviewerScoreCard card, RegionFilter filter) {
@@ -893,12 +934,6 @@ public class ReviewerServiceImpl implements ReviewerService {
             case "DAY_30", "MONTH" -> new DateRange(today.minusDays(30).atStartOfDay(), today.plusDays(1).atStartOfDay());
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid reviewer trending window");
         };
-    }
-
-    private boolean inRange(LocalDateTime createdAt, DateRange range) {
-        return createdAt != null
-                && !createdAt.isBefore(range.startDate())
-                && createdAt.isBefore(range.endDate());
     }
 
     private double badgeBonus(ReviewerBadge badge) {
@@ -1010,45 +1045,36 @@ public class ReviewerServiceImpl implements ReviewerService {
             this.badge = badge;
         }
 
-        void incrementReviews(LocalDateTime createdAt, DateRange recentRange) {
-            reviewCount++;
-            if (inRange(createdAt, recentRange)) {
-                recentReviewCount++;
+        // Số liệu tới theo lô từ query GROUP BY, không còn cộng từng dòng.
+        void addReviews(long total, long recent) {
+            reviewCount += total;
+            recentReviewCount += recent;
+        }
+
+        void addActiveMonth(YearMonth month) {
+            if (month != null) {
+                activeMonths.add(month);
             }
         }
 
-        void addActiveMonth(LocalDateTime createdAt) {
-            if (createdAt != null) {
-                activeMonths.add(YearMonth.from(createdAt));
-            }
+        void addLikes(long total, long recent) {
+            totalLikeCount += total;
+            recentLikeCount += recent;
         }
 
-        void incrementLikes(LocalDateTime createdAt, DateRange recentRange) {
-            totalLikeCount++;
-            if (inRange(createdAt, recentRange)) {
-                recentLikeCount++;
-            }
+        void addComments(long total, long recent) {
+            totalCommentCount += total;
+            recentCommentCount += recent;
         }
 
-        void incrementComments(LocalDateTime createdAt, DateRange recentRange) {
-            totalCommentCount++;
-            if (inRange(createdAt, recentRange)) {
-                recentCommentCount++;
-            }
+        void addShares(long total, long recent) {
+            totalShareCount += total;
+            recentShareCount += recent;
         }
 
-        void incrementShares(LocalDateTime createdAt, DateRange recentRange) {
-            totalShareCount++;
-            if (inRange(createdAt, recentRange)) {
-                recentShareCount++;
-            }
-        }
-
-        void incrementSaves(LocalDateTime createdAt, DateRange recentRange) {
-            totalSaveCount++;
-            if (inRange(createdAt, recentRange)) {
-                recentSaveCount++;
-            }
+        void addSaves(long total, long recent) {
+            totalSaveCount += total;
+            recentSaveCount += recent;
         }
 
         ReviewerScoreCard toScoreCard() {

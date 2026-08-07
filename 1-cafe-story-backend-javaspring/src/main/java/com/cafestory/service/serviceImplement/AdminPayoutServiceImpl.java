@@ -21,7 +21,6 @@ import com.cafestory.service.serviceInterface.AdminPayoutService;
 import com.cafestory.service.serviceInterface.ReviewerBadgeThresholdService;
 import com.cafestory.service.serviceInterface.ReviewerFormulaService;
 import com.cafestory.service.serviceInterface.ReviewerIncomeService;
-import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Transfer;
 import com.stripe.net.RequestOptions;
@@ -196,7 +195,11 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Admin not found"));
 
         payout.setStatus(request.getStatus());
-        payout.setNote(request.getNote());
+        // Chỉ ghi đè khi admin thực sự nhập note — trước đây update không kèm
+        // note sẽ xoá trắng note cũ.
+        if (request.getNote() != null) {
+            payout.setNote(request.getNote());
+        }
 
         if (request.getStatus() == AdminPayoutStatus.APPROVED) {
             payout.setApprovedBy(admin);
@@ -207,6 +210,37 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
         }
 
         return toResponse(payoutRepository.save(payout));
+    }
+
+    @Override
+    @Transactional
+    public void markTransferFailed(String stripeTransferId, String reason) {
+        payoutRepository.findByStripeTransferId(stripeTransferId).ifPresentOrElse(payout -> {
+            if (payout.getStatus() != AdminPayoutStatus.PAID) {
+                log.warn("transfer.failed cho transfer {} nhưng payout {} đang ở {} — bỏ qua",
+                        stripeTransferId, payout.getId(), payout.getStatus());
+                return;
+            }
+            // Về APPROVED chứ không phải PENDING: khoản này đã được duyệt, chỉ
+            // có bước chuyển tiền hỏng. Admin chỉ cần bấm PAID lại.
+            payout.setStatus(AdminPayoutStatus.APPROVED);
+            payout.setPaidAt(null);
+            payout.setStripeTransferId(null);
+            payout.setStripeIdempotencyKey(null);
+            payout.setNote(appendNote(payout.getNote(), "Stripe transfer failed: " + reason));
+            payoutRepository.save(payout);
+            log.error("Payout {} rollback PAID -> APPROVED do transfer {} hỏng: {}",
+                    payout.getId(), stripeTransferId, reason);
+        }, () -> log.error(
+                "transfer.failed cho transfer {} nhưng không tìm thấy admin_payout tương ứng",
+                stripeTransferId));
+    }
+
+    private String appendNote(String existing, String addition) {
+        if (existing == null || existing.isBlank()) {
+            return addition;
+        }
+        return existing + " | " + addition;
     }
 
     private void triggerStripeTransfer(AdminPayout payout) {
@@ -221,16 +255,20 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
         }
 
         String idempotencyKey = "payout-" + payout.getId().toString();
-        Stripe.apiKey = stripeSecretKey;
         try {
             TransferCreateParams params = TransferCreateParams.builder()
                     .setAmount(payout.getTotalFinalAmount())
                     .setCurrency("vnd")
                     .setDestination(stripeAccount.getStripeAccountId())
                     .build();
+            // API key truyền theo lời gọi thay vì gán Stripe.apiKey static —
+            // biến toàn cục đó bị nhiều class cùng ghi.
             Transfer transfer = Transfer.create(
                     params,
-                    RequestOptions.builder().setIdempotencyKey(idempotencyKey).build()
+                    RequestOptions.builder()
+                            .setApiKey(stripeSecretKey)
+                            .setIdempotencyKey(idempotencyKey)
+                            .build()
             );
             payout.setStripeTransferId(transfer.getId());
             payout.setStripeIdempotencyKey(idempotencyKey);
@@ -242,13 +280,23 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
         }
     }
 
-    private void validateStatusTransition(AdminPayoutStatus current, AdminPayoutStatus next) {
-        boolean valid = switch (current) {
-            case PENDING -> next == AdminPayoutStatus.APPROVED || next == AdminPayoutStatus.CANCELLED;
-            case APPROVED -> next == AdminPayoutStatus.PAID || next == AdminPayoutStatus.CANCELLED;
-            case PAID, CANCELLED -> false;
+    /**
+     * Luồng trạng thái hợp lệ. Vừa dùng để chặn ở server, vừa trả ra DTO cho
+     * admin UI render nút — một nguồn luật duy nhất.
+     *
+     * <p>PAID -> APPROVED cố ý không có ở đây: chỉ webhook transfer.failed mới
+     * được rollback, qua {@link #markTransferFailed}.
+     */
+    private List<AdminPayoutStatus> allowedTransitions(AdminPayoutStatus current) {
+        return switch (current) {
+            case PENDING -> List.of(AdminPayoutStatus.APPROVED, AdminPayoutStatus.CANCELLED);
+            case APPROVED -> List.of(AdminPayoutStatus.PAID, AdminPayoutStatus.CANCELLED);
+            case PAID, CANCELLED -> List.of();
         };
-        if (!valid) {
+    }
+
+    private void validateStatusTransition(AdminPayoutStatus current, AdminPayoutStatus next) {
+        if (!allowedTransitions(current).contains(next)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Cannot transition payout status from " + current + " to " + next);
         }
@@ -272,6 +320,7 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
         dto.setNote(payout.getNote());
         dto.setFormulaId(payout.getFormula().getId());
         dto.setStripeTransferId(payout.getStripeTransferId());
+        dto.setAllowedTransitions(allowedTransitions(payout.getStatus()));
         dto.setCreatedAt(payout.getCreatedAt());
         dto.setUpdatedAt(payout.getUpdatedAt());
         return dto;

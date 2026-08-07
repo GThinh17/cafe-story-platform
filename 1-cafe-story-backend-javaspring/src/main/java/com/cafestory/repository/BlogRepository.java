@@ -181,4 +181,41 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
 
         String getImageUrl();
     }
+
+    // Chống quét toàn bảng: cũ = findAll() toàn bộ blogs rồi đếm bằng Java,
+    // mới = 1 query gom theo tác giả.
+    @Query("""
+            select b.author.userId as authorUserId,
+                   count(b) as totalCount,
+                   sum(case when b.createdAt >= :recentStart and b.createdAt < :recentEnd
+                            then 1L else 0L end) as recentCount
+            from Blog b
+            where b.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
+            and b.author is not null
+            group by b.author.userId
+            """)
+    List<AuthorEngagementCountRow> countPublishedByAuthor(
+            @Param("recentStart") LocalDateTime recentStart,
+            @Param("recentEnd") LocalDateTime recentEnd);
+
+    // Số tháng có hoạt động: distinct (tác giả, năm, tháng). Kết quả nhỏ
+    // (số tác giả × số tháng) nên đếm nốt bằng Java là đủ.
+    @Query("""
+            select distinct b.author.userId as authorUserId,
+                   year(b.createdAt) as activeYear,
+                   month(b.createdAt) as activeMonth
+            from Blog b
+            where b.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
+            and b.author is not null
+            and b.createdAt is not null
+            """)
+    List<AuthorActiveMonthRow> findPublishedActiveMonthsByAuthor();
+
+    interface AuthorActiveMonthRow {
+        UUID getAuthorUserId();
+
+        Integer getActiveYear();
+
+        Integer getActiveMonth();
+    }
 }

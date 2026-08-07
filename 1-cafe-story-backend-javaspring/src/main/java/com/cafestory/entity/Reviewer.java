@@ -58,4 +58,16 @@ public class Reviewer {
     void preUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
+    /**
+     * Gói reviewer còn hiệu lực hay không.
+     *
+     * <p>Cờ {@code reviewerActive} một mình là không đủ: nó chỉ được bật khi
+     * thanh toán thành công và phụ thuộc job hạ cờ chạy đúng giờ. Mọi chỗ chặn
+     * quyền phải hỏi hàm này để một job lỡ nhịp không biến thành gói vô hạn.
+     */
+    public boolean isSubscriptionActive() {
+        return Boolean.TRUE.equals(reviewerActive)
+                && (reviewerExpiresAt == null || reviewerExpiresAt.isAfter(LocalDateTime.now()));
+    }
 }

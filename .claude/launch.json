@@ -21,6 +21,13 @@
       "runtimeArgs": ["run", "dev", "--prefix", "5-cafe-story-nextjs-admin"],
       "port": 3636,
       "autoPort": false
+    },
+    {
+      "name": "spring-backend",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd 1-cafe-story-backend-javaspring && .\\mvnw.cmd spring-boot:run"],
+      "port": 8080,
+      "autoPort": false
     }
   ]
 }

@@ -13,7 +13,6 @@ import { useI18n } from "@/components/providers/locale-provider";
 import { ApiError } from "@/lib/api/client";
 import { getBlogsByCafePageId, getCafePageById } from "@/lib/api/cafes";
 import { imageWidths, optimizeImageUrl } from "@/lib/image-optimizer";
-import { mockCafeMenu } from "@/mocks/cafes";
 import type { Translate } from "@/lib/i18n";
 import type { CafePageResponse, CafeSummary } from "@/types/cafe";
 import type { FeedPost } from "@/types/feed";
@@ -116,6 +115,10 @@ function mapCafePageResponseToCafeSummary(
     type: cafe.regionCity ?? t("home.cafePageLabel"),
     rating,
     reviewCount: t("cafe.ratingCount", { count: formatCount(cafe.ratingCount) }),
+    ratingScore: cafe.ratingScore,
+    ratingCount: cafe.ratingCount,
+    myRating: cafe.myRating,
+    isRating: cafe.isRating,
     distance: "",
     priceLevel: "",
     hours: cafe.pageActive ? t("cafe.status.activePage") : t("cafe.brandName"),
@@ -133,11 +136,7 @@ function mapCafePageResponseToCafeSummary(
     gallery: [coverImage, avatarImage].filter(Boolean) as string[],
     tags,
     amenities: tags.length > 0 ? tags : [t("cafe.brandPage")],
-    popularDrinks: [
-      t("cafe.action.viewMenu"),
-      t("cafe.action.follow"),
-      t("cafe.action.stories"),
-    ],
+    popularDrinks: [t("cafe.action.follow"), t("cafe.action.stories")],
     description,
     regionArea: cafe.regionArea,
     regionCity: cafe.regionCity,
@@ -428,6 +427,37 @@ export function CafePageContent({ cafePageId }: CafePageContentProps) {
     [],
   );
 
+  // The PUT response carries the recomputed aggregate, so the header updates
+  // from it directly instead of refetching the cafe page.
+  const handleCafeRatingChange = useCallback(
+    (next: {
+      isRating: boolean;
+      myRating: number;
+      ratingCount: number | null;
+      ratingScore: number | null;
+    }) => {
+      setCafe((currentCafe) =>
+        currentCafe
+          ? {
+              ...currentCafe,
+              isRating: next.isRating,
+              myRating: next.myRating,
+              ratingCount: next.ratingCount,
+              ratingScore: next.ratingScore,
+              rating:
+                typeof next.ratingScore === "number" && next.ratingScore > 0
+                  ? next.ratingScore.toFixed(1)
+                  : t("cafe.newRating"),
+              reviewCount: t("cafe.ratingCount", {
+                count: formatCount(next.ratingCount),
+              }),
+            }
+          : currentCafe,
+      );
+    },
+    [t],
+  );
+
   if (isCafeLoading && !cafe) {
     return <CafePageLoadingState />;
   }
@@ -455,8 +485,8 @@ export function CafePageContent({ cafePageId }: CafePageContentProps) {
         cafePosts={cafePosts}
         hasMorePosts={hasMore}
         isPostsLoading={isBlogsLoading}
-        menu={mockCafeMenu}
         onCafeLikeStateChange={handleCafeLikeStateChange}
+        onCafeRatingChange={handleCafeRatingChange}
         onLoadMorePosts={() => {
           void loadCafeBlogs(decodedCafePageId, cursor);
         }}

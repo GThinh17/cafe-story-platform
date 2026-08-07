@@ -5,7 +5,7 @@ import type {
   ReviewerConnectOnboardResponse,
   ReviewerConnectStatus,
   ReviewerDiscoveryResponse,
-  ReviewerPayoutResponse,
+  ReviewerEarningsResponse,
   ReviewerRankingResponse,
   ReviewerResponse,
   ReviewerStatsResponse,
@@ -61,8 +61,8 @@ export function getReviewerByUserId(userId: string) {
   });
 }
 
-export function getReviewerPayouts(reviewerId: string) {
-  return apiFetch<ReviewerPayoutResponse[]>(apiEndpoints.reviewers.payouts(reviewerId), {
+export function getReviewerEarnings(reviewerId: string) {
+  return apiFetch<ReviewerEarningsResponse[]>(apiEndpoints.reviewers.payouts(reviewerId), {
     method: "GET",
   });
 }
@@ -75,6 +75,16 @@ export function getConnectStatus() {
 
 export function createOnboardingLink() {
   return apiFetch<ReviewerConnectOnboardResponse>(apiEndpoints.reviewers.connect.onboard, {
+    method: "POST",
+  });
+}
+
+/**
+ * Xin link onboarding mới khi link cũ hết hạn — Stripe đá người dùng về
+ * refresh-url trong trường hợp đó.
+ */
+export function refreshOnboardingLink() {
+  return apiFetch<ReviewerConnectOnboardResponse>(apiEndpoints.reviewers.connect.refresh, {
     method: "POST",
   });
 }

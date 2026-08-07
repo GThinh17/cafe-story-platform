@@ -7,6 +7,7 @@ import com.cafestory.entity.ReviewerIncome;
 import com.cafestory.entity.ReviewerRankingSnapshot;
 import com.cafestory.entity.enums.RankingPeriodType;
 import com.cafestory.entity.enums.ReviewerBadge;
+import com.cafestory.repository.AuthorInteractionCountRow;
 import com.cafestory.repository.BlogLikeRepository;
 import com.cafestory.repository.BlogShareRepository;
 import com.cafestory.repository.CommentRepository;
@@ -80,19 +81,18 @@ public class ReviewerIncomeServiceImpl implements ReviewerIncomeService {
             counts.put(reviewer.getReviewerId(), new long[]{0L, 0L, 0L}); // like, share, comment
         }
 
-        for (BlogLikeRepository.UserInteractionCountRow row
-                : blogLikeRepository.countByUserAndCreatedAtBetween(start, end)) {
-            Reviewer reviewer = byUserId.get(row.getUserId());
+        // Đếm engagement mà blog của reviewer NHẬN được, không phải engagement
+        // reviewer đi thả cho người khác — thu nhập trả cho nội dung.
+        for (AuthorInteractionCountRow row : blogLikeRepository.countByBlogAuthorBetween(start, end)) {
+            Reviewer reviewer = byUserId.get(row.getAuthorUserId());
             if (reviewer != null) counts.get(reviewer.getReviewerId())[0] = row.getEventCount();
         }
-        for (BlogShareRepository.UserShareCountRow row
-                : blogShareRepository.countByUserAndCreatedAtBetween(start, end)) {
-            Reviewer reviewer = byUserId.get(row.getUserId());
+        for (AuthorInteractionCountRow row : blogShareRepository.countByBlogAuthorBetween(start, end)) {
+            Reviewer reviewer = byUserId.get(row.getAuthorUserId());
             if (reviewer != null) counts.get(reviewer.getReviewerId())[1] = row.getEventCount();
         }
-        for (CommentRepository.UserCommentCountRow row
-                : commentRepository.countByUserAndCreatedAtBetween(start, end)) {
-            Reviewer reviewer = byUserId.get(row.getUserId());
+        for (AuthorInteractionCountRow row : commentRepository.countByBlogAuthorBetween(start, end)) {
+            Reviewer reviewer = byUserId.get(row.getAuthorUserId());
             if (reviewer != null) counts.get(reviewer.getReviewerId())[2] = row.getEventCount();
         }
 

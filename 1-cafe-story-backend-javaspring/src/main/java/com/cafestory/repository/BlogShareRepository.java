@@ -57,20 +57,38 @@ public interface BlogShareRepository extends JpaRepository<BlogShare, UUID> {
         Long getEventCount();
     }
 
-    @org.springframework.data.jpa.repository.Query("""
-            select share.user.userId as userId, count(share) as eventCount
+    // Chống quét toàn bảng: cũ = findAll() toàn bộ blog_shares rồi lọc bằng Java,
+    // mới = 1 query gom theo tác giả, trả luôn cả tổng và tổng gần đây.
+    @Query("""
+            select b.author.userId as authorUserId,
+                   count(share) as totalCount,
+                   sum(case when share.createdAt >= :recentStart and share.createdAt < :recentEnd
+                            then 1L else 0L end) as recentCount
             from BlogShare share
-            where share.createdAt >= :startAt
-            and share.createdAt < :endAt
-            group by share.user.userId
+            join share.blog b
+            where b.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
+            and b.author is not null
+            group by b.author.userId
             """)
-    List<UserShareCountRow> countByUserAndCreatedAtBetween(
-            @org.springframework.data.repository.query.Param("startAt") LocalDateTime startAt,
-            @org.springframework.data.repository.query.Param("endAt") LocalDateTime endAt);
+    List<AuthorEngagementCountRow> countByBlogAuthor(
+            @Param("recentStart") LocalDateTime recentStart,
+            @Param("recentEnd") LocalDateTime recentEnd);
 
-    interface UserShareCountRow {
-        UUID getUserId();
-
-        Long getEventCount();
-    }
+    // Engagement tác giả NHẬN được trong khoảng [startAt, endAt). Dùng cho
+    // income/ranking/payout — chiều ngược với countByUserAndCreatedAtBetween.
+    // Tự share bài mình không tính.
+    @Query("""
+            select b.author.userId as authorUserId, count(share) as eventCount
+            from BlogShare share
+            join share.blog b
+            where b.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
+            and b.author is not null
+            and share.user.userId <> b.author.userId
+            and share.createdAt >= :startAt
+            and share.createdAt < :endAt
+            group by b.author.userId
+            """)
+    List<AuthorInteractionCountRow> countByBlogAuthorBetween(
+            @Param("startAt") LocalDateTime startAt,
+            @Param("endAt") LocalDateTime endAt);
 }

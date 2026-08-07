@@ -76,4 +76,21 @@ public interface BlogSaveRepository extends JpaRepository<BlogSave, UUID> {
 
         Long getEventCount();
     }
+
+    // Chống quét toàn bảng: cũ = findAll() toàn bộ blog_saves rồi lọc bằng Java,
+    // mới = 1 query gom theo tác giả, trả luôn cả tổng và tổng gần đây.
+    @Query("""
+            select b.author.userId as authorUserId,
+                   count(save) as totalCount,
+                   sum(case when save.createdAt >= :recentStart and save.createdAt < :recentEnd
+                            then 1L else 0L end) as recentCount
+            from BlogSave save
+            join save.blog b
+            where b.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
+            and b.author is not null
+            group by b.author.userId
+            """)
+    List<AuthorEngagementCountRow> countByBlogAuthor(
+            @Param("recentStart") LocalDateTime recentStart,
+            @Param("recentEnd") LocalDateTime recentEnd);
 }

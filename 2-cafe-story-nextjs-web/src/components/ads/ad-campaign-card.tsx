@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { BarChart3Icon, PauseIcon, PlayIcon } from "lucide-react";
+import {
+  BarChart3Icon,
+  EyeOffIcon,
+  PauseIcon,
+  PlayIcon,
+  RefreshCwIcon,
+} from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,6 +49,7 @@ export function AdCampaignCard({ campaign, onChanged }: AdCampaignCardProps) {
   const dateLocale = LOCALE_HTML_LANG[locale];
   const notStarted = t("adCard.notStarted");
   const [stats, setStats] = useState<AdCampaignStatsResponse | null>(null);
+  const [areStatsVisible, setAreStatsVisible] = useState(false);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [isMutating, setIsMutating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +64,16 @@ export function AdCampaignCard({ campaign, onChanged }: AdCampaignCardProps) {
     } finally {
       setIsLoadingStats(false);
     }
+  }
+
+  // Stats stay collapsed until asked for, and are fetched only on first reveal.
+  async function toggleStats() {
+    if (areStatsVisible) {
+      setAreStatsVisible(false);
+      return;
+    }
+    setAreStatsVisible(true);
+    if (!stats) await loadStats();
   }
 
   async function changeStatus() {
@@ -102,7 +119,7 @@ export function AdCampaignCard({ campaign, onChanged }: AdCampaignCardProps) {
           </Alert>
         ) : null}
 
-        {isLoadingStats ? (
+        {!areStatsVisible ? null : isLoadingStats ? (
           <div className="grid gap-3 sm:grid-cols-3">
             <Skeleton className="h-20" />
             <Skeleton className="h-20" />
@@ -126,8 +143,11 @@ export function AdCampaignCard({ campaign, onChanged }: AdCampaignCardProps) {
             </div>
             <div className="grid gap-2">
               {stats.dailyStats.length ? stats.dailyStats.map((day) => (
-                <div className="grid grid-cols-3 gap-2 rounded-lg bg-muted p-3 text-xs" key={day.statDate}>
-                  <span>{day.statDate}</span>
+                <div
+                  className="grid grid-cols-3 gap-2 rounded-md border border-line-soft bg-surface-muted p-3 text-xs text-foreground"
+                  key={day.statDate}
+                >
+                  <span className="font-medium text-muted">{day.statDate}</span>
                   <span>
                     {t("adCard.daily.served", {
                       count: day.impressions.toLocaleString(),
@@ -149,10 +169,20 @@ export function AdCampaignCard({ campaign, onChanged }: AdCampaignCardProps) {
         ) : null}
       </CardContent>
       <CardFooter className="flex flex-wrap gap-2">
-        <Button disabled={isLoadingStats} onClick={() => void loadStats()} type="button" variant="outline">
-          <BarChart3Icon data-icon="inline-start" />
-          {stats ? t("adCard.refreshStats") : t("adCard.viewStats")}
+        <Button disabled={isLoadingStats} onClick={() => void toggleStats()} type="button" variant="outline">
+          {areStatsVisible ? (
+            <EyeOffIcon data-icon="inline-start" />
+          ) : (
+            <BarChart3Icon data-icon="inline-start" />
+          )}
+          {areStatsVisible ? t("adCard.hideStats") : t("adCard.viewStats")}
         </Button>
+        {areStatsVisible ? (
+          <Button disabled={isLoadingStats} onClick={() => void loadStats()} type="button" variant="outline">
+            <RefreshCwIcon data-icon="inline-start" />
+            {t("adCard.refreshStats")}
+          </Button>
+        ) : null}
         {campaign.status === "ACTIVE" || campaign.status === "PAUSED" || campaign.status === "DRAFT" ? (
           <Button disabled={isMutating} onClick={() => void changeStatus()} type="button" variant="outline">
             {campaign.status === "ACTIVE" ? <PauseIcon data-icon="inline-start" /> : <PlayIcon data-icon="inline-start" />}
@@ -170,9 +200,9 @@ export function AdCampaignCard({ campaign, onChanged }: AdCampaignCardProps) {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg bg-muted p-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      <p className="mt-1 text-lg font-semibold">{value}</p>
+    <div className="rounded-md border border-line-soft bg-surface-muted p-3">
+      <p className="text-xs font-medium text-muted">{label}</p>
+      <p className="mt-1 text-lg font-bold text-espresso">{value}</p>
     </div>
   );
 }

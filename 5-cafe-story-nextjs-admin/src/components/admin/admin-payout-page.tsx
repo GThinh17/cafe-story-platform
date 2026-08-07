@@ -69,16 +69,22 @@ const statusVariant: Record<AdminPayoutStatus, "default" | "secondary" | "outlin
   CANCELLED: "outline",
 };
 
-function nextStatuses(current: AdminPayoutStatus): AdminPayoutStatus[] {
-  if (current === "PENDING") return ["APPROVED", "CANCELLED"];
-  if (current === "APPROVED") return ["PAID", "CANCELLED"];
-  return [];
+// Server là nơi duy nhất định nghĩa luồng trạng thái hợp lệ
+// (AdminPayoutServiceImpl.validateStatusTransition) và trả về qua
+// allowedTransitions. Không chép lại luật ở client để khỏi lệch.
+function nextStatuses(row: AdminPayout): AdminPayoutStatus[] {
+  return row.allowedTransitions ?? [];
 }
 
+// toISOString() trả giờ UTC: ở UTC+7, trước 07:00 sáng nó lùi thêm một ngày
+// nữa và admin generate nhầm income của hôm kia. Format theo giờ local như
+// prevMonth()/currentMonth() bên dưới.
 function todayMinus1() {
   const d = new Date();
   d.setDate(d.getDate() - 1);
-  return d.toISOString().slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(
+    d.getDate(),
+  ).padStart(2, "0")}`;
 }
 
 function prevMonth() {
@@ -101,7 +107,9 @@ const PAGE_SIZE = 20;
 export function AdminPayoutPage() {
   const [viewType, setViewType] = useState<ViewType>("MONTHLY");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
-  const [month, setMonth] = useState(currentMonth);
+  // MONTHLY mặc định tháng trước: payout chỉ tồn tại cho tháng đã kết thúc, để
+  // currentMonth() thì mở trang lúc nào cũng thấy bảng rỗng.
+  const [month, setMonth] = useState(prevMonth);
   const [reviewerId, setReviewerId] = useState("");
   const debouncedReviewerId = useDebouncedValue(reviewerId);
   const [statusFilter, setStatusFilter] = useState<AdminPayoutStatus | "">("");
@@ -177,6 +185,7 @@ export function AdminPayoutPage() {
     setPage(0);
     setReviewerId("");
     setStatusFilter("");
+    setMonth(viewType === "MONTHLY" ? prevMonth() : currentMonth());
   }, [viewType]);
 
   useEffect(() => {
@@ -195,6 +204,10 @@ export function AdminPayoutPage() {
     try {
       await generatePayoutIncome(generateDate);
       setIsIncomeGenerateOpen(false);
+      // Nhảy bộ lọc sang đúng kỳ vừa generate, nếu không admin bấm xong vẫn
+      // nhìn vào tháng cũ và tưởng lệnh không chạy.
+      setMonth(generateDate.slice(0, 7));
+      // setMonth không đổi giá trị thì effect không chạy lại — vẫn phải reload tay.
       void load();
     } catch (err) {
       setIncomeGenerateError(err instanceof Error ? err.message : "Generate thất bại.");
@@ -209,6 +222,7 @@ export function AdminPayoutPage() {
     try {
       await generateMonthlyPayout(generateMonth);
       setIsMonthlyGenerateOpen(false);
+      setMonth(generateMonth);
       void load();
     } catch (err) {
       setMonthlyGenerateError(err instanceof Error ? err.message : "Generate thất bại.");
@@ -253,7 +267,10 @@ export function AdminPayoutPage() {
       { header: "Base", className: "text-right", cell: (row) => fmt(row.baseAmount) },
       { header: "×", className: "text-right", cell: (row) => row.badgeMultiplier },
       {
-        header: "Final",
+        // Số này nhân hệ số badge của TỪNG NGÀY. Payout tháng lại nhân hệ số
+        // badge của cả THÁNG vào tổng base, nên cộng cột này lại sẽ không bằng
+        // Final ở tab MONTHLY. Số chốt để chi trả là số ở tab MONTHLY.
+        header: "Final (est. daily badge)",
         className: "text-right font-semibold",
         cell: (row) => fmt(row.finalAmount),
       },
@@ -297,7 +314,7 @@ export function AdminPayoutPage() {
         header: "",
         className: "w-24",
         cell: (row) => {
-          const options = nextStatuses(row.status);
+          const options = nextStatuses(row);
           if (options.length === 0) return null;
           return (
             <Button
@@ -519,7 +536,7 @@ export function AdminPayoutPage() {
               <SelectContent>
                 <SelectGroup>
                   {selected
-                    ? nextStatuses(selected.status).map((s) => (
+                    ? nextStatuses(selected).map((s) => (
                         <SelectItem key={s} value={s}>
                           {s}
                         </SelectItem>

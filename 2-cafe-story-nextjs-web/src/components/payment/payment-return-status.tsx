@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { useI18n } from "@/components/providers/locale-provider";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { refreshSession } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { getCafePagesByOwnerId } from "@/lib/api/cafes";
 import { getPayment, handleVnpayReturn, syncStripePayment } from "@/lib/api/payments";
@@ -76,7 +77,23 @@ function toUrlSearchParams(params: Record<string, SearchParamsValue>) {
   return searchParams;
 }
 
+/**
+ * Thanh toán thành công gán thêm role (REVIEWER, CAFE_PAGE) vào DB, nhưng JWT
+ * người dùng đang cầm được ký từ trước nên chưa có role đó. Không làm mới token
+ * thì các endpoint gác theo role — ví dụ /api/reviewers/connect/** yêu cầu
+ * ROLE_REVIEWER — sẽ trả 403 ngay sau khi vừa mua gói.
+ */
+async function refreshSessionRoles() {
+  try {
+    await refreshSession();
+  } catch {
+    // Không chặn điều hướng: người dùng đăng nhập lại là role có hiệu lực.
+  }
+}
+
 async function resolveRedirectPath(payment: PaymentResponse, userId: string): Promise<string> {
+  await refreshSessionRoles();
+
   if (payment.adFeeId) {
     return `/ads?paymentId=${encodeURIComponent(payment.paymentId)}&checkout=paid`;
   }

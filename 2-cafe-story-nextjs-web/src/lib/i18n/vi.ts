@@ -339,6 +339,14 @@ export const vi: Dictionary = {
   "connect.return.title": "Đã kết nối tài khoản Stripe",
   "connect.return.syncing": "Đang đồng bộ trạng thái tài khoản...",
   "connect.return.redirecting": "Đang quay lại bảng điều khiển...",
+  "connect.return.failedTitle": "Chưa xác nhận được tài khoản Stripe",
+  "connect.return.failedBody":
+    "Stripe đã đưa bạn về nhưng hệ thống chưa đọc được trạng thái tài khoản. Có thể phần khai báo của bạn vẫn chưa hoàn tất.",
+  "connect.return.backToDashboard": "Về bảng điều khiển",
+  "connect.refresh.title": "Link Stripe đã hết hạn",
+  "connect.refresh.body": "Đang lấy link khai báo mới...",
+  "connect.refresh.failedTitle": "Không tạo được link khai báo mới",
+  "connect.refresh.retry": "Thử lại",
 
   // ── Explore ───────────────────────────────────────────────────────────────
   "explore.tabsLabel": "Danh mục khám phá",
@@ -357,17 +365,8 @@ export const vi: Dictionary = {
   "explore.tryRefreshing": "Hãy thử tải lại trang.",
 
   // ── Cafe menu ─────────────────────────────────────────────────────────────
-  "cafeMenu.curatedSelection": "Thực đơn chọn lọc",
-  "cafeMenu.close": "Đóng thực đơn",
-  "cafeMenu.signature.title": "Món đặc trưng",
-  "cafeMenu.seasonal.eyebrow": "Có hạn",
-  "cafeMenu.seasonal.title": "Món theo mùa",
-  "cafeMenu.classics.eyebrow": "Món quen thuộc",
-  "cafeMenu.classics.title": "Quầy espresso",
-  "cafeMenu.pastry.title": "Bánh nhà làm",
 
   // ── Cafe page ─────────────────────────────────────────────────────────────
-  "cafe.suggestions.title": "Gợi ý phù hợp nhất",
   "cafe.map.fallbackTitle": "Vị trí quán",
   "cafe.expired.title": "Trang quán đã hết hạn",
   "cafe.expired.description": "Rất tiếc! Gói dịch vụ của trang quán này đã hết hạn.",
@@ -391,8 +390,6 @@ export const vi: Dictionary = {
   "cafe.avatarAlt": "Ảnh đại diện của {name}",
   "cafe.posts.loading": "Đang tải bài viết của quán...",
   "cafe.posts.loadMore": "Xem thêm bài viết",
-  "cafe.action.viewMenu": "Xem thực đơn",
-  "cafe.menuItemAlt": "Món {name} trong thực đơn",
 
   "cafe.status.inactive": "Ngưng hoạt động",
   "cafe.status.active": "Đang hoạt động",
@@ -403,6 +400,9 @@ export const vi: Dictionary = {
   "cafe.likeCountLabel": "{count} lượt thích",
   "cafe.ratingCount": "{count} lượt đánh giá",
   "cafe.newRating": "Mới",
+  "cafe.rating.rateStars": "Đánh giá {count} trên 5 sao",
+  "cafe.rating.yours": "Bạn đã đánh giá {count}/5",
+  "cafe.rating.error": "Không lưu được đánh giá của bạn.",
   "cafe.defaultDescription": "{name} đã có mặt trên CafeStory.",
   "cafe.photoAlt": "Ảnh của {name}",
   "cafe.action.follow": "Theo dõi",
@@ -713,6 +713,14 @@ export const vi: Dictionary = {
   "reviewer.earnings.history": "Lịch sử thanh toán",
   "reviewer.earnings.engagementShort":
     "{likes} thích / {shares} chia sẻ / {comments} bình luận",
+  "reviewer.table.multiplier": "Hệ số badge",
+  "reviewer.table.base": "Trước hệ số",
+  "reviewer.earnings.loadError": "Không tải được thu nhập của bạn.",
+  "reviewer.earnings.notReviewer":
+    "Bạn chưa có gói thành viên Reviewer nên chưa phát sinh thu nhập.",
+  "reviewer.earnings.viewPlans": "Xem các gói thành viên",
+  "reviewer.earnings.pendingNote":
+    "Tháng mới nhất còn chờ quản trị viên duyệt nên chưa được chi trả.",
 
   // ── Ads dashboard ─────────────────────────────────────────────────────────
   "ads.signInRequired.title": "Cần đăng nhập",
@@ -772,6 +780,7 @@ export const vi: Dictionary = {
   "adCard.noDeliveryData": "Chưa có dữ liệu phân phối.",
   "adCard.refreshStats": "Tải lại số liệu",
   "adCard.viewStats": "Xem số liệu",
+  "adCard.hideStats": "Ẩn số liệu",
   "adCard.updating": "Đang cập nhật...",
 
   // ── Ad campaign form ──────────────────────────────────────────────────────
@@ -857,7 +866,11 @@ export const vi: Dictionary = {
   "pricing.ad.feature5":
     "Tạm dừng, tiếp tục hoặc kích hoạt lại bất cứ lúc nào trong cài đặt quán",
   "pricing.billing.perMonth": "/tháng",
+  "pricing.billing.perMonths": "/{count} tháng",
+  "pricing.billing.oneTime": "trọn gói",
   "pricing.billing.perCampaign": "/chiến dịch",
+  "pricing.audience.general": "Gói dịch vụ",
+  "pricing.emptyPlans": "Hiện chưa có gói dịch vụ nào được mở bán.",
   "pricing.description.ad": "Vị trí tài trợ dành cho trang quán của bạn",
   "pricing.description.membership": "Gói thành viên CafeStory",
   "pricing.method.title": "Chọn hình thức thanh toán",

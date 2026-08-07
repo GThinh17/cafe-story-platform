@@ -61,6 +61,17 @@ export type ReviewerSegmentItem = {
   commentCount: number;
 };
 
+export type ReviewerPayoutStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "PAID"
+  | "CANCELLED"
+  | string;
+
+/**
+ * Thu nhập một tháng. `totalBaseAmount` = tổng ba khoản trước hệ số badge,
+ * `totalFinalAmount` = số thực nhận. Khi hiển thị "thu nhập" luôn dùng số sau.
+ */
 export type ReviewerPayout = {
   id: string;
   reviewerId: string;
@@ -71,8 +82,12 @@ export type ReviewerPayout = {
   likeAmount: number;
   shareAmount: number;
   commentAmount: number;
-  totalAmount: number;
-  payoutStatus: string;
+  totalBaseAmount: number;
+  badge: ReviewerBadge | string | null;
+  badgeMultiplier: number;
+  totalFinalAmount: number;
+  status: ReviewerPayoutStatus;
+  paidAt: string | null;
 };
 
 export type ReviewerBadgeHistoryItem = {

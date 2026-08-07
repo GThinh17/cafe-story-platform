@@ -101,20 +101,38 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
         Long getEventCount();
     }
 
+    // Chống quét toàn bảng: cũ = findAll() toàn bộ comments rồi lọc bằng Java,
+    // mới = 1 query gom theo tác giả blog, trả luôn cả tổng và tổng gần đây.
     @Query("""
-            select c.user.userId as userId, count(c) as eventCount
+            select b.author.userId as authorUserId,
+                   count(c) as totalCount,
+                   sum(case when c.createdAt >= :recentStart and c.createdAt < :recentEnd
+                            then 1L else 0L end) as recentCount
             from Comment c
-            where c.createdAt >= :startAt
-            and c.createdAt < :endAt
-            group by c.user.userId
+            join c.blog b
+            where b.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
+            and b.author is not null
+            group by b.author.userId
             """)
-    List<UserCommentCountRow> countByUserAndCreatedAtBetween(
+    List<AuthorEngagementCountRow> countByBlogAuthor(
+            @Param("recentStart") LocalDateTime recentStart,
+            @Param("recentEnd") LocalDateTime recentEnd);
+
+    // Engagement tác giả NHẬN được trong khoảng [startAt, endAt). Dùng cho
+    // income/ranking/payout — chiều ngược với countByUserAndCreatedAtBetween.
+    // Tác giả tự bình luận dưới bài mình không tính.
+    @Query("""
+            select b.author.userId as authorUserId, count(c) as eventCount
+            from Comment c
+            join c.blog b
+            where b.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
+            and b.author is not null
+            and c.user.userId <> b.author.userId
+            and c.createdAt >= :startAt
+            and c.createdAt < :endAt
+            group by b.author.userId
+            """)
+    List<AuthorInteractionCountRow> countByBlogAuthorBetween(
             @Param("startAt") LocalDateTime startAt,
             @Param("endAt") LocalDateTime endAt);
-
-    interface UserCommentCountRow {
-        UUID getUserId();
-
-        Long getEventCount();
-    }
 }

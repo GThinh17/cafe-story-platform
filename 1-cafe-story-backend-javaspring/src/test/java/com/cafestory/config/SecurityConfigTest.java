@@ -4,7 +4,7 @@ import com.cafestory.dto.responseDTO.VnpayIpnResponseDTO;
 import com.cafestory.dto.responseDTO.VnpayReturnResponseDTO;
 import com.cafestory.dto.responseDTO.UsernameSuggestionResponse;
 import com.cafestory.dto.responseDTO.ReviewerBadgeResponseDTO;
-import com.cafestory.dto.responseDTO.ReviewerPayoutResponseDTO;
+import com.cafestory.dto.responseDTO.ReviewerEarningsResponseDTO;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.PaymentStatus;
 import com.cafestory.service.serviceInterface.AuthService;
@@ -22,6 +22,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -32,6 +33,7 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -158,12 +160,12 @@ class SecurityConfigTest {
     }
 
     @Test
-    void reviewerPayoutHistory_success_reviewerRoleCanReachSelfOrAdminService_TC010() throws Exception {
+    void reviewerEarnings_success_reviewerRoleCanReachSelfOrAdminService_TC010() throws Exception {
         UUID userId = UUID.randomUUID();
         UUID reviewerId = UUID.randomUUID();
         String accessToken = jwtService.createAccessToken(user(userId), List.of("REVIEWER"));
-        when(reviewerService.getReviewerPayoutHistory(userId, reviewerId))
-                .thenReturn(List.of(new ReviewerPayoutResponseDTO()));
+        when(reviewerService.getReviewerEarnings(userId, reviewerId))
+                .thenReturn(List.of(new ReviewerEarningsResponseDTO()));
 
         mockMvc.perform(get("/api/reviewers/{reviewerId}/payouts", reviewerId)
                 .header("Authorization", "Bearer " + accessToken))
@@ -183,14 +185,19 @@ class SecurityConfigTest {
                 .andExpect(status().isOk());
     }
 
+    /**
+     * Endpoint sinh payout thủ công đã bị gỡ cùng bảng reviewer_payouts. Giữ
+     * test để nếu ai đó thêm lại đường ghi payout song song thì thấy ngay.
+     */
     @Test
-    void reviewerPayoutGenerate_fail_reviewerRoleCannotAccessAdminGeneration_TC012() throws Exception {
-        String accessToken = jwtService.createAccessToken(user(), List.of("REVIEWER"));
+    void reviewerPayoutGenerate_fail_removedAlongWithDeadPayoutTable_TC012() throws Exception {
+        String accessToken = jwtService.createAccessToken(user(), List.of("ADMIN"));
 
         mockMvc.perform(post("/api/reviewers/payouts/generate")
                 .header("Authorization", "Bearer " + accessToken)
                 .param("month", "2026-06"))
-                .andExpect(status().isForbidden());
+                .andExpect(result -> assertThat(result.getResolvedException())
+                        .isInstanceOf(NoResourceFoundException.class));
     }
 
     @Test

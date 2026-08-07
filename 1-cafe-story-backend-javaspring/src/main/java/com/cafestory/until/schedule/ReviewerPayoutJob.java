@@ -9,6 +9,25 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDate;
 import java.time.YearMonth;
 
+/**
+ * Chuỗi job sinh thu nhập reviewer. Thứ tự chạy là ràng buộc thật, không phải
+ * tình cờ — đổi giờ một job mà không xét cả chuỗi sẽ làm badge tụt về IRON:
+ *
+ * <pre>
+ *   02:00 hằng ngày   ReviewerRankingSnapshotJob  snapshot DAILY của hôm qua
+ *   02:00 ngày 1      ReviewerRankingSnapshotJob  snapshot MONTHLY tháng trước
+ *                                                 + reviewer_badge_history
+ *   02:30 thứ 2       ReviewerRankingSnapshotJob  snapshot WEEKLY tuần trước
+ *   03:00 hằng ngày   ReviewerPayoutJob           reviewer_income của hôm qua
+ *                                                 (đọc snapshot DAILY để lấy badge)
+ *   04:00 ngày 1      ReviewerPayoutJob           admin_payout tháng trước
+ *                                                 (đọc snapshot MONTHLY + gom
+ *                                                  reviewer_income cả tháng)
+ * </pre>
+ *
+ * Payout tháng còn tự backfill những ngày thiếu reviewer_income, nên nếu job
+ * 03:00 lỡ một hôm thì số tháng vẫn đúng.
+ */
 @Component
 @ConditionalOnProperty(name = "app.scheduling.enabled", havingValue = "true", matchIfMissing = true)
 public class ReviewerPayoutJob {

@@ -8,11 +8,11 @@ import com.cafestory.entity.ReviewerStripeAccount;
 import com.cafestory.repository.ReviewerRepository;
 import com.cafestory.repository.ReviewerStripeAccountRepository;
 import com.cafestory.service.serviceInterface.ReviewerConnectService;
-import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Account;
 import com.stripe.model.AccountLink;
 import com.stripe.param.AccountCreateParams;
+import com.stripe.net.RequestOptions;
 import com.stripe.param.AccountLinkCreateParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,8 +39,11 @@ public class ReviewerConnectServiceImpl implements ReviewerConnectService {
 
     public ReviewerConnectServiceImpl(
             @Value("${stripe.secret-key:}") String secretKey,
-            @Value("${stripe.connect.return-url:http://localhost:3000/reviewer/connect/return}") String returnUrl,
-            @Value("${stripe.connect.refresh-url:http://localhost:3000/reviewer/connect/refresh}") String refreshUrl,
+            // Default phải khớp application.properties — trước đây lệch
+            // (/reviewer/... thay vì /reviewer-dashboard/...) nên chạy thiếu file
+            // config là Stripe trả người dùng về route không tồn tại.
+            @Value("${stripe.connect.return-url:http://localhost:3000/reviewer-dashboard/connect/return}") String returnUrl,
+            @Value("${stripe.connect.refresh-url:http://localhost:3000/reviewer-dashboard/connect/refresh}") String refreshUrl,
             ReviewerRepository reviewerRepository,
             ReviewerStripeAccountRepository stripeAccountRepository,
             ReviewerStripeAccountMapper mapper) {
@@ -58,7 +61,7 @@ public class ReviewerConnectServiceImpl implements ReviewerConnectService {
         Reviewer reviewer = reviewerRepository.findByUserUserId(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reviewer not found"));
 
-        if (!Boolean.TRUE.equals(reviewer.getReviewerActive())) {
+        if (!reviewer.isSubscriptionActive()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Reviewer subscription is not active");
         }
 
@@ -95,7 +98,7 @@ public class ReviewerConnectServiceImpl implements ReviewerConnectService {
         Reviewer reviewer = reviewerRepository.findByUserUserId(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reviewer not found"));
 
-        if (!Boolean.TRUE.equals(reviewer.getReviewerActive())) {
+        if (!reviewer.isSubscriptionActive()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Reviewer subscription is not active");
         }
 
@@ -150,9 +153,8 @@ public class ReviewerConnectServiceImpl implements ReviewerConnectService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "No Stripe account found. Start onboarding first."));
 
-        Stripe.apiKey = secretKey;
         try {
-            Account stripeAccount = Account.retrieve(account.getStripeAccountId());
+            Account stripeAccount = Account.retrieve(account.getStripeAccountId(), requestOptions());
             boolean chargesEnabled = Boolean.TRUE.equals(stripeAccount.getChargesEnabled());
             boolean payoutsEnabled = Boolean.TRUE.equals(stripeAccount.getPayoutsEnabled());
             account.setChargesEnabled(chargesEnabled);
@@ -170,8 +172,15 @@ public class ReviewerConnectServiceImpl implements ReviewerConnectService {
         return mapper.toResponse(reviewer, account);
     }
 
+    /**
+     * Truyền API key theo từng lời gọi thay vì gán Stripe.apiKey — biến static
+     * toàn cục đó bị bốn class cùng ghi, đổi key ở đâu là ảnh hưởng cả tiến trình.
+     */
+    private RequestOptions requestOptions() {
+        return RequestOptions.builder().setApiKey(secretKey).build();
+    }
+
     private String createExpressAccount() {
-        Stripe.apiKey = secretKey;
         try {
             AccountCreateParams params = AccountCreateParams.builder()
                     .setType(AccountCreateParams.Type.EXPRESS)
@@ -182,7 +191,7 @@ public class ReviewerConnectServiceImpl implements ReviewerConnectService {
                                     .build()
                     )
                     .build();
-            Account account = Account.create(params);
+            Account account = Account.create(params, requestOptions());
             return account.getId();
         } catch (StripeException e) {
             log.error("Failed to create Stripe Express account: {}", e.getMessage());
@@ -192,7 +201,6 @@ public class ReviewerConnectServiceImpl implements ReviewerConnectService {
     }
 
     private String generateAccountLink(String stripeAccountId) {
-        Stripe.apiKey = secretKey;
         try {
             AccountLinkCreateParams params = AccountLinkCreateParams.builder()
                     .setAccount(stripeAccountId)
@@ -200,7 +208,7 @@ public class ReviewerConnectServiceImpl implements ReviewerConnectService {
                     .setReturnUrl(returnUrl)
                     .setType(AccountLinkCreateParams.Type.ACCOUNT_ONBOARDING)
                     .build();
-            AccountLink link = AccountLink.create(params);
+            AccountLink link = AccountLink.create(params, requestOptions());
             return link.getUrl();
         } catch (StripeException e) {
             log.error("Failed to generate Stripe account link for {}: {}", stripeAccountId, e.getMessage());

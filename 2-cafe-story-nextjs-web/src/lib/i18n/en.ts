@@ -322,6 +322,14 @@ export const en = {
   "connect.return.title": "Stripe account connected",
   "connect.return.syncing": "Syncing account status...",
   "connect.return.redirecting": "Returning to dashboard...",
+  "connect.return.failedTitle": "Could not confirm your Stripe account",
+  "connect.return.failedBody":
+    "Stripe sent you back but we could not read your account status. Your onboarding may still be incomplete.",
+  "connect.return.backToDashboard": "Back to dashboard",
+  "connect.refresh.title": "Your Stripe link expired",
+  "connect.refresh.body": "Fetching a fresh onboarding link...",
+  "connect.refresh.failedTitle": "Could not create a new onboarding link",
+  "connect.refresh.retry": "Try again",
 
   // ── Explore ───────────────────────────────────────────────────────────────
   "explore.tabsLabel": "Explore categories",
@@ -340,17 +348,8 @@ export const en = {
   "explore.tryRefreshing": "Try refreshing the page.",
 
   // ── Cafe menu ─────────────────────────────────────────────────────────────
-  "cafeMenu.curatedSelection": "Curated selection",
-  "cafeMenu.close": "Close menu",
-  "cafeMenu.signature.title": "Signature pours",
-  "cafeMenu.seasonal.eyebrow": "Limited time",
-  "cafeMenu.seasonal.title": "Seasonal offerings",
-  "cafeMenu.classics.eyebrow": "The classics",
-  "cafeMenu.classics.title": "Espresso bar",
-  "cafeMenu.pastry.title": "Artisanal bakes",
 
   // ── Cafe page ─────────────────────────────────────────────────────────────
-  "cafe.suggestions.title": "Top matches",
   "cafe.map.fallbackTitle": "Cafe location",
   "cafe.expired.title": "Cafe page expired",
   "cafe.expired.description": "Sorry! This cafe page subscription has expired.",
@@ -374,8 +373,6 @@ export const en = {
   "cafe.avatarAlt": "{name} avatar",
   "cafe.posts.loading": "Loading cafe posts...",
   "cafe.posts.loadMore": "Load more posts",
-  "cafe.action.viewMenu": "View menu",
-  "cafe.menuItemAlt": "{name} menu item",
 
   "cafe.status.inactive": "Inactive",
   "cafe.status.active": "Active",
@@ -386,6 +383,9 @@ export const en = {
   "cafe.likeCountLabel": "{count} likes",
   "cafe.ratingCount": "{count} ratings",
   "cafe.newRating": "New",
+  "cafe.rating.rateStars": "Rate {count} out of 5",
+  "cafe.rating.yours": "You rated {count}/5",
+  "cafe.rating.error": "Could not save your rating.",
   "cafe.defaultDescription": "{name} is now on CafeStory.",
   "cafe.photoAlt": "{name} photo",
   "cafe.action.follow": "Follow",
@@ -687,6 +687,14 @@ export const en = {
   "reviewer.earnings.monthlyChart": "Monthly payout chart",
   "reviewer.earnings.history": "Payout history",
   "reviewer.earnings.engagementShort": "{likes} L / {shares} S / {comments} C",
+  "reviewer.table.multiplier": "Badge ×",
+  "reviewer.table.base": "Base",
+  "reviewer.earnings.loadError": "Could not load your earnings.",
+  "reviewer.earnings.notReviewer":
+    "You do not have a reviewer membership yet, so there is nothing to pay out.",
+  "reviewer.earnings.viewPlans": "View membership plans",
+  "reviewer.earnings.pendingNote":
+    "The newest month is still awaiting admin approval, so it has not been transferred yet.",
 
   // ── Ads dashboard ─────────────────────────────────────────────────────────
   "ads.signInRequired.title": "Sign in required",
@@ -746,6 +754,7 @@ export const en = {
   "adCard.noDeliveryData": "No delivery data yet.",
   "adCard.refreshStats": "Refresh stats",
   "adCard.viewStats": "View stats",
+  "adCard.hideStats": "Hide stats",
   "adCard.updating": "Updating...",
 
   // ── Ad campaign form ──────────────────────────────────────────────────────
@@ -822,7 +831,11 @@ export const en = {
   "pricing.ad.feature5":
     "Pause, resume, and re-activate any time from cafe settings",
   "pricing.billing.perMonth": "/month",
+  "pricing.billing.perMonths": "/{count} months",
+  "pricing.billing.oneTime": "one-time",
   "pricing.billing.perCampaign": "/campaign",
+  "pricing.audience.general": "Membership",
+  "pricing.emptyPlans": "No membership package is on sale right now.",
   "pricing.description.ad": "Sponsored placement for your cafe page",
   "pricing.description.membership": "CafeStory membership package",
   "pricing.method.title": "Choose payment method",

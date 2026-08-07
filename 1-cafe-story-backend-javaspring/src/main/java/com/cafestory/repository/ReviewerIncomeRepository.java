@@ -49,4 +49,36 @@ public interface ReviewerIncomeRepository extends JpaRepository<ReviewerIncome, 
 
         Long getTotalBase();
     }
+
+    /**
+     * Tổng like/share/comment theo từng tháng của một reviewer.
+     *
+     * <p>admin_payout chỉ lưu tổng tiền, không lưu chi tiết từng loại tương tác.
+     * Trang thu nhập của reviewer cần phần bóc tách nên phải gom lại từ đây.
+     * Gom theo year/month thay vì to_char để giữ JPQL thuần, không phụ thuộc
+     * phương ngữ SQL.
+     */
+    @Query("""
+            select year(i.incomeDate) as year,
+                   month(i.incomeDate) as month,
+                   sum(i.likeCount) as likeCount,
+                   sum(i.shareCount) as shareCount,
+                   sum(i.commentCount) as commentCount
+            from ReviewerIncome i
+            where i.reviewer.reviewerId = :reviewerId
+            group by year(i.incomeDate), month(i.incomeDate)
+            """)
+    List<ReviewerMonthlyCountRow> sumCountsByReviewerGroupByMonth(@Param("reviewerId") UUID reviewerId);
+
+    interface ReviewerMonthlyCountRow {
+        Integer getYear();
+
+        Integer getMonth();
+
+        Long getLikeCount();
+
+        Long getShareCount();
+
+        Long getCommentCount();
+    }
 }

@@ -15,4 +15,13 @@ public interface AdminPayoutService {
     Page<AdminPayoutResponseDTO> getPayouts(String month, AdminPayoutStatus status, Pageable pageable);
 
     AdminPayoutResponseDTO updatePayoutStatus(UUID payoutId, UUID adminUserId, AdminPayoutStatusRequest request);
+
+    /**
+     * Stripe báo transfer hỏng sau khi ta đã đánh dấu PAID: đưa payout về
+     * APPROVED để admin xử lý lại, xoá dấu vết transfer và ghi lý do vào note.
+     *
+     * <p>Đường riêng cho webhook, không đi qua validateStatusTransition —
+     * PAID -> APPROVED vẫn phải bị cấm với thao tác tay của admin.
+     */
+    void markTransferFailed(String stripeTransferId, String reason);
 }

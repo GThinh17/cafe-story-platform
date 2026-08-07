@@ -1,14 +1,37 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ReviewerPayoutPanel } from "@/components/reviewer-dashboard/reviewer-payout-panel";
 import type { ReviewerPayout } from "@/features/reviewer-dashboard/reviewer-dashboard.types";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { getReviewerByUserId, getReviewerPayouts } from "@/lib/api/reviewers";
+import { ApiError } from "@/lib/api/client";
+import { getReviewerByUserId, getReviewerEarnings } from "@/lib/api/reviewers";
+import { mockReviewerPayouts } from "@/mocks/reviewer-earnings";
 import { useI18n } from "@/components/providers/locale-provider";
+
+/**
+ * Screenshot escape hatch: the monthly payout job has not run for every
+ * reviewer yet, so the page is empty on demo accounts. With
+ * NEXT_PUBLIC_ENABLE_DEMO_DATA=true the page falls back to `mockReviewerPayouts`
+ * only when the API returned nothing — real payouts always win.
+ */
+const isDemoDataEnabled = process.env.NEXT_PUBLIC_ENABLE_DEMO_DATA === "true";
+
+/**
+ * Ba trạng thái tách bạch. Trước đây mọi lỗi đều bị `catch {}` nuốt nên 403,
+ * 404 và 500 hiển thị y hệt "chưa có dữ liệu" — không cách nào chẩn đoán.
+ */
+type LoadState =
+  | { kind: "loading" }
+  | { kind: "ready" }
+  | { kind: "not-reviewer" }
+  | { kind: "error"; message: string };
 
 const vndFormatter = new Intl.NumberFormat("vi-VN");
 
@@ -16,30 +39,74 @@ function formatVnd(value: number) {
   return `${vndFormatter.format(value)}đ`;
 }
 
+function withDemoFallback(payouts: ReviewerPayout[]) {
+  return payouts.length === 0 && isDemoDataEnabled ? mockReviewerPayouts : payouts;
+}
+
 export function ReviewerEarningsDetail() {
   const { t } = useI18n();
   const { user } = useCurrentUser();
   const [payouts, setPayouts] = useState<ReviewerPayout[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [state, setState] = useState<LoadState>({ kind: "loading" });
 
-  const loadData = useCallback(async (userId: string) => {
-    try {
-      const reviewer = await getReviewerByUserId(userId);
-      const data = await getReviewerPayouts(reviewer.reviewerId);
-      setPayouts(data ?? []);
-    } catch {
-      // reviewer not found
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const loadData = useCallback(
+    async (userId: string) => {
+      setState({ kind: "loading" });
+      try {
+        const reviewer = await getReviewerByUserId(userId);
+        const data = await getReviewerEarnings(reviewer.reviewerId);
+        setPayouts(withDemoFallback(data ?? []));
+        setState({ kind: "ready" });
+      } catch (loadError) {
+        const fallback = withDemoFallback([]);
+        if (fallback.length > 0) {
+          setPayouts(fallback);
+          setState({ kind: "ready" });
+          return;
+        }
+
+        // 404 ở bước getReviewerByUserId nghĩa là user chưa mua gói reviewer —
+        // đó là trạng thái hợp lệ, không phải sự cố.
+        if (loadError instanceof ApiError && loadError.statusCode === 404) {
+          setState({ kind: "not-reviewer" });
+          return;
+        }
+
+        setState({
+          kind: "error",
+          message:
+            loadError instanceof Error
+              ? loadError.message
+              : t("reviewer.earnings.loadError"),
+        });
+      }
+    },
+    [t],
+  );
 
   useEffect(() => {
-    if (user?.userId) void loadData(user.userId);
-    else setLoading(false);
+    if (user?.userId) {
+      void loadData(user.userId);
+      return;
+    }
+
+    const fallback = withDemoFallback([]);
+    setPayouts(fallback);
+    setState(fallback.length > 0 ? { kind: "ready" } : { kind: "not-reviewer" });
   }, [user?.userId, loadData]);
 
-  if (loading) {
+  const header = (
+    <section>
+      <p className="text-xs font-black uppercase tracking-[0.14em] text-primary">
+        {t("reviewer.earnings.eyebrow")}
+      </p>
+      <h2 className="mt-1 text-2xl font-black text-espresso">
+        {t("reviewer.earnings.subtitle")}
+      </h2>
+    </section>
+  );
+
+  if (state.kind === "loading") {
     return (
       <div className="flex items-center justify-center py-16">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
@@ -47,23 +114,52 @@ export function ReviewerEarningsDetail() {
     );
   }
 
+  if (state.kind === "error") {
+    return (
+      <div className="flex flex-col gap-6">
+        {header}
+        <Alert variant="destructive">
+          <AlertTitle>{t("reviewer.earnings.loadError")}</AlertTitle>
+          <AlertDescription className="flex flex-col items-start gap-3">
+            <span>{state.message}</span>
+            <Button
+              onClick={() => user?.userId && void loadData(user.userId)}
+              size="sm"
+              type="button"
+              variant="outline"
+            >
+              {t("common.retry")}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (state.kind === "not-reviewer") {
+    return (
+      <div className="flex flex-col gap-6">
+        {header}
+        <Card className="flex flex-col items-center gap-4 p-10 text-center text-sm text-muted-foreground">
+          <span>{t("reviewer.earnings.notReviewer")}</span>
+          <Button asChild size="sm" type="button" variant="outline">
+            <Link href="/reviewer-dashboard">{t("reviewer.earnings.viewPlans")}</Link>
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
   const current = payouts[0] ?? null;
-  const allTimeTotal = payouts.reduce((total, p) => total + p.totalAmount, 0);
+  const allTimeTotal = payouts.reduce((total, p) => total + p.totalFinalAmount, 0);
   const totalLikeAmount = payouts.reduce((total, p) => total + p.likeAmount, 0);
   const totalShareAmount = payouts.reduce((total, p) => total + p.shareAmount, 0);
   const totalCommentAmount = payouts.reduce((total, p) => total + p.commentAmount, 0);
-  const maxAmount = Math.max(...payouts.map((p) => p.totalAmount), 1);
+  const maxAmount = Math.max(...payouts.map((p) => p.totalFinalAmount), 1);
 
   return (
     <div className="flex flex-col gap-6">
-      <section>
-        <p className="text-xs font-black uppercase tracking-[0.14em] text-primary">
-          {t("reviewer.earnings.eyebrow")}
-        </p>
-        <h2 className="mt-1 text-2xl font-black text-espresso">
-          {t("reviewer.earnings.subtitle")}
-        </h2>
-      </section>
+      {header}
 
       {payouts.length === 0 ? (
         <Card className="flex items-center justify-center p-10 text-sm text-muted-foreground">
@@ -77,7 +173,7 @@ export function ReviewerEarningsDetail() {
                 {t("reviewer.earnings.latest")}
               </p>
               <p className="mt-3 text-3xl font-black text-primary">
-                {current ? formatVnd(current.totalAmount) : "—"}
+                {current ? formatVnd(current.totalFinalAmount) : "—"}
               </p>
             </Card>
             <Card className="p-5">
@@ -133,7 +229,7 @@ export function ReviewerEarningsDetail() {
                     <div className="flex h-52 w-full items-end rounded-md bg-background">
                       <div
                         className="w-full rounded-md bg-primary"
-                        style={{ height: `${(item.totalAmount / maxAmount) * 100}%` }}
+                        style={{ height: `${(item.totalFinalAmount / maxAmount) * 100}%` }}
                       />
                     </div>
                     <div className="text-center">
@@ -141,7 +237,7 @@ export function ReviewerEarningsDetail() {
                         {item.payoutMonth.slice(5)}
                       </p>
                       <p className="text-xs font-semibold text-muted">
-                        {formatVnd(item.totalAmount)}
+                        {formatVnd(item.totalFinalAmount)}
                       </p>
                     </div>
                   </div>
@@ -155,7 +251,7 @@ export function ReviewerEarningsDetail() {
               {t("reviewer.earnings.history")}
             </h3>
             <div className="mt-5 overflow-x-auto">
-              <table className="w-full min-w-[920px] text-left text-sm">
+              <table className="w-full min-w-[1040px] text-left text-sm">
                 <thead className="text-xs uppercase text-muted">
                   <tr>
                     <th className="py-2 pr-3">{t("reviewer.table.month")}</th>
@@ -167,6 +263,9 @@ export function ReviewerEarningsDetail() {
                     <th className="py-2 pr-3">
                       {t("reviewer.table.commentAmount")}
                     </th>
+                    <th className="py-2 pr-3">{t("reviewer.table.base")}</th>
+                    <th className="py-2 pr-3">{t("reviewer.table.badge")}</th>
+                    <th className="py-2 pr-3">{t("reviewer.table.multiplier")}</th>
                     <th className="py-2 pr-3">{t("reviewer.table.total")}</th>
                     <th className="py-2">{t("reviewer.table.status")}</th>
                   </tr>
@@ -183,17 +282,29 @@ export function ReviewerEarningsDetail() {
                       <td className="py-3 pr-3 text-muted">{formatVnd(payout.likeAmount)}</td>
                       <td className="py-3 pr-3 text-muted">{formatVnd(payout.shareAmount)}</td>
                       <td className="py-3 pr-3 text-muted">{formatVnd(payout.commentAmount)}</td>
+                      <td className="py-3 pr-3 text-muted">
+                        {formatVnd(payout.totalBaseAmount)}
+                      </td>
+                      <td className="py-3 pr-3">
+                        <Badge variant="secondary">{payout.badge ?? "—"}</Badge>
+                      </td>
+                      <td className="py-3 pr-3 text-muted">×{payout.badgeMultiplier}</td>
                       <td className="py-3 pr-3 font-black text-primary">
-                        {formatVnd(payout.totalAmount)}
+                        {formatVnd(payout.totalFinalAmount)}
                       </td>
                       <td className="py-3">
-                        <Badge variant="outline">{payout.payoutStatus}</Badge>
+                        <Badge variant="outline">{payout.status}</Badge>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            {current && current.status !== "PAID" ? (
+              <p className="mt-4 text-xs text-muted">
+                {t("reviewer.earnings.pendingNote")}
+              </p>
+            ) : null}
           </Card>
         </>
       )}

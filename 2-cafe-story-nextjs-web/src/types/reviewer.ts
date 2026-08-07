@@ -33,7 +33,21 @@ export type ReviewerResponse = {
   isFollowing: boolean | null;
 };
 
-export type ReviewerPayoutResponse = {
+export type ReviewerPayoutStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "PAID"
+  | "CANCELLED"
+  | string;
+
+/**
+ * Thu nhập một tháng của reviewer.
+ *
+ * `totalBaseAmount` là tổng ba khoản like/share/comment; `totalFinalAmount` là
+ * số thực nhận sau khi nhân hệ số badge của tháng. Hai số này khác nhau nên UI
+ * phải hiển thị đúng cái cuối cùng khi nói về tiền nhận được.
+ */
+export type ReviewerEarningsResponse = {
   id: string;
   reviewerId: string;
   payoutMonth: string;
@@ -43,8 +57,12 @@ export type ReviewerPayoutResponse = {
   likeAmount: number;
   shareAmount: number;
   commentAmount: number;
-  totalAmount: number;
-  payoutStatus: string;
+  totalBaseAmount: number;
+  badge: ReviewerBadge | string | null;
+  badgeMultiplier: number;
+  totalFinalAmount: number;
+  status: ReviewerPayoutStatus;
+  paidAt: string | null;
 };
 
 export type ReviewerConnectStatus = {

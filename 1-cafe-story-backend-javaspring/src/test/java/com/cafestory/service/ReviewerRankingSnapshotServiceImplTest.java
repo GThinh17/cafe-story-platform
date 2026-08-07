@@ -8,6 +8,7 @@ import com.cafestory.entity.ReviewerRankingSnapshot;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.RankingPeriodType;
 import com.cafestory.entity.enums.ReviewerBadge;
+import com.cafestory.repository.AuthorInteractionCountRow;
 import com.cafestory.repository.BlogLikeRepository;
 import com.cafestory.repository.BlogShareRepository;
 import com.cafestory.repository.CommentRepository;
@@ -30,12 +31,10 @@ import org.springframework.data.domain.Pageable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -89,51 +88,91 @@ class ReviewerRankingSnapshotServiceImplTest {
                 reviewerBadgeHistoryRepository);
     }
 
+    /**
+     * Chốt chiều đo: score phải tính trên engagement blog của reviewer NHẬN
+     * được (countByBlogAuthorBetween), không phải engagement reviewer đi thả
+     * cho người khác. Nếu ai đó đổi lại query cũ, test này gãy.
+     */
     @Test
-    void generateSnapshot_monthly_upsertsReviewerBadges_TC001() {
+    void generateSnapshot_scoresEngagementReceivedByAuthor_TC001() {
         Reviewer reviewer = reviewer();
-        stubEmptyEngagementWith(reviewer);
-        when(formulaService.calculateScore(0, 0, 0)).thenReturn(150L);
-        when(badgeThresholdService.badgeForScore(150L)).thenReturn(ReviewerBadge.BRONZE);
-        when(reviewerBadgeHistoryRepository.findByReviewerReviewerIdAndMonth(REVIEWER_ID, MONTH_PERIOD))
-                .thenReturn(Optional.empty());
+        stubReviewerAndFormula(reviewer);
+        stubEngagement(10L, 2L, 3L);
+        when(snapshotRepository.findByPeriodAndPeriodTypeOrderByRankPositionAsc(
+                MONTH_PERIOD, RankingPeriodType.MONTHLY)).thenReturn(List.of());
+        when(badgeThresholdService.badgeForScore(31L)).thenReturn(ReviewerBadge.BRONZE);
+        when(reviewerBadgeHistoryRepository.findByMonth(MONTH_PERIOD)).thenReturn(List.of());
 
         service.generateSnapshot(RankingPeriodType.MONTHLY, REFERENCE_DATE);
 
-        ArgumentCaptor<ReviewerBadgeHistory> captor = ArgumentCaptor.forClass(ReviewerBadgeHistory.class);
-        verify(reviewerBadgeHistoryRepository).save(captor.capture());
-        ReviewerBadgeHistory saved = captor.getValue();
+        ArgumentCaptor<List<ReviewerRankingSnapshot>> captor = captor();
+        verify(snapshotRepository).saveAll(captor.capture());
+        ReviewerRankingSnapshot saved = captor.getValue().get(0);
+        assertThat(saved.getLikeCount()).isEqualTo(10L);
+        assertThat(saved.getShareCount()).isEqualTo(2L);
+        assertThat(saved.getCommentCount()).isEqualTo(3L);
+        // 10*1 + 2*3 + 3*5 = 31
+        assertThat(saved.getScore()).isEqualTo(31L);
+        assertThat(saved.getRankPosition()).isEqualTo(1);
+    }
+
+    @Test
+    void generateSnapshot_monthly_upsertsReviewerBadges_TC002() {
+        Reviewer reviewer = reviewer();
+        stubReviewerAndFormula(reviewer);
+        stubEngagement(10L, 2L, 3L);
+        when(snapshotRepository.findByPeriodAndPeriodTypeOrderByRankPositionAsc(
+                MONTH_PERIOD, RankingPeriodType.MONTHLY)).thenReturn(List.of());
+        when(badgeThresholdService.badgeForScore(31L)).thenReturn(ReviewerBadge.BRONZE);
+        when(reviewerBadgeHistoryRepository.findByMonth(MONTH_PERIOD)).thenReturn(List.of());
+
+        service.generateSnapshot(RankingPeriodType.MONTHLY, REFERENCE_DATE);
+
+        ArgumentCaptor<List<ReviewerBadgeHistory>> captor = captor();
+        verify(reviewerBadgeHistoryRepository).saveAll(captor.capture());
+        ReviewerBadgeHistory saved = captor.getValue().get(0);
         assertThat(saved.getReviewer()).isEqualTo(reviewer);
         assertThat(saved.getMonth()).isEqualTo(MONTH_PERIOD);
-        assertThat(saved.getScore()).isEqualTo(150L);
+        assertThat(saved.getScore()).isEqualTo(31L);
         assertThat(saved.getBadge()).isEqualTo(ReviewerBadge.BRONZE);
     }
 
     @Test
-    void generateSnapshot_daily_doesNotUpsertReviewerBadges_TC002() {
+    void generateSnapshot_daily_doesNotUpsertReviewerBadges_TC003() {
         Reviewer reviewer = reviewer();
-        stubEmptyEngagementWith(reviewer);
-        when(formulaService.calculateScore(0, 0, 0)).thenReturn(50L);
+        stubReviewerAndFormula(reviewer);
+        stubEngagement(0L, 0L, 0L);
+        when(snapshotRepository.findByPeriodAndPeriodTypeOrderByRankPositionAsc(
+                "2026-06-15", RankingPeriodType.DAILY)).thenReturn(List.of());
 
         service.generateSnapshot(RankingPeriodType.DAILY, REFERENCE_DATE);
 
-        verify(reviewerBadgeHistoryRepository, never()).save(any());
-        verify(reviewerBadgeHistoryRepository, never()).findByReviewerReviewerIdAndMonth(any(), any());
+        verify(reviewerBadgeHistoryRepository, never()).saveAll(any());
     }
 
+    /**
+     * WEEKLY nhãn theo tuần ISO của ngày tham chiếu. 2026-06-15 là thứ 2 của
+     * tuần 25 nên period phải là 2026-W25 — nhãn sai làm payout/badge tra không
+     * ra snapshot.
+     */
     @Test
-    void generateSnapshot_weekly_doesNotUpsertReviewerBadges_TC003() {
+    void generateSnapshot_weekly_usesIsoWeekPeriodAndSkipsBadges_TC004() {
         Reviewer reviewer = reviewer();
-        stubEmptyEngagementWith(reviewer);
-        when(formulaService.calculateScore(0, 0, 0)).thenReturn(50L);
+        stubReviewerAndFormula(reviewer);
+        stubEngagement(0L, 0L, 0L);
+        when(snapshotRepository.findByPeriodAndPeriodTypeOrderByRankPositionAsc(
+                "2026-W25", RankingPeriodType.WEEKLY)).thenReturn(List.of());
 
         service.generateSnapshot(RankingPeriodType.WEEKLY, REFERENCE_DATE);
 
-        verify(reviewerBadgeHistoryRepository, never()).save(any());
+        ArgumentCaptor<List<ReviewerRankingSnapshot>> captor = captor();
+        verify(snapshotRepository).saveAll(captor.capture());
+        assertThat(captor.getValue().get(0).getPeriod()).isEqualTo("2026-W25");
+        verify(reviewerBadgeHistoryRepository, never()).saveAll(any());
     }
 
     @Test
-    void getRanking_monthly_enrichesBadgeFromHistory_TC004() {
+    void getRanking_monthly_enrichesBadgeFromHistory_TC005() {
         ReviewerRankingSnapshot snapshot = snapshot(150L);
         when(snapshotRepository.findByPeriodAndPeriodType(eq(MONTH_PERIOD), eq(RankingPeriodType.MONTHLY), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(snapshot)));
@@ -151,7 +190,7 @@ class ReviewerRankingSnapshotServiceImplTest {
     }
 
     @Test
-    void getRanking_daily_doesNotQueryBadgeHistory_TC005() {
+    void getRanking_daily_doesNotQueryBadgeHistory_TC006() {
         ReviewerRankingSnapshot snapshot = snapshot(150L);
         when(snapshotRepository.findByPeriodAndPeriodType(eq("2026-06-15"), eq(RankingPeriodType.DAILY), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(snapshot)));
@@ -163,17 +202,40 @@ class ReviewerRankingSnapshotServiceImplTest {
         verify(reviewerBadgeHistoryRepository, never()).findByMonthAndReviewerReviewerIdIn(any(), any());
     }
 
-    private void stubEmptyEngagementWith(Reviewer reviewer) {
-        when(reviewerRepository.findAll()).thenReturn(List.of(reviewer));
-        when(blogLikeRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(LocalDateTime.class), any(LocalDateTime.class)))
-                .thenReturn(List.of());
-        when(blogShareRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(LocalDateTime.class), any(LocalDateTime.class)))
-                .thenReturn(List.of());
-        when(commentRepository.findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(LocalDateTime.class), any(LocalDateTime.class)))
-                .thenReturn(List.of());
-        when(snapshotRepository.findByPeriodAndPeriodTypeOrderByRankPositionAsc(any(String.class), any(RankingPeriodType.class)))
-                .thenReturn(List.of());
+    private void stubReviewerAndFormula(Reviewer reviewer) {
+        when(reviewerRepository.findAllWithUser()).thenReturn(List.of(reviewer));
         when(formulaService.getActiveFormula()).thenReturn(formula());
+    }
+
+    private void stubEngagement(long likes, long shares, long comments) {
+        when(blogLikeRepository.countByBlogAuthorBetween(any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(rows(likes));
+        when(blogShareRepository.countByBlogAuthorBetween(any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(rows(shares));
+        when(commentRepository.countByBlogAuthorBetween(any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(rows(comments));
+    }
+
+    private List<AuthorInteractionCountRow> rows(long count) {
+        if (count == 0) {
+            return List.of();
+        }
+        return List.of(new AuthorInteractionCountRow() {
+            @Override
+            public UUID getAuthorUserId() {
+                return USER_ID;
+            }
+
+            @Override
+            public Long getEventCount() {
+                return count;
+            }
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T> ArgumentCaptor<List<T>> captor() {
+        return ArgumentCaptor.forClass((Class<List<T>>) (Class<?>) List.class);
     }
 
     private Reviewer reviewer() {
@@ -188,6 +250,9 @@ class ReviewerRankingSnapshotServiceImplTest {
     private ReviewerFormula formula() {
         ReviewerFormula formula = new ReviewerFormula();
         formula.setId(FORMULA_ID);
+        formula.setLikeWeight(1);
+        formula.setShareWeight(3);
+        formula.setCommentWeight(5);
         return formula;
     }
 
