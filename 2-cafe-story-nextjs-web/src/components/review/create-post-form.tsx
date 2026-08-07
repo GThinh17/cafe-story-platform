@@ -40,6 +40,7 @@ import {
 } from "@/lib/api/regions";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import type { ReviewComposerModel, ReviewDraftHint } from "@/types/review";
+import { useI18n } from "@/components/providers/locale-provider";
 
 type CreatePostFormProps = {
   composer: ReviewComposerModel;
@@ -54,13 +55,14 @@ export function CreatePostForm({
   hints,
   onSubmit,
 }: CreatePostFormProps) {
+  const { t } = useI18n();
   return (
     <Card asChild>
       <form className="overflow-hidden" onSubmit={onSubmit}>
       <CardHeader className="flex items-start justify-between gap-4 border-b border-border px-6 py-5">
         <div className="min-w-0">
           <p className="text-xs font-black uppercase tracking-[0.12em] text-primary">
-            Reviewer
+            {t("composer.eyebrow")}
           </p>
           <CardTitle className="mt-2 text-2xl font-black text-foreground">
             {composer.title}
@@ -70,14 +72,14 @@ export function CreatePostForm({
           </CardDescription>
         </div>
         <Badge className="shrink-0 px-3 py-2 text-xs font-black" variant="secondary">
-          Draft
+          {t("composer.draft")}
         </Badge>
       </CardHeader>
 
       <CardContent className="space-y-6 p-6">
         <Card className="overflow-hidden bg-background shadow-none">
           <img
-            alt={`${composer.selectedCafe} cafe preview`}
+            alt={t("composer.previewAlt", { name: composer.selectedCafe })}
             className="aspect-[16/10] w-full object-cover"
             decoding="async"
             src={composer.previewImage}
@@ -95,14 +97,14 @@ export function CreatePostForm({
               variant="outline"
               type="button"
             >
-              Change photo
+              {t("composer.changePhoto")}
             </Button>
           </div>
         </Card>
 
         <FieldGroup className="grid gap-4 sm:grid-cols-2">
           <Field className="sm:col-span-2">
-            <FieldLabel className="text-sm font-black">Cafe</FieldLabel>
+            <FieldLabel className="text-sm font-black">{t("composer.cafe")}</FieldLabel>
             <Input
               defaultValue={composer.selectedCafe}
               type="text"
@@ -110,7 +112,9 @@ export function CreatePostForm({
           </Field>
 
           <Field>
-            <FieldLabel className="text-sm font-black">Visit type</FieldLabel>
+            <FieldLabel className="text-sm font-black">
+              {t("composer.visitType")}
+            </FieldLabel>
             <Input
               defaultValue={composer.visitType}
               type="text"
@@ -118,7 +122,7 @@ export function CreatePostForm({
           </Field>
 
           <Field>
-            <FieldLabel className="text-sm font-black">Spend</FieldLabel>
+            <FieldLabel className="text-sm font-black">{t("composer.spend")}</FieldLabel>
             <Input
               defaultValue={composer.spend}
               type="text"
@@ -127,7 +131,7 @@ export function CreatePostForm({
         </FieldGroup>
 
         <section className="space-y-3">
-          <p className="text-sm font-black">Rating</p>
+          <p className="text-sm font-black">{t("composer.rating")}</p>
           <div className="grid grid-cols-5 gap-2">
             {ratingValues.map((rating) => (
               <Badge
@@ -146,7 +150,7 @@ export function CreatePostForm({
         </section>
 
         <Field>
-          <FieldLabel className="text-sm font-black">Review</FieldLabel>
+          <FieldLabel className="text-sm font-black">{t("composer.review")}</FieldLabel>
           <Textarea
             className="min-h-36"
             defaultValue={composer.caption}
@@ -158,7 +162,7 @@ export function CreatePostForm({
             <Badge className="grid size-6 place-items-center rounded-md bg-primary/10 p-0 text-xs font-black text-primary">
               AI
             </Badge>
-            <h2 className="text-sm font-black">AI tags</h2>
+            <h2 className="text-sm font-black">{t("composer.aiTags")}</h2>
           </div>
           <div className="flex flex-wrap gap-2">
             {composer.aiTags.map((tag) => (
@@ -190,7 +194,7 @@ export function CreatePostForm({
             <p className="text-xs text-muted">{composer.moderation.status}</p>
           </div>
           <Badge className="bg-primary/10 px-3 py-2 text-xs font-black text-primary">
-            Public
+            {t("composer.public")}
           </Badge>
         </section>
       </CardContent>
@@ -201,13 +205,13 @@ export function CreatePostForm({
           variant="outline"
           type="button"
         >
-          Save draft
+          {t("composer.saveDraft")}
         </Button>
         <Button
           className="h-11 px-5 text-sm font-black"
           type="submit"
         >
-          Publish review
+          {t("composer.publish")}
         </Button>
       </CardFooter>
       </form>
@@ -233,6 +237,7 @@ export function CreatePostLocationPicker({
   onApply,
   onClose,
 }: CreatePostLocationPickerProps) {
+  const { t } = useI18n();
   const [provinces, setProvinces] = useState<RegionProvinceResponse[]>([]);
   const [cities, setCities] = useState<RegionCityResponse[]>([]);
   const [wards, setWards] = useState<RegionWardResponse[]>([]);
@@ -267,7 +272,9 @@ export function CreatePostLocationPicker({
       } catch (err) {
         if (active)
           setError(
-            err instanceof Error ? err.message : "Unable to load provinces.",
+            err instanceof Error
+              ? err.message
+              : t("createPost.locationPicker.loadProvincesError"),
           );
       } finally {
         if (active) setIsProvinceLoading(false);
@@ -303,7 +310,9 @@ export function CreatePostLocationPicker({
       } catch (err) {
         if (active)
           setError(
-            err instanceof Error ? err.message : "Unable to load cities.",
+            err instanceof Error
+              ? err.message
+              : t("createPost.locationPicker.loadCitiesError"),
           );
       } finally {
         if (active) setIsCityLoading(false);
@@ -343,7 +352,9 @@ export function CreatePostLocationPicker({
       } catch (err) {
         if (active)
           setError(
-            err instanceof Error ? err.message : "Unable to load wards.",
+            err instanceof Error
+              ? err.message
+              : t("createPost.locationPicker.loadWardsError"),
           );
       } finally {
         if (active) setIsWardLoading(false);
@@ -392,7 +403,7 @@ export function CreatePostLocationPicker({
 
   async function handleSave() {
     if (!selectedProvince || !selectedCity) {
-      setError("Province and city are required.");
+      setError(t("createPost.locationPicker.provinceCityRequired"));
       return;
     }
 
@@ -413,7 +424,10 @@ export function CreatePostLocationPicker({
       );
 
       onApply({
-        name: locationName || region.city || "Selected location",
+        name:
+          locationName ||
+          region.city ||
+          t("createPost.locationPicker.selected"),
         regionId: region.regionId,
       });
       onClose();
@@ -421,7 +435,7 @@ export function CreatePostLocationPicker({
       setError(
         err instanceof Error
           ? err.message
-          : "Unable to save this location.",
+          : t("createPost.locationPicker.saveError"),
       );
     } finally {
       setIsSaving(false);
@@ -439,7 +453,7 @@ export function CreatePostLocationPicker({
       <DialogContent className="flex max-h-[70vh] flex-col gap-0 p-0">
         <header className="flex items-center justify-between border-b border-line-soft px-6 py-4">
           <DialogTitle className="font-serif text-lg font-semibold text-espresso">
-            Select location
+            {t("createPost.locationPicker.title")}
           </DialogTitle>
           <Button
             className="h-9 bg-espresso px-5 text-sm font-black hover:bg-primary-container"
@@ -450,26 +464,26 @@ export function CreatePostLocationPicker({
             {isSaving ? (
               <>
                 <LoaderCircleIcon className="size-4 animate-spin" />
-                Saving
+                {t("createPost.locationPicker.saving")}
               </>
             ) : (
-              "Done"
+              t("common.done")
             )}
           </Button>
         </header>
 
         <div className="flex flex-col gap-5 overflow-y-auto px-6 py-5">
           <p className="text-sm text-muted">
-            Pick a post location. Ward is optional for blog posts.
+            {t("createPost.locationPicker.hint")}
           </p>
 
           <SearchableDropdown
-            emptyLabel="No provinces found."
+            emptyLabel={t("profileEdit.address.provinceEmpty")}
             isLoading={isProvinceLoading}
-            label="Province"
+            label={t("createPost.locationPicker.province")}
             onSelect={handleProvinceSelect}
             options={provinces}
-            placeholder="Select a province..."
+            placeholder={t("createPost.locationPicker.provincePlaceholder")}
             selectedCode={selectedProvince?.provinceCode}
             selectedName={selectedProvince?.name}
             valueKey="provinceCode"
@@ -477,12 +491,12 @@ export function CreatePostLocationPicker({
 
           <SearchableDropdown
             disabled={!selectedProvince}
-            emptyLabel="No cities found for this province."
+            emptyLabel={t("profileEdit.address.cityEmpty")}
             isLoading={isCityLoading}
-            label="City"
+            label={t("createPost.locationPicker.city")}
             onSelect={handleCitySelect}
             options={cities}
-            placeholder="Select a city..."
+            placeholder={t("createPost.locationPicker.cityPlaceholder")}
             selectedCode={selectedCity?.cityCode}
             selectedName={selectedCity?.name}
             valueKey="cityCode"
@@ -490,12 +504,12 @@ export function CreatePostLocationPicker({
 
           <SearchableDropdown
             disabled={!selectedCity}
-            emptyLabel="No wards found for this city."
+            emptyLabel={t("profileEdit.address.wardEmpty")}
             isLoading={isWardLoading}
-            label="Ward (optional)"
+            label={t("createPost.locationPicker.ward")}
             onSelect={setSelectedWard}
             options={wards}
-            placeholder="Select a ward..."
+            placeholder={t("createPost.locationPicker.wardPlaceholder")}
             selectedCode={selectedWard?.wardCode}
             selectedName={selectedWard?.name}
             valueKey="wardCode"
@@ -506,7 +520,7 @@ export function CreatePostLocationPicker({
               <MapPinIcon className="size-5 shrink-0 text-espresso" />
               <div className="min-w-0">
                 <span className="text-xs font-bold uppercase tracking-wider text-espresso">
-                  Selected location
+                  {t("createPost.locationPicker.selected")}
                 </span>
                 <p className="truncate text-sm font-bold text-espresso">
                   {locationName}

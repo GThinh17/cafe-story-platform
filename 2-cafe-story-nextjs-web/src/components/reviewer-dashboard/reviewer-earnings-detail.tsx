@@ -8,6 +8,7 @@ import { ReviewerPayoutPanel } from "@/components/reviewer-dashboard/reviewer-pa
 import type { ReviewerPayout } from "@/features/reviewer-dashboard/reviewer-dashboard.types";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { getReviewerByUserId, getReviewerPayouts } from "@/lib/api/reviewers";
+import { useI18n } from "@/components/providers/locale-provider";
 
 const vndFormatter = new Intl.NumberFormat("vi-VN");
 
@@ -16,6 +17,7 @@ function formatVnd(value: number) {
 }
 
 export function ReviewerEarningsDetail() {
+  const { t } = useI18n();
   const { user } = useCurrentUser();
   const [payouts, setPayouts] = useState<ReviewerPayout[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,49 +58,61 @@ export function ReviewerEarningsDetail() {
     <div className="flex flex-col gap-6">
       <section>
         <p className="text-xs font-black uppercase tracking-[0.14em] text-primary">
-          Earnings detail
+          {t("reviewer.earnings.eyebrow")}
         </p>
         <h2 className="mt-1 text-2xl font-black text-espresso">
-          Payouts and monthly revenue
+          {t("reviewer.earnings.subtitle")}
         </h2>
       </section>
 
       {payouts.length === 0 ? (
         <Card className="flex items-center justify-center p-10 text-sm text-muted-foreground">
-          No payout data yet.
+          {t("reviewer.earnings.noPayouts")}
         </Card>
       ) : (
         <>
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Card className="p-5">
-              <p className="text-sm font-black text-muted">Latest payout</p>
+              <p className="text-sm font-black text-muted">
+                {t("reviewer.earnings.latest")}
+              </p>
               <p className="mt-3 text-3xl font-black text-primary">
                 {current ? formatVnd(current.totalAmount) : "—"}
               </p>
             </Card>
             <Card className="p-5">
-              <p className="text-sm font-black text-muted">All-time total</p>
+              <p className="text-sm font-black text-muted">
+                {t("reviewer.earnings.allTime")}
+              </p>
               <p className="mt-3 text-3xl font-black text-espresso">
                 {formatVnd(allTimeTotal)}
               </p>
             </Card>
             <Card className="p-5 md:col-span-2">
-              <p className="text-sm font-black text-muted">Total breakdown</p>
+              <p className="text-sm font-black text-muted">
+                {t("reviewer.earnings.breakdown")}
+              </p>
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
                 <div className="rounded-md bg-background p-3">
-                  <p className="text-xs font-semibold text-muted">Like amount</p>
+                  <p className="text-xs font-semibold text-muted">
+                    {t("reviewer.table.likeAmount")}
+                  </p>
                   <p className="mt-1 font-black text-espresso">
                     {formatVnd(totalLikeAmount)}
                   </p>
                 </div>
                 <div className="rounded-md bg-background p-3">
-                  <p className="text-xs font-semibold text-muted">Share amount</p>
+                  <p className="text-xs font-semibold text-muted">
+                    {t("reviewer.table.shareAmount")}
+                  </p>
                   <p className="mt-1 font-black text-espresso">
                     {formatVnd(totalShareAmount)}
                   </p>
                 </div>
                 <div className="rounded-md bg-background p-3">
-                  <p className="text-xs font-semibold text-muted">Comment amount</p>
+                  <p className="text-xs font-semibold text-muted">
+                    {t("reviewer.table.commentAmount")}
+                  </p>
                   <p className="mt-1 font-black text-espresso">
                     {formatVnd(totalCommentAmount)}
                   </p>
@@ -110,7 +124,9 @@ export function ReviewerEarningsDetail() {
           <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
             <ReviewerPayoutPanel payouts={payouts} />
             <Card className="p-5">
-              <p className="text-sm font-black text-muted">Monthly payout chart</p>
+              <p className="text-sm font-black text-muted">
+                {t("reviewer.earnings.monthlyChart")}
+              </p>
               <div className="mt-6 flex h-72 items-end gap-4 rounded-md bg-surface-muted/55 p-4">
                 {[...payouts].reverse().map((item) => (
                   <div className="flex min-w-0 flex-1 flex-col items-center gap-3" key={item.id}>
@@ -135,20 +151,24 @@ export function ReviewerEarningsDetail() {
           </section>
 
           <Card className="p-5">
-            <h3 className="text-xl font-black text-espresso">Payout history</h3>
+            <h3 className="text-xl font-black text-espresso">
+              {t("reviewer.earnings.history")}
+            </h3>
             <div className="mt-5 overflow-x-auto">
               <table className="w-full min-w-[920px] text-left text-sm">
                 <thead className="text-xs uppercase text-muted">
                   <tr>
-                    <th className="py-2 pr-3">Month</th>
-                    <th className="py-2 pr-3">Likes</th>
-                    <th className="py-2 pr-3">Shares</th>
-                    <th className="py-2 pr-3">Comments</th>
-                    <th className="py-2 pr-3">Like amount</th>
-                    <th className="py-2 pr-3">Share amount</th>
-                    <th className="py-2 pr-3">Comment amount</th>
-                    <th className="py-2 pr-3">Total</th>
-                    <th className="py-2">Status</th>
+                    <th className="py-2 pr-3">{t("reviewer.table.month")}</th>
+                    <th className="py-2 pr-3">{t("reviewer.table.likes")}</th>
+                    <th className="py-2 pr-3">{t("reviewer.table.shares")}</th>
+                    <th className="py-2 pr-3">{t("reviewer.table.comments")}</th>
+                    <th className="py-2 pr-3">{t("reviewer.table.likeAmount")}</th>
+                    <th className="py-2 pr-3">{t("reviewer.table.shareAmount")}</th>
+                    <th className="py-2 pr-3">
+                      {t("reviewer.table.commentAmount")}
+                    </th>
+                    <th className="py-2 pr-3">{t("reviewer.table.total")}</th>
+                    <th className="py-2">{t("reviewer.table.status")}</th>
                   </tr>
                 </thead>
                 <tbody>

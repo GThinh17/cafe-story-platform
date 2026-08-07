@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { ZoomInIcon } from "lucide-react";
 import Cropper, { type Area } from "react-easy-crop";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/providers/locale-provider";
 
 type CreatePostImageCropperProps = {
   src: string;
@@ -28,6 +29,7 @@ export function CreatePostImageCropper({
   onCropComplete,
   className,
 }: CreatePostImageCropperProps) {
+  const { t } = useI18n();
   const handleCropComplete = useCallback(
     (_croppedArea: Area, croppedAreaPixels: Area) => {
       onCropComplete(croppedAreaPixels);
@@ -63,7 +65,7 @@ export function CreatePostImageCropper({
       <div className="flex items-center gap-3 px-1">
         <ZoomInIcon aria-hidden="true" className="size-4 text-muted" />
         <input
-          aria-label="Zoom"
+          aria-label={t("createPost.setup.zoom")}
           className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-surface-muted accent-primary"
           max={3}
           min={1}

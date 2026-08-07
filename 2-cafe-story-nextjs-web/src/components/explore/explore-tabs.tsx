@@ -1,5 +1,8 @@
 "use client";
 
+import { useI18n } from "@/components/providers/locale-provider";
+import type { TranslationKey } from "@/lib/i18n";
+
 export type ExploreTab = "cafes" | "reviewers" | "trending";
 
 type ExploreTabsProps = {
@@ -7,16 +10,18 @@ type ExploreTabsProps = {
   onChange: (tab: ExploreTab) => void;
 };
 
-const tabs: Array<{ label: string; value: ExploreTab }> = [
-  { label: "Cafes", value: "cafes" },
-  { label: "Reviewers", value: "reviewers" },
-  { label: "Trending", value: "trending" },
+const tabs: Array<{ labelKey: TranslationKey; value: ExploreTab }> = [
+  { labelKey: "explore.tab.cafes", value: "cafes" },
+  { labelKey: "explore.tab.reviewers", value: "reviewers" },
+  { labelKey: "explore.tab.trending", value: "trending" },
 ];
 
 export function ExploreTabs({ activeTab, onChange }: ExploreTabsProps) {
+  const { t } = useI18n();
+
   return (
     <div
-      aria-label="Explore categories"
+      aria-label={t("explore.tabsLabel")}
       className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       role="tablist"
     >
@@ -37,7 +42,7 @@ export function ExploreTabs({ activeTab, onChange }: ExploreTabsProps) {
             role="tab"
             type="button"
           >
-            {tab.label}
+            {t(tab.labelKey)}
           </button>
         );
       })}

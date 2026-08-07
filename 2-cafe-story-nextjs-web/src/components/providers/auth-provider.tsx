@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useI18n } from "@/components/providers/locale-provider";
 import { invalidateApiCache } from "@/lib/api/api-cache";
 import { ApiError } from "@/lib/api/client";
 import { getMe } from "@/lib/api/auth";
@@ -23,6 +24,7 @@ type AuthProviderProps = {
 };
 
 export function AuthProvider({ children }: AuthProviderProps) {
+  const { t } = useI18n();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasResolvedInitialAuth, setHasResolvedInitialAuth] = useState(false);
@@ -87,7 +89,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setError(
           requestError instanceof ApiError
             ? requestError.message
-            : "Unable to load current user.",
+            : t("auth.loadCurrentUserError"),
         );
       }
     } finally {
@@ -97,7 +99,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setHasResolvedInitialAuth(true);
       }
     }
-  }, [applyUser]);
+  }, [applyUser, t]);
 
   const refetch = useCallback(() => {
     invalidateApiCache("auth:me");

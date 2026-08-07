@@ -1,9 +1,4 @@
-import type {
-  CafeCategory,
-  CafeEditorialCollection,
-  CafeMenu,
-  CafeSummary,
-} from "@/types/cafe";
+import type { CafeMenu, CafeSummary } from "@/types/cafe";
 
 export const mockCafeSummaries: CafeSummary[] = [
   {
@@ -159,55 +154,6 @@ export const mockCafeSummaries: CafeSummary[] = [
   },
 ];
 
-export const mockFeaturedCafe = mockCafeSummaries[0];
-
-export const mockCafeCategories: CafeCategory[] = [
-  {
-    id: "vintage-vibes",
-    label: "Vintage vibes",
-    icon: "sparkle",
-  },
-  {
-    id: "workspace-ready",
-    label: "Workspace ready",
-    icon: "laptop",
-  },
-  {
-    id: "specialty-brews",
-    label: "Specialty brews",
-    icon: "coffee",
-  },
-  {
-    id: "hidden-gems",
-    label: "Hidden gems",
-    icon: "gem",
-  },
-  {
-    id: "outdoor-patios",
-    label: "Outdoor patios",
-    icon: "leaf",
-  },
-];
-
-export const mockCafeEditorialCollections: CafeEditorialCollection[] = [
-  {
-    id: "rainy-day-spots",
-    eyebrow: "Featured list",
-    title: "Top 5 Rainy Day Spots",
-    ctaLabel: "Explore list",
-    image: "/images/cafes/velvet-roast/reading-table.jpg",
-    alt: "A quiet cafe table by a window on a rainy day",
-  },
-  {
-    id: "espresso-excellence",
-    eyebrow: "Awards 2026",
-    title: "Espresso Excellence",
-    ctaLabel: "Read more",
-    image: "/images/cafes/velvet-roast/pour-over.jpg",
-    alt: "Coffee being brewed with warm light and steam",
-  },
-];
-
 const mockVelvetMenuImages = {
   latte: {
     src: "/images/cafes/velvet-roast/latte-art.jpg",
@@ -320,6 +266,3 @@ export const mockCafeMenu: CafeMenu = {
   ],
 };
 
-export const mockCafeMenusByCafeId: Record<string, CafeMenu> = {
-  "velvet-roast": mockCafeMenu,
-};

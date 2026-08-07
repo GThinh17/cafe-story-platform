@@ -14,8 +14,9 @@ import type {
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { getReviewerBadges, getReviewerByUserId, getReviewerStats } from "@/lib/api/reviewers";
 import type { ReviewerBadgeResponse, ReviewerStatsResponse } from "@/types/reviewer";
+import { useI18n } from "@/components/providers/locale-provider";
+import { LOCALE_HTML_LANG, type Locale } from "@/lib/i18n";
 
-const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 const periods: ReviewerPeriod[] = ["day", "week", "month", "3months"];
 
@@ -30,11 +31,20 @@ function toStats(s: ReviewerStatsResponse): ReviewerStats {
   };
 }
 
-function derivePerformance(badges: ReviewerBadgeResponse[]): ReviewerPerformancePoint[] {
+function derivePerformance(
+  badges: ReviewerBadgeResponse[],
+  locale: Locale,
+): ReviewerPerformancePoint[] {
+  const monthFormatter = new Intl.DateTimeFormat(LOCALE_HTML_LANG[locale], {
+    month: "short",
+  });
+
   return [...badges].reverse().map((b) => {
     const monthIdx = parseInt(b.month.substring(5), 10) - 1;
     return {
-      label: MONTH_SHORT[monthIdx] ?? b.month.substring(5),
+      label: Number.isNaN(monthIdx)
+        ? b.month.substring(5)
+        : monthFormatter.format(new Date(2000, monthIdx, 1)),
       likes: Number(b.likeCount),
       shares: Number(b.shareCount),
       comments: Number(b.commentCount),
@@ -44,6 +54,7 @@ function derivePerformance(badges: ReviewerBadgeResponse[]): ReviewerPerformance
 }
 
 export function ReviewerPerformanceDetail() {
+  const { locale, t } = useI18n();
   const { user } = useCurrentUser();
   const [period, setPeriod] = useState<ReviewerPeriod>("month");
   const [reviewerId, setReviewerId] = useState<string | null>(null);
@@ -61,14 +72,14 @@ export function ReviewerPerformanceDetail() {
         getReviewerBadges(reviewer.reviewerId),
       ]);
       if (badgesData.status === "fulfilled") {
-        setPerformance(derivePerformance(badgesData.value ?? []));
+        setPerformance(derivePerformance(badgesData.value ?? [], locale));
       }
     } catch {
       // reviewer not found
     } finally {
       setPerformanceLoading(false);
     }
-  }, []);
+  }, [locale]);
 
   useEffect(() => {
     if (user?.userId) void loadInitial(user.userId);
@@ -99,7 +110,7 @@ export function ReviewerPerformanceDetail() {
       <section className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.14em] text-primary">
-            Performance detail
+            {t("reviewer.performance.detailEyebrow")}
           </p>
           <h2 className="mt-1 text-2xl font-black text-espresso">
             Engagement by period
@@ -142,42 +153,54 @@ export function ReviewerPerformanceDetail() {
           <ReviewerPerformanceChart data={performance} />
         ) : (
           <Card className="flex items-center justify-center p-10 text-sm text-muted-foreground">
-            No performance data yet
+            {t("reviewer.performance.noChartData")}
           </Card>
         )}
 
         <Card className="p-5">
-          <p className="text-sm font-black text-muted">Insight</p>
+          <p className="text-sm font-black text-muted">
+            {t("reviewer.performance.insight")}
+          </p>
           {bestMonth ? (
             <>
               <h3 className="mt-2 text-xl font-black text-espresso">
-                Best month: {bestMonth.label}
+                {t("reviewer.performance.bestMonth", { month: bestMonth.label })}
               </h3>
               <p className="mt-3 text-sm leading-6 text-coffee-muted">
-                Highest score is {bestMonth.score}, driven by {bestMonth.likes} likes,{" "}
-                {bestMonth.shares} shares, and {bestMonth.comments} comments.
+                {t("reviewer.performance.bestMonthDescription", {
+                  score: bestMonth.score,
+                  likes: bestMonth.likes,
+                  shares: bestMonth.shares,
+                  comments: bestMonth.comments,
+                })}
               </p>
             </>
           ) : (
-            <p className="mt-3 text-sm text-muted-foreground">No data yet.</p>
+            <p className="mt-3 text-sm text-muted-foreground">
+              {t("reviewer.performance.noData")}
+            </p>
           )}
         </Card>
       </section>
 
       <Card className="p-5">
-        <h3 className="text-xl font-black text-espresso">Monthly breakdown</h3>
+        <h3 className="text-xl font-black text-espresso">
+          {t("reviewer.performance.monthlyBreakdown")}
+        </h3>
         {performance.length === 0 ? (
-          <p className="mt-4 text-sm text-muted-foreground">No monthly data yet.</p>
+          <p className="mt-4 text-sm text-muted-foreground">
+            {t("reviewer.performance.noMonthlyData")}
+          </p>
         ) : (
           <div className="mt-5 overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="text-xs uppercase text-muted">
                 <tr>
-                  <th className="py-2 pr-3">Month</th>
-                  <th className="py-2 pr-3">Likes</th>
-                  <th className="py-2 pr-3">Shares</th>
-                  <th className="py-2 pr-3">Comments</th>
-                  <th className="py-2">Score</th>
+                  <th className="py-2 pr-3">{t("reviewer.table.month")}</th>
+                  <th className="py-2 pr-3">{t("reviewer.table.likes")}</th>
+                  <th className="py-2 pr-3">{t("reviewer.table.shares")}</th>
+                  <th className="py-2 pr-3">{t("reviewer.table.comments")}</th>
+                  <th className="py-2">{t("reviewer.table.score")}</th>
                 </tr>
               </thead>
               <tbody>

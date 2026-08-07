@@ -13,6 +13,7 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { getReviewerByUserId, getReviewerRanking } from "@/lib/api/reviewers";
 import type { AuthUser } from "@/types/auth";
 import type { ReviewerRankingResponse, ReviewerResponse } from "@/types/reviewer";
+import { useI18n } from "@/components/providers/locale-provider";
 
 const numberFormatter = new Intl.NumberFormat("en", {
   notation: "compact",
@@ -48,6 +49,7 @@ function toRankingItems(ranking: ReviewerRankingResponse[]): ReviewerRankingItem
 }
 
 export function ReviewerRankingDetail() {
+  const { t } = useI18n();
   const { user } = useCurrentUser();
   const [profileForUI, setProfileForUI] = useState<ReviewerProfile | null>(null);
   const [rankingItems, setRankingItems] = useState<ReviewerRankingItem[]>([]);
@@ -90,10 +92,10 @@ export function ReviewerRankingDetail() {
     <div className="flex flex-col gap-6">
       <section>
         <p className="text-xs font-black uppercase tracking-[0.14em] text-primary">
-          Ranking detail
+          {t("reviewer.ranking.eyebrow")}
         </p>
         <h2 className="mt-1 text-2xl font-black text-espresso">
-          Leaderboard and score comparison
+          {t("reviewer.ranking.subtitle")}
         </h2>
       </section>
 
@@ -102,17 +104,23 @@ export function ReviewerRankingDetail() {
           <ReviewerLeaderboardPanel profile={profileForUI} ranking={rankingItems} />
         ) : (
           <Card className="flex items-center justify-center p-10 text-sm text-muted-foreground">
-            No ranking data
+            {t("reviewer.ranking.noData")}
           </Card>
         )}
         <Card className="p-5">
-          <p className="text-sm font-black text-muted">Current rank</p>
+          <p className="text-sm font-black text-muted">
+            {t("reviewer.ranking.currentRank")}
+          </p>
           <h3 className="mt-2 text-4xl font-black text-primary">
             #{current?.rank ?? "-"}
           </h3>
           <p className="mt-2 text-sm leading-6 text-coffee-muted">
-            {profileForUI?.name ?? "You"}{" "}
-            {current ? "appear in the monthly ranking." : "do not appear in the current ranking."}
+            {t(
+              current
+                ? "reviewer.ranking.appears"
+                : "reviewer.ranking.notAppears",
+              { name: profileForUI?.name ?? t("reviewer.ranking.you") },
+            )}
           </p>
           {rankingItems.length > 0 && (
             <div className="mt-6 flex flex-col gap-3">
@@ -138,20 +146,24 @@ export function ReviewerRankingDetail() {
       </section>
 
       <Card className="p-5">
-        <h3 className="text-xl font-black text-espresso">Full leaderboard</h3>
+        <h3 className="text-xl font-black text-espresso">
+          {t("reviewer.ranking.full")}
+        </h3>
         {rankingItems.length === 0 ? (
-          <p className="mt-4 text-sm text-muted-foreground">No ranking data yet.</p>
+          <p className="mt-4 text-sm text-muted-foreground">
+            {t("reviewer.ranking.noRankingData")}
+          </p>
         ) : (
           <div className="mt-5 overflow-x-auto">
             <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="text-xs uppercase text-muted">
                 <tr>
-                  <th className="py-2 pr-3">Rank</th>
-                  <th className="py-2 pr-3">Location</th>
-                  <th className="py-2 pr-3">Score</th>
-                  <th className="py-2 pr-3">Likes</th>
-                  <th className="py-2 pr-3">Shares</th>
-                  <th className="py-2">Comments</th>
+                  <th className="py-2 pr-3">{t("reviewer.table.rank")}</th>
+                  <th className="py-2 pr-3">{t("reviewer.table.location")}</th>
+                  <th className="py-2 pr-3">{t("reviewer.table.score")}</th>
+                  <th className="py-2 pr-3">{t("reviewer.table.likes")}</th>
+                  <th className="py-2 pr-3">{t("reviewer.table.shares")}</th>
+                  <th className="py-2">{t("reviewer.table.comments")}</th>
                 </tr>
               </thead>
               <tbody>

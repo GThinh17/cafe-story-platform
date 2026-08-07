@@ -4,6 +4,7 @@ import { LoaderCircleIcon } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import type { MentionItem } from "@/hooks/use-followings";
+import { useI18n } from "@/components/providers/locale-provider";
 
 type MentionPickerProps = {
   isOpen: boolean;
@@ -34,20 +35,21 @@ export function MentionPicker({
   onSelect,
   onHoverIndex,
 }: MentionPickerProps) {
+  const { t } = useI18n();
   if (!isOpen) return null;
 
   const safeActive = Math.min(activeIndex, Math.max(items.length - 1, 0));
 
   return (
     <div
-      aria-label="Tag a user or cafe page"
+      aria-label={t("mention.pickerLabel")}
       className="absolute left-0 top-full z-[80] mt-1 w-80 max-w-[calc(100%-8px)] overflow-hidden rounded-md border border-line-soft bg-surface shadow-[0_18px_40px_rgba(39,19,16,0.18)]"
       role="listbox"
     >
       <div className="flex items-center gap-2 border-b border-line-soft px-3 py-2 text-xs text-muted">
-        <span className="font-medium text-espresso">Tag</span>
+        <span className="font-medium text-espresso">{t("mention.tag")}</span>
         <span className="truncate">
-          {query.length > 0 ? `@${query}` : "Type to search…"}
+          {query.length > 0 ? `@${query}` : t("mention.typeToSearch")}
         </span>
       </div>
 

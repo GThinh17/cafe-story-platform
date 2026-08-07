@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { recordAdClick } from "@/lib/api/ads";
+import { useI18n } from "@/components/providers/locale-provider";
 import type { SponsoredCafeResponse } from "@/types/feed";
 
 type SponsoredCafeCardProps = {
@@ -19,6 +20,7 @@ type SponsoredCafeCardProps = {
 };
 
 export function SponsoredCafeCard({ ad }: SponsoredCafeCardProps) {
+  const { t } = useI18n();
   const imageUrl = ad.imageUrl || ad.cafeCoverUrl || ad.cafeAvatarUrl;
   const destination = ad.targetUrl?.trim() || `/cafes/${encodeURIComponent(ad.cafePageId)}`;
 
@@ -39,20 +41,22 @@ export function SponsoredCafeCard({ ad }: SponsoredCafeCardProps) {
     >
       {imageUrl ? (
         <img
-          alt={ad.headline || ad.cafeName || "Sponsored cafe"}
+          alt={ad.headline || ad.cafeName || t("sponsored.fallbackCafeName")}
           className="aspect-square w-full object-cover"
           decoding="async"
           src={imageUrl}
         />
       ) : (
         <div
-          aria-label={`${ad.cafeName || "Sponsored cafe"} placeholder image`}
+          aria-label={t("sponsored.placeholderAlt", {
+            name: ad.cafeName || t("sponsored.fallbackCafeName"),
+          })}
           className="flex aspect-square w-full flex-col items-center justify-center gap-2 bg-surface-muted px-4 text-center text-primary"
           role="img"
         >
           <StoreIcon aria-hidden="true" className="size-10" strokeWidth={1.8} />
           <span className="text-sm font-bold">
-            {ad.cafeName || "Sponsored cafe"}
+            {ad.cafeName || t("sponsored.fallbackCafeName")}
           </span>
         </div>
       )}
@@ -61,25 +65,28 @@ export function SponsoredCafeCard({ ad }: SponsoredCafeCardProps) {
           Sponsored
         </Badge>
         <CardTitle className="line-clamp-2 text-base font-bold">
-          {ad.headline || ad.cafeName || "Discover this cafe"}
+          {ad.headline || ad.cafeName || t("sponsored.fallbackHeadline")}
         </CardTitle>
         <CardDescription className="truncate">
-          {ad.cafeName || "CafeStory partner"}
+          {ad.cafeName || t("sponsored.fallbackPartner")}
         </CardDescription>
       </CardHeader>
       <CardContent className="px-4 pb-4 pt-0">
         <p className="line-clamp-2 text-sm leading-6 text-muted-foreground">
-          {ad.description || "Explore this sponsored cafe on CafeStory."}
+          {ad.description || t("sponsored.fallbackDescription")}
         </p>
       </CardContent>
       <CardFooter className="px-4 pb-4 pt-0">
         <Button
-          aria-label={`${ad.ctaLabel || "View cafe"}: ${ad.cafeName || "Sponsored cafe"}`}
+          aria-label={t("sponsored.ctaAria", {
+            cta: ad.ctaLabel || t("sponsored.fallbackCta"),
+            name: ad.cafeName || t("sponsored.fallbackCafeName"),
+          })}
           className="w-full sm:w-auto"
           onClick={() => void openDestination()}
           type="button"
         >
-          {ad.ctaLabel || "View cafe"}
+          {ad.ctaLabel || t("sponsored.fallbackCta")}
           <ExternalLinkIcon data-icon="inline-end" />
         </Button>
       </CardFooter>

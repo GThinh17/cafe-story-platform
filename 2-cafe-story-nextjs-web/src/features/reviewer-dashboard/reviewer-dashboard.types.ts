@@ -1,3 +1,5 @@
+import { dictionaries, type Translate, type TranslationKey } from "@/lib/i18n";
+
 export type ReviewerPeriod = "day" | "week" | "month" | "3months";
 
 export type ReviewerBadge = "IRON" | "BRONZE" | "SILVER" | "GOLD" | "DIAMOND";
@@ -99,3 +101,10 @@ export type ReviewerPerformancePoint = {
   comments: number;
   score: number;
 };
+
+/** `stats.period` arrives as a raw API value; map it to localized copy. */
+export function reviewerPeriodName(period: string, t: Translate) {
+  const key = `reviewer.periodName.${period}` as TranslationKey;
+
+  return dictionaries.en[key] ? t(key) : period;
+}

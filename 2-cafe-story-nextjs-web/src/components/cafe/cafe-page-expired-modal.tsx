@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { PricingPlanModal } from "@/components/layout/pricing-plan-modal";
+import { useI18n } from "@/components/providers/locale-provider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,6 +17,7 @@ type CafePageExpiredModalProps = {
 };
 
 export function CafePageExpiredModal({ isOwner }: CafePageExpiredModalProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [isPricingOpen, setIsPricingOpen] = useState(false);
 
@@ -32,9 +34,9 @@ export function CafePageExpiredModal({ isOwner }: CafePageExpiredModalProps) {
         <DialogContent className="w-[min(420px,calc(100vw-32px))] p-6">
           <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-2">
-              <DialogTitle>Cafe page expired</DialogTitle>
+              <DialogTitle>{t("cafe.expired.title")}</DialogTitle>
               <DialogDescription>
-                Sorry! This cafe page subscription has expired.
+                {t("cafe.expired.description")}
               </DialogDescription>
             </div>
 
@@ -44,14 +46,14 @@ export function CafePageExpiredModal({ isOwner }: CafePageExpiredModalProps) {
                 type="button"
                 variant="outline"
               >
-                Go back
+                {t("cafe.expired.goBack")}
               </Button>
               {isOwner ? (
                 <Button
                   onClick={() => setIsPricingOpen(true)}
                   type="button"
                 >
-                  Renew subscription
+                  {t("cafe.expired.renew")}
                 </Button>
               ) : null}
             </div>

@@ -3,6 +3,7 @@
 import { ArrowLeftIcon, ChevronRightIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { useI18n } from "@/components/providers/locale-provider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { createContentReport, getReportReasons } from "@/lib/api/reports";
+import type { Locale, Translate, TranslationKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { ReportReasonResponse } from "@/types/report";
 
@@ -22,51 +24,55 @@ type ReportPostModalProps = {
 };
 
 type ReportReasonCopy = {
-  description?: string;
-  label: string;
+  descriptionKey?: TranslationKey;
+  labelKey: TranslationKey;
 };
 
+/**
+ * The backend already ships Vietnamese labels (`labelVi`/`descriptionVi`), so
+ * Vietnamese prefers the server copy and English falls back to this map.
+ */
 const REPORT_REASON_COPY: Record<string, ReportReasonCopy> = {
-  BULLYING_OR_UNWANTED_CONTACT: {
-    label: "Bullying or unwanted contact",
-  },
-  DISLIKE_CONTENT: {
-    label: "I just don't like this content",
-  },
-  FALSE_INFORMATION: {
-    label: "False information",
-  },
+  BULLYING_OR_UNWANTED_CONTACT: { labelKey: "report.reason.bullying" },
+  DISLIKE_CONTENT: { labelKey: "report.reason.dislike" },
+  FALSE_INFORMATION: { labelKey: "report.reason.falseInfo" },
   INTELLECTUAL_PROPERTY: {
-    description:
-      "Tell CafeStory what rights may be affected so the team can review the report accurately.",
-    label: "Intellectual property",
+    descriptionKey: "report.reason.ipHint",
+    labelKey: "report.reason.ip",
   },
-  NUDITY_OR_SEXUAL_ACTIVITY: {
-    label: "Nudity or sexual activity",
-  },
-  RESTRICTED_GOODS: {
-    label: "Selling or promoting restricted goods",
-  },
-  SCAM_FRAUD_OR_SPAM: {
-    label: "Scam, fraud, or spam",
-  },
-  SELF_HARM_OR_ABNORMAL_EATING: {
-    label: "Self-harm or disordered eating",
-  },
-  VIOLENCE_HATE_OR_EXPLOITATION: {
-    label: "Violence, hate, or exploitation",
-  },
+  NUDITY_OR_SEXUAL_ACTIVITY: { labelKey: "report.reason.nudity" },
+  RESTRICTED_GOODS: { labelKey: "report.reason.restrictedGoods" },
+  SCAM_FRAUD_OR_SPAM: { labelKey: "report.reason.scam" },
+  SELF_HARM_OR_ABNORMAL_EATING: { labelKey: "report.reason.selfHarm" },
+  VIOLENCE_HATE_OR_EXPLOITATION: { labelKey: "report.reason.violence" },
 };
 
-function reportReasonLabel(reason: ReportReasonResponse) {
-  return REPORT_REASON_COPY[reason.code]?.label ?? reason.labelVi;
+function reportReasonLabel(
+  reason: ReportReasonResponse,
+  locale: Locale,
+  t: Translate,
+) {
+  if (locale === "vi") {
+    return reason.labelVi;
+  }
+
+  const labelKey = REPORT_REASON_COPY[reason.code]?.labelKey;
+
+  return labelKey ? t(labelKey) : reason.labelVi;
 }
 
-function reportReasonDescription(reason: ReportReasonResponse) {
-  return (
-    REPORT_REASON_COPY[reason.code]?.description ??
-    "Tell CafeStory a little more so the team can review this accurately."
-  );
+function reportReasonDescription(
+  reason: ReportReasonResponse,
+  locale: Locale,
+  t: Translate,
+) {
+  if (locale === "vi" && reason.descriptionVi) {
+    return reason.descriptionVi;
+  }
+
+  const descriptionKey = REPORT_REASON_COPY[reason.code]?.descriptionKey;
+
+  return descriptionKey ? t(descriptionKey) : t("report.defaultHint");
 }
 
 export function ReportPostModal({
@@ -74,6 +80,7 @@ export function ReportPostModal({
   onOpenChange,
   open,
 }: ReportPostModalProps) {
+  const { locale, t } = useI18n();
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
   const [isLoadingReasons, setIsLoadingReasons] = useState(false);
@@ -107,7 +114,7 @@ export function ReportPostModal({
           setError(
             requestError instanceof Error
               ? requestError.message
-              : "Unable to load report reasons.",
+              : t("report.loadError"),
           );
         }
       })
@@ -120,7 +127,7 @@ export function ReportPostModal({
     return () => {
       isActive = false;
     };
-  }, [open]);
+  }, [open, t]);
 
   const isDescriptionRequired = Boolean(selectedReason?.requiresDescription);
   const canSubmitReport =
@@ -155,7 +162,7 @@ export function ReportPostModal({
       const message =
         requestError instanceof Error
           ? requestError.message
-          : "Unable to submit this report.";
+          : t("report.submitError");
       setError(message);
       toast.error(message);
     } finally {
@@ -171,7 +178,7 @@ export function ReportPostModal({
             aria-hidden="true"
             className="size-6 animate-spin rounded-full border-2 border-primary/30 border-t-primary"
           />
-          <p className="text-sm text-muted">Loading report reasons...</p>
+          <p className="text-sm text-muted">{t("report.loadingReasons")}</p>
         </div>
       );
     }
@@ -180,7 +187,7 @@ export function ReportPostModal({
       return (
         <div className="flex flex-col items-center justify-center gap-2 px-6 py-16 text-center">
           <p className="text-base font-bold text-foreground">
-            Unable to load report reasons
+            {t("report.loadErrorTitle")}
           </p>
           <p className="text-sm text-muted">{error}</p>
         </div>
@@ -191,10 +198,10 @@ export function ReportPostModal({
       return (
         <div className="flex flex-col items-center justify-center gap-2 px-6 py-16 text-center">
           <p className="text-base font-bold text-foreground">
-            No report reasons yet
+            {t("report.emptyTitle")}
           </p>
           <p className="text-sm text-muted">
-            Please try again after report reasons have been configured.
+            {t("report.emptyDescription")}
           </p>
         </div>
       );
@@ -204,18 +211,17 @@ export function ReportPostModal({
       <div className="flex flex-col">
         <div className="px-6 pt-4 pb-6">
           <DialogTitle className="text-center text-lg font-bold">
-            Why are you reporting this post?
+            {t("report.listTitle")}
           </DialogTitle>
           <DialogDescription className="mt-2 text-center text-sm text-muted">
-            Your report is anonymous. If someone is in immediate danger, contact
-            your local emergency services right away.
+            {t("report.listDescription")}
           </DialogDescription>
         </div>
         <ul className="flex flex-col border-t border-line-soft">
           {reasons.map((reason) => (
             <li key={reason.id}>
               <button
-                aria-label={reportReasonLabel(reason)}
+                aria-label={reportReasonLabel(reason, locale, t)}
                 className="flex w-full cursor-pointer items-center justify-between gap-3 border-b border-line-soft px-6 py-4 text-left text-sm font-semibold text-foreground outline-none"
                 onClick={() => {
                   setDescription("");
@@ -224,7 +230,9 @@ export function ReportPostModal({
                 }}
                 type="button"
               >
-                <span className="flex-1">{reportReasonLabel(reason)}</span>
+                <span className="flex-1">
+                  {reportReasonLabel(reason, locale, t)}
+                </span>
                 <ChevronRightIcon className="size-5 shrink-0 text-muted" />
               </button>
             </li>
@@ -243,17 +251,17 @@ export function ReportPostModal({
       return (
         <div className="flex flex-col items-center gap-4 px-6 py-12 text-center">
           <p className="text-lg font-bold text-foreground">
-            Thanks for your report
+            {t("report.thanksTitle")}
           </p>
           <p className="max-w-sm text-sm text-muted">
-            Your report has been submitted and will be reviewed by CafeStory.
+            {t("report.thanksDescription")}
           </p>
           <Button
             className="mt-2 min-w-32"
             onClick={() => onOpenChange(false)}
             type="button"
           >
-            Close
+            {t("common.close")}
           </Button>
         </div>
       );
@@ -263,21 +271,25 @@ export function ReportPostModal({
       <div className="flex flex-col">
         <div className="px-6 pt-2 pb-6">
           <DialogTitle className="text-center text-lg font-bold">
-            {reportReasonLabel(selectedReason)}
+            {reportReasonLabel(selectedReason, locale, t)}
           </DialogTitle>
           <DialogDescription className="mt-2 text-center text-sm text-muted">
-            {reportReasonDescription(selectedReason)}
+            {reportReasonDescription(selectedReason, locale, t)}
           </DialogDescription>
         </div>
 
         <div className="flex flex-col gap-2 px-6 pb-4">
           <label className="text-xs font-bold text-foreground" htmlFor="report-details">
-            Details {isDescriptionRequired ? "(required)" : "(optional)"}
+            {t(
+              isDescriptionRequired
+                ? "report.detailsLabelRequired"
+                : "report.detailsLabelOptional",
+            )}
           </label>
           <Textarea
             id="report-details"
             onChange={(event) => setDescription(event.target.value)}
-            placeholder="Add report details..."
+            placeholder={t("report.detailsPlaceholder")}
             value={description}
           />
           {error ? (
@@ -291,14 +303,14 @@ export function ReportPostModal({
             type="button"
             variant="outline"
           >
-            Back
+            {t("common.back")}
           </Button>
           <Button
             disabled={!canSubmitReport}
             onClick={handleSubmitReport}
             type="button"
           >
-            {isSubmitting ? "Reporting..." : "Report"}
+            {isSubmitting ? t("report.submitting") : t("report.submit")}
           </Button>
         </div>
       </div>
@@ -311,7 +323,7 @@ export function ReportPostModal({
         <div className="flex items-center gap-2 border-b border-line-soft px-4 py-3">
           {selectedReason && !submittedReportId ? (
             <button
-              aria-label="Back to reasons"
+              aria-label={t("report.backToReasons")}
               className={cn(
                 "grid size-8 cursor-pointer place-items-center rounded-full text-foreground outline-none",
               )}
@@ -324,10 +336,10 @@ export function ReportPostModal({
             <span className="size-8" aria-hidden="true" />
           )}
           <p className="flex-1 text-center text-sm font-bold text-foreground">
-            Report
+            {t("report.headerTitle")}
           </p>
           <button
-            aria-label="Close report"
+            aria-label={t("report.close")}
             className="grid size-8 cursor-pointer place-items-center rounded-full text-foreground outline-none"
             onClick={() => onOpenChange(false)}
             type="button"

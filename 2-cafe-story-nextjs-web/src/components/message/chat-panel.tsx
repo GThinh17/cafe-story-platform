@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ChatMessage, Conversation, SendMessageDraft } from "@/types/message";
+import { useI18n } from "@/components/providers/locale-provider";
 
 const EMOJI_OPTIONS = [
   "\u{1F600}",
@@ -127,6 +128,7 @@ export function ChatPanel({
   onSendMessage,
   sendErrorMessage,
 }: ChatPanelProps) {
+  const { t } = useI18n();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const messageEndRef = useRef<HTMLDivElement | null>(null);
   const [text, setText] = useState("");
@@ -195,9 +197,9 @@ export function ChatPanel({
     return (
       <section className="flex h-full min-h-0 items-center justify-center bg-background px-6 text-center">
         <div>
-          <h2 className="text-xl font-black">Select a conversation</h2>
+          <h2 className="text-xl font-black">{t("messages.emptyTitle")}</h2>
           <p className="mt-2 text-sm font-semibold text-muted">
-            Choose an existing chat or a followed user to start messaging.
+            {t("messages.emptyDescription")}
           </p>
         </div>
       </section>
@@ -230,9 +232,9 @@ export function ChatPanel({
 
         <div className="flex shrink-0 gap-1 sm:gap-2">
           {[
-            { label: "Call", icon: PhoneIcon },
-            { label: "Open media", icon: SquareIcon },
-            { label: "Conversation details", icon: InfoIcon },
+            { label: t("messages.action.call"), icon: PhoneIcon },
+            { label: t("messages.action.openMedia"), icon: SquareIcon },
+            { label: t("messages.action.details"), icon: InfoIcon },
           ].map(({ icon: Icon, label }) => (
             <Button
               aria-label={label}
@@ -299,7 +301,7 @@ export function ChatPanel({
             {selectedFile?.name}
           </span>
           <Button
-            aria-label="Remove image"
+            aria-label={t("messages.removeImage")}
             onClick={clearSelectedFile}
             size="icon-sm"
             type="button"
@@ -329,7 +331,7 @@ export function ChatPanel({
           </div>
         ) : null}
         <Button
-          aria-label="Add emoji"
+          aria-label={t("messages.addEmoji")}
           className="shrink-0 rounded-full"
           onClick={() => setIsEmojiOpen((isOpen) => !isOpen)}
           size="icon-lg"
@@ -339,7 +341,7 @@ export function ChatPanel({
           <SmileIcon />
         </Button>
         <Button
-          aria-label="Add image"
+          aria-label={t("messages.addImage")}
           className="shrink-0 rounded-full"
           onClick={() => fileInputRef.current?.click()}
           size="icon-lg"
@@ -359,12 +361,14 @@ export function ChatPanel({
           className="h-14 min-w-0 flex-1 rounded-full bg-background px-5 text-sm placeholder:text-muted"
           disabled={!canSend}
           onChange={(event) => setText(event.target.value)}
-          placeholder={canSend ? "Message..." : "Opening conversation..."}
+          placeholder={
+            canSend ? t("messages.inputPlaceholder") : t("messages.inputOpening")
+          }
           type="text"
           value={text}
         />
         <Button
-          aria-label="Send message"
+          aria-label={t("messages.send")}
           className="h-11 rounded-full py-6 text-sm font-black"
           disabled={!canSend || (!text.trim() && !selectedFile)}
           type="submit"

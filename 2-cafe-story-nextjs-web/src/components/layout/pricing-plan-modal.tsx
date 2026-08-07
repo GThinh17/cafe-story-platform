@@ -24,6 +24,8 @@ import { getCafePagesByOwnerId } from "@/lib/api/cafes";
 import { ApiError } from "@/lib/api/client";
 import { getExtraFees } from "@/lib/api/extra-fees";
 import { createPayment } from "@/lib/api/payments";
+import { useI18n } from "@/components/providers/locale-provider";
+import type { TranslationKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import type { AdFeeResponse, AdFeeType } from "@/types/ad-fee";
 import type { ExtraFeeResponse, ExtraFeeType } from "@/types/extra-fee";
@@ -35,87 +37,87 @@ type PricingPlanModalProps = {
 };
 
 type MembershipPlan = {
-  audience: string;
-  cta: string;
-  features: string[];
+  featureKeys: TranslationKey[];
   feeType: ExtraFeeType | AdFeeType;
   kind: "extra" | "ad";
   ownersOnly?: boolean;
   highlighted?: boolean;
-  name: string;
+  nameKey: TranslationKey;
+  audienceKey: TranslationKey;
+  ctaKey: TranslationKey;
   price: string;
-  billingSuffix: string;
+  billingSuffixKey: TranslationKey;
 };
 
 type ModalStep = "plans" | "payment";
 
 const membershipPlans: MembershipPlan[] = [
   {
-    audience: "Personal",
-    cta: "Choose plan",
+    audienceKey: "pricing.audience.personal",
+    ctaKey: "pricing.cta.choosePlan",
     feeType: "REVIEWER_REGISTRATION",
     kind: "extra",
-    features: [
-      "Reviewer Pro badge on profile and reviews",
-      "Priority placement in featured reviewer lists",
-      "Per-review view, save, and engagement stats",
-      "Reward eligibility from review views and engagement",
-      "Access to partner tasting events and cafe offers",
+    featureKeys: [
+      "pricing.reviewer.feature1",
+      "pricing.reviewer.feature2",
+      "pricing.reviewer.feature3",
+      "pricing.reviewer.feature4",
+      "pricing.reviewer.feature5",
     ],
-    name: "Reviewer Membership",
+    nameKey: "pricing.reviewer.name",
     price: "199,000 VND",
-    billingSuffix: "/month",
+    billingSuffixKey: "pricing.billing.perMonth",
   },
   {
-    audience: "Business",
-    cta: "Choose plan",
+    audienceKey: "pricing.audience.business",
+    ctaKey: "pricing.cta.choosePlan",
     feeType: "CAFE_PAGE_OPENING",
     kind: "extra",
-    features: [
-      "Verified cafe profile with Official badge eligibility",
-      "Cafe menu, opening hours, gallery, and booking details",
-      "Promotion tools for nearby reviewers and customers",
-      "Profile analytics for views, saves, and audience sources",
-      "Up to one additional member to manage the cafe page",
+    featureKeys: [
+      "pricing.owner.feature1",
+      "pricing.owner.feature2",
+      "pricing.owner.feature3",
+      "pricing.owner.feature4",
+      "pricing.owner.feature5",
     ],
-    name: "Cafe Owner Plan",
+    nameKey: "pricing.owner.name",
     price: "499,000 VND",
-    billingSuffix: "/month",
+    billingSuffixKey: "pricing.billing.perMonth",
   },
   {
-    audience: "Cafe page boost",
-    cta: "Boost your cafe",
+    audienceKey: "pricing.audience.boost",
+    ctaKey: "pricing.cta.boost",
     feeType: "FEED_10000_IMPRESSIONS_OR_30_DAYS",
     kind: "ad",
     ownersOnly: true,
     highlighted: true,
-    features: [
-      "10,000 impressions or 30 days on the CafeStory feed",
-      "Region-targeted delivery to reviewers near your cafe",
-      "Auto-inserted between organic posts with priority pacing",
-      "Impression and click analytics per campaign",
-      "Pause, resume, and re-activate any time from cafe settings",
+    featureKeys: [
+      "pricing.ad.feature1",
+      "pricing.ad.feature2",
+      "pricing.ad.feature3",
+      "pricing.ad.feature4",
+      "pricing.ad.feature5",
     ],
-    name: "Feed Advertising Pack",
+    nameKey: "pricing.ad.name",
     price: "299,000 VND",
-    billingSuffix: "/campaign",
+    billingSuffixKey: "pricing.billing.perCampaign",
   },
 ];
 
 const paymentMethods: {
-  description: string;
+  descriptionKey: TranslationKey;
   label: string;
   method: Extract<PaymentMethod, "STRIPE_CARD" | "VNPAY">;
   icon: typeof CreditCard;
 }[] = [
   {
-    description: "Pay with Stripe checkout using a card.",
+    descriptionKey: "pricing.method.stripeDescription",
     icon: CreditCard,
     label: "Stripe",
     method: "STRIPE_CARD",
   },
   {
-    description: "Pay through the VNPAY hosted payment page.",
+    descriptionKey: "pricing.method.vnpayDescription",
     icon: Landmark,
     label: "VNPAY",
     method: "VNPAY",
@@ -142,6 +144,7 @@ export function PricingPlanModal({
   isOpen,
   onOpenChange,
 }: PricingPlanModalProps) {
+  const { t } = useI18n();
   const { user } = useCurrentUser();
   const [step, setStep] = useState<ModalStep>("plans");
   const [extraFees, setExtraFees] = useState<ExtraFeeResponse[]>([]);
@@ -193,7 +196,7 @@ export function PricingPlanModal({
         setAdFees(ad);
       } catch (loadError) {
         if (isMounted) {
-          setError(getErrorMessage(loadError, "Unable to load membership plans."));
+          setError(getErrorMessage(loadError, t("pricing.loadError")));
         }
       } finally {
         if (isMounted) {
@@ -235,7 +238,7 @@ export function PricingPlanModal({
       return {
         id: fee.adFeeId,
         price: fee.price,
-        name: plan.name,
+        name: t(plan.nameKey),
         description: null,
       };
     }
@@ -254,7 +257,7 @@ export function PricingPlanModal({
 
     setError(null);
     if (!fee) {
-      setError("This package is not available right now.");
+      setError(t("pricing.unavailablePackage"));
       return;
     }
 
@@ -264,14 +267,14 @@ export function PricingPlanModal({
 
   async function payWith(method: Extract<PaymentMethod, "STRIPE_CARD" | "VNPAY">) {
     if (!selectedPlan) {
-      setError("Please choose a package first.");
+      setError(t("pricing.choosePackageFirst"));
       return;
     }
 
     const extraFee = getFeeForPlan(selectedPlan);
 
     if (!extraFee) {
-      setError("This package is not available right now.");
+      setError(t("pricing.unavailablePackage"));
       return;
     }
 
@@ -287,13 +290,13 @@ export function PricingPlanModal({
       );
 
       if (!payment.paymentUrl?.trim()) {
-        setError("Payment URL was not returned by the server.");
+        setError(t("pricing.paymentUrlMissing"));
         return;
       }
 
       window.location.href = payment.paymentUrl;
     } catch (paymentError) {
-      setError(getErrorMessage(paymentError, "Unable to create payment."));
+      setError(getErrorMessage(paymentError, t("pricing.createPaymentError")));
     } finally {
       setIsCreatingPayment(false);
       setActiveMethod(null);
@@ -305,7 +308,7 @@ export function PricingPlanModal({
       <DialogContent className="max-h-[min(95vh,860px)] w-[min(96vw,860px)] max-w-[900px] overflow-y-auto border-border bg-surface px-6 pb-7 pt-6 text-foreground sm:px-8">
         <DialogClose asChild>
           <Button
-            aria-label="Close membership plans"
+            aria-label={t("pricing.close")}
             className="absolute right-4 top-4"
             size="icon-sm"
             type="button"
@@ -317,16 +320,16 @@ export function PricingPlanModal({
 
         <header className="mx-auto flex max-w-[700px] flex-col items-center gap-3 pr-7 text-center">
           <DialogTitle className="font-heading text-3xl font-bold leading-[1.08] text-foreground sm:text-4xl">
-            Upgrade CafeStory
+            {t("pricing.title")}
           </DialogTitle>
           <p className="text-sm leading-6 text-muted">
-            Choose a package, then complete payment with Stripe or VNPAY.
+            {t("pricing.subtitle")}
           </p>
         </header>
 
         {error ? (
           <Alert className="mt-5" variant="destructive">
-            <AlertTitle>Payment unavailable</AlertTitle>
+            <AlertTitle>{t("pricing.errorTitle")}</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
@@ -346,7 +349,7 @@ export function PricingPlanModal({
                       ? "border-primary bg-primary text-primary-foreground"
                       : "bg-surface",
                   )}
-                  key={plan.name}
+                  key={plan.nameKey}
                 >
                   <CardHeader>
                     <span
@@ -357,10 +360,10 @@ export function PricingPlanModal({
                           : "bg-muted/15 text-muted",
                       )}
                     >
-                      {plan.audience}
+                      {t(plan.audienceKey)}
                     </span>
                     <CardTitle className="mt-2 font-serif text-2xl leading-tight">
-                      {fee?.name || plan.name}
+                      {fee?.name || t(plan.nameKey)}
                     </CardTitle>
                     <CardDescription
                       className={cn(
@@ -369,9 +372,12 @@ export function PricingPlanModal({
                           : "text-muted",
                       )}
                     >
-                      {fee?.description || (plan.kind === "ad"
-                        ? "Sponsored placement for your cafe page"
-                        : "CafeStory membership package")}
+                      {fee?.description ||
+                        t(
+                          plan.kind === "ad"
+                            ? "pricing.description.ad"
+                            : "pricing.description.membership",
+                        )}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="flex flex-1 flex-col">
@@ -387,15 +393,15 @@ export function PricingPlanModal({
                             : "text-muted",
                         )}
                       >
-                        {plan.billingSuffix}
+                        {t(plan.billingSuffixKey)}
                       </span>
                     </p>
 
                     <ul className="mt-8 flex flex-1 flex-col gap-3.5">
-                      {plan.features.map((feature) => (
+                      {plan.featureKeys.map((featureKey) => (
                         <li
                           className="grid grid-cols-[18px_1fr] gap-3 text-sm leading-5"
-                          key={feature}
+                          key={featureKey}
                         >
                           <CheckCircle2
                             aria-hidden="true"
@@ -413,7 +419,7 @@ export function PricingPlanModal({
                                 : "text-muted",
                             )}
                           >
-                            {feature}
+                            {t(featureKey)}
                           </span>
                         </li>
                       ))}
@@ -427,7 +433,7 @@ export function PricingPlanModal({
                       type="button"
                       variant={plan.highlighted ? "secondary" : "default"}
                     >
-                      {isLoadingFees ? "Loading..." : plan.cta}
+                      {isLoadingFees ? t("common.loading") : t(plan.ctaKey)}
                     </Button>
                   </CardFooter>
                 </Card>
@@ -447,16 +453,20 @@ export function PricingPlanModal({
               variant="ghost"
             >
               <ArrowLeft data-icon="inline-start" />
-              Back
+              {t("common.back")}
             </Button>
 
             <Card>
               <CardHeader>
-                <CardTitle>Choose payment method</CardTitle>
+                <CardTitle>{t("pricing.method.title")}</CardTitle>
                 <CardDescription>
                   {selectedPlan
-                    ? `Package: ${getFeeForPlan(selectedPlan)?.name || selectedPlan.name}`
-                    : "Select how you want to pay."}
+                    ? t("pricing.method.package", {
+                        name:
+                          getFeeForPlan(selectedPlan)?.name ||
+                          t(selectedPlan.nameKey),
+                      })
+                    : t("pricing.method.selectHint")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-3 sm:grid-cols-2">
@@ -478,11 +488,13 @@ export function PricingPlanModal({
                         <span className="flex flex-col gap-1">
                           <span className="font-semibold">
                             {isCurrentMethod
-                              ? `Redirecting to ${paymentMethod.label}...`
+                              ? t("pricing.method.redirecting", {
+                                  provider: paymentMethod.label,
+                                })
                               : paymentMethod.label}
                           </span>
                           <span className="whitespace-normal text-sm font-normal leading-5 text-muted">
-                            {paymentMethod.description}
+                            {t(paymentMethod.descriptionKey)}
                           </span>
                         </span>
                       </span>
@@ -497,7 +509,7 @@ export function PricingPlanModal({
                   type="button"
                   variant="ghost"
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
               </CardFooter>
             </Card>

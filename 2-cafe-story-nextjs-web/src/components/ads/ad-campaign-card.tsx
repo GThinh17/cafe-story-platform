@@ -17,24 +17,31 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { activateAdCampaign, getAdCampaignStats, pauseAdCampaign } from "@/lib/api/ads";
 import { ApiError } from "@/lib/api/client";
 import type { AdCampaignResponse, AdCampaignStatsResponse } from "@/types/ads";
+import { useI18n } from "@/components/providers/locale-provider";
+import { LOCALE_HTML_LANG } from "@/lib/i18n";
 
 type AdCampaignCardProps = {
   campaign: AdCampaignResponse;
   onChanged: (campaign: AdCampaignResponse) => void;
 };
 
-function formatDate(value: string | null) {
-  if (!value) return "Not started";
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(value));
+function formatDate(value: string | null, locale: string, notStarted: string) {
+  if (!value) return notStarted;
+  return new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(
+    new Date(value),
+  );
 }
 
-function getErrorMessage(error: unknown) {
+function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof ApiError || error instanceof Error
     ? error.message
-    : "Campaign action failed.";
+    : fallback;
 }
 
 export function AdCampaignCard({ campaign, onChanged }: AdCampaignCardProps) {
+  const { locale, t } = useI18n();
+  const dateLocale = LOCALE_HTML_LANG[locale];
+  const notStarted = t("adCard.notStarted");
   const [stats, setStats] = useState<AdCampaignStatsResponse | null>(null);
   const [isLoadingStats, setIsLoadingStats] = useState(false);
   const [isMutating, setIsMutating] = useState(false);
@@ -46,7 +53,7 @@ export function AdCampaignCard({ campaign, onChanged }: AdCampaignCardProps) {
     try {
       setStats(await getAdCampaignStats(campaign.adCampaignId));
     } catch (loadError) {
-      setError(getErrorMessage(loadError));
+      setError(getErrorMessage(loadError, t("adCard.actionFailed")));
     } finally {
       setIsLoadingStats(false);
     }
@@ -61,7 +68,7 @@ export function AdCampaignCard({ campaign, onChanged }: AdCampaignCardProps) {
         : await activateAdCampaign(campaign.adCampaignId);
       onChanged(updated);
     } catch (mutationError) {
-      setError(getErrorMessage(mutationError));
+      setError(getErrorMessage(mutationError, t("adCard.actionFailed")));
     } finally {
       setIsMutating(false);
     }
@@ -78,16 +85,19 @@ export function AdCampaignCard({ campaign, onChanged }: AdCampaignCardProps) {
             {campaign.status}
           </Badge>
           <span className="text-xs text-muted-foreground">
-            {formatDate(campaign.startAt)} – {formatDate(campaign.endAt)}
+            {formatDate(campaign.startAt, dateLocale, notStarted)} –{" "}
+            {formatDate(campaign.endAt, dateLocale, notStarted)}
           </span>
         </div>
         <CardTitle>{campaign.title}</CardTitle>
-        <CardDescription>{campaign.description || "No campaign description."}</CardDescription>
+        <CardDescription>
+          {campaign.description || t("adCard.noDescription")}
+        </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {error ? (
           <Alert variant="destructive">
-            <AlertTitle>Campaign action failed</AlertTitle>
+            <AlertTitle>{t("adCard.actionFailedTitle")}</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
@@ -101,18 +111,39 @@ export function AdCampaignCard({ campaign, onChanged }: AdCampaignCardProps) {
         ) : stats ? (
           <div className="flex flex-col gap-4">
             <div className="grid gap-3 sm:grid-cols-3">
-              <Stat label="Served" value={`${stats.servedImpressions.toLocaleString()} / ${stats.maxImpressions.toLocaleString()}`} />
-              <Stat label="Clicks" value={stats.totalClicks.toLocaleString()} />
-              <Stat label="CTR" value={`${Number(stats.ctrPercent).toFixed(2)}%`} />
+              <Stat
+                label={t("adCard.stat.served")}
+                value={`${stats.servedImpressions.toLocaleString()} / ${stats.maxImpressions.toLocaleString()}`}
+              />
+              <Stat
+                label={t("adCard.stat.clicks")}
+                value={stats.totalClicks.toLocaleString()}
+              />
+              <Stat
+                label={t("adCard.stat.ctr")}
+                value={`${Number(stats.ctrPercent).toFixed(2)}%`}
+              />
             </div>
             <div className="grid gap-2">
               {stats.dailyStats.length ? stats.dailyStats.map((day) => (
                 <div className="grid grid-cols-3 gap-2 rounded-lg bg-muted p-3 text-xs" key={day.statDate}>
                   <span>{day.statDate}</span>
-                  <span>{day.impressions.toLocaleString()} served</span>
-                  <span>{day.clicks.toLocaleString()} clicks</span>
+                  <span>
+                    {t("adCard.daily.served", {
+                      count: day.impressions.toLocaleString(),
+                    })}
+                  </span>
+                  <span>
+                    {t("adCard.daily.clicks", {
+                      count: day.clicks.toLocaleString(),
+                    })}
+                  </span>
                 </div>
-              )) : <p className="text-sm text-muted-foreground">No delivery data yet.</p>}
+              )) : (
+                <p className="text-sm text-muted-foreground">
+                  {t("adCard.noDeliveryData")}
+                </p>
+              )}
             </div>
           </div>
         ) : null}
@@ -120,12 +151,16 @@ export function AdCampaignCard({ campaign, onChanged }: AdCampaignCardProps) {
       <CardFooter className="flex flex-wrap gap-2">
         <Button disabled={isLoadingStats} onClick={() => void loadStats()} type="button" variant="outline">
           <BarChart3Icon data-icon="inline-start" />
-          {stats ? "Refresh stats" : "View stats"}
+          {stats ? t("adCard.refreshStats") : t("adCard.viewStats")}
         </Button>
         {campaign.status === "ACTIVE" || campaign.status === "PAUSED" || campaign.status === "DRAFT" ? (
           <Button disabled={isMutating} onClick={() => void changeStatus()} type="button" variant="outline">
             {campaign.status === "ACTIVE" ? <PauseIcon data-icon="inline-start" /> : <PlayIcon data-icon="inline-start" />}
-            {isMutating ? "Updating..." : campaign.status === "ACTIVE" ? "Pause" : "Activate"}
+            {isMutating
+              ? t("adCard.updating")
+              : campaign.status === "ACTIVE"
+                ? t("adCampaigns.pause")
+                : t("adCampaigns.activate")}
           </Button>
         ) : null}
       </CardFooter>

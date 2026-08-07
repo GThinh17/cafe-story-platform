@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/providers/locale-provider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -66,6 +67,7 @@ export function CafeMapModal({
   regionStreet,
   regionWard,
 }: CafeMapModalProps) {
+  const { t } = useI18n();
   const locationQuery = buildLocationQuery({
     address,
     regionArea,
@@ -87,7 +89,7 @@ export function CafeMapModal({
               {cafeName}
             </DialogTitle>
             <DialogDescription className="mt-1 text-sm text-coffee-muted">
-              {locationQuery || "Cafe location"}
+              {locationQuery || t("cafe.map.fallbackTitle")}
             </DialogDescription>
           </div>
         </div>

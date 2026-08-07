@@ -16,16 +16,38 @@ import { BrandIcon } from "@/components/ui/brand-icon";
 import { ReviewerBadgeChip } from "@/components/ui/reviewer-badge-chip";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { getReviewerByUserId } from "@/lib/api/reviewers";
+import { useI18n } from "@/components/providers/locale-provider";
 
 const sidebarLinks = [
-  { href: "/reviewer-dashboard", icon: LayoutDashboardIcon, label: "Overview" },
-  { href: "/reviewer-dashboard/performance", icon: BarChart3Icon, label: "Performance" },
-  { href: "/reviewer-dashboard/ranking", icon: TrophyIcon, label: "Ranking" },
-  { href: "/reviewer-dashboard/badges", icon: BadgeIcon, label: "Badges" },
-  { href: "/reviewer-dashboard/earnings", icon: WalletIcon, label: "Earnings" },
+  {
+    href: "/reviewer-dashboard",
+    icon: LayoutDashboardIcon,
+    labelKey: "reviewer.nav.overview" as const,
+  },
+  {
+    href: "/reviewer-dashboard/performance",
+    icon: BarChart3Icon,
+    labelKey: "reviewer.nav.performance" as const,
+  },
+  {
+    href: "/reviewer-dashboard/ranking",
+    icon: TrophyIcon,
+    labelKey: "reviewer.nav.ranking" as const,
+  },
+  {
+    href: "/reviewer-dashboard/badges",
+    icon: BadgeIcon,
+    labelKey: "reviewer.nav.badges" as const,
+  },
+  {
+    href: "/reviewer-dashboard/earnings",
+    icon: WalletIcon,
+    labelKey: "reviewer.nav.earnings" as const,
+  },
 ];
 
 export function ReviewerDashboardSidebar() {
+  const { t } = useI18n();
   const pathname = usePathname();
   const { user } = useCurrentUser();
   const [badge, setBadge] = useState<string | null>(null);
@@ -48,7 +70,7 @@ export function ReviewerDashboardSidebar() {
           <div className="min-w-0">
             <p className="text-sm font-black text-espresso">CafeStory</p>
             <p className="truncate text-xs font-semibold text-muted">
-              Reviewer workspace
+              {t("reviewer.workspace")}
             </p>
           </div>
         </div>
@@ -65,7 +87,7 @@ export function ReviewerDashboardSidebar() {
           <div className="flex items-center gap-3">
             {avatar ? (
               <img
-                alt={name ?? "avatar"}
+                alt={name ?? t("reviewer.avatarAlt")}
                 className="size-12 shrink-0 rounded-full border border-border object-cover"
                 decoding="async"
                 src={avatar}
@@ -85,7 +107,7 @@ export function ReviewerDashboardSidebar() {
         </div>
 
         <nav className="flex flex-col gap-1.5">
-          {sidebarLinks.map(({ href, icon: Icon, label }) => {
+          {sidebarLinks.map(({ href, icon: Icon, labelKey }) => {
             const isActive =
               href === "/reviewer-dashboard"
                 ? pathname === href
@@ -100,10 +122,10 @@ export function ReviewerDashboardSidebar() {
                     : "text-muted hover:bg-surface-muted hover:text-primary"
                 }`}
                 href={href}
-                key={label}
+                key={href}
               >
                 <Icon className="size-4" />
-                {label}
+                {t(labelKey)}
               </Link>
             );
           })}
@@ -111,9 +133,9 @@ export function ReviewerDashboardSidebar() {
 
         <div className="mt-auto rounded-md bg-espresso px-4 py-4 text-white">
           <CoffeeIcon className="size-5" />
-          <p className="mt-3 text-sm font-black">Keep reviewing</p>
+          <p className="mt-3 text-sm font-black">{t("reviewer.keepReviewing")}</p>
           <p className="mt-1 text-xs leading-5 text-white/72">
-            Your next cafe story can move you closer to DIAMOND.
+            {t("reviewer.keepReviewingHint")}
           </p>
         </div>
       </div>

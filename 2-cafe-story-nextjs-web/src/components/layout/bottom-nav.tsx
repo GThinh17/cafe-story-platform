@@ -10,6 +10,7 @@ import {
   UserIcon,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useI18n } from "@/components/providers/locale-provider";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useCreatePost } from "@/context/create-post-context";
 import { cn } from "@/lib/utils";
@@ -27,28 +28,29 @@ function isActivePath(pathname: string, href: string) {
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { t } = useI18n();
   const { user, isLoading } = useCurrentUser();
   const { open: openCreatePost } = useCreatePost();
   const profileHref = !isLoading && user?.userName ? `/${user.userName}` : "/login";
 
   const items: NavItem[] = [
-    { href: "/", label: "Home", icon: HomeIcon },
-    { href: "/explore", label: "Explore", icon: CompassIcon },
-    { href: "/notifications", label: "Activity", icon: BellIcon },
-    { href: profileHref, label: "Profile", icon: UserIcon },
+    { href: "/", label: t("nav.home"), icon: HomeIcon },
+    { href: "/explore", label: t("nav.explore"), icon: CompassIcon },
+    { href: "/notifications", label: t("nav.activity"), icon: BellIcon },
+    { href: profileHref, label: t("nav.profile"), icon: UserIcon },
   ];
 
   return (
     <nav
-      aria-label="Mobile navigation"
+      aria-label={t("nav.mobile")}
       className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface sm:hidden"
     >
       <div className="flex h-[60px] items-center">
         <button
-          aria-label="Create Post"
+          aria-label={t("nav.createPost")}
           className="flex flex-1 flex-col items-center justify-center py-2"
           onClick={openCreatePost}
-          title="Create Post"
+          title={t("nav.createPost")}
           type="button"
         >
           <span className="grid size-9 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm">

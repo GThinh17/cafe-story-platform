@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Megaphone, PlayCircle, Sparkles } from "lucide-react";
+import { useI18n } from "@/components/providers/locale-provider";
 import { Button } from "@/components/ui/button";
 import { PricingPlanModal } from "@/components/layout/pricing-plan-modal";
 import {
@@ -13,6 +14,7 @@ import {
 import { ApiError } from "@/lib/api/client";
 import { getMyPayments } from "@/lib/api/payments";
 import { cn } from "@/lib/utils";
+import { LOCALE_HTML_LANG, type TranslationKey } from "@/lib/i18n";
 import type { AdCampaignResponse, AdStatus } from "@/types/ad-campaign";
 import type { PaymentResponse } from "@/types/payment";
 
@@ -25,12 +27,12 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-const statusLabel: Record<AdStatus, string> = {
-  ACTIVE: "Active",
-  DRAFT: "Draft",
-  PAUSED: "Paused",
-  EXPIRED: "Expired",
-  REJECTED: "Rejected",
+const statusLabelKey: Record<AdStatus, TranslationKey> = {
+  ACTIVE: "adStatus.ACTIVE",
+  DRAFT: "adStatus.DRAFT",
+  PAUSED: "adStatus.PAUSED",
+  EXPIRED: "adStatus.EXPIRED",
+  REJECTED: "adStatus.REJECTED",
 };
 
 const statusStyle: Record<AdStatus, string> = {
@@ -42,6 +44,7 @@ const statusStyle: Record<AdStatus, string> = {
 };
 
 export function AdCampaignsSection({ cafePageId }: AdCampaignsSectionProps) {
+  const { locale, t } = useI18n();
   const [campaigns, setCampaigns] = useState<AdCampaignResponse[]>([]);
   const [payments, setPayments] = useState<PaymentResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,11 +63,11 @@ export function AdCampaignsSection({ cafePageId }: AdCampaignsSectionProps) {
       setCampaigns(nextCampaigns);
       setPayments(nextPayments);
     } catch (loadError) {
-      setError(getErrorMessage(loadError, "Unable to load campaigns."));
+      setError(getErrorMessage(loadError, t("adCampaigns.loadError")));
     } finally {
       setIsLoading(false);
     }
-  }, [cafePageId]);
+  }, [cafePageId, t]);
 
   useEffect(() => {
     void refresh();
@@ -87,7 +90,7 @@ export function AdCampaignsSection({ cafePageId }: AdCampaignsSectionProps) {
       }
       await refresh();
     } catch (toggleError) {
-      setError(getErrorMessage(toggleError, "Unable to update campaign."));
+      setError(getErrorMessage(toggleError, t("adCampaigns.updateError")));
     } finally {
       setPendingCampaignId(null);
     }
@@ -100,12 +103,11 @@ export function AdCampaignsSection({ cafePageId }: AdCampaignsSectionProps) {
           <div className="flex items-center gap-2">
             <Megaphone className="size-4 text-primary" />
             <h2 className="text-base font-bold text-foreground">
-              Ad campaigns
+              {t("adCampaigns.title")}
             </h2>
           </div>
           <p className="mt-1 text-xs text-muted">
-            Purchased Feed Advertising Packs let you run one sponsored campaign
-            each. Buy a pack to add a new slot.
+            {t("adCampaigns.description")}
           </p>
         </div>
         <Button
@@ -115,13 +117,13 @@ export function AdCampaignsSection({ cafePageId }: AdCampaignsSectionProps) {
           variant="outline"
         >
           <Sparkles data-icon="inline-start" />
-          Buy campaign pack
+          {t("adCampaigns.buyPack")}
         </Button>
       </div>
 
       <div className="space-y-4 p-4 sm:p-5">
         {isLoading ? (
-          <p className="text-sm text-muted">Loading campaigns...</p>
+          <p className="text-sm text-muted">{t("adCampaigns.loading")}</p>
         ) : null}
 
         {error ? (
@@ -130,7 +132,7 @@ export function AdCampaignsSection({ cafePageId }: AdCampaignsSectionProps) {
 
         {!isLoading && campaigns.length === 0 && availablePayments.length === 0 ? (
           <p className="text-sm text-muted">
-            No campaigns yet. Buy a Feed Advertising Pack to launch your first one.
+            {t("adCampaigns.empty")}
           </p>
         ) : null}
 
@@ -160,10 +162,12 @@ export function AdCampaignsSection({ cafePageId }: AdCampaignsSectionProps) {
                     {campaign.title}
                   </p>
                   <p className="text-xs text-muted">
-                    {campaign.servedImpressions.toLocaleString()} /{" "}
-                    {campaign.maxImpressions.toLocaleString()} impressions
+                    {t("adCampaigns.impressions", {
+                      served: campaign.servedImpressions.toLocaleString(),
+                      max: campaign.maxImpressions.toLocaleString(),
+                    })}
                     {" · "}
-                    {progress}% delivered
+                    {t("adCampaigns.delivered", { percent: progress })}
                   </p>
                 </div>
                 <span
@@ -172,7 +176,7 @@ export function AdCampaignsSection({ cafePageId }: AdCampaignsSectionProps) {
                     statusStyle[campaign.status],
                   )}
                 >
-                  {statusLabel[campaign.status]}
+                  {t(statusLabelKey[campaign.status])}
                 </span>
               </div>
               {canToggle ? (
@@ -184,7 +188,9 @@ export function AdCampaignsSection({ cafePageId }: AdCampaignsSectionProps) {
                     type="button"
                     variant="ghost"
                   >
-                    {campaign.status === "ACTIVE" ? "Pause" : "Activate"}
+                    {campaign.status === "ACTIVE"
+                      ? t("adCampaigns.pause")
+                      : t("adCampaigns.activate")}
                   </Button>
                 </div>
               ) : null}
@@ -195,7 +201,9 @@ export function AdCampaignsSection({ cafePageId }: AdCampaignsSectionProps) {
         {availablePayments.length > 0 ? (
           <div className="space-y-2">
             <p className="text-xs font-bold uppercase tracking-widest text-muted">
-              Ready to launch ({availablePayments.length})
+              {t("adCampaigns.readyToLaunch", {
+                count: availablePayments.length,
+              })}
             </p>
             {availablePayments.map((payment) => (
               <Link
@@ -205,11 +213,17 @@ export function AdCampaignsSection({ cafePageId }: AdCampaignsSectionProps) {
               >
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground">
-                    Create a campaign from purchased pack
+                    {t("adCampaigns.createFromPack")}
                   </p>
                   <p className="truncate text-xs text-muted">
-                    Payment {payment.paymentId.slice(0, 8)} · Paid{" "}
-                    {payment.paidAt ? new Date(payment.paidAt).toLocaleDateString() : "—"}
+                    {t("adCampaigns.paymentLine", {
+                      id: payment.paymentId.slice(0, 8),
+                      date: payment.paidAt
+                        ? new Date(payment.paidAt).toLocaleDateString(
+                            LOCALE_HTML_LANG[locale],
+                          )
+                        : "—",
+                    })}
                   </p>
                 </div>
                 <PlayCircle className="size-5 text-primary" />

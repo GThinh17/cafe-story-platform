@@ -1,5 +1,6 @@
 import { imageWidths, optimizeImageUrl } from "@/lib/image-optimizer";
 import type { BlogFeedResponse, BlogResponse } from "@/types/blog";
+import type { Translate } from "@/lib/i18n";
 import type {
   FeedPost,
   FeedPostMedia,
@@ -14,15 +15,15 @@ const fallbackImages = [
   "/images/cafes/velvet-roast/croissant-flatlay.jpg",
 ];
 
-function formatRelativeTime(value: string | null) {
+function formatRelativeTime(value: string | null, t: Translate) {
   if (!value) {
-    return "Just now";
+    return t("feed.justNow");
   }
 
   const createdAt = new Date(value);
 
   if (Number.isNaN(createdAt.getTime())) {
-    return "Just now";
+    return t("feed.justNow");
   }
 
   const diffMinutes = Math.max(
@@ -31,20 +32,20 @@ function formatRelativeTime(value: string | null) {
   );
 
   if (diffMinutes < 1) {
-    return "Just now";
+    return t("feed.justNow");
   }
 
   if (diffMinutes < 60) {
-    return `${diffMinutes} min`;
+    return t("feed.time.minutes", { value: diffMinutes });
   }
 
   const diffHours = Math.floor(diffMinutes / 60);
 
   if (diffHours < 24) {
-    return `${diffHours} hr`;
+    return t("feed.time.hours", { value: diffHours });
   }
 
-  return `${Math.floor(diffHours / 24)} d`;
+  return t("feed.time.days", { value: Math.floor(diffHours / 24) });
 }
 
 /**
@@ -93,6 +94,7 @@ function getNonEmptyImageUrls(imageUrls: string[] | null | undefined) {
 function mapImageUrlsToMedia(
   imageUrls: string[] | null | undefined,
   postId: string,
+  t: Translate,
   authorUsername?: string | null,
 ): FeedPostMedia[] {
   const altPrefix = authorUsername?.trim() || "Cafe Story";
@@ -100,12 +102,15 @@ function mapImageUrlsToMedia(
   return getNonEmptyImageUrls(imageUrls).map((url, index) => ({
     id: `${postId}-${index}`,
     src: optimizeImageUrl(url, { width: imageWidths.postMedia }),
-    alt: `${altPrefix} post photo ${index + 1}`,
+    alt: t("feed.postPhotoAlt", { name: altPrefix, index: index + 1 }),
     type: "image",
   }));
 }
 
-export function mapBlogFeedToFeedPosts(feed: BlogFeedResponse[]): FeedPost[] {
+export function mapBlogFeedToFeedPosts(
+  feed: BlogFeedResponse[],
+  t: Translate,
+): FeedPost[] {
   return feed.map((item, index) => {
     const authorUsername = firstNonEmpty([item.authorUserName]);
     const authorAvatar = optimizeImageUrl(
@@ -121,6 +126,7 @@ export function mapBlogFeedToFeedPosts(feed: BlogFeedResponse[]): FeedPost[] {
     const media = mapImageUrlsToMedia(
       item.imageUrls,
       item.blogId,
+      t,
       firstNonEmpty([item.displayName, pageName, authorUsername]),
     );
     const image = optimizeImageUrl(
@@ -140,7 +146,7 @@ export function mapBlogFeedToFeedPosts(feed: BlogFeedResponse[]): FeedPost[] {
       authorUsername,
       authorAvatar,
       cafe: pageName ?? "",
-      caption: item.contentPreview?.trim() || "A new Cafe Story post is ready.",
+      caption: item.contentPreview?.trim() || t("feed.defaultCaption"),
       commentCount: item.commentCount ?? 0,
       comments: formatCount(item.commentCount),
       displayAuthorType: item.displayAuthorType,
@@ -165,23 +171,27 @@ export function mapBlogFeedToFeedPosts(feed: BlogFeedResponse[]): FeedPost[] {
       saveCount: item.saveCount ?? 0,
       isSaved: item.isSave ?? false,
       tags: buildTags(item.tags, item.regionCity),
-      time: formatRelativeTime(item.createdAt),
+      time: formatRelativeTime(item.createdAt, t),
       isAuthorFollowing: item.isAuthorFollowing ?? false,
       isPageFollowing: item.isPageFollowing ?? false,
     };
   });
 }
 
-export function mapMixedFeedToFeedPosts(feed: MixedFeedResponse): FeedPost[] {
+export function mapMixedFeedToFeedPosts(
+  feed: MixedFeedResponse,
+  t: Translate,
+): FeedPost[] {
   const blogItems = (feed.items ?? [])
     .map((item) => item.blog)
     .filter((item): item is BlogFeedResponse => item !== null);
 
-  return mapBlogFeedToFeedPosts(blogItems);
+  return mapBlogFeedToFeedPosts(blogItems, t);
 }
 
 export function mapMixedFeedToRenderableItems(
   feed: MixedFeedResponse,
+  t: Translate,
 ): FeedRenderableItem[] {
   const result: FeedRenderableItem[] = [];
   (feed.items ?? []).forEach((item, index) => {
@@ -196,7 +206,7 @@ export function mapMixedFeedToRenderableItems(
     if (!item.blog) {
       return;
     }
-    const post = mapBlogFeedToFeedPosts([item.blog])[0];
+    const post = mapBlogFeedToFeedPosts([item.blog], t)[0];
     if (!post) {
       return;
     }
@@ -209,21 +219,27 @@ export function mapMixedFeedToRenderableItems(
   return result;
 }
 
-export function mapSharedBlogResponsesToFeedPosts(blogs: BlogResponse[]): FeedPost[] {
-  return mapBlogResponsesToFeedPosts(blogs).map((post) => ({
+export function mapSharedBlogResponsesToFeedPosts(
+  blogs: BlogResponse[],
+  t: Translate,
+): FeedPost[] {
+  return mapBlogResponsesToFeedPosts(blogs, t).map((post) => ({
     ...post,
     isShared: true,
   }));
 }
 
-export function mapBlogResponsesToFeedPosts(blogs: BlogResponse[]): FeedPost[] {
+export function mapBlogResponsesToFeedPosts(
+  blogs: BlogResponse[],
+  t: Translate,
+): FeedPost[] {
   return blogs.map((item, index) => {
     const authorUsername = firstNonEmpty([
       item.authorUserName,
       item.authorUserFullName,
       item.displayName,
     ]);
-    const media = mapImageUrlsToMedia(item.imageUrls, item.id, authorUsername);
+    const media = mapImageUrlsToMedia(item.imageUrls, item.id, t, authorUsername);
     const image = optimizeImageUrl(
       firstNonEmpty([
         ...media.map((mediaItem) => mediaItem.src),
@@ -282,7 +298,7 @@ export function mapBlogResponsesToFeedPosts(blogs: BlogResponse[]): FeedPost[] {
       isAuthorFollowing: item.isAuthorFollowing ?? false,
       isPageFollowing: item.isPageFollowing ?? false,
       tags: buildTags(item.tags, item.regionCity),
-      time: formatRelativeTime(item.createdAt),
+      time: formatRelativeTime(item.createdAt, t),
     };
   });
 }

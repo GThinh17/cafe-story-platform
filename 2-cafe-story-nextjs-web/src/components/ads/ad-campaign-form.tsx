@@ -36,6 +36,7 @@ import {
 import type { AdCampaignResponse, AdTargetRegionRequest } from "@/types/ads";
 import type { CafePageResponse } from "@/types/cafe";
 import type { PaymentResponse } from "@/types/payment";
+import { useI18n } from "@/components/providers/locale-provider";
 
 type AdCampaignFormProps = {
   cafePages: CafePageResponse[];
@@ -44,10 +45,10 @@ type AdCampaignFormProps = {
   payments: PaymentResponse[];
 };
 
-function errorMessage(error: unknown) {
+function errorMessage(error: unknown, fallback: string) {
   return error instanceof ApiError || error instanceof Error
     ? error.message
-    : "Unable to create campaign.";
+    : fallback;
 }
 
 export function AdCampaignForm({
@@ -56,6 +57,7 @@ export function AdCampaignForm({
   onCreated,
   payments,
 }: AdCampaignFormProps) {
+  const { t } = useI18n();
   const [paymentId, setPaymentId] = useState(initialPaymentId || payments[0]?.paymentId || "");
   const [cafePageId, setCafePageId] = useState(cafePages[0]?.id || "");
   const [title, setTitle] = useState("");
@@ -158,7 +160,7 @@ export function AdCampaignForm({
     try {
       setImageUrl(await uploadAdImageToCloudinary(file));
     } catch (uploadError) {
-      setError(errorMessage(uploadError));
+      setError(errorMessage(uploadError, t("adForm.createError")));
     } finally {
       setIsUploading(false);
     }
@@ -167,7 +169,7 @@ export function AdCampaignForm({
   async function submitCampaign(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!paymentId || !cafePageId || !title.trim()) {
-      setError("Choose a paid Ads payment, cafe page, and campaign title.");
+      setError(t("adForm.missingFields"));
       return;
     }
     setIsSubmitting(true);
@@ -190,7 +192,7 @@ export function AdCampaignForm({
       setImageUrl("");
       setTargetRegions([]);
     } catch (submitError) {
-      setError(errorMessage(submitError));
+      setError(errorMessage(submitError, t("adForm.createError")));
     } finally {
       setIsSubmitting(false);
     }
@@ -200,35 +202,37 @@ export function AdCampaignForm({
     <form className="flex flex-col gap-5" onSubmit={submitCampaign}>
       {error ? (
         <Alert variant="destructive">
-          <AlertTitle>Campaign not created</AlertTitle>
+          <AlertTitle>{t("adForm.errorTitle")}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
       <FieldGroup>
         <Field>
-          <FieldLabel htmlFor="ad-payment">Paid Ads payment</FieldLabel>
+          <FieldLabel htmlFor="ad-payment">{t("adForm.payment")}</FieldLabel>
           <Select onValueChange={setPaymentId} value={paymentId}>
             <SelectTrigger className="w-full" id="ad-payment">
-              <SelectValue placeholder="Choose an unused payment" />
+              <SelectValue placeholder={t("adForm.paymentPlaceholder")} />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
                 {payments.map((payment) => (
                   <SelectItem key={payment.paymentId} value={payment.paymentId}>
-                    {payment.paymentId.slice(0, 8)} · {payment.amount ?? "Ads package"} {payment.currency ?? ""}
+                    {payment.paymentId.slice(0, 8)} ·{" "}
+                    {payment.amount ?? t("adForm.paymentFallbackLabel")}{" "}
+                    {payment.currency ?? ""}
                   </SelectItem>
                 ))}
               </SelectGroup>
             </SelectContent>
           </Select>
-          <FieldDescription>Each paid package can create one campaign.</FieldDescription>
+          <FieldDescription>{t("adForm.paymentHint")}</FieldDescription>
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="ad-cafe-page">Cafe page</FieldLabel>
+          <FieldLabel htmlFor="ad-cafe-page">{t("adForm.cafePage")}</FieldLabel>
           <Select onValueChange={setCafePageId} value={cafePageId}>
             <SelectTrigger className="w-full" id="ad-cafe-page">
-              <SelectValue placeholder="Choose your cafe page" />
+              <SelectValue placeholder={t("adForm.cafePagePlaceholder")} />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
@@ -241,33 +245,35 @@ export function AdCampaignForm({
         </Field>
 
         <Field data-invalid={title.length > 160 || undefined}>
-          <FieldLabel htmlFor="ad-title">Campaign headline</FieldLabel>
+          <FieldLabel htmlFor="ad-title">{t("adForm.headline")}</FieldLabel>
           <Input
             aria-invalid={title.length > 160}
             id="ad-title"
             maxLength={160}
             onChange={(event) => setTitle(event.target.value)}
-            placeholder="Try our signature cold brew"
+            placeholder={t("adForm.headlinePlaceholder")}
             required
             value={title}
           />
-          <FieldDescription>{title.length}/160 characters</FieldDescription>
+          <FieldDescription>
+            {t("adForm.characterCount", { count: title.length, max: 160 })}
+          </FieldDescription>
         </Field>
 
         <Field data-invalid={description.length > 1000 || undefined}>
-          <FieldLabel htmlFor="ad-description">Description</FieldLabel>
+          <FieldLabel htmlFor="ad-description">{t("adForm.description")}</FieldLabel>
           <Textarea
             aria-invalid={description.length > 1000}
             id="ad-description"
             maxLength={1000}
             onChange={(event) => setDescription(event.target.value)}
-            placeholder="Describe what visitors should discover."
+            placeholder={t("adForm.descriptionPlaceholder")}
             value={description}
           />
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="ad-target-url">Destination URL</FieldLabel>
+          <FieldLabel htmlFor="ad-target-url">{t("adForm.targetUrl")}</FieldLabel>
           <Input
             id="ad-target-url"
             onChange={(event) => setTargetUrl(event.target.value)}
@@ -275,11 +281,11 @@ export function AdCampaignForm({
             type="url"
             value={targetUrl}
           />
-          <FieldDescription>Leave empty to open the cafe page.</FieldDescription>
+          <FieldDescription>{t("adForm.targetUrlHint")}</FieldDescription>
         </Field>
 
         <Field>
-          <FieldLabel htmlFor="ad-image">Creative image</FieldLabel>
+          <FieldLabel htmlFor="ad-image">{t("adForm.creative")}</FieldLabel>
           <Input
             accept="image/*"
             disabled={isUploading}
@@ -287,51 +293,55 @@ export function AdCampaignForm({
             onChange={(event) => void uploadCreative(event.target.files?.[0] ?? null)}
             type="file"
           />
-          <FieldDescription>{isUploading ? "Uploading creative..." : "Stored in cafestory/ads on Cloudinary."}</FieldDescription>
-          {imageUrl ? <img alt="Campaign creative preview" className="aspect-video w-full rounded-lg object-cover" src={imageUrl} /> : null}
+          <FieldDescription>
+            {isUploading
+              ? t("adForm.creativeUploading")
+              : t("adForm.creativeHint")}
+          </FieldDescription>
+          {imageUrl ? <img alt={t("adForm.creativeAlt")} className="aspect-video w-full rounded-lg object-cover" src={imageUrl} /> : null}
         </Field>
 
         <Field>
-          <FieldLabel>Target regions</FieldLabel>
+          <FieldLabel>{t("adForm.targetRegions")}</FieldLabel>
           <div className="grid gap-2 md:grid-cols-3">
             <Select onValueChange={(value) => void chooseProvince(value)} value={provinceCode}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Province" /></SelectTrigger>
+              <SelectTrigger className="w-full"><SelectValue placeholder={t("adForm.province")} /></SelectTrigger>
               <SelectContent><SelectGroup>{provinces.map((province) => <SelectItem key={province.provinceCode} value={province.provinceCode}>{province.name}</SelectItem>)}</SelectGroup></SelectContent>
             </Select>
             <Select disabled={!provinceCode} onValueChange={(value) => void chooseCity(value)} value={cityCode}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="City" /></SelectTrigger>
+              <SelectTrigger className="w-full"><SelectValue placeholder={t("adForm.city")} /></SelectTrigger>
               <SelectContent><SelectGroup>{cities.map((city) => <SelectItem key={city.cityCode} value={city.cityCode}>{city.name}</SelectItem>)}</SelectGroup></SelectContent>
             </Select>
             <Select disabled={!cityCode} onValueChange={setWardCode} value={wardCode}>
-              <SelectTrigger className="w-full"><SelectValue placeholder="Ward (optional)" /></SelectTrigger>
+              <SelectTrigger className="w-full"><SelectValue placeholder={t("adForm.ward")} /></SelectTrigger>
               <SelectContent><SelectGroup>{wards.map((ward) => <SelectItem key={ward.wardCode} value={ward.wardCode}>{ward.name}</SelectItem>)}</SelectGroup></SelectContent>
             </Select>
           </div>
           <Button disabled={!selectedProvince} onClick={addTargetRegion} type="button" variant="outline">
-            <PlusIcon data-icon="inline-start" /> Add region
+            <PlusIcon data-icon="inline-start" /> {t("adForm.addRegion")}
           </Button>
           <div className="flex flex-wrap gap-2">
             {targetRegions.map((region, index) => (
               <Badge key={`${region.province}-${region.city}-${region.ward}`} variant="secondary">
                 {[region.province, region.city, region.ward].filter(Boolean).join(" · ")}
-                <Button aria-label="Remove target region" onClick={() => setTargetRegions((current) => current.filter((_, itemIndex) => itemIndex !== index))} size="icon-sm" type="button" variant="ghost">
+                <Button aria-label={t("adForm.removeRegion")} onClick={() => setTargetRegions((current) => current.filter((_, itemIndex) => itemIndex !== index))} size="icon-sm" type="button" variant="ghost">
                   <Trash2Icon />
                 </Button>
               </Badge>
             ))}
           </div>
-          <FieldDescription>No regions means nationwide delivery.</FieldDescription>
+          <FieldDescription>{t("adForm.regionsHint")}</FieldDescription>
         </Field>
 
         <Field orientation="horizontal">
           <Checkbox checked={activateNow} id="activate-now" onCheckedChange={(checked) => setActivateNow(checked === true)} />
-          <FieldLabel htmlFor="activate-now">Activate immediately after creation</FieldLabel>
+          <FieldLabel htmlFor="activate-now">{t("adForm.activateNow")}</FieldLabel>
         </Field>
       </FieldGroup>
 
       <Button disabled={isSubmitting || isUploading || payments.length === 0} type="submit">
         {isUploading ? <UploadIcon data-icon="inline-start" /> : <PlusIcon data-icon="inline-start" />}
-        {isSubmitting ? "Creating campaign..." : "Create campaign"}
+        {isSubmitting ? t("adForm.submitting") : t("adForm.submit")}
       </Button>
     </form>
   );

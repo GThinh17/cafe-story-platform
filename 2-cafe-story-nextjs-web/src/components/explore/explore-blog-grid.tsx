@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useI18n } from "@/components/providers/locale-provider";
 import type { FeedPost } from "@/types/feed";
 
 type ExploreBlogGridProps = {
@@ -15,6 +18,8 @@ function SkeletonCell() {
 }
 
 export function ExploreBlogGrid({ error, isLoading, onPostClick, posts }: ExploreBlogGridProps) {
+  const { t } = useI18n();
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-3 gap-0.5 sm:grid-cols-4">
@@ -29,7 +34,7 @@ export function ExploreBlogGrid({ error, isLoading, onPostClick, posts }: Explor
     return (
       <div className="flex flex-col items-center gap-2 py-16 text-center">
         <p className="text-sm font-semibold text-foreground">{error}</p>
-        <p className="text-xs text-muted">Try refreshing the page.</p>
+        <p className="text-xs text-muted">{t("explore.tryRefreshing")}</p>
       </div>
     );
   }
@@ -37,8 +42,12 @@ export function ExploreBlogGrid({ error, isLoading, onPostClick, posts }: Explor
   if (posts.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 py-16 text-center">
-        <p className="text-sm font-semibold text-foreground">No trending posts</p>
-        <p className="text-xs text-muted">Check back later for new content.</p>
+        <p className="text-sm font-semibold text-foreground">
+          {t("explore.trending.emptyTitle")}
+        </p>
+        <p className="text-xs text-muted">
+          {t("explore.trending.emptyDescription")}
+        </p>
       </div>
     );
   }

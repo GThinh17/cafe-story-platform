@@ -174,15 +174,6 @@ export type CafeTopParams = {
   size?: number;
 };
 
-export type CafeEditorialCollection = {
-  id: string;
-  eyebrow: string;
-  title: string;
-  ctaLabel: string;
-  image: string;
-  alt: string;
-};
-
 export type CafeCategory = {
   id: string;
   label: string;

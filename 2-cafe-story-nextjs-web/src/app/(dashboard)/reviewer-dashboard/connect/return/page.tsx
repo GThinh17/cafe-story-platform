@@ -3,10 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Loader2 } from "lucide-react";
+import { useI18n } from "@/components/providers/locale-provider";
 import { syncConnectStatus } from "@/lib/api/reviewers";
 
 export default function StripeConnectReturnPage() {
   const router = useRouter();
+  const { t } = useI18n();
   const [syncing, setSyncing] = useState(true);
 
   useEffect(() => {
@@ -37,9 +39,13 @@ export default function StripeConnectReturnPage() {
           <CheckCircle2 className="size-7" />
         )}
       </span>
-      <h1 className="text-xl font-black text-espresso">Stripe account connected</h1>
+      <h1 className="text-xl font-black text-espresso">
+        {t("connect.return.title")}
+      </h1>
       <p className="text-sm text-muted-foreground">
-        {syncing ? "Syncing account status..." : "Returning to dashboard..."}
+        {syncing
+          ? t("connect.return.syncing")
+          : t("connect.return.redirecting")}
       </p>
     </div>
   );

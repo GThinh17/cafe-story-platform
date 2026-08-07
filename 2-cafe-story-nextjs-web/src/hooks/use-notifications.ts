@@ -12,6 +12,7 @@ import {
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { getUserById } from "@/lib/api/users";
 import type { UserResponse } from "@/types/user";
+import { useI18n } from "@/components/providers/locale-provider";
 import type {
   NotificationResponse,
   NotificationSocketEvent,
@@ -21,6 +22,7 @@ import type {
 export type NotificationFilter = "ALL" | NotificationType;
 
 export function useNotifications() {
+  const { t } = useI18n();
   const { user } = useCurrentUser();
   const [notifications, setNotifications] = useState<NotificationResponse[]>(
     [],
@@ -80,9 +82,9 @@ export function useNotifications() {
         setUnreadCount(countData.unreadCount);
         void enrichActors(list.flatMap((n) => [n.actorId, n.userId]));
       })
-      .catch(() => setError("Could not load notifications."))
+      .catch(() => setError(t("notifications.loadError")))
       .finally(() => setIsLoading(false));
-  }, [user?.userId, enrichActors]);
+  }, [user?.userId, enrichActors, t]);
 
   useEffect(() => {
     if (!user?.userId) return;

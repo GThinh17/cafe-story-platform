@@ -2,6 +2,7 @@
 
 import { MoonIcon, SunIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useI18n } from "@/components/providers/locale-provider";
 import { Button } from "@/components/ui/button";
 
 type ThemeMode = "light" | "dark";
@@ -12,6 +13,7 @@ function applyTheme(mode: ThemeMode) {
 }
 
 export function ThemeToggle() {
+  const { t } = useI18n();
   const [mode, setMode] = useState<ThemeMode>("light");
 
   useEffect(() => {
@@ -28,7 +30,9 @@ export function ThemeToggle() {
 
   return (
     <Button
-      aria-label={`Switch to ${mode === "dark" ? "light" : "dark"} mode`}
+      aria-label={t(
+        mode === "dark" ? "nav.themeSwitchToLight" : "nav.themeSwitchToDark",
+      )}
       className="rounded-full bg-surface shadow-lg"
       onClick={() => {
         const nextMode = mode === "dark" ? "light" : "dark";

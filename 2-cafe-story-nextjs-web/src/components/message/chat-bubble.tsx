@@ -1,6 +1,7 @@
 import { CircleAlertIcon, LoaderCircleIcon } from "lucide-react";
 import { MarkdownBoldText } from "@/components/message/markdown-bold-text";
 import type { ChatMessage } from "@/types/message";
+import { useI18n } from "@/components/providers/locale-provider";
 
 type ChatBubbleProps = {
   isAssistant?: boolean;
@@ -8,6 +9,7 @@ type ChatBubbleProps = {
 };
 
 export function ChatBubble({ isAssistant = false, message }: ChatBubbleProps) {
+  const { t } = useI18n();
   const isMine = message.author === "me";
   const imageUrls = message.imageUrls ?? [];
   const hasText = Boolean(message.body?.trim());
@@ -42,7 +44,7 @@ export function ChatBubble({ isAssistant = false, message }: ChatBubbleProps) {
           ) : null}
           {showThinkingIndicator ? (
             <p
-              aria-label="Assistant is thinking"
+              aria-label={t("messages.assistantThinking")}
               className="flex items-center gap-1 px-4 pt-3"
             >
               <span className="size-1.5 animate-bounce rounded-full bg-muted [animation-delay:-0.3s]" />
@@ -79,12 +81,12 @@ export function ChatBubble({ isAssistant = false, message }: ChatBubbleProps) {
         </div>
         {isError && isMine ? (
           <p className="mt-1 text-right text-xs font-semibold text-destructive">
-            Unable to send message.
+            {t("messages.sendError")}
           </p>
         ) : null}
         {isError && !isMine ? (
           <p className="mt-1 text-left text-xs font-semibold text-destructive">
-            {message.body || "Assistant reply failed."}
+            {message.body || t("messages.assistantReplyFailed")}
           </p>
         ) : null}
       </div>

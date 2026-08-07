@@ -38,6 +38,7 @@ import { isCurrentUserProfile } from "@/lib/profile/is-current-user-profile";
 import type { CafePageResponse } from "@/types/cafe";
 import type { FeedPost } from "@/types/feed";
 import type { UserProfile, UserResponse } from "@/types/user";
+import { useI18n } from "@/components/providers/locale-provider";
 
 function mapAuthUserToProfile(user: AuthUser | null): UserProfile {
   const handle = getUserHandle(user);
@@ -149,6 +150,7 @@ function isActiveCafePage(cafe: CafePageResponse) {
 }
 
 export function ProfilePageContent({ username }: ProfilePageContentProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams<{ username?: string | string[] }>();
@@ -237,7 +239,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
       setProfileError(
         requestError instanceof ApiError
           ? requestError.message
-          : "Unable to load profile.",
+          : t("profile.loadError"),
       );
     } finally {
       if (profileRequestIdRef.current === requestId) {
@@ -270,10 +272,11 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
 
       const nextOwnPosts = mapBlogResponsesToFeedPosts(
         ownBlogsRes.value.filter((b) => !b.pageId),
+        t,
       );
       const nextSharedPosts =
         sharedBlogsRes.status === "fulfilled"
-          ? mapSharedBlogResponsesToFeedPosts(sharedBlogsRes.value)
+          ? mapSharedBlogResponsesToFeedPosts(sharedBlogsRes.value, t)
           : [];
 
       setOwnPosts(nextOwnPosts);
@@ -289,7 +292,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
       setPostsError(
         requestError instanceof ApiError
           ? requestError.message
-          : "Unable to load profile posts.",
+          : t("profile.postsLoadError"),
       );
       setHasLoadedPosts(false);
     } finally {
@@ -359,7 +362,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
     getSavedBlogsByUserId(viewerId)
       .then((blogs) => {
         if (!isActive) return;
-        setSavedPosts(mapBlogResponsesToFeedPosts(blogs));
+        setSavedPosts(mapBlogResponsesToFeedPosts(blogs, t));
       })
       .catch(() => {
         if (!isActive) return;
@@ -444,7 +447,7 @@ export function ProfilePageContent({ username }: ProfilePageContentProps) {
       setProfileError(
         requestError instanceof ApiError
           ? requestError.message
-          : "Unable to open conversation.",
+          : t("profile.conversationError"),
       );
     } finally {
       setIsMessageLoading(false);

@@ -24,6 +24,7 @@ import type {
   ReviewerSegmentItem,
   ReviewerStats,
 } from "@/features/reviewer-dashboard/reviewer-dashboard.types";
+import { reviewerPeriodName } from "@/features/reviewer-dashboard/reviewer-dashboard.types";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import {
   createOnboardingLink,
@@ -34,6 +35,9 @@ import {
   getReviewerRanking,
   getReviewerStats,
 } from "@/lib/api/reviewers";
+import { useI18n } from "@/components/providers/locale-provider";
+import { LOCALE_HTML_LANG, type Locale } from "@/lib/i18n";
+import type { Translate, TranslationKey } from "@/lib/i18n";
 import type { AuthUser } from "@/types/auth";
 import type {
   ReviewerBadgeResponse,
@@ -43,9 +47,17 @@ import type {
   ReviewerStatsResponse,
 } from "@/types/reviewer";
 
-const MONTH_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+const REVIEWER_FALLBACK_NAME = "Reviewer";
 
 const periods: ReviewerPeriod[] = ["day", "week", "month", "3months"];
+
+const periodLabelKeys: Record<ReviewerPeriod, TranslationKey> = {
+  day: "reviewer.period.day",
+  week: "reviewer.period.week",
+  month: "reviewer.period.month",
+  "3months": "reviewer.period.3months",
+};
 
 function toProfileForUI(reviewer: ReviewerResponse, authUser?: AuthUser | null): ReviewerProfile {
   return {
@@ -53,7 +65,11 @@ function toProfileForUI(reviewer: ReviewerResponse, authUser?: AuthUser | null):
     userId: reviewer.userId,
     role: reviewer.role ?? "REVIEWER",
     avatar: reviewer.avatar ?? authUser?.userAvatar ?? "",
-    name: reviewer.name ?? authUser?.userFullName ?? authUser?.userName ?? "Reviewer",
+    name:
+      reviewer.name ??
+      authUser?.userFullName ??
+      authUser?.userName ??
+      REVIEWER_FALLBACK_NAME,
     follower: reviewer.follower,
     follow: reviewer.follow,
     like: reviewer.like,
@@ -86,11 +102,20 @@ function toStats(s: ReviewerStatsResponse): ReviewerStats {
   };
 }
 
-function derivePerformance(badges: ReviewerBadgeResponse[]): ReviewerPerformancePoint[] {
+function derivePerformance(
+  badges: ReviewerBadgeResponse[],
+  locale: Locale,
+): ReviewerPerformancePoint[] {
+  const monthFormatter = new Intl.DateTimeFormat(LOCALE_HTML_LANG[locale], {
+    month: "short",
+  });
+
   return [...badges].reverse().map((b) => {
     const monthIdx = parseInt(b.month.substring(5), 10) - 1;
     return {
-      label: MONTH_SHORT[monthIdx] ?? b.month.substring(5),
+      label: Number.isNaN(monthIdx)
+        ? b.month.substring(5)
+        : monthFormatter.format(new Date(2000, monthIdx, 1)),
       likes: Number(b.likeCount),
       shares: Number(b.shareCount),
       comments: Number(b.commentCount),
@@ -133,6 +158,7 @@ function deriveActivities(
   badges: ReviewerBadgeResponse[],
   payouts: ReviewerPayout[],
   stats: ReviewerStatsResponse | null,
+  t: Translate,
 ): ReviewerActivity[] {
   const activities: ReviewerActivity[] = [];
 
@@ -140,8 +166,16 @@ function deriveActivities(
   if (latestBadge) {
     activities.push({
       id: `badge-${latestBadge.id}`,
-      title: `${latestBadge.badge} badge – ${latestBadge.month}`,
-      description: `Scored ${latestBadge.score} pts with ${latestBadge.likeCount} likes, ${latestBadge.shareCount} shares, ${latestBadge.commentCount} comments.`,
+      title: t("reviewer.activity.badgeTitle", {
+        badge: latestBadge.badge,
+        month: latestBadge.month,
+      }),
+      description: t("reviewer.activity.badgeDescription", {
+        score: latestBadge.score,
+        likes: latestBadge.likeCount,
+        shares: latestBadge.shareCount,
+        comments: latestBadge.commentCount,
+      }),
       time: latestBadge.month,
       type: "badge",
     });
@@ -151,8 +185,13 @@ function deriveActivities(
   if (latestPayout) {
     activities.push({
       id: `payout-${latestPayout.id}`,
-      title: `${latestPayout.payoutMonth} payout ${latestPayout.payoutStatus.toLowerCase()}`,
-      description: `${new Intl.NumberFormat("vi-VN").format(latestPayout.totalAmount)}đ from likes, shares & comments.`,
+      title: t("reviewer.activity.payoutTitle", {
+        month: latestPayout.payoutMonth,
+        status: latestPayout.payoutStatus.toLowerCase(),
+      }),
+      description: t("reviewer.activity.payoutDescription", {
+        amount: new Intl.NumberFormat("vi-VN").format(latestPayout.totalAmount),
+      }),
       time: latestPayout.payoutMonth,
       type: "payout",
     });
@@ -161,9 +200,16 @@ function deriveActivities(
   if (stats && stats.likeCount > 0) {
     activities.push({
       id: "activity-likes",
-      title: `${stats.likeCount} likes this ${stats.period}`,
-      description: `Your reviews received ${stats.likeCount} likes in the current period.`,
-      time: `This ${stats.period}`,
+      title: t("reviewer.activity.likesTitle", {
+        count: stats.likeCount,
+        period: reviewerPeriodName(stats.period, t),
+      }),
+      description: t("reviewer.activity.likesDescription", {
+        count: stats.likeCount,
+      }),
+      time: t("reviewer.activity.thisPeriod", {
+        period: reviewerPeriodName(stats.period, t),
+      }),
       type: "like",
     });
   }
@@ -172,6 +218,7 @@ function deriveActivities(
 }
 
 export function ReviewerDashboardOverview() {
+  const { locale, t } = useI18n();
   const [period, setPeriod] = useState<ReviewerPeriod>("month");
   const { user } = useCurrentUser();
 
@@ -252,11 +299,11 @@ export function ReviewerDashboardOverview() {
 
   const profileForUI = reviewer ? toProfileForUI(reviewer, user) : null;
   const rankingItems = toRankingItems(ranking);
-  const performance = derivePerformance(badges);
+  const performance = derivePerformance(badges, locale);
   const segmentItem = reviewer
     ? deriveSegment(ranking, reviewer.reviewerId, stats)
     : null;
-  const activities = deriveActivities(badges, payouts, stats);
+  const activities = deriveActivities(badges, payouts, stats, t);
 
   const isLoading = !profileForUI && (badgesLoading || rankingLoading);
 
@@ -276,7 +323,7 @@ export function ReviewerDashboardOverview() {
             {isConnected ? (
               <Badge className="gap-1.5" variant="outline">
                 <Wifi className="size-3.5 text-green-500" />
-                Payouts enabled
+                {t("reviewer.payoutsEnabled")}
               </Badge>
             ) : (
               <Button
@@ -291,7 +338,9 @@ export function ReviewerDashboardOverview() {
                 ) : (
                   <ExternalLink className="size-4" data-icon="inline-start" />
                 )}
-                {onboarding ? "Redirecting..." : "Connect Stripe Account"}
+                {onboarding
+                  ? t("common.redirecting")
+                  : t("reviewer.connectStripe")}
               </Button>
             )}
           </>
@@ -299,14 +348,13 @@ export function ReviewerDashboardOverview() {
 
         {periods.map((item) => (
           <Button
-            className="capitalize"
             key={item}
             onClick={() => setPeriod(item)}
             size="sm"
             type="button"
             variant={period === item ? "default" : "outline"}
           >
-            {item}
+            {t(periodLabelKeys[item])}
           </Button>
         ))}
       </section>

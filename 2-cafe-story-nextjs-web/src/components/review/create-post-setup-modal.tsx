@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { CreatePostImageCropper } from "@/components/review/create-post-image-cropper";
 import { getCroppedImageFile } from "@/lib/image/crop-image";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/providers/locale-provider";
 
 const MAX_IMAGES = 10;
 
@@ -74,6 +75,7 @@ export function CreatePostSetupModal({
   onClose,
   onNext,
 }: CreatePostSetupModalProps) {
+  const { t } = useI18n();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imagesRef = useRef<SetupImage[]>([]);
   const [ratioId, setRatioId] = useState<RatioId>("1:1");
@@ -193,7 +195,7 @@ export function CreatePostSetupModal({
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Unable to crop the selected photos. Please try again.",
+          : t("createPost.setup.cropError"),
       );
       setIsProcessing(false);
     }
@@ -204,7 +206,7 @@ export function CreatePostSetupModal({
       <DialogContent className="flex h-[80vh] flex-col p-0">
         <header className="flex h-[72px] items-center justify-between border-b border-line-soft px-6">
           <DialogTitle className="font-sans text-xl font-bold text-espresso">
-            New Post
+            {t("createPost.setup.title")}
           </DialogTitle>
 
           <Button
@@ -216,17 +218,19 @@ export function CreatePostSetupModal({
             {isProcessing ? (
               <>
                 <LoaderCircleIcon data-icon="inline-start" className="animate-spin" />
-                Processing
+                {t("createPost.setup.processing")}
               </>
             ) : (
-              "Next"
+              t("createPost.setup.next")
             )}
           </Button>
         </header>
 
         <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-5">
           <section className="flex flex-col gap-2">
-            <span className="text-xs font-medium text-muted">Aspect ratio</span>
+            <span className="text-xs font-medium text-muted">
+              {t("createPost.setup.aspectRatio")}
+            </span>
             <div className="inline-flex w-fit items-center gap-1 rounded-md bg-surface-muted p-1">
               {RATIO_OPTIONS.map((option) => {
                 const isActive = option.id === ratioId;
@@ -281,7 +285,7 @@ export function CreatePostSetupModal({
               variant="outline"
             >
               <ImageIcon aria-hidden="true" />
-              Choose photos from your device
+              {t("createPost.setup.choosePhotos")}
             </Button>
           )}
 
@@ -289,10 +293,13 @@ export function CreatePostSetupModal({
             <section className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-muted">
-                  Selected Photos ({images.length}/{MAX_IMAGES})
+                  {t("createPost.setup.selectedPhotos", {
+                    count: images.length,
+                    max: MAX_IMAGES,
+                  })}
                 </span>
                 <span className="text-xs text-muted">
-                  Drag inside frame to reposition
+                  {t("createPost.setup.dragHint")}
                 </span>
               </div>
 
@@ -337,7 +344,7 @@ export function CreatePostSetupModal({
 
                 {!isImageLimitReached ? (
                   <Button
-                    aria-label="Add more photos"
+                    aria-label={t("createPost.setup.addMore")}
                     className="h-16 w-16 shrink-0 border-dashed border-line-soft bg-surface-muted text-muted hover:border-espresso hover:text-espresso"
                     disabled={isProcessing}
                     onClick={() => fileInputRef.current?.click()}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { AccountSwitchModal } from "@/components/auth/account-switch-modal";
 import { AvatarImage } from "@/components/ui/avatar-image";
+import { useI18n } from "@/components/providers/locale-provider";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import {
   getUserAvatarImage,
@@ -13,6 +14,7 @@ import {
 } from "@/lib/avatar";
 
 export function HomeAccountPanel() {
+  const { t } = useI18n();
   const { user, isLoading } = useCurrentUser();
   const [isSwitchOpen, setIsSwitchOpen] = useState(false);
 
@@ -43,7 +45,7 @@ export function HomeAccountPanel() {
         <span className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-full bg-surface-muted text-sm font-bold text-primary-strong">
           {user ? (
             <AvatarImage
-              alt={`${displayName} avatar`}
+              alt={t("post.avatarAlt", { name: displayName })}
               className="h-full w-full rounded-full object-cover"
               src={getUserAvatarImage(user)}
             />
@@ -53,7 +55,7 @@ export function HomeAccountPanel() {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm font-bold">
-            {isLoading ? "Loading..." : handle}
+            {isLoading ? t("accountPanel.loading") : handle}
           </span>
           <span className="block truncate text-sm text-muted">
             {isLoading ? "Cafe Story" : displayName}
@@ -64,7 +66,7 @@ export function HomeAccountPanel() {
           onClick={() => setIsSwitchOpen(true)}
           type="button"
         >
-          Switch
+          {t("account.switch")}
         </button>
       </div>
 

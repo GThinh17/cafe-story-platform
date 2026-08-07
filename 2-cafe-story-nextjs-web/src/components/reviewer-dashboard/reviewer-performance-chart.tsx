@@ -1,5 +1,8 @@
+"use client";
+
 import { Card } from "@/components/ui/card";
 import type { ReviewerPerformancePoint } from "@/features/reviewer-dashboard/reviewer-dashboard.types";
+import { useI18n } from "@/components/providers/locale-provider";
 
 type ReviewerPerformanceChartProps = {
   data: ReviewerPerformancePoint[];
@@ -8,6 +11,7 @@ type ReviewerPerformanceChartProps = {
 export function ReviewerPerformanceChart({
   data,
 }: ReviewerPerformanceChartProps) {
+  const { t } = useI18n();
   const maxScore = Math.max(...data.map((item) => item.score), 1);
   const points = data
     .map((item, index) => {
@@ -22,19 +26,21 @@ export function ReviewerPerformanceChart({
     <Card className="p-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-black text-muted">Performance</p>
+          <p className="text-sm font-black text-muted">
+            {t("reviewer.performance.title")}
+          </p>
           <h2 className="mt-1 text-xl font-black text-espresso">
-            Score trend by month
+            {t("reviewer.performance.subtitle")}
           </h2>
         </div>
         <p className="text-xs font-semibold text-muted">
-          CSS/SVG mock chart, no chart dependency
+          {t("reviewer.performance.chartNote")}
         </p>
       </div>
 
       <div className="mt-6 overflow-hidden rounded-md bg-surface-muted/55 p-4">
         <svg
-          aria-label="Reviewer performance chart"
+          aria-label={t("reviewer.performance.chartAria")}
           className="h-64 w-full"
           preserveAspectRatio="none"
           viewBox="0 0 400 220"

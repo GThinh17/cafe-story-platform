@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
+import { getServerTranslator } from "@/lib/i18n/server";
 
-export const metadata: Metadata = {
-  title: "Cafe Story Auth",
-  description: "Sign in or create a Cafe Story account.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerTranslator();
+
+  return {
+    title: t("meta.auth.title"),
+    description: t("meta.auth.description"),
+  };
+}
 
 export default function AuthRootLayout({
   children,

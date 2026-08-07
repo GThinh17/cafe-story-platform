@@ -12,12 +12,14 @@ import { getBlogsByUser } from "@/lib/api/blogs";
 import { getUserByUsername } from "@/lib/api/users";
 import { mapBlogResponsesToFeedPosts } from "@/features/blogs/blog-feed-adapter";
 import type { FeedPost } from "@/types/feed";
+import { useI18n } from "@/components/providers/locale-provider";
 
 type ProfileArchiveProps = {
   routeUsername: string;
 };
 
 export function ProfileArchive({ routeUsername }: ProfileArchiveProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const { user, isLoading: isAuthLoading } = useCurrentUser();
   const { openByBlogId } = useCommentModal();
@@ -52,11 +54,11 @@ export function ProfileArchive({ routeUsername }: ProfileArchiveProps) {
         const hidden = await getBlogsByUser(viewedUser.userId, "HIDDEN");
         if (!isActive) return;
 
-        setPosts(mapBlogResponsesToFeedPosts(hidden.filter((b) => !b.pageId)));
+        setPosts(mapBlogResponsesToFeedPosts(hidden.filter((b) => !b.pageId), t));
       } catch (error) {
         if (!isActive) return;
         setErrorMessage(
-          error instanceof Error ? error.message : "Unable to load archive",
+          error instanceof Error ? error.message : t("profile.archive.loadError"),
         );
       } finally {
         if (isActive) setIsLoading(false);
@@ -75,7 +77,7 @@ export function ProfileArchive({ routeUsername }: ProfileArchiveProps) {
       <div className="w-full max-w-[935px] space-y-6">
         <div className="flex items-center gap-3">
           <Button
-            aria-label="Back to profile"
+            aria-label={t("profile.archive.back")}
             onClick={() => router.push(`/${encodeURIComponent(routeUsername)}`)}
             size="icon-sm"
             type="button"

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { useI18n } from "@/components/providers/locale-provider";
 import { DEFAULT_AVATAR_IMAGE } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
 import type { FeedPostComment } from "@/types/feed";
@@ -57,6 +58,7 @@ export function PostCommentItem({
   onReply,
   rootCommentId,
 }: PostCommentItemProps) {
+  const { t } = useI18n();
   const [areRepliesVisible, setAreRepliesVisible] = useState(false);
   const [isBodyExpanded, setIsBodyExpanded] = useState(false);
   const avatar = comment.authorAvatar?.trim() || DEFAULT_AVATAR_IMAGE;
@@ -81,7 +83,7 @@ export function PostCommentItem({
     <article className={cn("min-w-0", isReply && "pl-12")}>
       <div className="flex min-w-0 gap-3">
         <Link
-          aria-label={`View ${authorUsername}'s profile`}
+          aria-label={t("comments.viewProfileOf", { name: authorUsername })}
           className={cn(
             "block shrink-0 rounded-full",
             isReply ? "size-8" : "size-9",
@@ -89,7 +91,7 @@ export function PostCommentItem({
           href={authorHref}
         >
           <img
-            alt={`${authorUsername} avatar`}
+            alt={t("post.avatarAlt", { name: authorUsername })}
             className="size-full rounded-full border border-border object-cover"
             decoding="async"
             loading="lazy"
@@ -125,7 +127,7 @@ export function PostCommentItem({
             >
               <span className="h-px w-8 bg-muted/70" />
               <span className="text-xs font-normal text-muted-foreground">
-                {isBodyExpanded ? "Hide" : "More"}
+                {t(isBodyExpanded ? "comments.showLess" : "comments.showMore")}
               </span>
             </button>
           ) : null}
@@ -134,12 +136,12 @@ export function PostCommentItem({
             <span className="grid min-h-4 min-w-4 place-items-center">
               {isSending ? (
                 <LoaderCircleIcon
-                  aria-label="Posting comment"
+                  aria-label={t("comments.posting")}
                   className="size-3 animate-spin"
                 />
               ) : isError ? (
                 <CircleAlertIcon
-                  aria-label="Comment failed to post"
+                  aria-label={t("comments.failed")}
                   className="size-3 text-destructive"
                 />
               ) : (
@@ -147,7 +149,7 @@ export function PostCommentItem({
               )}
             </span>
             <button className="cursor-pointer transition hover:text-primary" type="button">
-              {formatCount(likeCount)} likes
+              {t("comments.likeCount", { count: formatCount(likeCount) })}
             </button>
             {canReplyToComment ? (
               <button
@@ -162,11 +164,11 @@ export function PostCommentItem({
                 }
                 type="button"
               >
-                Reply
+                {t("comments.reply")}
               </button>
             ) : null}
             <button
-              aria-label="More comment options"
+              aria-label={t("comments.moreOptions")}
               className="cursor-pointer transition hover:text-primary"
               type="button"
             >
@@ -175,12 +177,12 @@ export function PostCommentItem({
           </div>
           {isError ? (
             <p className="mt-1 text-xs font-semibold text-destructive">
-              Unable to post comment.
+              {t("comments.postFailed")}
             </p>
           ) : null}
         </div>
         <button
-          aria-label="Like comment"
+          aria-label={t("comments.likeComment")}
           className="mt-0.5 shrink-0 cursor-pointer text-coffee-muted transition hover:text-primary"
           onClick={() => onLike(comment.id)}
           type="button"
@@ -201,8 +203,8 @@ export function PostCommentItem({
           <span className="h-px w-8 bg-muted/70" />
           <span className="text-xs font-normal text-muted-foreground">
             {areRepliesVisible
-              ? "Hide replies"
-              : `View replies (${visibleReplyCount})`}
+              ? t("comments.hideReplies")
+              : t("comments.viewReplies", { count: visibleReplyCount })}
           </span>
         </button>
       ) : null}

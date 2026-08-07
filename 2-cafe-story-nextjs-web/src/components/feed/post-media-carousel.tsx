@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import { useI18n } from "@/components/providers/locale-provider";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,7 @@ export function PostMediaCarousel({
   imageClassName,
   media,
 }: PostMediaCarouselProps) {
+  const { t } = useI18n();
   const items = useMemo(
     () =>
       media.filter(
@@ -132,7 +134,7 @@ export function PostMediaCarousel({
           return (
             <div className="relative h-full w-full shrink-0" key={itemKey}>
               <img
-                alt={item.alt ?? "Post media"}
+                alt={item.alt ?? t("post.mediaAlt")}
                 className={cn(
                   "absolute inset-0 h-full w-full object-contain",
                   imageClassName,
@@ -170,7 +172,7 @@ export function PostMediaCarousel({
       {hasMultipleItems ? (
         <>
           <Button
-            aria-label="Show previous post photo"
+            aria-label={t("post.carousel.previous")}
             className="absolute left-2 top-1/2 z-10 size-8 -translate-y-1/2 rounded-full border border-white/20 bg-black/45 p-0 text-white shadow-sm hover:bg-black/65 hover:text-white"
             onClick={goToPrevious}
             size="icon-sm"
@@ -180,7 +182,7 @@ export function PostMediaCarousel({
             <ChevronLeftIcon className="size-4" />
           </Button>
           <Button
-            aria-label="Show next post photo"
+            aria-label={t("post.carousel.next")}
             className="absolute right-2 top-1/2 z-10 size-8 -translate-y-1/2 rounded-full border border-white/20 bg-black/45 p-0 text-white shadow-sm hover:bg-black/65 hover:text-white"
             onClick={goToNext}
             size="icon-sm"
@@ -190,12 +192,12 @@ export function PostMediaCarousel({
             <ChevronRightIcon className="size-4" />
           </Button>
           <div
-            aria-label="Post photo carousel position"
+            aria-label={t("post.carousel.position")}
             className="absolute bottom-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5"
           >
             {items.map((item, index) => (
               <button
-                aria-label={`Show post photo ${index + 1}`}
+                aria-label={t("post.carousel.goTo", { index: index + 1 })}
                 className={cn(
                   "size-2 rounded-full bg-white/45 shadow-[0_1px_3px_rgba(0,0,0,0.45)] transition-colors",
                   index === clampedActiveIndex && "bg-primary",

@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { logout } from "@/lib/api/auth";
 import type { AuthUser } from "@/types/auth";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useI18n } from "@/components/providers/locale-provider";
 
 type ProfileSettingsModalProps = {
   cafePageHref?: string;
@@ -28,6 +29,7 @@ export function ProfileSettingsModal({
   open,
   onOpenChange,
 }: ProfileSettingsModalProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const { setUser } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -52,9 +54,9 @@ export function ProfileSettingsModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[min(360px,calc(100vw-32px))] p-0">
-        <DialogTitle className="sr-only">Profile settings</DialogTitle>
+        <DialogTitle className="sr-only">{t("profile.settings")}</DialogTitle>
         <DialogDescription className="sr-only">
-          Choose a profile settings action.
+          {t("profile.settings.srDescription")}
         </DialogDescription>
         <div className="flex flex-col text-center">
           {currentUsername ? (
@@ -63,7 +65,7 @@ export function ProfileSettingsModal({
                 className="flex min-h-12 items-center justify-center px-6 text-sm font-semibold text-foreground transition hover:bg-surface-muted"
                 href={`/${currentUsername}/edit`}
               >
-                Edit profile
+                {t("profile.settings.editProfile")}
               </Link>
             </DialogClose>
           ) : null}
@@ -75,7 +77,7 @@ export function ProfileSettingsModal({
                   className="flex min-h-12 items-center justify-center px-6 text-sm font-semibold text-foreground transition hover:bg-surface-muted"
                   href="/reviewer-dashboard"
                 >
-                  Reviewer dashboard
+                  {t("profile.settings.reviewerDashboard")}
                 </Link>
               </DialogClose>
             </>
@@ -88,7 +90,7 @@ export function ProfileSettingsModal({
                   className="flex min-h-12 items-center justify-center px-6 text-sm font-semibold text-foreground transition hover:bg-surface-muted"
                   href={resolvedCafePageHref}
                 >
-                  Cafe page
+                  {t("profile.settings.cafePage")}
                 </Link>
               </DialogClose>
             </>
@@ -100,7 +102,9 @@ export function ProfileSettingsModal({
             onClick={handleLogout}
             type="button"
           >
-            {isLoggingOut ? "Logging out..." : "Log out"}
+            {isLoggingOut
+              ? t("profile.settings.loggingOut")
+              : t("profile.settings.logout")}
           </button>
           <Separator />
           <DialogClose asChild>

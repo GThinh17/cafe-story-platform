@@ -26,6 +26,7 @@ import {
 } from "@/lib/api/blogs";
 import type { FeedPost } from "@/types/feed";
 import type { ProfileReview } from "@/types/review";
+import { useI18n } from "@/components/providers/locale-provider";
 
 type ProfileTab = "posts" | "shared" | "saved";
 
@@ -89,6 +90,7 @@ export function ProfileReviewGrid({
   savedPosts = [],
   isLoadingSaved = false,
 }: ProfileReviewGridProps) {
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<ProfileTab>("posts");
   const [gridPosts, setGridPosts] = useState(posts);
   const [gridSharedPosts, setGridSharedPosts] = useState(sharedPosts);
@@ -291,14 +293,14 @@ export function ProfileReviewGrid({
             variant="line"
           >
             <TabsTrigger
-              aria-label="Posts"
+              aria-label={t("profile.tab.posts")}
               className={tabTriggerClassName}
               value="posts"
             >
               <Grid3X3Icon className="size-6" strokeWidth={1.75} />
             </TabsTrigger>
             <TabsTrigger
-              aria-label="Shared"
+              aria-label={t("profile.tab.shared")}
               className={tabTriggerClassName}
               value="shared"
             >
@@ -306,7 +308,7 @@ export function ProfileReviewGrid({
             </TabsTrigger>
             {isOwnProfile ? (
               <TabsTrigger
-                aria-label="Saved"
+                aria-label={t("profile.tab.saved")}
                 className={tabTriggerClassName}
                 value="saved"
               >
@@ -325,7 +327,7 @@ export function ProfileReviewGrid({
             </div>
           ) : errorMessage ? (
             <Alert className="mx-auto mt-5 w-[85%] max-w-full">
-              <AlertTitle>Posts unavailable</AlertTitle>
+              <AlertTitle>{t("profile.posts.unavailable")}</AlertTitle>
               <AlertDescription>{errorMessage}</AlertDescription>
               {onRetry ? (
                 <Button
@@ -334,7 +336,7 @@ export function ProfileReviewGrid({
                   type="button"
                   variant="ghost"
                 >
-                  Retry
+                  {t("common.retry")}
                 </Button>
               ) : null}
             </Alert>
@@ -345,10 +347,10 @@ export function ProfileReviewGrid({
                   <BookmarkIcon className="size-10" strokeWidth={1.8} />
                 </div>
                 <h2 className="mt-5 text-3xl font-black text-foreground">
-                  No saved posts yet
+                  {t("profile.saved.emptyTitle")}
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-muted">
-                  Tap the bookmark icon on any post to save it here. Only you can see saved posts.
+                  {t("profile.saved.emptyDescription")}
                 </p>
               </div>
             </div>
@@ -359,12 +361,16 @@ export function ProfileReviewGrid({
                   <CameraIcon className="size-10" strokeWidth={1.8} />
                 </div>
                 <h2 className="mt-5 text-3xl font-black text-foreground">
-                  {isOwnProfile ? "No shared posts yet" : "Nothing shared yet"}
+                  {t(
+                    isOwnProfile
+                      ? "profile.shared.emptyTitleOwn"
+                      : "profile.shared.emptyTitleOther",
+                  )}
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-muted">
                   {isOwnProfile
-                    ? "Posts you share will show up here."
-                    : "When this user shares posts, they will appear here."}
+                    ? t("profile.shared.emptyDescriptionOwn")
+                    : t("profile.shared.emptyDescriptionOther")}
                 </p>
               </div>
             </div>
@@ -375,12 +381,16 @@ export function ProfileReviewGrid({
                   <CameraIcon className="size-10" strokeWidth={1.8} />
                 </div>
                 <h2 className="mt-5 text-3xl font-black text-foreground">
-                  {isOwnProfile ? "Share Photos" : "No posts yet"}
+                  {t(
+                    isOwnProfile
+                      ? "profile.posts.emptyTitleOwn"
+                      : "profile.posts.emptyTitleOther",
+                  )}
                 </h2>
                 <p className="mt-3 text-sm leading-6 text-muted">
                   {isOwnProfile
-                    ? "When you share photos, they will appear on your profile."
-                    : "This user hasn't shared any posts yet."}
+                    ? t("profile.posts.emptyDescriptionOwn")
+                    : t("profile.posts.emptyDescriptionOther")}
                 </p>
                 {isOwnProfile && canCreatePost ? (
                   <Button
@@ -389,7 +399,7 @@ export function ProfileReviewGrid({
                     type="button"
                     variant="ghost"
                   >
-                    Share your first photo
+                    {t("profile.posts.shareFirst")}
                   </Button>
                 ) : null}
               </div>

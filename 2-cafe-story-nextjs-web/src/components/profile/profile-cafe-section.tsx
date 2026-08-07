@@ -9,6 +9,7 @@ import { PricingPlanModal } from "@/components/layout/pricing-plan-modal";
 import { getCafePagesByOwnerId } from "@/lib/api/cafes";
 import { DEFAULT_AVATAR_IMAGE } from "@/lib/avatar";
 import type { CafePageResponse } from "@/types/cafe";
+import { useI18n } from "@/components/providers/locale-provider";
 
 const BACKEND_DEFAULT_ADDRESS = "Pending update";
 
@@ -64,6 +65,7 @@ type CafePageCreateSlotProps = {
 };
 
 function CafePageCreateSlot({ currentUserId }: CafePageCreateSlotProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [isPricingOpen, setIsPricingOpen] = useState(false);
   const [isResolving, setIsResolving] = useState(false);
@@ -93,7 +95,7 @@ function CafePageCreateSlot({ currentUserId }: CafePageCreateSlotProps) {
   return (
     <>
       <button
-        aria-label="Create your cafe page"
+        aria-label={t("profile.createCafePage")}
         className="grid w-20 shrink-0 justify-items-center gap-2 disabled:opacity-60"
         disabled={isResolving}
         onClick={handleClick}

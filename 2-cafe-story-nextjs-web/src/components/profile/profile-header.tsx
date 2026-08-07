@@ -11,6 +11,7 @@ import { ReviewerBadgeChip } from "@/components/ui/reviewer-badge-chip";
 import { ProfileSettingsModal } from "@/components/profile/profile-settings-modal";
 import type { AuthUser } from "@/types/auth";
 import { DEFAULT_AVATAR_IMAGE } from "@/lib/avatar";
+import { useI18n } from "@/components/providers/locale-provider";
 
 type ProfileHeaderProps = {
   areActionsLoading?: boolean;
@@ -53,6 +54,7 @@ export function ProfileHeader({
   profile,
   routeUsername,
 }: ProfileHeaderProps) {
+  const { t } = useI18n();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const router = useRouter();
   const ownerUsername = routeUsername ?? profile.username;
@@ -83,7 +85,7 @@ export function ProfileHeader({
               <ReviewerBadgeChip badge={profile.badge} className="px-3 py-1 text-xs" />
               {areActionsLoading ? null : isOwnProfile ? (
                 <Button
-                  aria-label="Profile settings"
+                  aria-label={t("profile.settings")}
                   className="bg-transparent text-lg font-black hover:cursor-pointer hover:bg-transparent focus:ring-0"
                   onClick={() => setIsSettingsOpen(true)}
                   size="icon-sm"

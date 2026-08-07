@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Conversation } from "@/types/message";
+import { useI18n } from "@/components/providers/locale-provider";
 
 type ConversationListProps = {
   activeConversationId: string | null;
@@ -48,6 +49,7 @@ export function ConversationList({
   onRetry,
   onSelectConversation,
 }: ConversationListProps) {
+  const { t } = useI18n();
   return (
     <section className="hidden h-screen min-h-0 flex-col border-r border-border bg-surface lg:flex">
       <header className="shrink-0 px-6 pb-4 pt-12">
@@ -58,10 +60,10 @@ export function ConversationList({
         </div>
 
         <label className="mt-5 block">
-          <span className="sr-only">Search friends</span>
+          <span className="sr-only">{t("messages.searchLabel")}</span>
           <Input
             className="h-12 rounded-full border-0 bg-background px-5 text-sm placeholder:text-muted focus:ring-2 focus:ring-primary/20"
-            placeholder="Search messages"
+            placeholder={t("messages.searchPlaceholder")}
             type="search"
           />
         </label>
@@ -69,7 +71,7 @@ export function ConversationList({
 
       <ScrollArea className="min-h-0 flex-1">
         <div className="flex items-center justify-between px-6 pb-3 pt-2">
-          <h2 className="text-lg font-black">Messages</h2>
+          <h2 className="text-lg font-black">{t("messages.listTitle")}</h2>
           {errorMessage ? (
             <Button
               className="text-sm font-black text-muted"
@@ -77,7 +79,7 @@ export function ConversationList({
               type="button"
               variant="ghost"
             >
-              Retry
+              {t("common.retry")}
             </Button>
           ) : null}
         </div>
@@ -159,9 +161,9 @@ export function ConversationList({
                     }`}
                   >
                     {isCreating
-                      ? "Opening..."
+                      ? t("messages.opening")
                       : isError
-                        ? "Unable to open conversation."
+                        ? t("messages.openError")
                         : conversation.preview}
                   </span>
                 </span>

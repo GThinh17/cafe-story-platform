@@ -13,33 +13,35 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useI18n } from "@/components/providers/locale-provider";
+import type { Translate, TranslationKey } from "@/lib/i18n";
 import type { NotificationResponse, NotificationType } from "@/types/notification";
 import type { UserResponse } from "@/types/user";
 
-const NOTIFICATION_VERBS: Record<NotificationType, string> = {
-  LIKE: "liked your post.",
-  SHARE: "shared your post.",
-  COMMENT: "commented on your post.",
-  MESSAGE: "sent you a message.",
-  FOLLOW: "started following you.",
-  TAG: "tagged you in a post.",
-  BLOG_MODERATION: "",
+const NOTIFICATION_VERB_KEYS: Record<NotificationType, TranslationKey> = {
+  LIKE: "notifications.verb.LIKE",
+  SHARE: "notifications.verb.SHARE",
+  COMMENT: "notifications.verb.COMMENT",
+  MESSAGE: "notifications.verb.MESSAGE",
+  FOLLOW: "notifications.verb.FOLLOW",
+  TAG: "notifications.verb.TAG",
+  BLOG_MODERATION: "notifications.verb.BLOG_MODERATION",
 };
 
-const MODERATION_MESSAGES: Record<string, string> = {
-  APPROVED: "Bài đăng của bạn đã được duyệt.",
-  DENIED: "Bài đăng của bạn đã bị từ chối.",
-  SEND_ADMIN: "Bài đăng của bạn đang chờ admin xem xét.",
+const MODERATION_MESSAGE_KEYS: Record<string, TranslationKey> = {
+  APPROVED: "notifications.moderation.APPROVED",
+  DENIED: "notifications.moderation.DENIED",
+  SEND_ADMIN: "notifications.moderation.SEND_ADMIN",
 };
 
-const TYPE_LABELS: Record<NotificationType, string> = {
-  LIKE: "Likes",
-  SHARE: "Shares",
-  COMMENT: "Comments",
-  MESSAGE: "Messages",
-  FOLLOW: "Follows",
-  TAG: "Tags",
-  BLOG_MODERATION: "Moderation",
+const TYPE_LABEL_KEYS: Record<NotificationType, TranslationKey> = {
+  LIKE: "notifications.filter.LIKE",
+  SHARE: "notifications.filter.SHARE",
+  COMMENT: "notifications.filter.COMMENT",
+  MESSAGE: "notifications.filter.MESSAGE",
+  FOLLOW: "notifications.filter.FOLLOW",
+  TAG: "notifications.filter.TAG",
+  BLOG_MODERATION: "notifications.filter.BLOG_MODERATION",
 };
 
 const TYPE_ORDER: NotificationType[] = [
@@ -52,11 +54,14 @@ const TYPE_ORDER: NotificationType[] = [
   "BLOG_MODERATION",
 ];
 
-function getActorDisplayName(actor: UserResponse | undefined): string {
+function getActorDisplayName(
+  actor: UserResponse | undefined,
+  t: Translate,
+): string {
   return (
     actor?.userName?.trim() ||
     actor?.userFullName?.trim() ||
-    "Someone"
+    t("notifications.someone")
   );
 }
 
@@ -70,16 +75,16 @@ function getActorAvatar(actor: UserResponse | undefined): string | undefined {
   );
 }
 
-function formatRelativeTime(dateStr: string): string {
+function formatRelativeTime(dateStr: string, t: Translate): string {
   const diff = Date.now() - new Date(dateStr).getTime();
   const minutes = Math.floor(diff / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 1) return t("notifications.time.justNow");
+  if (minutes < 60) return t("notifications.time.minutes", { value: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h`;
+  if (hours < 24) return t("notifications.time.hours", { value: hours });
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days}d`;
-  return `${Math.floor(days / 30)}mo`;
+  if (days < 30) return t("notifications.time.days", { value: days });
+  return t("notifications.time.months", { value: Math.floor(days / 30) });
 }
 
 function isThisMonth(dateStr: string): boolean {
@@ -99,8 +104,9 @@ function NotificationRow({
   actor: UserResponse | undefined;
   onClick: (notification: NotificationResponse) => void;
 }) {
+  const { t } = useI18n();
   const isModeration = item.type === "BLOG_MODERATION";
-  const displayName = getActorDisplayName(actor);
+  const displayName = getActorDisplayName(actor, t);
   const avatarUrl = getActorAvatar(actor);
   const initial = displayName.slice(0, 1).toUpperCase();
   const moderationApproved = item.moderationStatus === "APPROVED";
@@ -134,15 +140,17 @@ function NotificationRow({
       <p className="min-w-0 flex-1 text-base leading-6 text-foreground">
         {isModeration ? (
           <span>
-            {MODERATION_MESSAGES[item.moderationStatus ?? "SEND_ADMIN"]}
+            {t(MODERATION_MESSAGE_KEYS[item.moderationStatus ?? "SEND_ADMIN"])}
           </span>
         ) : (
           <>
             <span className="font-black">{displayName}</span>{" "}
-            {NOTIFICATION_VERBS[item.type]}
+            {t(NOTIFICATION_VERB_KEYS[item.type])}
           </>
         )}{" "}
-        <span className="text-muted">{formatRelativeTime(item.createdAt)}</span>
+        <span className="text-muted">
+          {formatRelativeTime(item.createdAt, t)}
+        </span>
       </p>
 
       {!item.isRead && (
@@ -189,6 +197,7 @@ export function ActivityList({
   onItemClick,
   onClose,
 }: ActivityListProps) {
+  const { t } = useI18n();
   const tabsViewportRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -228,7 +237,9 @@ export function ActivityList({
       <section className="flex h-full flex-col">
         <header className="shrink-0 px-4 pb-4 pt-10 sm:px-6">
           <div className="flex items-start justify-between gap-6">
-            <h1 className="text-3xl font-black text-foreground">Notifications</h1>
+            <h1 className="text-3xl font-black text-foreground">
+              {t("nav.notifications")}
+            </h1>
             <div className="flex items-center gap-2">
               {unreadCount > 0 && (
                 <Button
@@ -238,12 +249,12 @@ export function ActivityList({
                   type="button"
                   variant="ghost"
                 >
-                  Mark all as read
+                  {t("notifications.markAllRead")}
                 </Button>
               )}
               {onClose && (
                 <Button
-                  aria-label="Close notifications"
+                  aria-label={t("notifications.close")}
                   onClick={onClose}
                   size="icon-sm"
                   type="button"
@@ -259,7 +270,7 @@ export function ActivityList({
             <div className="relative">
               {canScrollLeft ? (
                 <Button
-                  aria-label="Scroll notification filters left"
+                  aria-label={t("notifications.scrollLeft")}
                   className="absolute left-0 top-1/2 z-10 size-8 -translate-y-1/2 rounded-full bg-surface shadow- ring-5 ring-background/75"
                   onClick={() => scrollTabs("left")}
                   size="icon-sm"
@@ -280,7 +291,7 @@ export function ActivityList({
                     className="shrink-0 rounded-full border border-border bg-surface px-5 py-2.5 text-sm font-black shadow-sm data-[state=active]:border-transparent data-[state=active]:bg-surface-muted"
                     value="ALL"
                   >
-                    All
+                    {t("notifications.filter.ALL")}
                   </TabsTrigger>
                   {TYPE_ORDER.map((type) => (
                     <TabsTrigger
@@ -288,7 +299,7 @@ export function ActivityList({
                       key={type}
                       value={type}
                     >
-                      {TYPE_LABELS[type]}
+                      {t(TYPE_LABEL_KEYS[type])}
                     </TabsTrigger>
                   ))}
                 </TabsList>
@@ -296,7 +307,7 @@ export function ActivityList({
 
               {canScrollRight ? (
                 <Button
-                  aria-label="Scroll notification filters right"
+                  aria-label={t("notifications.scrollRight")}
                   className="absolute right-0 top-1/2 z-10 size-8 -translate-y-1/2 rounded-full bg-surface shadow- ring-5 ring-background/75"
                   onClick={() => scrollTabs("right")}
                   size="icon-sm"
@@ -324,17 +335,19 @@ export function ActivityList({
           ) : thisMonthItems.length === 0 && earlierItems.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-20 text-center">
               <p className="text-base font-medium text-foreground">
-                No notifications yet.
+                {t("notifications.emptyTitle")}
               </p>
               <p className="max-w-[240px] text-sm leading-6 text-muted">
-                Follow someone to get updates about their posts and activity.
+                {t("notifications.emptyDescription")}
               </p>
             </div>
           ) : (
             <>
               {thisMonthItems.length > 0 && (
                 <section>
-                  <h2 className="text-xl font-black text-foreground">This month</h2>
+                  <h2 className="text-xl font-black text-foreground">
+                    {t("notifications.thisMonth")}
+                  </h2>
                   <div className="mt-3 flex flex-col">
                     {thisMonthItems.map((item) => (
                       <div key={item.id}>
@@ -352,7 +365,9 @@ export function ActivityList({
 
               {earlierItems.length > 0 && (
                 <section className="mt-7">
-                  <h2 className="text-xl font-black text-foreground">Earlier</h2>
+                  <h2 className="text-xl font-black text-foreground">
+                    {t("notifications.earlier")}
+                  </h2>
                   <div className="mt-3 flex flex-col">
                     {earlierItems.map((item) => (
                       <div key={item.id}>

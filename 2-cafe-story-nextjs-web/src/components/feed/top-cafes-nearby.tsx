@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useI18n } from "@/components/providers/locale-provider";
 import type { TopCafe } from "@/types/feed";
 
 type TopCafesNearbyProps = {
@@ -6,12 +9,14 @@ type TopCafesNearbyProps = {
 };
 
 export function TopCafesNearby({ cafes }: TopCafesNearbyProps) {
+  const { t } = useI18n();
+
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-base font-bold">Top Cafes Nearby</h2>
+        <h2 className="text-base font-bold">{t("topCafes.title")}</h2>
         <Link className="text-xs font-bold text-foreground" href="/cafes">
-          See all
+          {t("common.seeAll")}
         </Link>
       </div>
       <div className="space-y-4">
@@ -30,7 +35,7 @@ export function TopCafesNearby({ cafes }: TopCafesNearbyProps) {
                 {cafe.rating} - {cafe.type}
               </span>
             </span>
-            <span className="text-xs font-bold text-primary">View</span>
+            <span className="text-xs font-bold text-primary">{t("topCafes.view")}</span>
           </Link>
         ))}
       </div>

@@ -25,11 +25,47 @@ import { createPayment, getMyPayments } from "@/lib/api/payments";
 import type { AdCampaignResponse, AdFeeResponse } from "@/types/ads";
 import type { CafePageResponse } from "@/types/cafe";
 import type { PaymentResponse } from "@/types/payment";
+import type { TranslationKey } from "@/lib/i18n";
+import { useI18n } from "@/components/providers/locale-provider";
 
 type AdsDashboardProps = {
   checkoutStatus?: string | null;
   initialPaymentId?: string | null;
 };
+
+/**
+ * Card copy is per fee type — the backend now serves four of them, so a single
+ * hardcoded title would label every package as the feed impressions bundle.
+ */
+const AD_FEE_COPY: Record<
+  string,
+  { descriptionKey: TranslationKey; titleKey: TranslationKey }
+> = {
+  CAFE_AD_GROWTH: {
+    descriptionKey: "ads.package.growth.description",
+    titleKey: "ads.package.growth.title",
+  },
+  CAFE_AD_PREMIUM: {
+    descriptionKey: "ads.package.premium.description",
+    titleKey: "ads.package.premium.title",
+  },
+  CAFE_AD_STARTER: {
+    descriptionKey: "ads.package.starter.description",
+    titleKey: "ads.package.starter.title",
+  },
+  FEED_10000_IMPRESSIONS_OR_30_DAYS: {
+    descriptionKey: "ads.package.description",
+    titleKey: "ads.package.title",
+  },
+};
+
+function formatFeeTypeLabel(feeType: string) {
+  return feeType
+    .split("_")
+    .filter(Boolean)
+    .map((word) => word.charAt(0) + word.slice(1).toLowerCase())
+    .join(" ");
+}
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof ApiError || error instanceof Error ? error.message : fallback;
@@ -46,6 +82,7 @@ function formatMoney(value: number | string, currency: string | null) {
 }
 
 export function AdsDashboard({ checkoutStatus, initialPaymentId }: AdsDashboardProps) {
+  const { t } = useI18n();
   const { user, isLoading: isLoadingUser } = useCurrentUser();
   const [tab, setTab] = useState(initialPaymentId ? "campaigns" : "packages");
   const [fees, setFees] = useState<AdFeeResponse[]>([]);
@@ -64,24 +101,60 @@ export function AdsDashboard({ checkoutStatus, initialPaymentId }: AdsDashboardP
     setIsLoading(true);
     setError(null);
     try {
-      const [ownedPages, adFees, paidPayments] = await Promise.all([
+      // Settled, not all: one failing endpoint used to abort the whole load, so a
+      // broken /api/ad-fees left cafePages empty and surfaced a misleading
+      // "No owned cafe page" instead of the real error.
+      const [pagesResult, feesResult, paymentsResult] = await Promise.allSettled([
         getCafePagesByOwnerId(user.userId),
         getAdFees(),
         getMyPayments("PAID"),
       ]);
-      const campaignLists = await Promise.all(
+      const failures: string[] = [];
+
+      const ownedPages =
+        pagesResult.status === "fulfilled" ? pagesResult.value : [];
+      setCafePages(ownedPages);
+      if (pagesResult.status === "rejected") {
+        failures.push(getErrorMessage(pagesResult.reason, t("ads.loadError")));
+      }
+
+      if (feesResult.status === "fulfilled") {
+        setFees(feesResult.value.filter((fee) => fee.status !== false));
+      } else {
+        setFees([]);
+        failures.push(getErrorMessage(feesResult.reason, t("ads.loadError")));
+      }
+
+      if (paymentsResult.status === "fulfilled") {
+        setPayments(
+          paymentsResult.value.filter((payment) => Boolean(payment.adFeeId)),
+        );
+      } else {
+        setPayments([]);
+        failures.push(getErrorMessage(paymentsResult.reason, t("ads.loadError")));
+      }
+
+      const campaignResults = await Promise.allSettled(
         ownedPages.map((page) => getAdCampaigns(page.id)),
       );
-      setCafePages(ownedPages);
-      setFees(adFees.filter((fee) => fee.status !== false));
-      setPayments(paidPayments.filter((payment) => Boolean(payment.adFeeId)));
-      setCampaigns(campaignLists.flat());
+      setCampaigns(
+        campaignResults.flatMap((result) =>
+          result.status === "fulfilled" ? result.value : [],
+        ),
+      );
+      for (const result of campaignResults) {
+        if (result.status === "rejected") {
+          failures.push(getErrorMessage(result.reason, t("ads.loadError")));
+        }
+      }
+
+      setError(failures.length ? [...new Set(failures)].join(" ") : null);
     } catch (loadError) {
-      setError(getErrorMessage(loadError, "Unable to load the Ads dashboard."));
+      setError(getErrorMessage(loadError, t("ads.loadError")));
     } finally {
       setIsLoading(false);
     }
-  }, [user?.userId]);
+  }, [t, user?.userId]);
 
   useEffect(() => {
     void loadDashboard();
@@ -105,11 +178,11 @@ export function AdsDashboard({ checkoutStatus, initialPaymentId }: AdsDashboardP
         paymentMethod: "STRIPE_CARD",
       });
       if (!payment.paymentUrl?.trim()) {
-        throw new Error("Stripe checkout URL was not returned.");
+        throw new Error(t("ads.checkoutUrlMissing"));
       }
       window.location.assign(payment.paymentUrl);
     } catch (paymentError) {
-      setError(getErrorMessage(paymentError, "Unable to start Stripe checkout."));
+      setError(getErrorMessage(paymentError, t("ads.checkoutError")));
       setIsCreatingPayment(false);
     }
   }
@@ -138,8 +211,8 @@ export function AdsDashboard({ checkoutStatus, initialPaymentId }: AdsDashboardP
   if (!user) {
     return (
       <Alert>
-        <AlertTitle>Sign in required</AlertTitle>
-        <AlertDescription>Sign in with a cafe owner account to manage Ads.</AlertDescription>
+        <AlertTitle>{t("ads.signInRequired.title")}</AlertTitle>
+        <AlertDescription>{t("ads.signInRequired.description")}</AlertDescription>
       </Alert>
     );
   }
@@ -149,55 +222,67 @@ export function AdsDashboard({ checkoutStatus, initialPaymentId }: AdsDashboardP
       {checkoutStatus === "paid" ? (
         <Alert>
           <CreditCardIcon />
-          <AlertTitle>Ads payment verified</AlertTitle>
-          <AlertDescription>Your paid package is ready for a new campaign.</AlertDescription>
+          <AlertTitle>{t("ads.paid.title")}</AlertTitle>
+          <AlertDescription>{t("ads.paid.description")}</AlertDescription>
         </Alert>
       ) : null}
 
       {error ? (
         <Alert variant="destructive">
-          <AlertTitle>Ads dashboard unavailable</AlertTitle>
+          <AlertTitle>{t("ads.dashboardUnavailable")}</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       ) : null}
 
       {cafePages.length === 0 ? (
         <Alert>
-          <AlertTitle>No owned cafe page</AlertTitle>
-          <AlertDescription>Create and activate a cafe page before purchasing Ads.</AlertDescription>
+          <AlertTitle>{t("ads.noCafePage.title")}</AlertTitle>
+          <AlertDescription>{t("ads.noCafePage.description")}</AlertDescription>
         </Alert>
       ) : null}
 
       <Tabs onValueChange={setTab} value={tab}>
         <TabsList variant="line">
-          <TabsTrigger value="packages">Packages</TabsTrigger>
-          <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
+          <TabsTrigger value="packages">{t("ads.tab.packages")}</TabsTrigger>
+          <TabsTrigger value="campaigns">{t("ads.tab.campaigns")}</TabsTrigger>
         </TabsList>
 
         <TabsContent className="flex flex-col gap-4 pt-4" value="packages">
-          {fees.length ? fees.map((fee) => (
-            <Card key={fee.adFeeId}>
-              <CardHeader>
-                <Badge className="w-fit" variant="secondary">Fixed Ads MVP</Badge>
-                <CardTitle>10,000 served impressions or 30 days</CardTitle>
-                <CardDescription>
-                  Sponsored placement in the mixed feed. Delivery ends at whichever limit is reached first.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-semibold">{formatMoney(fee.price, fee.currency)}</p>
-              </CardContent>
-              <CardFooter>
-                <Button disabled={isCreatingPayment || cafePages.length === 0} onClick={() => void purchasePackage(fee)} type="button">
-                  <CreditCardIcon data-icon="inline-start" />
-                  {isCreatingPayment ? "Opening Stripe..." : "Pay with Stripe"}
-                </Button>
-              </CardFooter>
-            </Card>
-          )) : (
+          {fees.length ? fees.map((fee) => {
+            const copy = AD_FEE_COPY[fee.feeType];
+
+            return (
+              <Card key={fee.adFeeId}>
+                <CardHeader>
+                  <Badge className="w-fit" variant="secondary">
+                    {t("ads.package.badge")}
+                  </Badge>
+                  <CardTitle>
+                    {copy ? t(copy.titleKey) : formatFeeTypeLabel(fee.feeType)}
+                  </CardTitle>
+                  <CardDescription>
+                    {copy
+                      ? t(copy.descriptionKey)
+                      : t("ads.package.genericDescription")}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-3xl font-semibold">{formatMoney(fee.price, fee.currency)}</p>
+                </CardContent>
+                <CardFooter>
+                  <Button disabled={isCreatingPayment || cafePages.length === 0} onClick={() => void purchasePackage(fee)} type="button">
+                    <CreditCardIcon data-icon="inline-start" />
+                    {isCreatingPayment
+                      ? t("ads.package.opening")
+                      : t("ads.package.pay")}
+                  </Button>
+                </CardFooter>
+              </Card>
+            );
+          }) : (
             <Alert>
-              <AlertTitle>No active Ads package</AlertTitle>
-              <AlertDescription>An administrator must activate an Ads fee before checkout.</AlertDescription>
+              <AlertTitle>{t("ads.package.none.title")}</AlertTitle>
+              <AlertDescription>{t("ads.package.none.description")}</AlertDescription>
             </Alert>
           )}
         </TabsContent>
@@ -206,8 +291,8 @@ export function AdsDashboard({ checkoutStatus, initialPaymentId }: AdsDashboardP
           {unusedPayments.length ? (
             <Card>
               <CardHeader>
-                <CardTitle>Create campaign</CardTitle>
-                <CardDescription>Use one paid, unused Ads package for one campaign.</CardDescription>
+                <CardTitle>{t("ads.createCampaign.title")}</CardTitle>
+                <CardDescription>{t("ads.createCampaign.description")}</CardDescription>
               </CardHeader>
               <CardContent>
                 <AdCampaignForm
@@ -221,23 +306,23 @@ export function AdsDashboard({ checkoutStatus, initialPaymentId }: AdsDashboardP
           ) : (
             <Alert>
               <MegaphoneIcon />
-              <AlertTitle>No unused paid package</AlertTitle>
-              <AlertDescription>Purchase an Ads package before creating another campaign.</AlertDescription>
+              <AlertTitle>{t("ads.noPackage.title")}</AlertTitle>
+              <AlertDescription>{t("ads.noPackage.description")}</AlertDescription>
             </Alert>
           )}
 
           <div className="flex items-center justify-between gap-3">
-            <h2 className="text-xl font-semibold">Campaign history</h2>
+            <h2 className="text-xl font-semibold">{t("ads.history.title")}</h2>
             <Button onClick={() => void loadDashboard()} type="button" variant="outline">
-              <RefreshCwIcon data-icon="inline-start" /> Refresh
+              <RefreshCwIcon data-icon="inline-start" /> {t("common.refresh")}
             </Button>
           </div>
           {campaigns.length ? campaigns.map((campaign) => (
             <AdCampaignCard campaign={campaign} key={campaign.adCampaignId} onChanged={replaceCampaign} />
           )) : (
             <Alert>
-              <AlertTitle>No campaigns yet</AlertTitle>
-              <AlertDescription>Your draft and active Ads campaigns will appear here.</AlertDescription>
+              <AlertTitle>{t("ads.history.empty.title")}</AlertTitle>
+              <AlertDescription>{t("ads.history.empty.description")}</AlertDescription>
             </Alert>
           )}
         </TabsContent>

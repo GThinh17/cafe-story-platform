@@ -22,6 +22,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import { Switch } from "@/components/ui/switch";
+import { useI18n } from "@/components/providers/locale-provider";
+import { LanguageSettings } from "@/components/settings/language-settings";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { uploadAvatarToCloudinary } from "@/lib/api/cloudinary";
 import { ApiError } from "@/lib/api/client";
@@ -77,6 +79,7 @@ function normalizeUsername(username: string | null | undefined) {
 
 export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
   const router = useRouter();
+  const { t } = useI18n();
   const { user, isLoading: isUserLoading, refetch } = useCurrentUser();
   const [avatarUrl, setAvatarUrl] = useState("");
   const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null);
@@ -179,7 +182,7 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
         if (isMounted) setProvinceOptions(provinces);
       })
       .catch(() => {
-        if (isMounted) setAddressDataError("Unable to load Vietnam address data.");
+        if (isMounted) setAddressDataError(t("profileEdit.address.loadProvincesError"));
       })
       .finally(() => {
         if (isMounted) setIsProvinceLoading(false);
@@ -205,7 +208,7 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
         if (isMounted) setCityOptions(cities);
       })
       .catch(() => {
-        if (isMounted) setAddressDataError("Unable to load city data for this province.");
+        if (isMounted) setAddressDataError(t("profileEdit.address.loadCitiesError"));
       })
       .finally(() => {
         if (isMounted) setIsCityLoading(false);
@@ -231,7 +234,7 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
         if (isMounted) setWardOptions(wards);
       })
       .catch(() => {
-        if (isMounted) setAddressDataError("Unable to load ward data for this city.");
+        if (isMounted) setAddressDataError(t("profileEdit.address.loadWardsError"));
       })
       .finally(() => {
         if (isMounted) setIsWardLoading(false);
@@ -253,7 +256,7 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
   if (isCurrentUserUnavailable || isRouteMismatch) {
     return (
       <p className="text-sm font-semibold text-muted" role="status">
-        Redirecting...
+        {t("common.redirecting")}
       </p>
     );
   }
@@ -267,7 +270,7 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
 
     if (!file.type.startsWith("image/")) {
       setSelectedAvatarFile(null);
-      setAvatarStatus({ error: "Please choose an image file.", success: null });
+      setAvatarStatus({ error: t("profileEdit.avatar.notAnImage"), success: null });
       event.target.value = "";
       return;
     }
@@ -275,7 +278,7 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
     if (file.size > MAX_AVATAR_SIZE_BYTES) {
       setSelectedAvatarFile(null);
       setAvatarStatus({
-        error: "Avatar image must be 5MB or smaller.",
+        error: t("profileEdit.avatar.tooLarge"),
         success: null,
       });
       event.target.value = "";
@@ -293,7 +296,7 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
     });
     setSelectedAvatarFile(file);
     setSelectedAvatarName(file.name);
-    setAvatarStatus({ error: null, success: "Avatar preview updated." });
+    setAvatarStatus({ error: null, success: t("profileEdit.avatar.previewUpdated") });
   }
 
   async function submitAvatar(event: FormEvent<HTMLFormElement>) {
@@ -302,7 +305,7 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
 
     if (!selectedAvatarFile) {
       setAvatarStatus({
-        error: "Please choose an avatar image before saving.",
+        error: t("profileEdit.avatar.missing"),
         success: null,
       });
       return;
@@ -319,12 +322,12 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
       setSelectedAvatarName("");
       setAvatarStatus({
         error: null,
-        success: "Avatar updated successfully.",
+        success: t("profileEdit.avatar.success"),
       });
       router.refresh();
     } catch (error) {
       setAvatarStatus({
-        error: getSubmitErrorMessage(error, "Unable to update avatar."),
+        error: getSubmitErrorMessage(error, t("profileEdit.avatar.error")),
         success: null,
       });
     } finally {
@@ -339,7 +342,7 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
 
     if (phone && !Number.isFinite(Number(phone))) {
       event.preventDefault();
-      setBasicStatus({ error: "Phone must be a valid number.", success: null });
+      setBasicStatus({ error: t("profileEdit.basic.invalidPhone"), success: null });
       return;
     }
 
@@ -354,12 +357,12 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
       await refetch();
       setBasicStatus({
         error: null,
-        success: "Basic info updated successfully.",
+        success: t("profileEdit.basic.success"),
       });
       router.refresh();
     } catch (error) {
       setBasicStatus({
-        error: getSubmitErrorMessage(error, "Unable to update basic info."),
+        error: getSubmitErrorMessage(error, t("profileEdit.basic.error")),
         success: null,
       });
     } finally {
@@ -381,7 +384,7 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
     } catch (error) {
       setHideCafeOnProfile(previous);
       setDisplayError(
-        getSubmitErrorMessage(error, "Unable to update profile display."),
+        getSubmitErrorMessage(error, t("profileEdit.display.error")),
       );
     } finally {
       setIsSavingDisplay(false);
@@ -393,7 +396,7 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
 
     if (!region.provinceCode || !region.wardCode) {
       setRegionStatus({
-        error: "Province, city and ward are required.",
+        error: t("profileEdit.address.required"),
         success: null,
       });
       return;
@@ -419,11 +422,11 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
       await refetch();
       setRegionStatus({
         error: null,
-        success: "Address updated successfully.",
+        success: t("profileEdit.address.success"),
       });
     } catch (error) {
       setRegionStatus({
-        error: getSubmitErrorMessage(error, "Unable to update address."),
+        error: getSubmitErrorMessage(error, t("profileEdit.address.error")),
         success: null,
       });
     } finally {
@@ -435,10 +438,10 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
     <div className="space-y-6">
       <header className="space-y-2">
         <h1 className="text-2xl font-black text-foreground sm:text-3xl">
-          Edit profile
+          {t("profileEdit.title")}
         </h1>
         <p className="max-w-[560px] text-sm leading-6 text-muted">
-          Update your public profile details and Vietnam address.
+          {t("profileEdit.subtitle")}
         </p>
       </header>
 
@@ -458,7 +461,7 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
                 <AvatarFallback>CS</AvatarFallback>
               </Avatar>
               <button
-                aria-label="Change avatar"
+                aria-label={t("profileEdit.avatar.change")}
                 className="absolute -bottom-1 -right-1 z-10 grid size-9 place-items-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-sm transition hover:bg-primary-strong disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={submittingForm === "avatar"}
                 onClick={() => avatarInputRef.current?.click()}
@@ -477,7 +480,7 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
           </div>
           <FieldGroup className="min-w-0">
             <Field>
-              <FieldLabel>Avatar image</FieldLabel>
+              <FieldLabel>{t("profileEdit.avatar.label")}</FieldLabel>
               <Button
                 className="w-full sm:!w-fit"
                 disabled={submittingForm === "avatar"}
@@ -485,10 +488,10 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
                 type="button"
                 variant="outline"
               >
-                Change Avatar
+                {t("profileEdit.avatar.change")}
               </Button>
               <FieldDescription>
-                {selectedAvatarName || "Choose an image from your device."}
+                {selectedAvatarName || t("profileEdit.avatar.hint")}
               </FieldDescription>
             </Field>
             <FormStatusMessage status={avatarStatus} />
@@ -497,7 +500,9 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
               disabled={submittingForm === "avatar" || !selectedAvatarFile}
               type="submit"
             >
-              {submittingForm === "avatar" ? "Saving..." : "Save avatar"}
+              {submittingForm === "avatar"
+                ? t("common.saving")
+                : t("profileEdit.avatar.save")}
             </Button>
           </FieldGroup>
         </div>
@@ -509,7 +514,7 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
       >
         <FieldGroup>
           <Field>
-            <FieldLabel htmlFor="userFullName">Full name</FieldLabel>
+            <FieldLabel htmlFor="userFullName">{t("profileEdit.basic.fullName")}</FieldLabel>
             <Input
               disabled={submittingForm === "basic"}
               id="userFullName"
@@ -524,7 +529,7 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
             />
           </Field>
           <Field>
-            <FieldLabel htmlFor="userPhone">Phone</FieldLabel>
+            <FieldLabel htmlFor="userPhone">{t("profileEdit.basic.phone")}</FieldLabel>
             <Input
               disabled={submittingForm === "basic"}
               id="userPhone"
@@ -542,15 +547,19 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
         </FieldGroup>
         <FormStatusMessage status={basicStatus} />
         <Button disabled={submittingForm === "basic"} type="submit">
-          {submittingForm === "basic" ? "Saving..." : "Save basic info"}
+          {submittingForm === "basic"
+            ? t("common.saving")
+            : t("profileEdit.basic.save")}
         </Button>
       </form>
 
       <section className="space-y-5 rounded-md border border-border bg-surface p-4 sm:p-5">
         <div className="space-y-1">
-          <h2 className="text-base font-bold text-foreground">Profile display</h2>
+          <h2 className="text-base font-bold text-foreground">
+            {t("profileEdit.display.title")}
+          </h2>
           <p className="text-xs text-muted">
-            Control which sections show on your public profile.
+            {t("profileEdit.display.description")}
           </p>
         </div>
         <label
@@ -559,12 +568,11 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
         >
           <span className="flex flex-col gap-1">
             <span className="text-sm font-medium text-foreground">
-              Hide cafe page on my profile
+              {t("profileEdit.display.hideCafe")}
             </span>
             <span className="text-xs text-muted">
-              When on, visitors won&apos;t see your cafe page on your public
-              profile, and the app skips loading that data.
-              {isSavingDisplay ? " Saving..." : null}
+              {t("profileEdit.display.hideCafeHint")}
+              {isSavingDisplay ? ` ${t("common.saving")}` : null}
             </span>
           </span>
           <Switch
@@ -577,6 +585,8 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
         {displayError ? <FieldError>{displayError}</FieldError> : null}
       </section>
 
+      <LanguageSettings />
+
       <form
         className="space-y-5 rounded-md border border-border bg-surface p-4 sm:p-5"
         onSubmit={submitRegion}
@@ -584,9 +594,9 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
         <FieldGroup>
           <SearchableDropdown
             disabled={submittingForm === "region"}
-            emptyLabel="No provinces found."
+            emptyLabel={t("profileEdit.address.provinceEmpty")}
             isLoading={isProvinceLoading}
-            label="Province / city"
+            label={t("profileEdit.address.province")}
             labelClassName="text-sm font-medium normal-case tracking-normal text-foreground leading-none"
             triggerClassName="h-12 bg-surface"
             onSelect={(province) =>
@@ -601,16 +611,16 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
               }))
             }
             options={provinceOptions}
-            placeholder="Select province..."
+            placeholder={t("profileEdit.address.provincePlaceholder")}
             selectedCode={region.provinceCode || null}
             selectedName={region.province || null}
             valueKey="provinceCode"
           />
           <SearchableDropdown
             disabled={!region.provinceCode || submittingForm === "region"}
-            emptyLabel="No cities found for this province."
+            emptyLabel={t("profileEdit.address.cityEmpty")}
             isLoading={isCityLoading}
-            label="City / district"
+            label={t("profileEdit.address.city")}
             labelClassName="text-sm font-medium normal-case tracking-normal text-foreground leading-none"
             triggerClassName="h-12 bg-surface"
             onSelect={(city) =>
@@ -623,16 +633,16 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
               }))
             }
             options={cityOptions}
-            placeholder="Select city / district..."
+            placeholder={t("profileEdit.address.cityPlaceholder")}
             selectedCode={region.cityCode || null}
             selectedName={region.city || null}
             valueKey="cityCode"
           />
           <SearchableDropdown
             disabled={!region.cityCode || submittingForm === "region"}
-            emptyLabel="No wards found for this city."
+            emptyLabel={t("profileEdit.address.wardEmpty")}
             isLoading={isWardLoading}
-            label="Ward"
+            label={t("profileEdit.address.ward")}
             labelClassName="text-sm font-medium normal-case tracking-normal text-foreground leading-none"
             triggerClassName="h-12 bg-surface"
             onSelect={(ward) =>
@@ -643,13 +653,13 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
               }))
             }
             options={wardOptions}
-            placeholder="Select ward..."
+            placeholder={t("profileEdit.address.wardPlaceholder")}
             selectedCode={region.wardCode || null}
             selectedName={region.ward || null}
             valueKey="wardCode"
           />
           <Field>
-            <FieldLabel htmlFor="area">Area</FieldLabel>
+            <FieldLabel htmlFor="area">{t("profileEdit.address.area")}</FieldLabel>
             <Input
               disabled={submittingForm === "region"}
               id="area"
@@ -663,11 +673,11 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
               value={region.area}
             />
             <FieldDescription>
-              Optional smaller area, neighborhood, or local landmark.
+              {t("profileEdit.address.areaHint")}
             </FieldDescription>
           </Field>
           <Field>
-            <FieldLabel htmlFor="street">Street</FieldLabel>
+            <FieldLabel htmlFor="street">{t("profileEdit.address.street")}</FieldLabel>
             <Input
               disabled={submittingForm === "region"}
               id="street"
@@ -678,7 +688,7 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
                   street: event.target.value,
                 }))
               }
-              placeholder="House number, street name, detailed address"
+              placeholder={t("profileEdit.address.streetPlaceholder")}
               value={region.street}
             />
           </Field>
@@ -686,7 +696,9 @@ export function EditProfileForm({ routeUsername }: EditProfileFormProps) {
         {addressDataError ? <FieldError>{addressDataError}</FieldError> : null}
         <FormStatusMessage status={regionStatus} />
         <Button disabled={submittingForm === "region"} type="submit">
-          {submittingForm === "region" ? "Saving..." : "Save address"}
+          {submittingForm === "region"
+            ? t("common.saving")
+            : t("profileEdit.address.save")}
         </Button>
       </form>
     </div>

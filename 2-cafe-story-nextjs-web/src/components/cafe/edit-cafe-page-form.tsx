@@ -22,6 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { SearchableDropdown } from "@/components/ui/searchable-dropdown";
 import { Textarea } from "@/components/ui/textarea";
+import { useI18n } from "@/components/providers/locale-provider";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { ApiError } from "@/lib/api/client";
 import {
@@ -105,9 +106,12 @@ function CollapsibleTrigger({
   isOpen,
   label,
   preview,
-  previewEmpty = "Not set yet",
+  previewEmpty,
   onToggle,
 }: CollapsibleTriggerProps) {
+  const { t } = useI18n();
+  const emptyPreview = previewEmpty ?? t("cafeEdit.notSetYet");
+
   return (
     <button
       type="button"
@@ -120,7 +124,7 @@ function CollapsibleTrigger({
       <div className="min-w-0 flex-1">
         <p className="text-xs font-medium text-muted">{label}</p>
         <p className="mt-0.5 truncate text-sm font-semibold text-foreground">
-          {preview || <span className="font-normal italic text-muted">{previewEmpty}</span>}
+          {preview || <span className="font-normal italic text-muted">{emptyPreview}</span>}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1 text-xs font-semibold text-primary">
@@ -150,6 +154,7 @@ function StatusMessage({ status }: { status: FormStatus }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function EditCafePageForm() {
+  const { t } = useI18n();
   const router = useRouter();
   const { user, isLoading: isUserLoading } = useCurrentUser();
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
@@ -228,7 +233,7 @@ export function EditCafePageForm() {
       } catch (error) {
         if (isMounted)
           setCreateStatus({
-            error: getSubmitErrorMessage(error, "Unable to load your cafe page."),
+            error: getSubmitErrorMessage(error, t("cafeEdit.loadError")),
             success: null,
           });
       } finally {
@@ -288,7 +293,7 @@ export function EditCafePageForm() {
     setAddressDataError(null);
     getRegionProvinces()
       .then((p) => { if (isMounted) setProvinceOptions(p); })
-      .catch(() => { if (isMounted) setAddressDataError("Unable to load Vietnam address data."); })
+      .catch(() => { if (isMounted) setAddressDataError(t("profileEdit.address.loadProvincesError")); })
       .finally(() => { if (isMounted) setIsProvinceLoading(false); });
     return () => { isMounted = false; };
   }, []);
@@ -299,7 +304,7 @@ export function EditCafePageForm() {
     setIsCityLoading(true);
     getRegionCities(region.provinceCode)
       .then((c) => { if (isMounted) setCityOptions(c); })
-      .catch(() => { if (isMounted) setAddressDataError("Unable to load city data."); })
+      .catch(() => { if (isMounted) setAddressDataError(t("profileEdit.address.loadCitiesError")); })
       .finally(() => { if (isMounted) setIsCityLoading(false); });
     return () => { isMounted = false; };
   }, [region.provinceCode]);
@@ -310,7 +315,7 @@ export function EditCafePageForm() {
     setIsWardLoading(true);
     getRegionWards({ cityCode: region.cityCode, provinceCode: region.provinceCode })
       .then((w) => { if (isMounted) setWardOptions(w); })
-      .catch(() => { if (isMounted) setAddressDataError("Unable to load ward data."); })
+      .catch(() => { if (isMounted) setAddressDataError(t("profileEdit.address.loadWardsError")); })
       .finally(() => { if (isMounted) setIsWardLoading(false); });
     return () => { isMounted = false; };
   }, [region.cityCode, region.provinceCode]);
@@ -330,12 +335,12 @@ export function EditCafePageForm() {
     const file = event.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      setImagesStatus({ error: "Please choose an image file.", success: null });
+      setImagesStatus({ error: t("profileEdit.avatar.notAnImage"), success: null });
       event.target.value = "";
       return;
     }
     if (file.size > MAX_IMAGE_SIZE_BYTES) {
-      setImagesStatus({ error: "Cafe images must be 5MB or smaller.", success: null });
+      setImagesStatus({ error: t("cafeEdit.imageTooLarge"), success: null });
       event.target.value = "";
       return;
     }
@@ -376,9 +381,12 @@ export function EditCafePageForm() {
       setSelectedCoverFile(null);
       setSelectedAvatarName("");
       setSelectedCoverName("");
-      setImagesStatus({ error: null, success: "Images saved." });
+      setImagesStatus({ error: null, success: t("cafeEdit.imagesSaved") });
     } catch (error) {
-      setImagesStatus({ error: getSubmitErrorMessage(error, "Unable to save images."), success: null });
+      setImagesStatus({
+        error: getSubmitErrorMessage(error, t("cafeEdit.imagesError")),
+        success: null,
+      });
     } finally {
       setIsSubmittingImages(false);
     }
@@ -387,7 +395,7 @@ export function EditCafePageForm() {
   async function submitNameDesc() {
     const name = basicInfo.name.trim();
     if (!name) {
-      setNameStatus({ error: "Cafe name is required.", success: null });
+      setNameStatus({ error: t("cafeEdit.nameRequired"), success: null });
       return;
     }
     setNameStatus(emptyStatus);
@@ -398,10 +406,13 @@ export function EditCafePageForm() {
         description: basicInfo.description.trim() || undefined,
       });
       setOwnedCafePage(updated);
-      setNameStatus({ error: null, success: "Saved." });
+      setNameStatus({ error: null, success: t("cafeEdit.saved") });
       setIsNameFormOpen(false);
     } catch (error) {
-      setNameStatus({ error: getSubmitErrorMessage(error, "Unable to save."), success: null });
+      setNameStatus({
+        error: getSubmitErrorMessage(error, t("cafeEdit.saveError")),
+        success: null,
+      });
     } finally {
       setIsSubmittingName(false);
     }
@@ -418,7 +429,7 @@ export function EditCafePageForm() {
       setOwnedCafePage(updated);
     } catch (error) {
       setStatusRowStatus({
-        error: getSubmitErrorMessage(error, "Unable to update status."),
+        error: getSubmitErrorMessage(error, t("cafeEdit.visibility.error")),
         success: null,
       });
     } finally {
@@ -428,12 +439,12 @@ export function EditCafePageForm() {
 
   async function submitRegion() {
     if (!region.provinceCode || !region.cityCode || !region.wardCode) {
-      setRegionStatus({ error: "Province, city and ward are required.", success: null });
+      setRegionStatus({ error: t("profileEdit.address.required"), success: null });
       return;
     }
     const address = buildAddress(region);
     if (!address) {
-      setRegionStatus({ error: "Street address is required.", success: null });
+      setRegionStatus({ error: t("cafeEdit.streetRequired"), success: null });
       return;
     }
     setRegionStatus(emptyStatus);
@@ -444,10 +455,13 @@ export function EditCafePageForm() {
         regionId: ownedCafePage!.regionId ?? undefined,
       });
       setOwnedCafePage(updated);
-      setRegionStatus({ error: null, success: "Location saved." });
+      setRegionStatus({ error: null, success: t("cafeEdit.locationSaved") });
       setIsRegionFormOpen(false);
     } catch (error) {
-      setRegionStatus({ error: getSubmitErrorMessage(error, "Unable to save location."), success: null });
+      setRegionStatus({
+        error: getSubmitErrorMessage(error, t("cafeEdit.locationError")),
+        success: null,
+      });
     } finally {
       setIsSubmittingRegion(false);
     }
@@ -458,12 +472,12 @@ export function EditCafePageForm() {
     const address = buildAddress(region);
 
     if (!name) {
-      setNameStatus({ error: "Cafe name is required.", success: null });
+      setNameStatus({ error: t("cafeEdit.nameRequired"), success: null });
       setIsNameFormOpen(true);
       return;
     }
     if (!region.provinceCode || !region.cityCode || !region.wardCode || !address) {
-      setRegionStatus({ error: "Province, city, ward and street are required.", success: null });
+      setRegionStatus({ error: t("cafeEdit.addressRequired"), success: null });
       setIsRegionFormOpen(true);
       return;
     }
@@ -491,7 +505,7 @@ export function EditCafePageForm() {
       router.refresh();
     } catch (error) {
       setCreateStatus({
-        error: getSubmitErrorMessage(error, "Unable to create cafe page."),
+        error: getSubmitErrorMessage(error, t("cafeEdit.createError")),
         success: null,
       });
     } finally {
@@ -504,7 +518,7 @@ export function EditCafePageForm() {
   if (isCurrentUserUnavailable) {
     return (
       <p className="text-sm font-semibold text-muted" role="status">
-        Redirecting...
+        {t("common.redirecting")}
       </p>
     );
   }
@@ -519,22 +533,24 @@ export function EditCafePageForm() {
     <div className="space-y-4">
       <header className="space-y-2">
         <h1 className="text-2xl font-black text-foreground sm:text-3xl">
-          {editMode ? "Edit cafe page" : "Create cafe page"}
+          {t(editMode ? "cafeEdit.title.edit" : "cafeEdit.title.create")}
         </h1>
         <p className="max-w-[560px] text-sm leading-6 text-muted">
           {editMode
-            ? "Update your cafe profile. Each section saves independently."
-            : "Set up your cafe page to get started."}
+            ? t("cafeEdit.subtitle.edit")
+            : t("cafeEdit.subtitle.create")}
         </p>
       </header>
 
       {/* ── Section 1: Photos ─────────────────────────────────────────────── */}
       <SectionCard>
         <div className="space-y-5 p-4 sm:p-5">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted">Photos</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted">
+            {t("cafeEdit.photos")}
+          </p>
 
           <Field>
-            <FieldLabel>Cover image</FieldLabel>
+            <FieldLabel>{t("cafeEdit.coverImage")}</FieldLabel>
             <div className="relative aspect-[16/7] overflow-hidden rounded-md border border-border bg-muted/15">
               <img
                 alt=""
@@ -542,7 +558,7 @@ export function EditCafePageForm() {
                 src={coverUrl || DEFAULT_COVER_IMAGE}
               />
               <Button
-                aria-label="Change cover image"
+                aria-label={t("cafeEdit.changeCover")}
                 className="absolute bottom-3 right-3"
                 disabled={isAnySectionBusy}
                 onClick={() => coverInputRef.current?.click()}
@@ -550,7 +566,7 @@ export function EditCafePageForm() {
                 variant="secondary"
               >
                 <ImagePlus data-icon="inline-start" />
-                Cover
+                {t("cafeEdit.cover")}
               </Button>
               <Input
                 accept="image/*"
@@ -561,12 +577,12 @@ export function EditCafePageForm() {
               />
             </div>
             <FieldDescription>
-              {selectedCoverName || "Choose a wide image from your device."}
+              {selectedCoverName || t("cafeEdit.coverHint")}
             </FieldDescription>
           </Field>
 
           <Field>
-            <FieldLabel>Avatar</FieldLabel>
+            <FieldLabel>{t("cafeEdit.avatar")}</FieldLabel>
             <div className="grid gap-4 sm:grid-cols-[112px_minmax(0,1fr)] sm:items-start">
               <div className="relative size-24 shrink-0">
                 <Avatar className="relative size-full overflow-hidden rounded-full">
@@ -578,7 +594,7 @@ export function EditCafePageForm() {
                   <AvatarFallback>CS</AvatarFallback>
                 </Avatar>
                 <button
-                  aria-label="Change avatar"
+                  aria-label={t("profileEdit.avatar.change")}
                   className="absolute -bottom-1 -right-1 grid size-9 place-items-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-sm transition hover:bg-primary-strong disabled:cursor-not-allowed disabled:opacity-60"
                   disabled={isAnySectionBusy}
                   onClick={() => avatarInputRef.current?.click()}
@@ -602,10 +618,10 @@ export function EditCafePageForm() {
                   type="button"
                   variant="outline"
                 >
-                  Change avatar
+                  {t("profileEdit.avatar.change")}
                 </Button>
                 <FieldDescription>
-                  {selectedAvatarName || "Choose an image from your device."}
+                  {selectedAvatarName || t("profileEdit.avatar.hint")}
                 </FieldDescription>
               </div>
             </div>
@@ -619,7 +635,7 @@ export function EditCafePageForm() {
               onClick={() => void submitImages()}
               type="button"
             >
-              {isSubmittingImages ? "Saving..." : "Save images"}
+              {isSubmittingImages ? t("common.saving") : t("cafeEdit.saveImages")}
             </Button>
           )}
         </div>
@@ -629,9 +645,9 @@ export function EditCafePageForm() {
       <SectionCard>
         <CollapsibleTrigger
           isOpen={isNameFormOpen}
-          label="Cafe identity"
+          label={t("cafeEdit.identity")}
           preview={basicInfo.name}
-          previewEmpty="Add a name for your cafe"
+          previewEmpty={t("cafeEdit.identityEmpty")}
           onToggle={() => {
             setIsNameFormOpen((o) => !o);
             setNameStatus(emptyStatus);
@@ -648,7 +664,7 @@ export function EditCafePageForm() {
             <div className="space-y-5 p-4 sm:p-5">
               <FieldGroup>
                 <Field>
-                  <FieldLabel htmlFor="cafeName">Cafe name</FieldLabel>
+                  <FieldLabel htmlFor="cafeName">{t("cafeEdit.name")}</FieldLabel>
                   <Input
                     disabled={isAnySectionBusy || isLoadingCafePage}
                     id="cafeName"
@@ -660,7 +676,7 @@ export function EditCafePageForm() {
                   />
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="description">Description</FieldLabel>
+                  <FieldLabel htmlFor="description">{t("cafeEdit.description")}</FieldLabel>
                   <Textarea
                     disabled={isAnySectionBusy || isLoadingCafePage}
                     id="description"
@@ -682,7 +698,9 @@ export function EditCafePageForm() {
                     onClick={() => void submitNameDesc()}
                     type="button"
                   >
-                    {isSubmittingName ? "Saving..." : "Save changes"}
+                    {isSubmittingName
+                      ? t("common.saving")
+                      : t("cafeEdit.saveChanges")}
                   </Button>
                   <Button
                     disabled={isAnySectionBusy}
@@ -693,7 +711,7 @@ export function EditCafePageForm() {
                     type="button"
                     variant="ghost"
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </Button>
                 </div>
               )}
@@ -707,16 +725,18 @@ export function EditCafePageForm() {
         <SectionCard>
           <div className="flex items-center justify-between gap-4 p-4 sm:p-5">
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-foreground">Open to visitors</p>
+              <p className="text-sm font-semibold text-foreground">
+                {t("cafeEdit.visibility.title")}
+              </p>
               <p className="mt-0.5 text-xs text-muted">
                 {isActive
-                  ? "Your page is live and visible to the community"
-                  : "Your page is hidden — only you can see it"}
+                  ? t("cafeEdit.visibility.on")
+                  : t("cafeEdit.visibility.off")}
               </p>
             </div>
             <button
               aria-checked={isActive}
-              aria-label="Toggle page visibility"
+              aria-label={t("cafeEdit.visibility.toggle")}
               className={cn(
                 "relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
                 isActive ? "bg-primary" : "bg-border",
@@ -747,9 +767,9 @@ export function EditCafePageForm() {
       <SectionCard>
         <CollapsibleTrigger
           isOpen={isRegionFormOpen}
-          label="Location"
+          label={t("cafeEdit.location")}
           preview={locationPreview}
-          previewEmpty="Add your cafe's address"
+          previewEmpty={t("cafeEdit.locationEmpty")}
           onToggle={() => {
             setIsRegionFormOpen((o) => !o);
             setRegionStatus(emptyStatus);
@@ -767,9 +787,9 @@ export function EditCafePageForm() {
               <FieldGroup>
                 <SearchableDropdown
                   disabled={isAnySectionBusy}
-                  emptyLabel="No provinces found."
+                  emptyLabel={t("profileEdit.address.provinceEmpty")}
                   isLoading={isProvinceLoading}
-                  label="Province / city"
+                  label={t("profileEdit.address.province")}
                   labelClassName="text-sm font-medium normal-case tracking-normal text-foreground leading-none"
                   triggerClassName="h-12 bg-surface"
                   onSelect={(province) =>
@@ -781,16 +801,16 @@ export function EditCafePageForm() {
                     }))
                   }
                   options={provinceOptions}
-                  placeholder="Select province..."
+                  placeholder={t("profileEdit.address.provincePlaceholder")}
                   selectedCode={region.provinceCode || null}
                   selectedName={region.province || null}
                   valueKey="provinceCode"
                 />
                 <SearchableDropdown
                   disabled={!region.provinceCode || isAnySectionBusy}
-                  emptyLabel="No cities found for this province."
+                  emptyLabel={t("profileEdit.address.cityEmpty")}
                   isLoading={isCityLoading}
-                  label="City / district"
+                  label={t("profileEdit.address.city")}
                   labelClassName="text-sm font-medium normal-case tracking-normal text-foreground leading-none"
                   triggerClassName="h-12 bg-surface"
                   onSelect={(city) =>
@@ -802,29 +822,29 @@ export function EditCafePageForm() {
                     }))
                   }
                   options={cityOptions}
-                  placeholder="Select city / district..."
+                  placeholder={t("profileEdit.address.cityPlaceholder")}
                   selectedCode={region.cityCode || null}
                   selectedName={region.city || null}
                   valueKey="cityCode"
                 />
                 <SearchableDropdown
                   disabled={!region.cityCode || isAnySectionBusy}
-                  emptyLabel="No wards found for this city."
+                  emptyLabel={t("profileEdit.address.wardEmpty")}
                   isLoading={isWardLoading}
-                  label="Ward"
+                  label={t("profileEdit.address.ward")}
                   labelClassName="text-sm font-medium normal-case tracking-normal text-foreground leading-none"
                   triggerClassName="h-12 bg-surface"
                   onSelect={(ward) =>
                     setRegion((cur) => ({ ...cur, wardCode: ward.wardCode, ward: ward.name }))
                   }
                   options={wardOptions}
-                  placeholder="Select ward..."
+                  placeholder={t("profileEdit.address.wardPlaceholder")}
                   selectedCode={region.wardCode || null}
                   selectedName={region.ward || null}
                   valueKey="wardCode"
                 />
                 <Field>
-                  <FieldLabel htmlFor="area">Area</FieldLabel>
+                  <FieldLabel htmlFor="area">{t("profileEdit.address.area")}</FieldLabel>
                   <Input
                     disabled={isAnySectionBusy}
                     id="area"
@@ -835,11 +855,11 @@ export function EditCafePageForm() {
                     value={region.area}
                   />
                   <FieldDescription>
-                    Optional neighborhood or local landmark.
+                    {t("cafeEdit.areaHint")}
                   </FieldDescription>
                 </Field>
                 <Field>
-                  <FieldLabel htmlFor="street">Street</FieldLabel>
+                  <FieldLabel htmlFor="street">{t("profileEdit.address.street")}</FieldLabel>
                   <Input
                     disabled={isAnySectionBusy}
                     id="street"
@@ -847,7 +867,7 @@ export function EditCafePageForm() {
                     onChange={(e) =>
                       setRegion((cur) => ({ ...cur, street: e.target.value }))
                     }
-                    placeholder="House number, street name, detailed address"
+                    placeholder={t("profileEdit.address.streetPlaceholder")}
                     value={region.street}
                   />
                 </Field>
@@ -863,7 +883,9 @@ export function EditCafePageForm() {
                     onClick={() => void submitRegion()}
                     type="button"
                   >
-                    {isSubmittingRegion ? "Saving..." : "Save location"}
+                    {isSubmittingRegion
+                      ? t("common.saving")
+                      : t("cafeEdit.saveLocation")}
                   </Button>
                   <Button
                     disabled={isAnySectionBusy}
@@ -874,7 +896,7 @@ export function EditCafePageForm() {
                     type="button"
                     variant="ghost"
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </Button>
                 </div>
               )}
@@ -897,7 +919,7 @@ export function EditCafePageForm() {
             onClick={() => void submitCreateCafe()}
             type="button"
           >
-            {isCreating ? "Creating..." : "Create cafe page"}
+            {isCreating ? t("cafeEdit.creating") : t("cafeEdit.create")}
           </Button>
         </div>
       )}

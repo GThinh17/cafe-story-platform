@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useI18n } from "@/components/providers/locale-provider";
 
 type AccountSwitchModalProps = {
   isOpen: boolean;
@@ -33,6 +34,7 @@ export function AccountSwitchModal({
   onClose,
   user,
 }: AccountSwitchModalProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const { setUser } = useAuth();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -58,15 +60,15 @@ export function AccountSwitchModal({
         <div className="flex items-start justify-between gap-4">
           <div>
             <DialogTitle className="text-lg font-black text-foreground">
-              Account
+              {t("account.title")}
             </DialogTitle>
             <DialogDescription className="mt-1">
-              Cafe Story session
+              {t("account.session")}
             </DialogDescription>
           </div>
           <DialogClose asChild>
             <Button
-              aria-label="Close"
+              aria-label={t("common.close")}
               className="text-muted hover:text-foreground"
               size="icon-sm"
               type="button"
@@ -101,7 +103,7 @@ export function AccountSwitchModal({
           size="lg"
           type="button"
         >
-          {isLoggingOut ? "Signing out..." : "Logout"}
+          {isLoggingOut ? t("account.loggingOut") : t("account.logout")}
         </Button>
       </DialogContent>
     </Dialog>

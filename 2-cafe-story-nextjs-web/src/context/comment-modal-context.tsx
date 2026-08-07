@@ -6,6 +6,7 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { getBlogById } from "@/lib/api/blogs";
 import { mapBlogResponsesToFeedPosts } from "@/features/blogs/blog-feed-adapter";
 import type { FeedPost } from "@/types/feed";
+import { useI18n } from "@/components/providers/locale-provider";
 
 type CommentModalContextValue = {
   openByBlogId: (blogId: string) => void;
@@ -21,6 +22,7 @@ export function useCommentModal() {
 }
 
 export function CommentModalProvider({ children }: { children: React.ReactNode }) {
+  const { t } = useI18n();
   const { user } = useCurrentUser();
   const [post, setPost] = useState<FeedPost | null>(null);
 
@@ -29,7 +31,7 @@ export function CommentModalProvider({ children }: { children: React.ReactNode }
   const openByBlogId = useCallback(async (blogId: string) => {
     try {
       const blog = await getBlogById(blogId);
-      const mapped = mapBlogResponsesToFeedPosts([blog])[0];
+      const mapped = mapBlogResponsesToFeedPosts([blog], t)[0];
       if (mapped) setPost(mapped);
     } catch {
       setPost(null);

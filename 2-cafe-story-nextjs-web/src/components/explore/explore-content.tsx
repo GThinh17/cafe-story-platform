@@ -17,6 +17,7 @@ import {
   getTopReviewers,
   searchReviewers,
 } from "@/lib/api/reviewers";
+import { useI18n } from "@/components/providers/locale-provider";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import type { CafePageRankingResponse, CafePageResponse } from "@/types/cafe";
 import type { FeedPost } from "@/types/feed";
@@ -182,6 +183,7 @@ function SkeletonCard() {
 }
 
 function ExploreContentInner() {
+  const { t } = useI18n();
   const { user } = useCurrentUser();
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("query") ?? "";
@@ -204,13 +206,13 @@ function ExploreContentInner() {
     } catch (err) {
       setErrors((prev) => ({
         ...prev,
-        cafes: err instanceof Error ? err.message : "Unable to load cafes.",
+        cafes: err instanceof Error ? err.message : t("explore.cafes.loadError"),
       }));
     } finally {
       setIsLoading(false);
       setLoadedTabs((prev) => ({ ...prev, cafes: true }));
     }
-  }, [searchQuery, user]);
+  }, [searchQuery, t, user]);
 
   const loadReviewers = useCallback(async () => {
     setIsLoading(true);
@@ -221,13 +223,14 @@ function ExploreContentInner() {
     } catch (err) {
       setErrors((prev) => ({
         ...prev,
-        reviewers: err instanceof Error ? err.message : "Unable to load reviewers.",
+        reviewers:
+          err instanceof Error ? err.message : t("explore.reviewers.loadError"),
       }));
     } finally {
       setIsLoading(false);
       setLoadedTabs((prev) => ({ ...prev, reviewers: true }));
     }
-  }, [searchQuery, user]);
+  }, [searchQuery, t, user]);
 
   const loadTrending = useCallback(async () => {
     setIsLoading(true);
@@ -242,18 +245,19 @@ function ExploreContentInner() {
             r.status === "fulfilled",
         )
         .map((r) => r.value);
-      setTrendingPosts(mapBlogResponsesToFeedPosts(blogs));
+      setTrendingPosts(mapBlogResponsesToFeedPosts(blogs, t));
       setErrors((prev) => ({ ...prev, trending: undefined }));
     } catch (err) {
       setErrors((prev) => ({
         ...prev,
-        trending: err instanceof Error ? err.message : "Unable to load trending posts.",
+        trending:
+          err instanceof Error ? err.message : t("explore.trending.loadError"),
       }));
     } finally {
       setIsLoading(false);
       setLoadedTabs((prev) => ({ ...prev, trending: true }));
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (activeTab === "trending") {
@@ -317,7 +321,9 @@ function ExploreContentInner() {
             ) : errors.cafes ? (
               <p className="py-16 text-center text-sm text-muted">{errors.cafes}</p>
             ) : cafes.length === 0 ? (
-              <p className="py-16 text-center text-sm text-muted">No cafes found.</p>
+              <p className="py-16 text-center text-sm text-muted">
+                {t("explore.cafes.empty")}
+              </p>
             ) : (
               <div className="grid grid-cols-2 gap-x-6">
                 {cafes.map((cafe) => (
@@ -340,7 +346,9 @@ function ExploreContentInner() {
             ) : errors.reviewers ? (
               <p className="py-16 text-center text-sm text-muted">{errors.reviewers}</p>
             ) : reviewers.length === 0 ? (
-              <p className="py-16 text-center text-sm text-muted">No reviewers found.</p>
+              <p className="py-16 text-center text-sm text-muted">
+                {t("explore.reviewers.empty")}
+              </p>
             ) : (
               <div className="grid grid-cols-2 gap-x-6">
                 {reviewers.map((reviewer) => (

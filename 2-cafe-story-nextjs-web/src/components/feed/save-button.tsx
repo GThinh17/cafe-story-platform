@@ -1,6 +1,7 @@
 "use client";
 
 import { BookmarkIcon } from "lucide-react";
+import { useI18n } from "@/components/providers/locale-provider";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -19,9 +20,11 @@ export function SaveButton({
   size = "default",
   className,
 }: SaveButtonProps) {
+  const { t } = useI18n();
+
   return (
     <Button
-      aria-label={isSaved ? "Unsave post" : "Save post"}
+      aria-label={t(isSaved ? "post.action.unsave" : "post.action.save")}
       aria-pressed={isSaved}
       className={cn(
         "h-auto cursor-pointer px-0 py-0 hover:bg-transparent hover:text-primary",

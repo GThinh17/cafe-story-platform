@@ -28,6 +28,8 @@ import {
 import type { AuthField, AuthFormCopy, AuthMode } from "@/types/auth";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/components/providers/auth-provider";
+import { useI18n } from "@/components/providers/locale-provider";
+import type { Translate } from "@/lib/i18n";
 
 type AuthCardProps = {
   mode: AuthMode;
@@ -55,81 +57,87 @@ const emptyRegion: RegionState = {
   street: "",
 };
 
-const authCopy: Record<AuthMode, AuthFormCopy> = {
-  login: {
-    eyebrow: "",
-    title: "Welcome back",
-    description: "Please enter your details to access your curated reviews.",
-    submitLabel: "Sign in",
-    switchPrompt: "Don't have an account?",
-    switchHref: "/register",
-    switchLabel: "Join the club",
-  },
-  register: {
-    eyebrow: "Cafe Story",
-    title: "Create your account",
-    description: "Start your journey through the world's best cafes.",
-    submitLabel: "Create account",
-    switchPrompt: "Already have an account?",
-    switchHref: "/login",
-    switchLabel: "Sign in",
-  },
-};
+function getAuthCopy(t: Translate): Record<AuthMode, AuthFormCopy> {
+  return {
+    login: {
+      eyebrow: "",
+      title: t("auth.login.title"),
+      description: t("auth.login.description"),
+      submitLabel: t("auth.login.submit"),
+      switchPrompt: t("auth.login.switchPrompt"),
+      switchHref: "/register",
+      switchLabel: t("auth.login.switchLabel"),
+    },
+    register: {
+      eyebrow: "Cafe Story",
+      title: t("auth.register.title"),
+      description: t("auth.register.description"),
+      submitLabel: t("auth.register.submit"),
+      switchPrompt: t("auth.register.switchPrompt"),
+      switchHref: "/login",
+      switchLabel: t("auth.register.switchLabel"),
+    },
+  };
+}
 
-const sharedFields: AuthField[] = [
-  {
-    autoComplete: "username",
-    label: "Email or username",
-    name: "identifier",
-    placeholder: "hello@cafestory.com",
-    type: "text",
-  },
-  {
-    autoComplete: "current-password",
-    label: "Password",
-    name: "password",
-    placeholder: "Enter your password",
-    type: "password",
-  },
-];
+function getSharedFields(t: Translate): AuthField[] {
+  return [
+    {
+      autoComplete: "username",
+      label: t("auth.field.identifier"),
+      name: "identifier",
+      placeholder: t("auth.field.identifierPlaceholder"),
+      type: "text",
+    },
+    {
+      autoComplete: "current-password",
+      label: t("auth.field.password"),
+      name: "password",
+      placeholder: t("auth.field.passwordPlaceholder"),
+      type: "password",
+    },
+  ];
+}
 
-const registerFields: AuthField[] = [
-  {
-    autoComplete: "name",
-    label: "Full name",
-    name: "userFullName",
-    placeholder: "John Doe",
-    type: "text",
-  },
-  {
-    autoComplete: "email",
-    label: "Email address",
-    name: "userEmail",
-    placeholder: "hello@cafestory.com",
-    type: "email",
-  },
-  {
-    autoComplete: "username",
-    label: "Username",
-    name: "userName",
-    placeholder: "cafestory_user",
-    type: "text",
-  },
-  {
-    autoComplete: "new-password",
-    label: "Password",
-    name: "password",
-    placeholder: "Create a password",
-    type: "password",
-  },
-];
+function getRegisterFields(t: Translate): AuthField[] {
+  return [
+    {
+      autoComplete: "name",
+      label: t("auth.field.fullName"),
+      name: "userFullName",
+      placeholder: t("auth.field.fullNamePlaceholder"),
+      type: "text",
+    },
+    {
+      autoComplete: "email",
+      label: t("auth.field.email"),
+      name: "userEmail",
+      placeholder: t("auth.field.emailPlaceholder"),
+      type: "email",
+    },
+    {
+      autoComplete: "username",
+      label: t("auth.field.username"),
+      name: "userName",
+      placeholder: t("auth.field.usernamePlaceholder"),
+      type: "text",
+    },
+    {
+      autoComplete: "new-password",
+      label: t("auth.field.password"),
+      name: "password",
+      placeholder: t("auth.field.newPasswordPlaceholder"),
+      type: "password",
+    },
+  ];
+}
 
-function getFields(mode: AuthMode) {
+function getFields(mode: AuthMode, t: Translate) {
   if (mode === "register") {
-    return registerFields;
+    return getRegisterFields(t);
   }
 
-  return sharedFields;
+  return getSharedFields(t);
 }
 
 function getSafeNextPath(nextPath: string | null) {
@@ -188,8 +196,9 @@ export function AuthCard({ mode }: AuthCardProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { refetch, setUser } = useAuth();
-  const copy = authCopy[mode];
-  const fields = getFields(mode);
+  const { t } = useI18n();
+  const copy = getAuthCopy(t)[mode];
+  const fields = getFields(mode, t);
   const [errorMessage, setErrorMessage] = useState("");
   const [fullName, setFullName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -248,7 +257,7 @@ export function AuthCard({ mode }: AuthCardProps) {
         }
 
         setSuggestions([]);
-        setSuggestionError("Suggestions unavailable");
+        setSuggestionError(t("auth.suggestions.unavailable"));
       } finally {
         if (suggestionRequestIdRef.current === requestId) {
           setIsLoadingSuggestions(false);
@@ -260,7 +269,7 @@ export function AuthCard({ mode }: AuthCardProps) {
       window.clearTimeout(timeoutId);
       abortController.abort();
     };
-  }, [fullName, mode]);
+  }, [fullName, mode, t]);
 
   useEffect(() => {
     if (mode !== "register") {
@@ -277,7 +286,7 @@ export function AuthCard({ mode }: AuthCardProps) {
         if (isMounted) setProvinceOptions(provinces);
       })
       .catch(() => {
-        if (isMounted) setAddressDataError("Unable to load Vietnam address data.");
+        if (isMounted) setAddressDataError(t("profileEdit.address.loadProvincesError"));
       })
       .finally(() => {
         if (isMounted) setIsProvinceLoading(false);
@@ -286,7 +295,7 @@ export function AuthCard({ mode }: AuthCardProps) {
     return () => {
       isMounted = false;
     };
-  }, [mode]);
+  }, [mode, t]);
 
   useEffect(() => {
     if (mode !== "register" || !region.provinceCode) {
@@ -303,7 +312,7 @@ export function AuthCard({ mode }: AuthCardProps) {
         if (isMounted) setCityOptions(cities);
       })
       .catch(() => {
-        if (isMounted) setAddressDataError("Unable to load city data for this province.");
+        if (isMounted) setAddressDataError(t("profileEdit.address.loadCitiesError"));
       })
       .finally(() => {
         if (isMounted) setIsCityLoading(false);
@@ -312,7 +321,7 @@ export function AuthCard({ mode }: AuthCardProps) {
     return () => {
       isMounted = false;
     };
-  }, [mode, region.provinceCode]);
+  }, [mode, region.provinceCode, t]);
 
   useEffect(() => {
     if (mode !== "register" || !region.cityCode || !region.provinceCode) {
@@ -329,7 +338,7 @@ export function AuthCard({ mode }: AuthCardProps) {
         if (isMounted) setWardOptions(wards);
       })
       .catch(() => {
-        if (isMounted) setAddressDataError("Unable to load ward data for this city.");
+        if (isMounted) setAddressDataError(t("profileEdit.address.loadWardsError"));
       })
       .finally(() => {
         if (isMounted) setIsWardLoading(false);
@@ -338,7 +347,7 @@ export function AuthCard({ mode }: AuthCardProps) {
     return () => {
       isMounted = false;
     };
-  }, [mode, region.cityCode, region.provinceCode]);
+  }, [mode, region.cityCode, region.provinceCode, t]);
 
   function handleFullNameChange(value: string) {
     setFullName(value);
@@ -359,7 +368,7 @@ export function AuthCard({ mode }: AuthCardProps) {
     }
 
     if (!region.provinceCode || !region.wardCode) {
-      throw new Error("Select province, city and ward, or leave the address fields blank.");
+      throw new Error(t("auth.error.regionIncomplete"));
     }
 
     const area = region.area.trim();
@@ -430,10 +439,12 @@ export function AuthCard({ mode }: AuthCardProps) {
             }
 
             throw new Error(
-              `Your account was created, but we couldn't save your address: ${getErrorMessage(
-                regionError,
-                "Please update your address after signing in.",
-              )}`,
+              t("auth.error.regionAfterRegister", {
+                reason: getErrorMessage(
+                  regionError,
+                  t("auth.error.updateAddressLater"),
+                ),
+              }),
             );
           }
         }
@@ -443,7 +454,7 @@ export function AuthCard({ mode }: AuthCardProps) {
       router.refresh();
     } catch (error) {
       setErrorMessage(
-        getErrorMessage(error, "Something went wrong. Please try again."),
+        getErrorMessage(error, t("common.somethingWentWrong")),
       );
     } finally {
       setIsSubmitting(false);
@@ -463,7 +474,7 @@ export function AuthCard({ mode }: AuthCardProps) {
 
       {shouldShowAuthNotice ? (
         <p className="mt-6 rounded border border-primary/20 bg-primary/10 px-4 py-3 text-sm font-semibold leading-6 text-primary-strong">
-          Please sign in or register to continue.
+          {t("auth.notice.signInRequired")}
         </p>
       ) : null}
 
@@ -487,7 +498,7 @@ export function AuthCard({ mode }: AuthCardProps) {
                       className="text-xs font-bold normal-case tracking-normal text-coffee-muted no-underline transition hover:text-espresso"
                       href="#"
                     >
-                      Forgot Password?
+                      {t("auth.forgotPassword")}
                     </a>
                   ) : null}
                 </div>
@@ -519,7 +530,7 @@ export function AuthCard({ mode }: AuthCardProps) {
                   <div className="flex min-h-9 flex-wrap items-center gap-2 pt-1">
                     {isLoadingSuggestions ? (
                       <span className="text-xs font-semibold text-coffee-muted">
-                        Finding usernames...
+                        {t("auth.suggestions.loading")}
                       </span>
                     ) : null}
                     {!isLoadingSuggestions && suggestionError ? (
@@ -555,9 +566,9 @@ export function AuthCard({ mode }: AuthCardProps) {
             <FieldGroup>
               <SearchableDropdown
                 disabled={isSubmitting}
-                emptyLabel="No provinces found."
+                emptyLabel={t("profileEdit.address.provinceEmpty")}
                 isLoading={isProvinceLoading}
-                label="Province / city"
+                label={t("profileEdit.address.province")}
                 labelClassName="text-xs font-black uppercase tracking-[0.08em] text-coffee-muted leading-none"
                 triggerClassName="h-12 rounded-none border-0 border-b border-line-soft bg-transparent px-0 text-base text-espresso"
                 onSelect={(province) =>
@@ -572,16 +583,16 @@ export function AuthCard({ mode }: AuthCardProps) {
                   }))
                 }
                 options={provinceOptions}
-                placeholder="Select province..."
+                placeholder={t("profileEdit.address.provincePlaceholder")}
                 selectedCode={region.provinceCode || null}
                 selectedName={region.province || null}
                 valueKey="provinceCode"
               />
               <SearchableDropdown
                 disabled={!region.provinceCode || isSubmitting}
-                emptyLabel="No cities found for this province."
+                emptyLabel={t("profileEdit.address.cityEmpty")}
                 isLoading={isCityLoading}
-                label="City / district"
+                label={t("profileEdit.address.city")}
                 labelClassName="text-xs font-black uppercase tracking-[0.08em] text-coffee-muted leading-none"
                 triggerClassName="h-12 rounded-none border-0 border-b border-line-soft bg-transparent px-0 text-base text-espresso"
                 onSelect={(city) =>
@@ -594,16 +605,16 @@ export function AuthCard({ mode }: AuthCardProps) {
                   }))
                 }
                 options={cityOptions}
-                placeholder="Select city / district..."
+                placeholder={t("profileEdit.address.cityPlaceholder")}
                 selectedCode={region.cityCode || null}
                 selectedName={region.city || null}
                 valueKey="cityCode"
               />
               <SearchableDropdown
                 disabled={!region.cityCode || isSubmitting}
-                emptyLabel="No wards found for this city."
+                emptyLabel={t("profileEdit.address.wardEmpty")}
                 isLoading={isWardLoading}
-                label="Ward"
+                label={t("profileEdit.address.ward")}
                 labelClassName="text-xs font-black uppercase tracking-[0.08em] text-coffee-muted leading-none"
                 triggerClassName="h-12 rounded-none border-0 border-b border-line-soft bg-transparent px-0 text-base text-espresso"
                 onSelect={(ward) =>
@@ -614,7 +625,7 @@ export function AuthCard({ mode }: AuthCardProps) {
                   }))
                 }
                 options={wardOptions}
-                placeholder="Select ward..."
+                placeholder={t("profileEdit.address.wardPlaceholder")}
                 selectedCode={region.wardCode || null}
                 selectedName={region.ward || null}
                 valueKey="wardCode"
@@ -624,7 +635,7 @@ export function AuthCard({ mode }: AuthCardProps) {
                   className="text-xs font-black uppercase tracking-[0.08em] text-coffee-muted"
                   htmlFor="area"
                 >
-                  Area
+                  {t("profileEdit.address.area")}
                 </FieldLabel>
                 <Input
                   className="rounded-none border-0 border-b border-line-soft bg-transparent px-0 text-base text-espresso placeholder:text-line-soft focus:border-espresso"
@@ -637,7 +648,7 @@ export function AuthCard({ mode }: AuthCardProps) {
                       area: event.target.value,
                     }))
                   }
-                  placeholder="Optional neighborhood or local landmark"
+                  placeholder={t("auth.field.areaPlaceholder")}
                   value={region.area}
                 />
               </Field>
@@ -646,7 +657,7 @@ export function AuthCard({ mode }: AuthCardProps) {
                   className="text-xs font-black uppercase tracking-[0.08em] text-coffee-muted"
                   htmlFor="street"
                 >
-                  Street
+                  {t("profileEdit.address.street")}
                 </FieldLabel>
                 <Input
                   className="rounded-none border-0 border-b border-line-soft bg-transparent px-0 text-base text-espresso placeholder:text-line-soft focus:border-espresso"
@@ -659,7 +670,7 @@ export function AuthCard({ mode }: AuthCardProps) {
                       street: event.target.value,
                     }))
                   }
-                  placeholder="House number, street name"
+                  placeholder={t("auth.field.streetPlaceholder")}
                   value={region.street}
                 />
               </Field>
@@ -678,7 +689,7 @@ export function AuthCard({ mode }: AuthCardProps) {
               />
               <FieldContent>
                 <FieldLabel className="text-xs leading-5 text-coffee-muted">
-                  I agree to the Terms of Service and Privacy Policy.
+                  {t("auth.terms")}
                 </FieldLabel>
               </FieldContent>
             </Field>
@@ -696,7 +707,7 @@ export function AuthCard({ mode }: AuthCardProps) {
           disabled={isSubmitting}
           type="submit"
         >
-          {isSubmitting ? "Please wait..." : copy.submitLabel}
+          {isSubmitting ? t("auth.pleaseWait") : copy.submitLabel}
           <span aria-hidden="true">-&gt;</span>
         </Button>
       </form>
@@ -704,7 +715,7 @@ export function AuthCard({ mode }: AuthCardProps) {
       <div className="my-10 flex items-center gap-4">
         <Separator className="flex-1" />
         <span className="text-xs uppercase text-coffee-muted">
-          Or continue with
+          {t("auth.orContinueWith")}
         </span>
         <Separator className="flex-1" />
       </div>
@@ -718,7 +729,7 @@ export function AuthCard({ mode }: AuthCardProps) {
           <span className="grid size-5 place-items-center rounded-full border border-line-soft text-xs">
             G
           </span>
-          Google
+          {t("auth.provider.google")}
         </Button>
         <Button
           className="flex h-[54px] items-center justify-center gap-3 rounded border border-line-soft bg-surface text-sm font-black uppercase tracking-[0.08em] text-foreground transition hover:border-espresso"
@@ -726,7 +737,7 @@ export function AuthCard({ mode }: AuthCardProps) {
           variant="outline"
         >
           <span className="text-xs font-black">iOS</span>
-          Apple
+          {t("auth.provider.apple")}
         </Button>
       </div>
 

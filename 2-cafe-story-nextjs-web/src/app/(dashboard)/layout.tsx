@@ -1,9 +1,14 @@
 import type { Metadata } from "next";
+import { getServerTranslator } from "@/lib/i18n/server";
 
-export const metadata: Metadata = {
-  title: "Reviewer Dashboard | Cafe Story",
-  description: "Reviewer performance, badges, payouts, and ranking.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerTranslator();
+
+  return {
+    title: t("meta.dashboard.title"),
+    description: t("meta.dashboard.description"),
+  };
+}
 
 export default function DashboardRootLayout({
   children,

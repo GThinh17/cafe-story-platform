@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Store, User } from "lucide-react";
 import type { ReactNode } from "react";
+import { useI18n } from "@/components/providers/locale-provider";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { cn } from "@/lib/utils";
 
@@ -17,21 +18,22 @@ type SettingsTab = {
 };
 
 function useSettingsTabs(): SettingsTab[] {
+  const { t } = useI18n();
   const { user, isLoading } = useCurrentUser();
   const username = user?.userName;
 
   return [
     {
       key: "profile",
-      label: "Profile settings",
+      label: t("settings.tab.profile"),
       href: username ? `/${encodeURIComponent(username)}/edit` : null,
       icon: User,
       disabled: !username && !isLoading,
-      disabledReason: "Sign in required",
+      disabledReason: t("common.signInRequired"),
     },
     {
       key: "cafe",
-      label: "Cafe page settings",
+      label: t("settings.tab.cafe"),
       href: "/cafes/edit",
       icon: Store,
     },
@@ -50,6 +52,7 @@ type SettingsShellProps = {
 };
 
 export function SettingsShell({ children }: SettingsShellProps) {
+  const { t } = useI18n();
   const pathname = usePathname();
   const tabs = useSettingsTabs();
 
@@ -57,10 +60,10 @@ export function SettingsShell({ children }: SettingsShellProps) {
     <main className="grid w-full touch-pan-y grid-cols-1 gap-4 overflow-x-clip px-4 py-6 sm:px-6 md:grid-cols-[220px_minmax(0,1fr)_220px] md:gap-8 md:py-8">
       <aside className="md:sticky md:top-6 md:h-fit">
         <p className="hidden text-xs font-semibold uppercase tracking-wider text-muted md:block">
-          Settings
+          {t("settings.title")}
         </p>
         <nav
-          aria-label="Settings sections"
+          aria-label={t("settings.sectionsLabel")}
           className="mt-3 flex gap-2 overflow-x-auto pb-1 md:flex-col md:overflow-visible md:pb-0"
         >
           {tabs.map((tab) => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/providers/locale-provider";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -7,6 +8,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import type { TranslationKey } from "@/lib/i18n";
 import type { ModerationStatus } from "@/types/notification";
 
 type ModerationReasonDialogProps = {
@@ -16,16 +18,16 @@ type ModerationReasonDialogProps = {
   onClose: () => void;
 };
 
-const TITLES: Record<ModerationStatus, string> = {
-  APPROVED: "Bài đăng đã được duyệt",
-  DENIED: "Bài đăng đã bị từ chối",
-  SEND_ADMIN: "Bài đăng cần admin xem xét",
+const TITLE_KEYS: Record<ModerationStatus, TranslationKey> = {
+  APPROVED: "moderation.title.APPROVED",
+  DENIED: "moderation.title.DENIED",
+  SEND_ADMIN: "moderation.title.SEND_ADMIN",
 };
 
-const FALLBACK_REASON: Record<ModerationStatus, string> = {
-  APPROVED: "Bài của bạn đã được đăng công khai.",
-  DENIED: "Bài của bạn không phù hợp với chính sách nội dung.",
-  SEND_ADMIN: "Bài của bạn cần được admin duyệt thêm trước khi công khai.",
+const FALLBACK_REASON_KEYS: Record<ModerationStatus, TranslationKey> = {
+  APPROVED: "moderation.reason.APPROVED",
+  DENIED: "moderation.reason.DENIED",
+  SEND_ADMIN: "moderation.reason.SEND_ADMIN",
 };
 
 export function ModerationReasonDialog({
@@ -34,9 +36,12 @@ export function ModerationReasonDialog({
   reason,
   onClose,
 }: ModerationReasonDialogProps) {
+  const { t } = useI18n();
   const effectiveStatus: ModerationStatus = status ?? "SEND_ADMIN";
-  const title = TITLES[effectiveStatus];
-  const body = reason?.trim() ? reason : FALLBACK_REASON[effectiveStatus];
+  const title = t(TITLE_KEYS[effectiveStatus]);
+  const body = reason?.trim()
+    ? reason
+    : t(FALLBACK_REASON_KEYS[effectiveStatus]);
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && onClose()}>
@@ -48,7 +53,7 @@ export function ModerationReasonDialog({
           </DialogDescription>
         </div>
         <div className="flex justify-end">
-          <Button onClick={onClose}>Đã hiểu</Button>
+          <Button onClick={onClose}>{t("moderation.acknowledge")}</Button>
         </div>
       </DialogContent>
     </Dialog>

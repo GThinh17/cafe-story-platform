@@ -3,6 +3,7 @@
 import { InfoIcon, Settings, StarIcon } from "lucide-react";
 import { useState } from "react";
 import type { CafeMenu, CafeSummary } from "@/types/cafe";
+import { useI18n } from "@/components/providers/locale-provider";
 import { CafeActionButtons } from "@/components/cafe/cafe-action-buttons";
 import { CafeMapModal } from "@/components/cafe/cafe-map-modal";
 import { CafePageSettingsModal } from "@/components/cafe/cafe-page-settings-modal";
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import type { Translate } from "@/lib/i18n";
 import type { FeedPost } from "@/types/feed";
 
 type CafePageProps = {
@@ -28,11 +30,13 @@ type CafePageProps = {
   postsErrorMessage?: string | null;
 };
 
-const defaultOpeningHours = [
-  { day: "Mon - Fri", time: "7:00 AM - 6:00 PM" },
-  { day: "Saturday", time: "8:00 AM - 7:00 PM", highlight: true },
-  { day: "Sunday", time: "8:00 AM - 5:00 PM" },
-];
+function getDefaultOpeningHours(t: Translate) {
+  return [
+    { day: t("cafe.hours.monFri"), time: "7:00 - 18:00" },
+    { day: t("cafe.hours.saturday"), time: "8:00 - 19:00", highlight: true },
+    { day: t("cafe.hours.sunday"), time: "8:00 - 17:00" },
+  ];
+}
 
 export function CafePage({
   cafe,
@@ -44,14 +48,17 @@ export function CafePage({
   onLoadMorePosts,
   postsErrorMessage,
 }: CafePageProps) {
+  const { t } = useI18n();
   const { user: currentUser } = useCurrentUser();
   const [isMapOpen, setIsMapOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const openingHours = cafe.openingHours ?? defaultOpeningHours;
+  const openingHours = cafe.openingHours ?? getDefaultOpeningHours(t);
   const avatarImage = cafe.avatarImage ?? cafe.image ?? cafe.coverImage;
   const coverImage = cafe.coverImage ?? cafe.gallery[0] ?? avatarImage;
-  const coverImageAlt = cafe.coverImageAlt ?? `${cafe.name} cover image`;
-  const avatarImageAlt = cafe.avatarImageAlt ?? `${cafe.name} avatar`;
+  const coverImageAlt =
+    cafe.coverImageAlt ?? t("cafe.coverAlt", { name: cafe.name });
+  const avatarImageAlt =
+    cafe.avatarImageAlt ?? t("cafe.avatarAlt", { name: cafe.name });
  
   const isCurrentOwner =
     Boolean(cafe.ownerUserId) && cafe.ownerUserId === currentUser?.userId;
@@ -88,7 +95,7 @@ export function CafePage({
                 </h1>
                 {isCurrentOwner ? (
                   <Button
-                    aria-label="Cafe page settings"
+                    aria-label={t("cafe.settings.title")}
                     className="shrink-0"
                     onClick={() => setIsSettingsOpen(true)}
                     size="icon-sm"
@@ -107,7 +114,7 @@ export function CafePage({
                 </span>
                 <span>{cafe.type}</span>
                 <span>
-                  {cafe.status ?? "Open"} - {cafe.hours}
+                  {cafe.status ?? t("cafe.status.open")} - {cafe.hours}
                 </span>
               </div>
 
@@ -136,7 +143,7 @@ export function CafePage({
         <Card className="border-line-soft">
           <CardHeader>
             <CardTitle className="text-xs font-black uppercase tracking-[0.12em] text-muted">
-            Vibe & Features
+            {t("cafe.vibe.title")}
             </CardTitle>
           </CardHeader>
 
@@ -158,7 +165,7 @@ export function CafePage({
         <Card className="border-line-soft bg-surface-muted shadow-none">
           <CardHeader>
             <CardTitle className="text-xs font-black uppercase tracking-[0.12em] text-muted">
-            Opening Hours
+            {t("cafe.hours.title")}
             </CardTitle>
           </CardHeader>
 
@@ -179,7 +186,7 @@ export function CafePage({
 
             <p className="flex items-center gap-2 border-t border-line-soft pt-6 text-sm text-coffee-muted">
             <InfoIcon data-icon="inline-start" />
-            {cafe.peakHours ?? "Peak hours usually 10 AM - 1 PM"}
+            {cafe.peakHours ?? t("cafe.hours.peakFallback")}
             </p>
           </CardContent>
         </Card>
@@ -188,7 +195,7 @@ export function CafePage({
       <section className="space-y-6">
         {isPostsLoading && cafePosts.length === 0 ? (
           <div className="rounded-md border border-line-soft bg-surface-muted px-4 py-3 text-sm font-semibold text-muted">
-            Loading cafe posts...
+            {t("cafe.posts.loading")}
           </div>
         ) : (
           <CafeRecentReviews
@@ -208,7 +215,7 @@ export function CafePage({
 
         {isPostsLoading && cafePosts.length > 0 ? (
           <p className="py-2 text-center text-sm font-semibold text-muted">
-            Loading cafe posts...
+            {t("cafe.posts.loading")}
           </p>
         ) : null}
 
@@ -221,7 +228,7 @@ export function CafePage({
               type="button"
               variant="outline"
             >
-              Load more posts
+              {t("cafe.posts.loadMore")}
             </Button>
           </div>
         ) : null}

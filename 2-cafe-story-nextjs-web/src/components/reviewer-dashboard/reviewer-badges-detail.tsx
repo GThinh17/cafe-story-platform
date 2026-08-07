@@ -13,6 +13,9 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { getReviewerBadges, getReviewerByUserId, getReviewerStats } from "@/lib/api/reviewers";
 import type { AuthUser } from "@/types/auth";
 import type { ReviewerBadgeResponse, ReviewerResponse } from "@/types/reviewer";
+import { useI18n } from "@/components/providers/locale-provider";
+
+const REVIEWER_FALLBACK_NAME = "Reviewer";
 
 const badgeRules: Array<{ badge: ReviewerBadge; range: string }> = [
   { badge: "IRON", range: "0–99" },
@@ -28,7 +31,11 @@ function toProfileForUI(reviewer: ReviewerResponse, authUser?: AuthUser | null):
     userId: reviewer.userId,
     role: reviewer.role ?? "REVIEWER",
     avatar: reviewer.avatar ?? authUser?.userAvatar ?? "",
-    name: reviewer.name ?? authUser?.userFullName ?? authUser?.userName ?? "Reviewer",
+    name:
+      reviewer.name ??
+      authUser?.userFullName ??
+      authUser?.userName ??
+      REVIEWER_FALLBACK_NAME,
     follower: reviewer.follower,
     follow: reviewer.follow,
     like: reviewer.like,
@@ -39,6 +46,7 @@ function toProfileForUI(reviewer: ReviewerResponse, authUser?: AuthUser | null):
 }
 
 export function ReviewerBadgesDetail() {
+  const { t } = useI18n();
   const { user } = useCurrentUser();
   const [profileForUI, setProfileForUI] = useState<ReviewerProfile | null>(null);
   const [badges, setBadges] = useState<ReviewerBadgeResponse[]>([]);
@@ -85,10 +93,10 @@ export function ReviewerBadgesDetail() {
     <div className="flex flex-col gap-6">
       <section>
         <p className="text-xs font-black uppercase tracking-[0.14em] text-primary">
-          Badge detail
+          {t("reviewer.badges.eyebrow")}
         </p>
         <h2 className="mt-1 text-2xl font-black text-espresso">
-          Badge progress and history
+          {t("reviewer.badges.subtitle")}
         </h2>
       </section>
 
@@ -97,13 +105,17 @@ export function ReviewerBadgesDetail() {
           <ReviewerBadgeProgress badges={badges} currentScore={currentScore} profile={profileForUI} />
         ) : (
           <Card className="flex items-center justify-center p-10 text-sm text-muted-foreground">
-            No badge data
+            {t("reviewer.badges.noData")}
           </Card>
         )}
         <Card className="p-5">
-          <p className="text-sm font-black text-muted">Score by month</p>
+          <p className="text-sm font-black text-muted">
+            {t("reviewer.badges.scoreByMonth")}
+          </p>
           {badges.length === 0 ? (
-            <p className="mt-4 text-sm text-muted-foreground">No monthly scores yet.</p>
+            <p className="mt-4 text-sm text-muted-foreground">
+              {t("reviewer.badges.noMonthlyScores")}
+            </p>
           ) : (
             <div className="mt-6 flex h-72 items-end gap-4 rounded-md bg-surface-muted/55 p-4">
               {[...badges].reverse().map((item) => (
@@ -129,7 +141,9 @@ export function ReviewerBadgesDetail() {
 
       <section className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
         <Card className="p-5">
-          <h3 className="text-xl font-black text-espresso">Badge rules</h3>
+          <h3 className="text-xl font-black text-espresso">
+            {t("reviewer.badges.rules")}
+          </h3>
           <div className="mt-5 flex flex-col gap-3">
             {badgeRules.map((rule) => (
               <div
@@ -148,20 +162,24 @@ export function ReviewerBadgesDetail() {
         </Card>
 
         <Card className="p-5">
-          <h3 className="text-xl font-black text-espresso">Badge timeline</h3>
+          <h3 className="text-xl font-black text-espresso">
+            {t("reviewer.badges.timeline")}
+          </h3>
           {badges.length === 0 ? (
-            <p className="mt-4 text-sm text-muted-foreground">No badge history yet.</p>
+            <p className="mt-4 text-sm text-muted-foreground">
+              {t("reviewer.badges.noHistory")}
+            </p>
           ) : (
             <div className="mt-5 overflow-x-auto">
               <table className="w-full min-w-[720px] text-left text-sm">
                 <thead className="text-xs uppercase text-muted">
                   <tr>
-                    <th className="py-2 pr-3">Month</th>
-                    <th className="py-2 pr-3">Score</th>
-                    <th className="py-2 pr-3">Badge</th>
-                    <th className="py-2 pr-3">Likes</th>
-                    <th className="py-2 pr-3">Shares</th>
-                    <th className="py-2">Comments</th>
+                    <th className="py-2 pr-3">{t("reviewer.table.month")}</th>
+                    <th className="py-2 pr-3">{t("reviewer.table.score")}</th>
+                    <th className="py-2 pr-3">{t("reviewer.table.badge")}</th>
+                    <th className="py-2 pr-3">{t("reviewer.table.likes")}</th>
+                    <th className="py-2 pr-3">{t("reviewer.table.shares")}</th>
+                    <th className="py-2">{t("reviewer.table.comments")}</th>
                   </tr>
                 </thead>
                 <tbody>

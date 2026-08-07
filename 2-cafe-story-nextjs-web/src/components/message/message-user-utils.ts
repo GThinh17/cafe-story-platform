@@ -12,8 +12,11 @@ function firstNonEmpty(values: Array<string | null | undefined>) {
     );
 }
 
-export function getMessageUserDisplayName(user: UserResponse) {
-  return user.userFullName?.trim() || user.userName || "Cafe Story user";
+export function getMessageUserDisplayName(
+  user: UserResponse,
+  fallbackName: string,
+) {
+  return user.userFullName?.trim() || user.userName || fallbackName;
 }
 
 export function getMessageUserAvatarImage(user: UserResponse) {

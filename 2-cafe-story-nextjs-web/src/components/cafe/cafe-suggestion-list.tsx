@@ -1,3 +1,6 @@
+"use client";
+
+import { useI18n } from "@/components/providers/locale-provider";
 import type { CafeSummary } from "@/types/cafe";
 
 type CafeSuggestionListProps = {
@@ -5,12 +8,14 @@ type CafeSuggestionListProps = {
 };
 
 export function CafeSuggestionList({ cafes }: CafeSuggestionListProps) {
+  const { t } = useI18n();
+
   return (
     <section className="space-y-5">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-black">Top matches</h2>
+        <h2 className="text-sm font-black">{t("cafe.suggestions.title")}</h2>
         <a className="text-xs font-black text-primary" href="/explore">
-          See all
+          {t("common.seeAll")}
         </a>
       </div>
       <div className="space-y-4">

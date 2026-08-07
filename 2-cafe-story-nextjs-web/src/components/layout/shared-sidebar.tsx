@@ -12,6 +12,7 @@ import {
   PlusIcon,
   UserIcon,
 } from "lucide-react";
+import { useI18n } from "@/components/providers/locale-provider";
 import { ActivityList } from "@/components/notification/activity-list";
 import { ModerationReasonDialog } from "@/components/notification/moderation-reason-dialog";
 import { PricingPlanModal } from "@/components/layout/pricing-plan-modal";
@@ -29,21 +30,22 @@ import { cn } from "@/lib/utils";
 import { useCreatePost } from "@/context/create-post-context";
 import { useCommentModal } from "@/context/comment-modal-context";
 import { usePathname, useRouter } from "next/navigation";
+import type { TranslationKey } from "@/lib/i18n";
 import type { ModerationStatus, NotificationResponse } from "@/types/notification";
 
 type SidebarItem = {
   href: string;
-  label: string;
+  labelKey: TranslationKey;
   icon: "home" | "explore" | "bell" | "message" | "profile" | "plus" | "ads";
 };
 
 const sidebarItems: SidebarItem[] = [
-  { href: "/", label: "Home", icon: "home" },
-  { href: "/explore", label: "Explore", icon: "explore" },
-  { href: "/notifications", label: "Notifications", icon: "bell" },
-  { href: "/messages", label: "Messages", icon: "message" },
-  { href: "/login", label: "Profile", icon: "profile" },
-  { href: "/reviews/new", label: "Create Post", icon: "plus" },
+  { href: "/", labelKey: "nav.home", icon: "home" },
+  { href: "/explore", labelKey: "nav.explore", icon: "explore" },
+  { href: "/notifications", labelKey: "nav.notifications", icon: "bell" },
+  { href: "/messages", labelKey: "nav.messages", icon: "message" },
+  { href: "/login", labelKey: "nav.profile", icon: "profile" },
+  { href: "/reviews/new", labelKey: "nav.createPost", icon: "plus" },
 ];
 
 const sidebarIcons = {
@@ -67,6 +69,7 @@ function isActivePath(pathname: string, href: string) {
 
 export function SharedSidebar() {
   const pathname = usePathname();
+  const { t } = useI18n();
   const { user, isLoading } = useCurrentUser();
   const { isOpen: isCreatePostOpen, open: openCreatePost } = useCreatePost();
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -84,7 +87,7 @@ export function SharedSidebar() {
   )
     ? [
         ...sidebarItems.slice(0, 4),
-        { href: "/ads", icon: "ads" as const, label: "Ads" },
+        { href: "/ads", icon: "ads" as const, labelKey: "nav.ads" as const },
         ...sidebarItems.slice(4),
       ]
     : sidebarItems;
@@ -141,12 +144,12 @@ export function SharedSidebar() {
     <>
       <aside
         className="group fixed inset-y-0 left-0 z-50 hidden w-16 flex-col overflow-hidden shadow-lg bg-surface  transition-[width] duration-200 ease-out hover:w-60 hover:shadow-lg focus-within:w-60 focus-within:shadow-lg sm:flex sm:w-[72px]"
-        aria-label="Primary navigation"
+        aria-label={t("nav.primary")}
       >
         <Link
           className="flex h-[72px] min-w-0 items-center gap-3 px-3 text-muted no-underline sm:px-4"
           href="/"
-          aria-label="Cafe Story home"
+          aria-label={t("nav.brandHome")}
           onClick={() => setIsNotificationsOpen(false)}
         >
           <BrandIcon className="size-10 shadow-sm" />
@@ -190,7 +193,7 @@ export function SharedSidebar() {
                   )}
                 </span>
                 <span className="translate-x-[-4px] whitespace-nowrap opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100">
-                  {item.label}
+                  {t(item.labelKey)}
                 </span>
               </>
             );
@@ -199,7 +202,7 @@ export function SharedSidebar() {
               return (
                 <Button
                   aria-disabled="true"
-                  aria-label={item.label}
+                  aria-label={t(item.labelKey)}
                   className={itemClassName}
                   disabled
                   key={item.href}
@@ -215,7 +218,7 @@ export function SharedSidebar() {
               return (
                 <Button
                   aria-expanded={isNotificationsOpen}
-                  aria-label={item.label}
+                  aria-label={t(item.labelKey)}
                   className={itemClassName}
                   key={item.href}
                   onClick={() => setIsNotificationsOpen((isOpen) => !isOpen)}
@@ -231,7 +234,7 @@ export function SharedSidebar() {
               return (
                 <Button
                   aria-expanded={isCreatePostOpen}
-                  aria-label={item.label}
+                  aria-label={t(item.labelKey)}
                   className={itemClassName}
                   key={item.href}
                   onClick={() => {
@@ -249,7 +252,7 @@ export function SharedSidebar() {
             return (
               <Link
                 aria-current={isActive ? "page" : undefined}
-                aria-label={item.label}
+                aria-label={t(item.labelKey)}
                 className={itemClassName}
                 href={itemHref}
                 key={item.href}
@@ -262,7 +265,7 @@ export function SharedSidebar() {
 
           <Button
             aria-expanded={isPricingPlanOpen}
-            aria-label="Pricing plan"
+            aria-label={t("nav.pricingPlan")}
             className={cn(
               buttonVariants({ variant: "ghost" }),
               "h-12 w-full min-w-0 justify-start gap-3 px-3 text-sm no-underline",
@@ -281,7 +284,7 @@ export function SharedSidebar() {
               <SparklesIcon aria-hidden="true" />
             </span>
             <span className="translate-x-[-4px] whitespace-nowrap opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100">
-              Pricing plan
+              {t("nav.pricingPlan")}
             </span>
           </Button>
         </nav>
@@ -290,7 +293,7 @@ export function SharedSidebar() {
           <div className="flex h-12 min-w-0 items-center gap-3 px-3">
             <ThemeToggle/>
             <span className="translate-x-[-4px] whitespace-nowrap text-sm font-medium text-muted opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100">
-              Theme
+              {t("nav.theme")}
             </span>
           </div>
         </div>
@@ -302,7 +305,7 @@ export function SharedSidebar() {
           side="left"
           showCloseButton={false}
         >
-          <SheetTitle className="sr-only">Notifications</SheetTitle>
+          <SheetTitle className="sr-only">{t("nav.notifications")}</SheetTitle>
           <ActivityList
             notifications={notifications}
             unreadCount={unreadCount}

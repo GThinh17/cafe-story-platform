@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useI18n } from "@/components/providers/locale-provider";
 import { Button } from "@/components/ui/button";
 import { followUser, unfollowUser } from "@/lib/api/users";
 import { followCafePage, unfollowCafePage } from "@/lib/api/cafes";
@@ -23,6 +24,7 @@ export function FollowButton({
   className,
   onToggle,
 }: FollowButtonProps) {
+  const { t } = useI18n();
   // Registry là nguồn ưu tiên — nếu chưa có thì dùng prop
   const registryState = targetId ? followRegistry.get(targetType, targetId) : null;
   const resolved = registryState !== null ? registryState : Boolean(initialFollowing);
@@ -103,7 +105,7 @@ export function FollowButton({
       type="button"
       variant={following ? "secondary" : "default"}
     >
-      {following ? "Following" : "Follow"}
+      {t(following ? "follow.following" : "follow.follow")}
     </Button>
   );
 }

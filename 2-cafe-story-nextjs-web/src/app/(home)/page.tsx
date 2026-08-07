@@ -15,7 +15,9 @@ import { getConversations } from "@/lib/api/chat";
 import { getFollowingTargetsByUserId } from "@/lib/api/users";
 import { DEFAULT_AVATAR_IMAGE } from "@/lib/avatar";
 import { imageWidths, optimizeImageUrl } from "@/lib/image-optimizer";
+import { getServerTranslator } from "@/lib/i18n/server";
 import { ACCESS_TOKEN_COOKIE } from "@/lib/routes";
+import type { Translate } from "@/lib/i18n";
 import type { FeedRenderableItem, StoryItem, TopCafe } from "@/types/feed";
 import type { FollowTargetResponse } from "@/types/user";
 import type { MessageContact, MessageDockData } from "@/types/message";
@@ -35,14 +37,23 @@ const getMeCached = cache((cookieHeader: string) =>
   getMe({ headers: { Cookie: cookieHeader } }).catch(() => null),
 );
 
-async function loadTopCafes(): Promise<TopCafe[]> {
+async function loadTopCafes(
+  t: Translate,
+  cookieHeader: string,
+): Promise<TopCafe[]> {
   try {
-    const cafes = await getTopCafePages({ size: 5 });
+    const cafes = await getTopCafePages(
+      { size: 5 },
+      { headers: { Cookie: cookieHeader } },
+    );
     return cafes.map((cafe) => ({
       id: cafe.id,
       name: cafe.name,
-      rating: typeof cafe.rankingScore === "number" ? cafe.rankingScore.toFixed(1) : "New",
-      type: cafe.regionCity ?? "Cafe page",
+      rating:
+        typeof cafe.rankingScore === "number"
+          ? cafe.rankingScore.toFixed(1)
+          : t("home.newRating"),
+      type: cafe.regionCity ?? t("home.cafePageLabel"),
     }));
   } catch {
     return [];
@@ -128,9 +139,10 @@ function getContactInitials(source: string) {
 async function loadMessageDock(
   cookieHeader: string,
   myId: string,
+  t: Translate,
 ): Promise<MessageDockData> {
   const base: MessageDockData = {
-    title: "Messages",
+    title: t("nav.messages"),
     unreadCount: 0,
     contacts: [],
   };
@@ -164,7 +176,7 @@ async function loadMessageDock(
         other.userFullName?.trim() ||
         other.userName?.trim() ||
         conv.chatName?.trim() ||
-        "Cafe Story user";
+        t("home.defaultUserName");
 
       contacts.push({
         id: other.userId,
@@ -187,7 +199,10 @@ async function loadMessageDock(
   }
 }
 
-async function loadHomeFeed(cookieHeader: string): Promise<HomeFeedState> {
+async function loadHomeFeed(
+  cookieHeader: string,
+  t: Translate,
+): Promise<HomeFeedState> {
   try {
     const feed = await getMixedFeed(
       {
@@ -203,14 +218,14 @@ async function loadHomeFeed(cookieHeader: string): Promise<HomeFeedState> {
     return {
       hasMore: Boolean(feed.hasMore && feed.nextCursor),
       nextCursor: feed.nextCursor,
-      items: mapMixedFeedToRenderableItems(feed),
+      items: mapMixedFeedToRenderableItems(feed, t),
     };
   } catch (error) {
     return {
       errorMessage:
         error instanceof ApiError
           ? error.message
-          : "Unable to load your feed right now.",
+          : t("home.feedLoadError"),
       hasMore: false,
       nextCursor: null,
       items: [],
@@ -225,10 +240,12 @@ async function FeedSection({
   cookieHeader: string;
   hasSession: boolean;
 }) {
+  const t = await getServerTranslator();
+
   if (!hasSession) {
     return (
       <FeedPostList
-        errorMessage="Sign in to view your personalized feed."
+        errorMessage={t("home.signInPrompt")}
         initialHasMore={false}
         initialNextCursor={null}
         initialPage={0}
@@ -239,7 +256,7 @@ async function FeedSection({
   }
 
   const [feedState, storyItems] = await Promise.all([
-    loadHomeFeed(cookieHeader),
+    loadHomeFeed(cookieHeader, t),
     loadStoryRail(cookieHeader),
   ]);
 
@@ -258,8 +275,9 @@ async function FeedSection({
   );
 }
 
-async function TopCafesSection() {
-  const topCafes = await loadTopCafes();
+async function TopCafesSection({ cookieHeader }: { cookieHeader: string }) {
+  const t = await getServerTranslator();
+  const topCafes = await loadTopCafes(t, cookieHeader);
 
   if (topCafes.length === 0) {
     return null;
@@ -282,12 +300,14 @@ async function MessageDockSection({
     return null;
   }
 
-  const messageDock = await loadMessageDock(cookieHeader, myId);
+  const t = await getServerTranslator();
+  const messageDock = await loadMessageDock(cookieHeader, myId, t);
 
   return <MessageDock data={messageDock} />;
 }
 
 export default async function Home() {
+  const t = await getServerTranslator();
   const cookieStore = await cookies();
   const cookieHeader = cookieStore.toString();
   const hasSession = cookieStore.has(ACCESS_TOKEN_COOKIE);
@@ -308,13 +328,19 @@ export default async function Home() {
             <HomeAccountPanel />
 
             <Suspense fallback={null}>
-              <TopCafesSection />
+              <TopCafesSection cookieHeader={cookieHeader} />
             </Suspense>
 
             <p className="text-xs leading-5 text-muted">
-              About - Help - Privacy - Terms - Locations
+              {[
+                t("footer.about"),
+                t("footer.help"),
+                t("footer.privacy"),
+                t("footer.terms"),
+                t("footer.locations"),
+              ].join(" - ")}
               <br />
-              (c) 2026 Cafe Story
+              {t("footer.copyright")}
             </p>
           </section>
         </aside>

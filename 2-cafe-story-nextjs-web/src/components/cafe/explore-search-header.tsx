@@ -3,10 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { XIcon } from "lucide-react";
+import { useI18n } from "@/components/providers/locale-provider";
 import { Input } from "@/components/ui/input";
 import { ExploreIcon } from "@/components/cafe/explore-icon";
 
 export function ExploreSearchHeader() {
+  const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [inputValue, setInputValue] = useState(searchParams.get("query") ?? "");
@@ -48,7 +50,7 @@ export function ExploreSearchHeader() {
         onSubmit={(e) => e.preventDefault()}
       >
         <label className="sr-only" htmlFor="explore-cafe-search">
-          Search cafes and stories
+          {t("explore.searchLabel")}
         </label>
         <span className="absolute left-4 top-1/2 z-10 -translate-y-1/2 text-muted">
           <ExploreIcon name="search" />
@@ -58,13 +60,13 @@ export function ExploreSearchHeader() {
           className="h-[42px] rounded-3xl border-transparent bg-surface-muted pl-11 pr-10 text-sm font-medium border-none focus:border-transparent focus:outline-none"
           id="explore-cafe-search"
           onChange={(e) => setInputValue(e.target.value)}
-          placeholder="Find your next story..."
+          placeholder={t("explore.searchPlaceholder")}
           type="text"
           value={inputValue}
         />
         {hasValue && (
           <button
-            aria-label="Clear search"
+            aria-label={t("explore.clearSearch")}
             className="absolute right-3 top-1/2 -translate-y-1/2 grid size-7 place-items-center rounded-full text-muted transition hover:bg-surface-muted hover:text-foreground"
             onClick={handleClear}
             type="button"

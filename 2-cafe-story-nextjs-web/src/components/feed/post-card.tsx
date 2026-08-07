@@ -1,3 +1,5 @@
+"use client";
+
 import {
   FlagIcon,
   HeartIcon,
@@ -6,6 +8,7 @@ import {
   Repeat2Icon,
 } from "lucide-react";
 import Link from "next/link";
+import { useI18n } from "@/components/providers/locale-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,19 +49,10 @@ type PostCardProps = {
 };
 
 const postActions = [
-  {
-    label: "Like",
-    icon: HeartIcon,
-  },
-  {
-    label: "Comment",
-    icon: MessageCircleIcon,
-  },
-  {
-    label: "Share",
-    icon: Repeat2Icon,
-  },
-];
+  { id: "like", labelKey: "post.action.like", icon: HeartIcon },
+  { id: "comment", labelKey: "post.action.comment", icon: MessageCircleIcon },
+  { id: "share", labelKey: "post.action.share", icon: Repeat2Icon },
+] as const;
 
 function formatPostCommentCount(post: FeedPost) {
   return typeof post.commentCount === "number"
@@ -83,19 +77,20 @@ function formatPostLikeCount(post: FeedPost) {
 }
 
 export function PostCard({ currentUserId, eagerMedia, onCommentClick, onLikeClick, onReportClick, onSaveClick, onShareClick, post }: PostCardProps) {
+  const { t } = useI18n();
   const identity = getPostIdentity(post);
   const locationLabel = post.locationLabel?.trim() || post.location?.trim();
   const commentCount = formatPostCommentCount(post);
   const actionCounts: Record<string, string> = {
-    Comment: commentCount,
-    Like: formatPostLikeCount(post),
-    Share: post.shares ?? "0",
+    comment: commentCount,
+    like: formatPostLikeCount(post),
+    share: post.shares ?? "0",
   };
   const media = getFeedPostMediaList(post);
 
   const isOwnPost = Boolean(currentUserId && post.authorUserId && currentUserId === post.authorUserId);
   const visibleActions = isOwnPost
-    ? postActions.filter((a) => a.label !== "Share")
+    ? postActions.filter((action) => action.id !== "share")
     : postActions;
 
   return (
@@ -107,12 +102,12 @@ export function PostCard({ currentUserId, eagerMedia, onCommentClick, onLikeClic
       <CardHeader className="flex flex-row items-center justify-between gap-4 px-4 py-4">
         <div className="flex min-w-0 items-center gap-3">
           <Link
-            aria-label={`View ${identity.primaryName}`}
+            aria-label={t("post.viewProfile", { name: identity.primaryName })}
             className="block size-11 shrink-0 cursor-pointer overflow-hidden rounded-full border border-border/40 bg-surface-muted shadow-[inset_0_0_0_999px_rgba(217,119,6,0.10)]"
             href={identity.primaryHref}
           >
             <img
-              alt={`${identity.primaryName} avatar`}
+              alt={t("post.avatarAlt", { name: identity.primaryName })}
               className="block size-full max-w-none rounded-full object-cover object-center"
               decoding="async"
               loading="lazy"
@@ -150,7 +145,7 @@ export function PostCard({ currentUserId, eagerMedia, onCommentClick, onLikeClic
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <button
-                aria-label="More options"
+                aria-label={t("post.action.moreOptions")}
                 className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-full text-foreground outline-none"
                 type="button"
               >
@@ -163,7 +158,7 @@ export function PostCard({ currentUserId, eagerMedia, onCommentClick, onLikeClic
                 onClick={() => onReportClick?.(post)}
               >
                 <FlagIcon className="size-4" />
-                <span>Report</span>
+                <span>{t("post.action.report")}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -182,17 +177,17 @@ export function PostCard({ currentUserId, eagerMedia, onCommentClick, onLikeClic
       <CardContent className="flex flex-col gap-4 px-4 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            {visibleActions.map(({ icon: Icon, label }) => (
+            {visibleActions.map(({ icon: Icon, id, labelKey }) => (
               <Button
-                aria-label={label}
+                aria-label={t(labelKey)}
                 className="h-auto cursor-pointer gap-1.5 px-0 py-0 text-sm font-bold text-foreground hover:bg-transparent hover:text-primary data-[state=active]:bg-transparent"
-                key={label}
+                key={id}
                 onClick={
-                  label === "Comment"
+                  id === "comment"
                     ? () => onCommentClick?.(post)
-                    : label === "Like"
+                    : id === "like"
                       ? () => onLikeClick?.(post)
-                      : label === "Share"
+                      : id === "share"
                         ? () => onShareClick?.(post)
                         : undefined
                 }
@@ -202,12 +197,12 @@ export function PostCard({ currentUserId, eagerMedia, onCommentClick, onLikeClic
                 <Icon
                   className={cn(
                     "size-6",
-                    label === "Like" && post.isLiked && "fill-accent text-accent",
-                    label === "Share" && post.isShared && "fill-primary text-primary",
+                    id === "like" && post.isLiked && "fill-accent text-accent",
+                    id === "share" && post.isShared && "fill-primary text-primary",
                   )}
                   strokeWidth={2.2}
                 />
-                <span>{actionCounts[label]}</span>
+                <span>{actionCounts[id]}</span>
               </Button>
             ))}
           </div>

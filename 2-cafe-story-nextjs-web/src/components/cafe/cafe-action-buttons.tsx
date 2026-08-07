@@ -2,6 +2,7 @@
 
 import { BookOpenIcon, HeartIcon } from "lucide-react";
 import { useState } from "react";
+import { useI18n } from "@/components/providers/locale-provider";
 import { Button } from "@/components/ui/button";
 import { FollowButton } from "@/components/ui/follow-button";
 import { CafeMenuModal } from "@/components/cafe/cafe-menu-modal";
@@ -39,6 +40,7 @@ export function CafeActionButtons({
   menu,
   onLikeStateChange,
 }: CafeActionButtonsProps) {
+  const { t } = useI18n();
   const [isPending, setIsPending] = useState(false);
   const { isOpen, openMenu, setIsOpen } = useCafeMenuModal();
 
@@ -106,7 +108,7 @@ export function CafeActionButtons({
           variant="secondary"
         >
           <BookOpenIcon className="size-5" data-icon="inline-start" />
-          View Menu
+          {t("cafe.action.viewMenu")}
         </Button>
       </div>
 

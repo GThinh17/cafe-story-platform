@@ -1,4 +1,7 @@
+"use client";
+
 import { TrophyIcon } from "lucide-react";
+import { useI18n } from "@/components/providers/locale-provider";
 import { Card } from "@/components/ui/card";
 import type {
   ReviewerProfile,
@@ -19,6 +22,7 @@ export function ReviewerLeaderboardPanel({
   profile,
   ranking,
 }: ReviewerLeaderboardPanelProps) {
+  const { t } = useI18n();
   const currentRank = ranking.find(
     (item) => item.reviewerId === profile.reviewerId,
   );
@@ -27,9 +31,13 @@ export function ReviewerLeaderboardPanel({
     <Card className="p-5">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-black text-muted">Leaderboard Position</p>
+          <p className="text-sm font-black text-muted">
+            {t("reviewer.leaderboard.title")}
+          </p>
           <h2 className="mt-1 text-xl font-black text-espresso">
-            #{currentRank?.rank ?? "-"} this month
+            {t("reviewer.leaderboard.rankThisMonth", {
+              rank: currentRank?.rank ?? "-",
+            })}
           </h2>
         </div>
         <span className="grid size-12 place-items-center rounded-md bg-rating/15 text-rating">
@@ -57,16 +65,21 @@ export function ReviewerLeaderboardPanel({
                   </p>
                   {isCurrent ? (
                     <span className="rounded-md bg-primary px-2 py-0.5 text-xs font-black text-primary-foreground">
-                      You
+                      {t("reviewer.leaderboard.you")}
                     </span>
                   ) : null}
                 </div>
                 <p className="mt-1 truncate text-xs font-semibold text-muted">
-                  {item.location} - {numberFormatter.format(item.score)} score
+                  {t("reviewer.leaderboard.scoreLine", {
+                    location: item.location,
+                    score: numberFormatter.format(item.score),
+                  })}
                 </p>
               </div>
               <p className="shrink-0 text-sm font-black text-primary">
-                {numberFormatter.format(item.commentCount)} comments
+                {t("reviewer.leaderboard.comments", {
+                  count: numberFormatter.format(item.commentCount),
+                })}
               </p>
             </div>
           );

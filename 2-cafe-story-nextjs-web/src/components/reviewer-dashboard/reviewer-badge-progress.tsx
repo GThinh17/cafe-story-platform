@@ -1,3 +1,6 @@
+"use client";
+
+import { useI18n } from "@/components/providers/locale-provider";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import type {
@@ -33,6 +36,7 @@ export function ReviewerBadgeProgress({
   profile,
   currentScore,
 }: ReviewerBadgeProgressProps) {
+  const { t } = useI18n();
   const score = currentScore ?? profile.score;
   const nextBadge = getNextBadge(profile.badge);
   const nextMin = nextBadge ? badgeThresholds[nextBadge].min : score;
@@ -46,18 +50,26 @@ export function ReviewerBadgeProgress({
     <Card className="p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-black text-muted">Badge Progress</p>
+          <p className="text-sm font-black text-muted">
+            {t("reviewer.badgeProgress.title")}
+          </p>
           <h2 className="mt-1 text-xl font-black text-espresso">
             {profile.badge}
           </h2>
         </div>
-        <Badge variant="rating">{score} score</Badge>
+        <Badge variant="rating">
+          {t("reviewer.badgeProgress.scoreBadge", { score })}
+        </Badge>
       </div>
 
       <div className="mt-5">
         <div className="flex justify-between text-xs font-semibold text-muted">
           <span>{profile.badge}</span>
-          <span>{nextBadge ? `Next: ${nextBadge}` : "Top badge reached"}</span>
+          <span>
+            {nextBadge
+              ? t("reviewer.badgeProgress.next", { badge: nextBadge })
+              : t("reviewer.badgeProgress.topReached")}
+          </span>
         </div>
         <div className="mt-2 h-3 overflow-hidden rounded-full bg-surface-muted">
           <div
@@ -76,8 +88,11 @@ export function ReviewerBadgeProgress({
             <div>
               <p className="text-sm font-black text-espresso">{item.month}</p>
               <p className="text-xs font-semibold text-muted">
-                {item.likeCount} likes - {item.shareCount} shares -{" "}
-                {item.commentCount} comments
+                {t("reviewer.badgeProgress.engagementLine", {
+                  likes: item.likeCount,
+                  shares: item.shareCount,
+                  comments: item.commentCount,
+                })}
               </p>
             </div>
             <Badge variant="secondary">{item.badge}</Badge>

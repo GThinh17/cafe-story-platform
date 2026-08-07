@@ -1,11 +1,19 @@
+"use client";
+
 import {
   HeartIcon,
   MessageCircleIcon,
   Repeat2Icon,
   SparklesIcon,
 } from "lucide-react";
+
+
+import { useI18n } from "@/components/providers/locale-provider";
 import { Card } from "@/components/ui/card";
-import type { ReviewerStats } from "@/features/reviewer-dashboard/reviewer-dashboard.types";
+import {
+  reviewerPeriodName,
+  type ReviewerStats,
+} from "@/features/reviewer-dashboard/reviewer-dashboard.types";
 
 type ReviewerStatsCardsProps = {
   stats: ReviewerStats;
@@ -17,11 +25,16 @@ const numberFormatter = new Intl.NumberFormat("en", {
 });
 
 export function ReviewerStatsCards({ stats }: ReviewerStatsCardsProps) {
+  const { t } = useI18n();
   const cards = [
-    { icon: HeartIcon, label: "Likes", value: stats.likeCount },
-    { icon: Repeat2Icon, label: "Shares", value: stats.shareCount },
-    { icon: MessageCircleIcon, label: "Comments", value: stats.commentCount },
-    { icon: SparklesIcon, label: "Engagement Score", value: stats.score },
+    { icon: HeartIcon, label: t("reviewer.stats.likes"), value: stats.likeCount },
+    { icon: Repeat2Icon, label: t("reviewer.stats.shares"), value: stats.shareCount },
+    {
+      icon: MessageCircleIcon,
+      label: t("reviewer.stats.comments"),
+      value: stats.commentCount,
+    },
+    { icon: SparklesIcon, label: t("reviewer.stats.score"), value: stats.score },
   ];
 
   return (
@@ -38,7 +51,9 @@ export function ReviewerStatsCards({ stats }: ReviewerStatsCardsProps) {
             {numberFormatter.format(value)}
           </p>
           <p className="mt-2 text-xs font-semibold text-muted">
-            Current {stats.period} period
+            {t("reviewer.stats.currentPeriod", {
+              period: reviewerPeriodName(stats.period, t),
+            })}
           </p>
         </Card>
       ))}

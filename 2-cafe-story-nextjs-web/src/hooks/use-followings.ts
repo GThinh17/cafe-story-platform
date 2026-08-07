@@ -12,6 +12,7 @@ import {
 } from "@/lib/mention/parse-mentions";
 import type { CafePageResponse } from "@/types/cafe";
 import type { UserResponse } from "@/types/user";
+import { useI18n } from "@/components/providers/locale-provider";
 
 export type MentionItem = {
   kind: "user" | "page";
@@ -43,7 +44,11 @@ function mapUser(user: UserResponse): MentionItem {
   };
 }
 
-function mapPage(page: CafePageResponse, taken: Set<string>): MentionItem {
+function mapPage(
+  page: CafePageResponse,
+  taken: Set<string>,
+  cafePageLabel: string,
+): MentionItem {
   const base = slugifyForMention(page.name);
   const slug = ensureUniqueSlug(base, taken, page.id);
   taken.add(slug);
@@ -52,12 +57,13 @@ function mapPage(page: CafePageResponse, taken: Set<string>): MentionItem {
     id: page.id,
     slug,
     displayName: page.name,
-    subtitle: "Cafe Page",
+    subtitle: cafePageLabel,
     avatarUrl: page.avatarUrl,
   };
 }
 
 export function useFollowings(userId: string | undefined, enabled: boolean) {
+  const { t } = useI18n();
   const [state, setState] = useState<State>({
     items: [],
     isLoading: false,
@@ -98,7 +104,7 @@ export function useFollowings(userId: string | undefined, enabled: boolean) {
         const taken = new Set(userItems.map((u) => u.slug));
         const pageItems = pages
           .filter((p): p is CafePageResponse => p !== null)
-          .map((p) => mapPage(p, taken));
+          .map((p) => mapPage(p, taken, t("followings.cafePage")));
 
         setState({
           items: [...userItems, ...pageItems],
@@ -111,7 +117,7 @@ export function useFollowings(userId: string | undefined, enabled: boolean) {
         setState({
           items: [],
           isLoading: false,
-          error: err instanceof Error ? err.message : "Failed to load followings.",
+          error: err instanceof Error ? err.message : t("followings.loadError"),
         });
       });
 

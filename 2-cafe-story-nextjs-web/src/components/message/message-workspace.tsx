@@ -33,6 +33,8 @@ import type { UserResponse } from "@/types/user";
 import type { Client, StompSubscription } from "@stomp/stompjs";
 import { createStompClient } from "@/lib/api/websocket";
 import type { SocketEvent } from "@/types/message";
+import { useI18n } from "@/components/providers/locale-provider";
+import type { Translate } from "@/lib/i18n";
 
 // Trợ lý AI luôn pinned top của conversation list (plan §15.8).
 // ID trùng cho id/serverId/participantUserId để canSend=true và không gọi Cloudinary.
@@ -146,10 +148,11 @@ function getPreviewFromMessage(
 }
 
 function mapUserToConversation(
+  t: Translate,
   user: UserResponse,
   overrides: Partial<Conversation> = {},
 ): Conversation {
-  const name = getMessageUserDisplayName(user);
+  const name = getMessageUserDisplayName(user, t("messages.defaultUserName"));
 
   return {
     avatarImage: getMessageUserAvatarImage(user),
@@ -158,7 +161,7 @@ function mapUserToConversation(
     localStatus: "ready",
     name,
     participantUserId: user.userId,
-    preview: "Start a conversation",
+    preview: t("messages.startConversation"),
     time: "",
     username: user.userName || "cafestory_user",
     ...overrides,
@@ -166,10 +169,11 @@ function mapUserToConversation(
 }
 
 function mapConversationResponseToConversation(
+  t: Translate,
   conversation: ConversationResponse,
   participant: UserResponse,
 ): Conversation {
-  return mapUserToConversation(participant, {
+  return mapUserToConversation(t, participant, {
     hasMessages: Boolean(
       conversation.latestMessageId ||
         conversation.latestMessagePreview ||
@@ -178,7 +182,8 @@ function mapConversationResponseToConversation(
     ),
     id: conversation.id,
     localStatus: "ready",
-    preview: conversation.latestMessagePreview || "Open conversation",
+    preview:
+      conversation.latestMessagePreview || t("messages.openConversation"),
     serverId: conversation.id,
     time: formatTime(conversation.updatedAt),
   });
@@ -289,6 +294,7 @@ function hasVisibleMessages(
 }
 
 export function MessageWorkspace() {
+  const { t } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryConversationId = searchParams.get("conversationId");
@@ -387,13 +393,13 @@ export function MessageWorkspace() {
 
         seenUserIds.add(participantId);
         conversationItems.push(
-          mapConversationResponseToConversation(conversation, participant),
+          mapConversationResponseToConversation(t, conversation, participant),
         );
       });
 
       const followedItems = followingIds
         .filter((userId) => !seenUserIds.has(userId) && userDetails[userId])
-        .map((userId) => mapUserToConversation(userDetails[userId]));
+        .map((userId) => mapUserToConversation(t, userDetails[userId]));
 
       setConversations([
         createAssistantConversation(),
@@ -411,12 +417,12 @@ export function MessageWorkspace() {
       setLoadedConversationIds({ [ASSISTANT_CONVERSATION_ID]: true });
       seedAssistantMessagesIfEmpty();
       setConversationErrorMessage(
-        getApiErrorMessage(requestError, "Unable to load messages."),
+        getApiErrorMessage(requestError, t("messages.loadError")),
       );
     } finally {
       setIsInitialLoading(false);
     }
-  }, [currentUser?.userId, seedAssistantMessagesIfEmpty]);
+  }, [currentUser?.userId, seedAssistantMessagesIfEmpty, t]);
 
   useEffect(() => {
     if (isCurrentUserLoading) {
@@ -486,7 +492,7 @@ export function MessageWorkspace() {
           ...currentErrors,
           [conversation.id]: getApiErrorMessage(
             requestError,
-            "Unable to load messages.",
+            t("messages.loadError"),
           ),
         }));
       } finally {
@@ -659,7 +665,7 @@ export function MessageWorkspace() {
           preview:
             createdConversation.latestMessagePreview ||
             conversation.preview ||
-            "Open conversation",
+            t("messages.openConversation"),
           serverId: createdConversation.id,
           time: formatTime(createdConversation.updatedAt),
         };
@@ -692,7 +698,7 @@ export function MessageWorkspace() {
         router.replace(`/messages?conversationId=${createdConversation.id}`);
       } catch (requestError) {
         setConversationErrorMessage(
-          getApiErrorMessage(requestError, "Unable to open conversation."),
+          getApiErrorMessage(requestError, t("messages.openError")),
         );
         setConversations((currentConversations) =>
           currentConversations.map((currentConversation) =>
@@ -700,7 +706,7 @@ export function MessageWorkspace() {
               ? {
                   ...currentConversation,
                   localStatus: "error",
-                  preview: "Unable to open conversation.",
+                  preview: t("messages.openError"),
                 }
               : currentConversation,
           ),
@@ -815,7 +821,7 @@ export function MessageWorkspace() {
         const errorMessage =
           requestError instanceof AiChatError
             ? requestError.message
-            : "Unable to reach assistant.";
+            : t("messages.assistantError");
         setSendErrors((currentErrors) => ({
           ...currentErrors,
           [conversationKey]: errorMessage,
@@ -943,7 +949,7 @@ export function MessageWorkspace() {
           ...currentErrors,
           [conversation.id]: getApiErrorMessage(
             requestError,
-            "Unable to send message.",
+            t("messages.sendError"),
           ),
         }));
         setMessagesByConversationId((currentMessages) => ({

@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  FlagIcon,
   HeartIcon,
   MessageCircleIcon,
   MoreHorizontalIcon,
@@ -9,13 +10,21 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useI18n } from "@/components/providers/locale-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   PostCommentItem,
   type PostCommentReplyTarget,
 } from "@/components/feed/post-comment-item";
+import { ReportPostModal } from "@/components/feed/report-post-modal";
 import { PostCommentSkeleton } from "@/components/feed/post-comment-skeleton";
 import {
   getFeedPostMediaList,
@@ -342,6 +351,7 @@ export function PostCommentsModal({
   onPostSaveClick,
   post,
 }: PostCommentsModalProps) {
+  const { t } = useI18n();
   const [draftComment, setDraftComment] = useState("");
   const [comments, setComments] = useState<FeedPostComment[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
@@ -351,6 +361,7 @@ export function PostCommentsModal({
   );
   const [commentsError, setCommentsError] = useState<string | null>(null);
   const [replyTarget, setReplyTarget] = useState<PostCommentReplyTarget | null>(null);
+  const [isReportOpen, setIsReportOpen] = useState(false);
   const commentInputRef = useRef<HTMLInputElement>(null);
   const commentCountRef = useRef(0);
   const loadedCommentsPostIdRef = useRef<string | null>(null);
@@ -375,7 +386,7 @@ export function PostCommentsModal({
         comments: formatCount(response.length),
       });
     } catch {
-      setCommentsError("Unable to load comments.");
+      setCommentsError(t("comments.loadError"));
     } finally {
       setIsLoadingComments(false);
     }
@@ -383,6 +394,7 @@ export function PostCommentsModal({
     currentUser,
     onCommentCountChange,
     post?.id,
+    t,
   ]);
 
   useEffect(() => {
@@ -557,11 +569,13 @@ export function PostCommentsModal({
   }
 
   return (
+    <>
     <Dialog
       onOpenChange={(open) => {
         if (!open) {
           setDraftComment("");
           setReplyTarget(null);
+          setIsReportOpen(false);
         }
         onOpenChange(open);
       }}
@@ -582,7 +596,7 @@ export function PostCommentsModal({
             />
           ) : (
             <div className="grid h-full min-h-[280px] place-items-center bg-surface-muted px-8 text-center text-sm font-semibold text-coffee-muted">
-              No image available
+              {t("comments.noImage")}
             </div>
           )}
         </section>
@@ -591,12 +605,12 @@ export function PostCommentsModal({
           <header className="flex items-center justify-between gap-4 border-b border-line-soft px-5 py-4">
             <div className="flex min-w-0 items-center gap-3">
               <Link
-                aria-label={`View ${identity.primaryName}`}
+                aria-label={t("post.viewProfile", { name: identity.primaryName })}
                 className="block size-11 shrink-0 cursor-pointer rounded-full"
                 href={identity.primaryHref}
               >
                 <img
-                  alt={`${identity.primaryName} avatar`}
+                  alt={t("post.avatarAlt", { name: identity.primaryName })}
                   className="size-full rounded-full border border-border object-cover"
                   decoding="async"
                   src={identity.primaryAvatar}
@@ -629,26 +643,41 @@ export function PostCommentsModal({
                 ) : null}
               </div>
             </div>
-            <Button
-              aria-label="Post options"
-              className="cursor-pointer text-coffee-muted hover:bg-transparent hover:text-primary"
-              size="icon-sm"
-              type="button"
-              variant="ghost"
-            >
-              <MoreHorizontalIcon />
-            </Button>
+            {currentUser?.userId !== post.authorUserId && post.id ? (
+              <DropdownMenu modal={false}>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    aria-label={t("comments.postOptions")}
+                    className="cursor-pointer text-coffee-muted hover:bg-transparent hover:text-primary"
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <MoreHorizontalIcon />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    className="!cursor-pointer focus:!bg-transparent focus:!text-inherit"
+                    onClick={() => setIsReportOpen(true)}
+                  >
+                    <FlagIcon className="size-4" />
+                    <span>{t("post.action.report")}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
           </header>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
             <div className="flex min-w-0 gap-3">
               <Link
-                aria-label={`View ${identity.primaryName}`}
+                aria-label={t("post.viewProfile", { name: identity.primaryName })}
                 className="block size-9 shrink-0 cursor-pointer rounded-full"
                 href={identity.primaryHref}
               >
                 <img
-                  alt={`${identity.primaryName} avatar`}
+                  alt={t("post.avatarAlt", { name: identity.primaryName })}
                   className="size-full rounded-full border border-border object-cover"
                   decoding="async"
                   src={identity.primaryAvatar}
@@ -700,7 +729,7 @@ export function PostCommentsModal({
                     type="button"
                     variant="ghost"
                   >
-                    Retry
+                    {t("common.retry")}
                   </Button>
                 </div>
               ) : comments.length > 0 ? (
@@ -716,10 +745,10 @@ export function PostCommentsModal({
               ) : (
                 <div className="rounded-md border border-dashed border-line-soft bg-surface-muted/45 px-5 py-8 text-center">
                   <p className="text-sm font-black text-espresso">
-                    No comments yet
+                    {t("comments.empty.title")}
                   </p>
                   <p className="mt-2 text-sm leading-6 text-coffee-muted">
-                    Start the conversation with your first thought.
+                    {t("comments.empty.description")}
                   </p>
                 </div>
               )}
@@ -729,7 +758,7 @@ export function PostCommentsModal({
           <footer className="border-t border-line-soft bg-surface py-2">
             <div className="flex items-center gap-4 px-3 text-foreground">
               <Button
-                aria-label="Like post"
+                aria-label={t("comments.likePost")}
                 className="h-auto cursor-pointer gap-1.5 px-0 py-0 text-sm font-bold hover:bg-transparent hover:text-primary"
                 onClick={() => onPostLikeClick(post)}
                 type="button"
@@ -742,7 +771,7 @@ export function PostCommentsModal({
                 <span>{likeCount}</span>
               </Button>
               <Button
-                aria-label="Comment on post"
+                aria-label={t("comments.commentOnPost")}
                 className="h-auto cursor-pointer gap-1.5 px-0 py-0 text-sm font-bold hover:bg-transparent hover:text-primary"
                 type="button"
                 variant="ghost"
@@ -751,7 +780,7 @@ export function PostCommentsModal({
                 <span>{commentCount}</span>
               </Button>
               <Button
-                aria-label="Share post"
+                aria-label={t("comments.sharePost")}
                 className="h-auto cursor-pointer gap-1.5 px-0 py-0 text-sm font-bold hover:bg-transparent hover:text-primary"
                 type="button"
                 variant="ghost"
@@ -780,7 +809,7 @@ export function PostCommentsModal({
             <div className="mt-4 flex min-w-0 items-center gap-3 border-t border-line-soft px-3 pt-2">
               <SmileIcon className="size-5 shrink-0 text-coffee-muted" />
               <label className="min-w-0 flex-1">
-                <span className="sr-only">Add a comment</span>
+                <span className="sr-only">{t("comments.addLabel")}</span>
                 <input
                   ref={commentInputRef}
                   className="h-10 w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted"
@@ -798,10 +827,13 @@ export function PostCommentsModal({
                   }}
                   placeholder={
                     isCommentRestricted
-                      ? "Comment restricted"
+                      ? t("comments.restricted")
                       : replyTarget
-                      ? `Reply to ${replyTarget.authorUsername ?? replyTarget.author}...`
-                      : "Add a comment..."
+                        ? t("comments.replyPlaceholder", {
+                            name:
+                              replyTarget.authorUsername ?? replyTarget.author,
+                          })
+                        : t("comments.placeholder")
                   }
                   type="text"
                   disabled={isCommentDisabled}
@@ -816,12 +848,20 @@ export function PostCommentsModal({
                 type="button"
                 variant="ghost"
               >
-                Post
+                {t("comments.submit")}
               </Button>
             </div>
           </footer>
         </aside>
       </DialogContent>
     </Dialog>
+    {post.id ? (
+      <ReportPostModal
+        blogId={post.id}
+        onOpenChange={setIsReportOpen}
+        open={isReportOpen}
+      />
+    ) : null}
+    </>
   );
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "lucide-react";
+import { useI18n } from "@/components/providers/locale-provider";
 import type { StoryItem } from "@/types/feed";
 import {
   Avatar,
@@ -18,6 +19,7 @@ type StoryRailProps = {
 const SCROLL_STEP = 500;
 
 export function StoryRail({ stories }: StoryRailProps) {
+  const { t } = useI18n();
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -50,7 +52,7 @@ export function StoryRail({ stories }: StoryRailProps) {
     <div className="flex w-full items-center gap-2">
       <Button
         aria-hidden={!canScrollLeft}
-        aria-label="Scroll stories left"
+        aria-label={t("stories.scrollLeft")}
         className="grid size-8 shrink-0 place-items-center rounded-full bg-surface shadow-md transition hover:bg-surface-muted disabled:invisible"
         disabled={!canScrollLeft}
         onClick={() => scrollBy(-SCROLL_STEP)}
@@ -68,7 +70,7 @@ export function StoryRail({ stories }: StoryRailProps) {
             const initial = (story.label || "?").slice(0, 1).toUpperCase();
             return (
               <Link
-                aria-label={`View ${story.label} story`}
+                aria-label={t("stories.view", { name: story.label })}
                 className="grid w-[4.2rem] shrink-0 justify-items-center text-center"
                 href={story.href}
                 key={story.id}
@@ -88,7 +90,7 @@ export function StoryRail({ stories }: StoryRailProps) {
           })}
 
           <Link
-            aria-label="Discover more on explore"
+            aria-label={t("stories.discoverMore")}
             className="grid w-[5.2rem] shrink-0 justify-items-center text-center"
             href="/explore"
           >
@@ -96,7 +98,7 @@ export function StoryRail({ stories }: StoryRailProps) {
               <PlusIcon className="size-6 text-primary" />
             </span>
             <span className="mt-2 block w-[4.2rem] truncate text-xs font-semibold leading-4 text-foreground">
-              Explore
+              {t("nav.explore")}
             </span>
           </Link>
         </div>
@@ -104,7 +106,7 @@ export function StoryRail({ stories }: StoryRailProps) {
 
       <Button
         aria-hidden={!canScrollRight}
-        aria-label="Scroll stories right"
+        aria-label={t("stories.scrollRight")}
         className="grid size-8 shrink-0 place-items-center rounded-full bg-surface shadow-md transition hover:bg-surface-muted disabled:invisible"
         disabled={!canScrollRight}
         onClick={() => scrollBy(SCROLL_STEP)}

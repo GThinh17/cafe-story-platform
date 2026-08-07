@@ -20,6 +20,7 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 import { likeBlog, unlikeBlog } from "@/lib/api/blogs";
 import { cn } from "@/lib/utils";
 import type { FeedPost } from "@/types/feed";
+import { useI18n } from "@/components/providers/locale-provider";
 
 type CafeRecentReviewsProps = {
   emptyDescription?: string;
@@ -70,12 +71,13 @@ function getPostImage(post: FeedPost) {
 }
 
 export function CafeRecentReviews({
-  emptyDescription = "Cafe posts will appear here once this cafe has published stories.",
-  emptyTitle = "No cafe posts yet",
+  emptyDescription,
+  emptyTitle,
   errorMessage,
   onMapViewClick,
   posts,
 }: CafeRecentReviewsProps) {
+  const { t } = useI18n();
   const { user } = useCurrentUser();
   const [gridPosts, setGridPosts] = useState(posts);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
@@ -174,9 +176,11 @@ export function CafeRecentReviews({
         </div>
       ) : gridPosts.length === 0 ? (
         <div className="rounded-md border border-line-soft bg-surface-muted px-5 py-6">
-          <p className="text-sm font-black text-espresso">{emptyTitle}</p>
+          <p className="text-sm font-black text-espresso">
+            {emptyTitle ?? t("cafeReviews.emptyTitle")}
+          </p>
           <p className="mt-2 text-sm leading-6 text-coffee-muted">
-            {emptyDescription}
+            {emptyDescription ?? t("cafeReviews.emptyDescription")}
           </p>
         </div>
       ) : (
@@ -198,7 +202,7 @@ export function CafeRecentReviews({
               >
                 <div className="relative">
                   <img
-                    alt={`${identity.primaryName} post`}
+                    alt={t("cafeReviews.postAlt", { name: identity.primaryName })}
                     className="aspect-square w-full object-cover"
                     decoding="async"
                     loading="lazy"
@@ -212,12 +216,14 @@ export function CafeRecentReviews({
                 <CardContent className="flex flex-col gap-4 p-4">
                   <div className="flex min-w-0 items-center gap-3">
                     <Link
-                      aria-label={`View ${identity.primaryName}`}
+                      aria-label={t("post.viewProfile", {
+                        name: identity.primaryName,
+                      })}
                       className="block size-10 shrink-0 cursor-pointer overflow-hidden rounded-full border border-border/40 bg-surface-muted"
                       href={identity.primaryHref}
                     >
                       <img
-                        alt={`${identity.primaryName} avatar`}
+                        alt={t("post.avatarAlt", { name: identity.primaryName })}
                         className="size-full object-cover"
                         decoding="async"
                         loading="lazy"
@@ -278,7 +284,7 @@ export function CafeRecentReviews({
                       ))}
                     </div>
                     <Button
-                      aria-label="Bookmark"
+                      aria-label={t("cafeReviews.bookmark")}
                       className="h-auto cursor-pointer px-0 py-0 text-espresso hover:bg-transparent hover:text-primary"
                       type="button"
                       variant="ghost"

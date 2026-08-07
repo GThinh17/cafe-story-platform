@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useI18n } from "@/components/providers/locale-provider";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { ApiError } from "@/lib/api/client";
 import { getCafePagesByOwnerId } from "@/lib/api/cafes";
@@ -98,6 +99,7 @@ async function resolveRedirectPath(payment: PaymentResponse, userId: string): Pr
 }
 
 export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const { user } = useCurrentUser();
   const flow = props.flow;
@@ -106,7 +108,7 @@ export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
   const [state, setState] = useState<VerificationState>({
     error: null,
     isChecking: true,
-    message: "Checking payment status...",
+    message: t("payments.checking"),
     status: "checking",
   });
 
@@ -119,7 +121,7 @@ export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
     setState({
       error: null,
       isChecking: true,
-      message: "Checking payment status...",
+      message: t("payments.checking"),
       status: "checking",
     });
 
@@ -127,9 +129,9 @@ export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
       if (flow === "stripe") {
         if (!paymentId) {
           setState({
-            error: "Missing paymentId in the Stripe return URL.",
+            error: t("payments.missingStripeId"),
             isChecking: false,
-            message: "Payment cannot be verified.",
+            message: t("payments.cannotVerify"),
             status: "failed",
           });
           return;
@@ -141,7 +143,7 @@ export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
           setState({
             error: null,
             isChecking: false,
-            message: "Payment verified. Redirecting...",
+            message: t("payments.verified"),
             status: "paid",
           });
           const redirectPath = await resolveRedirectPath(payment, user?.userId ?? "");
@@ -152,7 +154,9 @@ export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
         setState({
           error: null,
           isChecking: false,
-          message: `Current payment status: ${payment.paymentStatus}`,
+          message: t("payments.currentStatus", {
+            status: payment.paymentStatus,
+          }),
           status: "pending",
         });
         return;
@@ -160,9 +164,9 @@ export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
 
       if (!vnpaySearchParams || Array.from(vnpaySearchParams.keys()).length === 0) {
         setState({
-          error: "Missing VNPAY return parameters.",
+          error: t("payments.missingVnpayParams"),
           isChecking: false,
-          message: "Payment cannot be verified.",
+          message: t("payments.cannotVerify"),
           status: "failed",
         });
         return;
@@ -174,7 +178,7 @@ export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
         setState({
           error: null,
           isChecking: false,
-          message: "Payment verified. Redirecting...",
+          message: t("payments.verified"),
           status: "paid",
         });
         const vnpayPaymentId = response.paymentId;
@@ -195,7 +199,12 @@ export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
       setState({
         error: response.message ?? null,
         isChecking: false,
-        message: `VNPAY status: ${response.status ?? response.paymentStatus ?? "unknown"}`,
+        message: t("payments.vnpayStatus", {
+          status:
+            response.status ??
+            response.paymentStatus ??
+            t("payments.unknownStatus"),
+        }),
         status:
           String(response.status ?? "").toLowerCase() === "pending"
             ? "pending"
@@ -203,13 +212,13 @@ export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
       });
     } catch (error) {
       setState({
-        error: getErrorMessage(error, "Unable to verify payment."),
+        error: getErrorMessage(error, t("payments.verifyError")),
         isChecking: false,
-        message: "Payment verification failed.",
+        message: t("payments.verifyFailed"),
         status: "failed",
       });
     }
-  }, [flow, paymentId, router, user?.userId, vnpaySearchParams]);
+  }, [flow, paymentId, router, t, user?.userId, vnpaySearchParams]);
 
   const syncAndVerify = useCallback(async () => {
     if (!paymentId) return;
@@ -217,7 +226,7 @@ export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
     setState({
       error: null,
       isChecking: true,
-      message: "Syncing with Stripe...",
+      message: t("payments.syncing"),
       status: "checking",
     });
 
@@ -228,7 +237,7 @@ export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
         setState({
           error: null,
           isChecking: false,
-          message: "Payment verified. Redirecting...",
+          message: t("payments.verified"),
           status: "paid",
         });
         const redirectPath = await resolveRedirectPath(payment, user?.userId ?? "");
@@ -239,18 +248,20 @@ export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
       setState({
         error: null,
         isChecking: false,
-        message: `Current payment status: ${payment.paymentStatus}`,
+        message: t("payments.currentStatus", {
+          status: payment.paymentStatus,
+        }),
         status: "pending",
       });
     } catch (error) {
       setState({
-        error: getErrorMessage(error, "Failed to sync payment status."),
+        error: getErrorMessage(error, t("payments.syncError")),
         isChecking: false,
-        message: "Sync failed.",
+        message: t("payments.syncFailed"),
         status: "failed",
       });
     }
-  }, [paymentId, router, user?.userId]);
+  }, [paymentId, router, t, user?.userId]);
 
   useEffect(() => {
     void verifyPayment();
@@ -263,7 +274,7 @@ export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
     <Card>
       <CardHeader>
         <CardTitle>
-          {flow === "stripe" ? "Stripe payment" : "VNPAY payment"}
+          {t(flow === "stripe" ? "payments.stripeTitle" : "payments.vnpayTitle")}
         </CardTitle>
         <CardDescription>{state.message}</CardDescription>
       </CardHeader>
@@ -272,18 +283,18 @@ export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
           {state.status === "failed" ? <AlertCircle /> : <CheckCircle2 />}
           <AlertTitle>
             {state.isChecking
-              ? "Verification in progress"
+              ? t("payments.inProgress")
               : isPaid
-                ? "Payment verified"
-                : "Payment not completed"}
+                ? t("payments.verifiedTitle")
+                : t("payments.notCompleted")}
           </AlertTitle>
           <AlertDescription>
             {state.error ??
               (isPaid
-                ? "You will be redirected shortly."
+                ? t("payments.redirectShortly")
                 : isStripePending
-                  ? "Stripe may still be processing. Click 'Check again' to sync."
-                  : "You can check again after the payment provider finishes processing.")}
+                  ? t("payments.stripeProcessing")
+                  : t("payments.checkLater"))}
           </AlertDescription>
         </Alert>
       </CardContent>
@@ -295,7 +306,9 @@ export function PaymentReturnStatus(props: PaymentReturnStatusProps) {
             type="button"
           >
             <RefreshCw data-icon="inline-start" />
-            {state.isChecking ? "Checking..." : "Check again"}
+            {state.isChecking
+              ? t("payments.checking.short")
+              : t("payments.checkAgain")}
           </Button>
         </CardFooter>
       ) : null}

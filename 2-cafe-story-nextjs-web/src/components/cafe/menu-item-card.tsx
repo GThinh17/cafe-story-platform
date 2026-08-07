@@ -1,3 +1,6 @@
+"use client";
+
+import { useI18n } from "@/components/providers/locale-provider";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -13,13 +16,14 @@ function formatMenuPrice(price: number) {
 }
 
 function MenuItemImageGrid({ item }: { item: CafeMenuItem }) {
+  const { t } = useI18n();
   const images =
     item.images ??
     (item.image
       ? [
           {
             src: item.image,
-            alt: `${item.name} menu item`,
+            alt: t("cafe.menuItemAlt", { name: item.name }),
             label: item.name,
           },
         ]

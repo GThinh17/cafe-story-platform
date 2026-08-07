@@ -1,3 +1,5 @@
+
+"use client";
 import {
   BadgeIcon,
   HeartIcon,
@@ -5,6 +7,9 @@ import {
   TrendingUpIcon,
   WalletIcon,
 } from "lucide-react";
+
+
+import { useI18n } from "@/components/providers/locale-provider";
 import { Card } from "@/components/ui/card";
 import type { ReviewerActivity } from "@/features/reviewer-dashboard/reviewer-dashboard.types";
 
@@ -23,13 +28,21 @@ const activityIcons = {
 export function ReviewerRecentActivityPanel({
   activities,
 }: ReviewerRecentActivityPanelProps) {
+  const { t } = useI18n();
+
   return (
     <Card className="p-5">
-      <p className="text-sm font-black text-muted">Recent activity</p>
-      <h2 className="mt-1 text-xl font-black text-espresso">Latest signals</h2>
+      <p className="text-sm font-black text-muted">
+        {t("reviewer.activity.title")}
+      </p>
+      <h2 className="mt-1 text-xl font-black text-espresso">
+        {t("reviewer.activity.subtitle")}
+      </h2>
 
       {activities.length === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">No activity yet.</p>
+        <p className="mt-4 text-sm text-muted-foreground">
+          {t("reviewer.activity.empty")}
+        </p>
       ) : (
         <div className="mt-5 flex flex-col gap-4">
           {activities.map((activity) => {

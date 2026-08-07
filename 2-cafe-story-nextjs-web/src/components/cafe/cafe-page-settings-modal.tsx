@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useI18n } from "@/components/providers/locale-provider";
 import { PricingPlanModal } from "@/components/layout/pricing-plan-modal";
 import {
   Dialog,
@@ -21,24 +22,25 @@ export function CafePageSettingsModal({
   onOpenChange,
   open,
 }: CafePageSettingsModalProps) {
+  const { t } = useI18n();
   const [isPricingOpen, setIsPricingOpen] = useState(false);
 
   return (
     <>
       <Dialog onOpenChange={onOpenChange} open={open}>
         <DialogContent className="w-[min(360px,calc(100vw-32px))] p-0">
-          <DialogTitle className="sr-only">Cafe page settings</DialogTitle>
+          <DialogTitle className="sr-only">{t("cafe.settings.title")}</DialogTitle>
           <DialogDescription className="sr-only">
-            Choose a cafe page management action.
+            {t("cafe.settings.srDescription")}
           </DialogDescription>
           <div className="flex flex-col text-center">
             <button
               className="min-h-12 px-6 text-sm font-semibold text-muted transition disabled:cursor-not-allowed disabled:opacity-60"
               disabled
-              title="Cafe menu editing is not available yet."
+              title={t("cafe.settings.editMenuDisabled")}
               type="button"
             >
-              Edit menu
+              {t("cafe.settings.editMenu")}
             </button>
             <Separator />
             <DialogClose asChild>
@@ -46,7 +48,7 @@ export function CafePageSettingsModal({
                 className="flex min-h-12 items-center justify-center px-6 text-sm font-semibold text-foreground transition hover:bg-surface-muted"
                 href="/cafes/edit"
               >
-                Edit cafe page
+                {t("cafe.settings.editPage")}
               </Link>
             </DialogClose>
             <Separator />
@@ -58,7 +60,7 @@ export function CafePageSettingsModal({
               }}
               type="button"
             >
-              Renew subscription
+              {t("cafe.settings.renew")}
             </button>
             <Separator />
             <DialogClose asChild>
@@ -66,7 +68,7 @@ export function CafePageSettingsModal({
                 className="min-h-12 px-6 text-sm text-foreground transition hover:bg-surface-muted"
                 type="button"
               >
-                Cancel
+                {t("common.cancel")}
               </button>
             </DialogClose>
           </div>

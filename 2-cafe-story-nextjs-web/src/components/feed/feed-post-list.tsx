@@ -22,6 +22,7 @@ import {
   unshareBlog,
 } from "@/lib/api/blogs";
 import { getMixedFeed } from "@/lib/api/feed";
+import { useI18n } from "@/components/providers/locale-provider";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import type { FeedPost, FeedRenderableItem } from "@/types/feed";
 
@@ -42,6 +43,7 @@ export function FeedPostList({
   pageSize = 20,
   items,
 }: FeedPostListProps) {
+  const { t } = useI18n();
   const [feedItems, setFeedItems] = useState(items);
   const [nextCursor, setNextCursor] = useState<string | null>(initialNextCursor);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -165,13 +167,13 @@ export function FeedPostList({
         cursor: nextCursor,
         size: pageSize,
       });
-      const nextItems = mapMixedFeedToRenderableItems(response);
+      const nextItems = mapMixedFeedToRenderableItems(response, t);
 
       setFeedItems((currentItems) => [...currentItems, ...nextItems]);
       setNextCursor(response.nextCursor ?? null);
       setHasMore(Boolean(response.hasMore && response.nextCursor));
     } catch {
-      setLoadMoreError("Unable to load more posts.");
+      setLoadMoreError(t("feed.loadMoreError.message"));
     } finally {
       isLoadingMoreRef.current = false;
       setIsLoadingMore(false);
@@ -284,7 +286,7 @@ export function FeedPostList({
   if (errorMessage) {
     return (
       <Alert>
-        <AlertTitle>Feed unavailable</AlertTitle>
+        <AlertTitle>{t("feed.error.title")}</AlertTitle>
         <AlertDescription>{errorMessage}</AlertDescription>
       </Alert>
     );
@@ -293,10 +295,9 @@ export function FeedPostList({
   if (items.length === 0) {
     return (
       <Alert>
-        <AlertTitle>No posts yet</AlertTitle>
+        <AlertTitle>{t("feed.empty.title")}</AlertTitle>
         <AlertDescription>
-          Your personalized Cafe Story feed will appear here once there are posts
-          to recommend.
+          {t("feed.empty.description")}
         </AlertDescription>
       </Alert>
     );
@@ -340,13 +341,13 @@ export function FeedPostList({
 
       {isLoadingMore ? (
         <p className="py-2 text-center text-sm font-semibold text-muted">
-          Loading more posts...
+          {t("feed.loadingMore")}
         </p>
       ) : null}
 
       {loadMoreError ? (
         <Alert>
-          <AlertTitle>Unable to load more posts</AlertTitle>
+          <AlertTitle>{t("feed.loadMoreError.title")}</AlertTitle>
           <AlertDescription>{loadMoreError}</AlertDescription>
         </Alert>
       ) : null}
@@ -383,7 +384,9 @@ export function FeedPostList({
       >
         <DialogContent className="max-w-sm p-0 overflow-hidden rounded-2xl">
           <div className="px-6 pt-6 pb-2">
-            <DialogTitle className="text-base font-bold">Chia sẻ bài viết</DialogTitle>
+            <DialogTitle className="text-base font-bold">
+              {t("feed.share.title")}
+            </DialogTitle>
           </div>
           {shareModalPost ? (
             <div className="mx-6 mb-4 rounded-xl border border-border bg-surface-muted p-4">
@@ -400,7 +403,7 @@ export function FeedPostList({
               </div>
               {shareModalPost.image ? (
                 <img
-                  alt="post preview"
+                  alt={t("feed.share.previewAlt")}
                   className="w-full rounded-lg object-cover aspect-video mb-3"
                   src={shareModalPost.image}
                 />
@@ -411,7 +414,7 @@ export function FeedPostList({
             </div>
           ) : null}
           <p className="px-6 pb-1 text-xs text-muted">
-            Bài viết sẽ xuất hiện trên trang cá nhân của bạn.
+            {t("feed.share.notice")}
           </p>
           <div className="flex gap-2 px-6 pb-6 pt-3">
             <Button
@@ -419,14 +422,14 @@ export function FeedPostList({
               variant="outline"
               onClick={() => setShareModalPost(null)}
             >
-              Hủy
+              {t("common.cancel")}
             </Button>
             <Button
               className="flex-1"
               disabled={isSharePending}
               onClick={() => shareModalPost && void handleConfirmShare(shareModalPost)}
             >
-              {isSharePending ? "Đang chia sẻ..." : "Chia sẻ ngay"}
+              {isSharePending ? t("feed.share.pending") : t("feed.share.confirm")}
             </Button>
           </div>
         </DialogContent>
@@ -441,7 +444,9 @@ export function FeedPostList({
       >
         <DialogContent className="max-w-sm p-0 overflow-hidden rounded-2xl">
           <div className="px-6 pt-6 pb-2">
-            <DialogTitle className="text-base font-bold">Gỡ chia sẻ?</DialogTitle>
+            <DialogTitle className="text-base font-bold">
+              {t("feed.unshare.title")}
+            </DialogTitle>
           </div>
           {unshareConfirmPost ? (
             <div className="mx-6 mb-4 rounded-xl border border-border bg-surface-muted p-4">
@@ -459,7 +464,7 @@ export function FeedPostList({
             </div>
           ) : null}
           <p className="px-6 pb-1 text-xs text-muted">
-            Bài viết sẽ bị gỡ khỏi trang cá nhân của bạn.
+            {t("feed.unshare.notice")}
           </p>
           <div className="flex gap-2 px-6 pb-6 pt-3">
             <Button
@@ -467,7 +472,7 @@ export function FeedPostList({
               variant="outline"
               onClick={() => setUnshareConfirmPost(null)}
             >
-              Không
+              {t("feed.unshare.keep")}
             </Button>
             <Button
               className="flex-1"
@@ -477,7 +482,7 @@ export function FeedPostList({
                 unshareConfirmPost && void handleConfirmUnshare(unshareConfirmPost)
               }
             >
-              {isSharePending ? "Đang gỡ..." : "Gỡ chia sẻ"}
+              {isSharePending ? t("feed.unshare.pending") : t("feed.unshare.confirm")}
             </Button>
           </div>
         </DialogContent>

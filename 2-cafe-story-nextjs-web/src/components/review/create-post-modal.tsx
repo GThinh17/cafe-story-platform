@@ -41,6 +41,7 @@ import {
 import type { BlogCreateRequest, BlogResponse } from "@/types/blog";
 import type { CafePageResponse } from "@/types/cafe";
 import type { ReviewComposerModel, ReviewDraftHint } from "@/types/review";
+import { useI18n } from "@/components/providers/locale-provider";
 
 type SelectedImage = {
   id: string;
@@ -96,6 +97,7 @@ export function CreatePostModal({
   onBack,
   onCreated,
 }: CreatePostModalProps) {
+  const { t } = useI18n();
   const selectedImagesRef = useRef<SelectedImage[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
@@ -271,7 +273,7 @@ export function CreatePostModal({
     event.preventDefault();
 
     if (!trimmedCaption) {
-      setErrorMessage("Please enter a caption before posting.");
+      setErrorMessage(t("createPost.captionRequired"));
       return;
     }
 
@@ -314,7 +316,7 @@ export function CreatePostModal({
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Unable to create post. Please try again.",
+          : t("createPost.createError"),
       );
     } finally {
       setIsSubmitting(false);
@@ -332,7 +334,7 @@ export function CreatePostModal({
             <div className="flex items-center gap-3">
               {onBack ? (
                 <Button
-                  aria-label="Back to image setup"
+                  aria-label={t("createPost.back")}
                   className="size-9 text-espresso"
                   disabled={isSubmitting}
                   onClick={handleBack}
@@ -356,10 +358,10 @@ export function CreatePostModal({
               {isSubmitting ? (
                 <>
                   <LoaderCircleIcon data-icon="inline-start" className="animate-spin" />
-                  Posting
+                  {t("createPost.submitting")}
                 </>
               ) : (
-                "Post"
+                t("createPost.submit")
               )}
             </Button>
           </header>
@@ -368,7 +370,11 @@ export function CreatePostModal({
             {selectedImages.length > 0 ? (
               <section className="flex flex-col gap-4">
                 <div className="flex items-center justify-between gap-4 text-sm text-espresso">
-                  <h3>Selected Photos ({selectedImages.length})</h3>
+                  <h3>
+                    {t("createPost.selectedPhotos", {
+                      count: selectedImages.length,
+                    })}
+                  </h3>
                   {onBack ? (
                     <button
                       className="text-sm font-medium text-primary hover:underline disabled:opacity-50"
@@ -411,7 +417,9 @@ export function CreatePostModal({
             ) : null}
 
             <div className="flex flex-col gap-4">
-              <span className="block text-sm text-espresso">Caption</span>
+              <span className="block text-sm text-espresso">
+                {t("createPost.captionLabel")}
+              </span>
               <div className="relative">
                 <Textarea
                   className="min-h-32 resize-none rounded-none border-line-soft bg-surface-muted px-4 py-4 outline-none focus:border-line-soft focus:outline-none focus:ring-0 focus-visible:border-line-soft focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
@@ -419,7 +427,7 @@ export function CreatePostModal({
                   onChange={handleCaptionChange}
                   onKeyDown={handleCaptionKeyDown}
                   onSelect={handleCaptionSelect}
-                  placeholder="Share your experience... Type @ to tag a user or cafe page."
+                  placeholder={t("createPost.captionPlaceholder")}
                   ref={textareaRef}
                   value={caption}
                 />
@@ -438,7 +446,7 @@ export function CreatePostModal({
             <section className="flex flex-col gap-2 rounded-md bg-surface-muted px-4 py-4">
               <div className="flex items-center justify-between gap-4">
                 <label className="text-sm font-medium text-espresso">
-                  Location
+                  {t("createPost.location")}
                 </label>
                 <Button
                   className="h-auto p-0 text-sm font-medium text-espresso"
@@ -447,7 +455,9 @@ export function CreatePostModal({
                   type="button"
                   variant="link"
                 >
-                  {location ? "Change" : "Add location"}
+                  {location
+                    ? t("createPost.changeLocation")
+                    : t("createPost.addLocation")}
                 </Button>
               </div>
               {location ? (
@@ -463,12 +473,12 @@ export function CreatePostModal({
                     type="button"
                     variant="link"
                   >
-                    Remove
+                    {t("createPost.removeLocation")}
                   </Button>
                 </div>
               ) : (
                 <p className="text-xs leading-5 text-muted">
-                  Add a location to help others discover your post.
+                  {t("createPost.locationHint")}
                 </p>
               )}
             </section>
@@ -480,7 +490,7 @@ export function CreatePostModal({
                     className="text-sm font-medium text-espresso"
                     htmlFor="post-as-cafe-page"
                   >
-                    Post as cafe page
+                    {t("createPost.postAsCafePage")}
                   </label>
                   <Switch
                     checked={postAsCafePage}
@@ -490,7 +500,9 @@ export function CreatePostModal({
                   />
                 </div>
                 <p className="max-w-[520px] text-xs leading-5 text-muted">
-                  This post will appear under {ownedCafePage.name}.
+                  {t("createPost.postAsCafePageHint", {
+                    name: ownedCafePage.name,
+                  })}
                 </p>
               </section>
             ) : null}
@@ -501,7 +513,7 @@ export function CreatePostModal({
                   className="text-sm font-medium text-espresso"
                   htmlFor="turn-off-commenting"
                 >
-                  Turn off commenting
+                  {t("createPost.turnOffCommenting")}
                 </label>
                 <Switch
                   checked={turnOffCommenting}
@@ -511,8 +523,7 @@ export function CreatePostModal({
                 />
               </div>
               <p className="max-w-[520px] text-xs leading-5 text-muted">
-                You can change this later by going to the ... menu at the top of
-                your post.
+                {t("createPost.turnOffCommentingHint")}
               </p>
             </section>
 
@@ -530,11 +541,11 @@ export function CreatePostModal({
                 <span className="grid size-4 place-items-center rounded-full border border-muted text-[10px]">
                   i
                 </span>
-                Posts are visible to your followers immediately.
+                {t("createPost.visibilityNote")}
               </p>
               <p className="flex items-center gap-2">
                 <span aria-hidden="true">o</span>
-                Public
+                {t("createPost.public")}
               </p>
             </footer>
           </div>

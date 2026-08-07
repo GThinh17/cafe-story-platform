@@ -24,6 +24,8 @@ import {
 } from "@/lib/api/users";
 import { DEFAULT_AVATAR_IMAGE } from "@/lib/avatar";
 import type { UserResponse } from "@/types/user";
+import { useI18n } from "@/components/providers/locale-provider";
+import type { TranslationKey } from "@/lib/i18n";
 
 type ProfileUserListType = "followers" | "following";
 
@@ -37,20 +39,20 @@ type ProfileUserListModalProps = {
 const modalCopy: Record<
   ProfileUserListType,
   {
-    description: string;
-    empty: string;
-    title: string;
+    descriptionKey: TranslationKey;
+    emptyKey: TranslationKey;
+    titleKey: TranslationKey;
   }
 > = {
   followers: {
-    description: "People following this profile.",
-    empty: "No followers yet.",
-    title: "Followers",
+    descriptionKey: "profile.followers.description",
+    emptyKey: "profile.followers.empty",
+    titleKey: "profile.followers.title",
   },
   following: {
-    description: "People this profile is following.",
-    empty: "No following yet.",
-    title: "Following",
+    descriptionKey: "profile.following.description",
+    emptyKey: "profile.following.empty",
+    titleKey: "profile.following.title",
   },
 };
 
@@ -98,6 +100,7 @@ export function ProfileUserListModal({
   profileUserId,
   type,
 }: ProfileUserListModalProps) {
+  const { t } = useI18n();
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -138,7 +141,7 @@ export function ProfileUserListModal({
         }
       } catch {
         if (isActive) {
-          setErrorMessage("Unable to load users.");
+          setErrorMessage(t("profile.userList.loadError"));
           setUsers([]);
         }
       } finally {
@@ -199,7 +202,7 @@ export function ProfileUserListModal({
     if (users.length === 0) {
       return (
         <p className="p-6 text-center text-sm font-semibold text-muted">
-          {copy.empty}
+          {t(copy.emptyKey)}
         </p>
       );
     }
@@ -249,26 +252,28 @@ export function ProfileUserListModal({
         </div>
       </ScrollArea>
     );
-  }, [copy.empty, errorMessage, filteredUsers, isLoading, onOpenChange, users]);
+  }, [copy.emptyKey, errorMessage, filteredUsers, isLoading, onOpenChange, t, users]);
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="grid h-[min(560px,calc(100vh-48px))] w-[min(420px,calc(100vw-32px))] grid-rows-[auto_auto_minmax(0,1fr)] p-0">
         <div className="border-b border-border px-5 py-4">
           <DialogTitle className="text-lg font-black text-foreground">
-            {copy.title}
+            {t(copy.titleKey)}
           </DialogTitle>
           <DialogDescription className="sr-only">
-            {copy.description}
+            {t(copy.descriptionKey)}
           </DialogDescription>
         </div>
 
         <div className="px-4 pt-3">
           <Input
-            aria-label={`Search ${copy.title.toLowerCase()}`}
+            aria-label={t("profile.userList.searchAria", {
+              list: t(copy.titleKey).toLowerCase(),
+            })}
             className="h-9 focus:border-line-soft focus:ring-0 focus-visible:border-line-soft focus-visible:ring-0"
             onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search"
+            placeholder={t("common.search")}
             value={searchQuery}
           />
         </div>

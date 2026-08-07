@@ -1,3 +1,6 @@
+"use client";
+
+import { useI18n } from "@/components/providers/locale-provider";
 import { MenuSectionTitle } from "@/components/cafe/menu-section-title";
 import type { CafeMenuItem } from "@/types/cafe";
 
@@ -10,12 +13,14 @@ function formatMenuPrice(price: number) {
 }
 
 export function MenuSeasonalSection({ items }: MenuSeasonalSectionProps) {
+  const { t } = useI18n();
+
   return (
     <section className="border-y border-line-soft bg-surface-muted/70 px-6 py-14 sm:px-10">
       <MenuSectionTitle
         className="mb-8"
-        eyebrow="Limited Time"
-        title="Seasonal Offerings"
+        eyebrow={t("cafeMenu.seasonal.eyebrow")}
+        title={t("cafeMenu.seasonal.title")}
       />
       <div className="mx-auto max-w-[620px] divide-y divide-line-soft">
         {items.map((item) => (

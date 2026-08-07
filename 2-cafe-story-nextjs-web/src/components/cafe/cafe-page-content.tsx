@@ -9,10 +9,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { mapBlogResponsesToFeedPosts } from "@/features/blogs/blog-feed-adapter";
 import { useBfcacheRestoreEffect } from "@/hooks/use-bfcache-restore";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useI18n } from "@/components/providers/locale-provider";
 import { ApiError } from "@/lib/api/client";
 import { getBlogsByCafePageId, getCafePageById } from "@/lib/api/cafes";
 import { imageWidths, optimizeImageUrl } from "@/lib/image-optimizer";
 import { mockCafeMenu } from "@/mocks/cafes";
+import type { Translate } from "@/lib/i18n";
 import type { CafePageResponse, CafeSummary } from "@/types/cafe";
 import type { FeedPost } from "@/types/feed";
 
@@ -48,13 +50,13 @@ function formatCount(value: number | null | undefined) {
   }).format(value ?? 0);
 }
 
-function formatStatus(cafe: CafePageResponse) {
+function formatStatus(cafe: CafePageResponse, t: Translate) {
   if (cafe.pageActive === false) {
-    return "Inactive";
+    return t("cafe.status.inactive");
   }
 
   if (!cafe.status) {
-    return cafe.pageActive ? "Active" : "Cafe Story";
+    return cafe.pageActive ? t("cafe.status.active") : t("cafe.brandName");
   }
 
   return cafe.status
@@ -75,16 +77,19 @@ function formatLocation(cafe: CafePageResponse) {
     .join(", ");
 }
 
-function buildCafeTags(cafe: CafePageResponse) {
+function buildCafeTags(cafe: CafePageResponse, t: Translate) {
   return [
     cafe.regionCity,
     cafe.regionArea,
-    `${formatCount(cafe.followerCount)} followers`,
-    `${formatCount(cafe.likeCount)} likes`,
+    t("cafe.followerCount", { count: formatCount(cafe.followerCount) }),
+    t("cafe.likeCountLabel", { count: formatCount(cafe.likeCount) }),
   ].filter(Boolean) as string[];
 }
 
-function mapCafePageResponseToCafeSummary(cafe: CafePageResponse): CafeSummary {
+function mapCafePageResponseToCafeSummary(
+  cafe: CafePageResponse,
+  t: Translate,
+): CafeSummary {
   const avatarImage = optimizeImageUrl(
     firstNonEmpty([cafe.avatarUrl, cafe.coverUrl, DEFAULT_CAFE_IMAGE]) ??
       DEFAULT_CAFE_IMAGE,
@@ -95,10 +100,12 @@ function mapCafePageResponseToCafeSummary(cafe: CafePageResponse): CafeSummary {
       width: imageWidths.cover,
     }) || undefined;
   const rating =
-    typeof cafe.ratingScore === "number" ? cafe.ratingScore.toFixed(1) : "New";
-  const tags = buildCafeTags(cafe);
+    typeof cafe.ratingScore === "number"
+      ? cafe.ratingScore.toFixed(1)
+      : t("cafe.newRating");
+  const tags = buildCafeTags(cafe, t);
   const description =
-    cafe.description?.trim() || `${cafe.name} is now on CafeStory.`;
+    cafe.description?.trim() || t("cafe.defaultDescription", { name: cafe.name });
 
   return {
     id: cafe.id,
@@ -106,27 +113,31 @@ function mapCafePageResponseToCafeSummary(cafe: CafePageResponse): CafeSummary {
     name: cafe.name,
     location: formatLocation(cafe),
     address: cafe.address,
-    type: cafe.regionCity ?? "Cafe page",
+    type: cafe.regionCity ?? t("home.cafePageLabel"),
     rating,
-    reviewCount: `${formatCount(cafe.ratingCount)} ratings`,
+    reviewCount: t("cafe.ratingCount", { count: formatCount(cafe.ratingCount) }),
     distance: "",
     priceLevel: "",
-    hours: cafe.pageActive ? "Active page" : "Cafe Story",
-    status: formatStatus(cafe),
-    photoCount: `${formatCount(cafe.likeCount)} likes`,
+    hours: cafe.pageActive ? t("cafe.status.activePage") : t("cafe.brandName"),
+    status: formatStatus(cafe, t),
+    photoCount: t("cafe.likeCountLabel", { count: formatCount(cafe.likeCount) }),
     likeCount: cafe.likeCount ?? 0,
     isLiked: cafe.isLiked ?? false,
     isFollowing: cafe.isFollowing ?? false,
     pageActive: cafe.pageActive,
     image: avatarImage,
     avatarImage,
-    avatarImageAlt: `${cafe.name} avatar`,
+    avatarImageAlt: t("cafe.avatarAlt", { name: cafe.name }),
     coverImage,
-    coverImageAlt: `${cafe.name} cover image`,
+    coverImageAlt: t("cafe.coverAlt", { name: cafe.name }),
     gallery: [coverImage, avatarImage].filter(Boolean) as string[],
     tags,
-    amenities: tags.length > 0 ? tags : ["Cafe Story page"],
-    popularDrinks: ["View menu", "Follow", "Stories"],
+    amenities: tags.length > 0 ? tags : [t("cafe.brandPage")],
+    popularDrinks: [
+      t("cafe.action.viewMenu"),
+      t("cafe.action.follow"),
+      t("cafe.action.stories"),
+    ],
     description,
     regionArea: cafe.regionArea,
     regionCity: cafe.regionCity,
@@ -134,22 +145,22 @@ function mapCafePageResponseToCafeSummary(cafe: CafePageResponse): CafeSummary {
     regionStreet: cafe.regionStreet,
     regionWard: cafe.regionWard,
     featureSummary: description,
-    peakHours: `${formatCount(cafe.followerCount)} followers`,
+    peakHours: t("cafe.followerCount", { count: formatCount(cafe.followerCount) }),
     communityPhotos: [coverImage, avatarImage]
       .filter(isNonEmptyString)
       .map((image) => ({
         image,
-        alt: `${cafe.name} photo`,
+        alt: t("cafe.photoAlt", { name: cafe.name }),
       })),
   };
 }
 
-function getCafePageErrorMessage(error: unknown) {
+function getCafePageErrorMessage(error: unknown, t: Translate) {
   if (error instanceof ApiError) {
-    return error.statusCode === 404 ? "Cafe not found." : error.message;
+    return error.statusCode === 404 ? t("cafe.notFound") : error.message;
   }
 
-  return "Unable to load cafe page.";
+  return t("cafe.loadError");
 }
 
 function CafePageLoadingState() {
@@ -229,6 +240,7 @@ function CafePageErrorState({ message }: { message: string }) {
 }
 
 export function CafePageContent({ cafePageId }: CafePageContentProps) {
+  const { t } = useI18n();
   const params = useParams<{ id?: string | string[] }>();
   const { user: currentUser, isLoading: isAuthLoading } = useCurrentUser();
   const cafeRequestIdRef = useRef(0);
@@ -270,7 +282,7 @@ export function CafePageContent({ cafePageId }: CafePageContentProps) {
 
     if (!idToFetch) {
       setIsCafeLoading(false);
-      setCafeError("Cafe page id is missing.");
+      setCafeError(t("cafe.missingId"));
       return null;
     }
 
@@ -281,7 +293,7 @@ export function CafePageContent({ cafePageId }: CafePageContentProps) {
         return null;
       }
 
-      const nextCafe = mapCafePageResponseToCafeSummary(response);
+      const nextCafe = mapCafePageResponseToCafeSummary(response, t);
 
       setCafe(nextCafe);
 
@@ -292,7 +304,7 @@ export function CafePageContent({ cafePageId }: CafePageContentProps) {
       }
 
       setCafe(null);
-      setCafeError(getCafePageErrorMessage(requestError));
+      setCafeError(getCafePageErrorMessage(requestError, t));
 
       return null;
     } finally {
@@ -300,7 +312,7 @@ export function CafePageContent({ cafePageId }: CafePageContentProps) {
         setIsCafeLoading(false);
       }
     }
-  }, [decodedCafePageId]);
+  }, [decodedCafePageId, t]);
 
   const loadCafeBlogs = useCallback(
     async (
@@ -342,7 +354,7 @@ export function CafePageContent({ cafePageId }: CafePageContentProps) {
           return;
         }
 
-        const nextPosts = mapBlogResponsesToFeedPosts(response.items);
+        const nextPosts = mapBlogResponsesToFeedPosts(response.items, t);
 
         setCafePosts((currentPosts) =>
           isFirstPage ? nextPosts : [...currentPosts, ...nextPosts],
@@ -361,7 +373,7 @@ export function CafePageContent({ cafePageId }: CafePageContentProps) {
         setBlogsError(
           requestError instanceof ApiError
             ? requestError.message
-            : "Unable to load cafe posts.",
+            : t("cafe.posts.loadError"),
         );
         setCursor(null);
         setHasMore(false);
@@ -371,7 +383,7 @@ export function CafePageContent({ cafePageId }: CafePageContentProps) {
         }
       }
     },
-    [decodedCafePageId],
+    [decodedCafePageId, t],
   );
 
   useEffect(() => {
@@ -421,7 +433,7 @@ export function CafePageContent({ cafePageId }: CafePageContentProps) {
   }
 
   if (cafeError || !cafe) {
-    return <CafePageErrorState message={cafeError ?? "Cafe not found."} />;
+    return <CafePageErrorState message={cafeError ?? t("cafe.notFound")} />;
   }
 
   if (cafe.pageActive === false) {

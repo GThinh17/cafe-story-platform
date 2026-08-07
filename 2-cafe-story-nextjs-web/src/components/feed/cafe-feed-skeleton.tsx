@@ -1,4 +1,7 @@
+"use client";
+
 import type * as React from "react";
+import { useI18n } from "@/components/providers/locale-provider";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -111,10 +114,12 @@ function SidebarSkeleton() {
 }
 
 export function CafeFeedSkeleton() {
+  const { t } = useI18n();
+
   return (
     <div
       aria-busy="true"
-      aria-label="Loading cafe feed"
+      aria-label={t("feed.skeleton.label")}
       className="min-h-screen w-full max-w-full overflow-x-clip bg-background text-foreground"
     >
       <main className="grid w-full max-w-[1120px] touch-pan-y grid-cols-1 gap-14 overflow-x-clip px-4 py-8 sm:px-8 xl:ml-12 xl:grid-cols-[630px_320px] xl:px-0 2xl:ml-20">
