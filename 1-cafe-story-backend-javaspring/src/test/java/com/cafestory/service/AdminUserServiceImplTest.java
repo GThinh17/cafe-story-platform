@@ -62,7 +62,8 @@ class AdminUserServiceImplTest {
 
         when(userRepository.findAdminUsers("luan", true, UserRole.USER.name(), pageable))
                 .thenReturn(new PageImpl<>(List.of(user), pageable, 1));
-        when(userRoleAssignmentRepository.findByUserUserId(user.getUserId())).thenReturn(assignments);
+        when(userRoleAssignmentRepository.findByUserUserIdIn(List.of(user.getUserId())))
+                .thenReturn(assignments);
         when(adminUserMapper.toAdminUserResponseDTO(user, assignments)).thenReturn(response);
 
         Page<AdminUserResponseDTO> result =

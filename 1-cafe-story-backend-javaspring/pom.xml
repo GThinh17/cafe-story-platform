@@ -195,6 +195,14 @@
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 				<version>0.8.12</version>
+				<configuration>
+					<excludes>
+						<exclude>com/cafestory/entity/**</exclude>
+						<exclude>com/cafestory/dto/**</exclude>
+						<exclude>com/cafestory/config/**</exclude>
+						<exclude>**/*MapperImpl.class</exclude>
+					</excludes>
+				</configuration>
 				<executions>
 					<execution>
 						<goals>

@@ -881,6 +881,448 @@ class PaymentServiceImplTest {
         }
     }
 
+    // ------------------------------------------------------- getPayment
+
+    @Test
+    void getPayment_success_buyerReadsOwnPayment_TC035() {
+        Payment payment = pendingPayment(PaymentMethod.STRIPE_CARD, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId))
+                .thenReturn(Optional.of(paymentDetail(payment)));
+
+        PaymentResponseDTO result = paymentService.getPayment(buyerId, paymentId);
+
+        assertThat(result.getPaymentId()).isEqualTo(paymentId);
+        assertThat(result.getPaymentUrl()).isEqualTo("https://checkout.stripe.com/test");
+        assertThat(result.getExtraFeeType()).isEqualTo(ExtraFeeType.REVIEWER_REGISTRATION);
+    }
+
+    @Test
+    void getPayment_success_adminReadsSomeoneElsePayment_TC036() {
+        UUID adminId = UUID.randomUUID();
+        Payment payment = pendingPayment(PaymentMethod.BANK_TRANSFER, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(adminId, "ADMIN")).thenReturn(true);
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.empty());
+
+        assertThat(paymentService.getPayment(adminId, paymentId).getPaymentUrl()).isNull();
+    }
+
+    @Test
+    void getPayment_fail_strangerWithoutAdminRole_TC037() {
+        UUID strangerId = UUID.randomUUID();
+        Payment payment = pendingPayment(PaymentMethod.BANK_TRANSFER, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(strangerId, "ADMIN")).thenReturn(false);
+
+        assertThatThrownBy(() -> paymentService.getPayment(strangerId, paymentId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Admin role is required");
+    }
+
+    @Test
+    void getPayment_fail_paymentNotFound_TC038() {
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> paymentService.getPayment(buyerId, paymentId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Payment not found");
+    }
+
+    @Test
+    void getMyPayments_fail_anonymousRequester_TC039() {
+        assertThatThrownBy(() -> paymentService.getMyPayments(null, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Sign in required");
+    }
+
+    @Test
+    void getAllPayments_fail_requesterIsNotAdmin_TC040() {
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "ADMIN")).thenReturn(false);
+
+        assertThatThrownBy(() -> paymentService.getAllPayments(buyerId, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Admin role is required");
+    }
+
+    // --------------------------------------------- resolveTargetCafePage
+
+    @Test
+    void createPayment_success_cafePageIdBindsExistingPage_TC041() {
+        User buyer = user();
+        ExtraFee extraFee = extraFee(true, ExtraFeeType.CAFE_PAGE_OPENING);
+        CafePage cafePage = cafePage(buyer);
+        CreatePaymentRequestDTO request = request(PaymentMethod.BANK_TRANSFER);
+        request.setCafePageId(cafePage.getId());
+
+        mockPaymentSave();
+        mockPaymentDetailSave();
+        when(userRepository.findById(buyerId)).thenReturn(Optional.of(buyer));
+        when(extraFeeRepository.findById(extraFeeId)).thenReturn(Optional.of(extraFee));
+        when(cafePageValidator.validateCafePageExists(cafePage.getId())).thenReturn(cafePage);
+
+        PaymentResponseDTO result = paymentService.createPayment(buyerId, request);
+
+        assertThat(result.getActivatedCafePageId()).isEqualTo(cafePage.getId());
+        verify(cafePageValidator).validateUserCanManagePage(cafePage.getId(), buyerId);
+    }
+
+    @Test
+    void createPayment_fail_cafePageIdOnNonCafePagePackage_TC042() {
+        User buyer = user();
+        ExtraFee extraFee = extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION);
+        CreatePaymentRequestDTO request = request(PaymentMethod.BANK_TRANSFER);
+        request.setCafePageId(UUID.randomUUID());
+
+        when(userRepository.findById(buyerId)).thenReturn(Optional.of(buyer));
+        when(extraFeeRepository.findById(extraFeeId)).thenReturn(Optional.of(extraFee));
+
+        assertThatThrownBy(() -> paymentService.createPayment(buyerId, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("cafePageId is only supported for cafe page packages");
+    }
+
+    @Test
+    void createPayment_fail_cafePageIdOnAdFeePackage_TC043() {
+        User buyer = user();
+        AdFee adFee = adFee(true);
+        CreatePaymentRequestDTO request = adFeeRequest(PaymentMethod.BANK_TRANSFER);
+        request.setCafePageId(UUID.randomUUID());
+
+        when(userRepository.findById(buyerId)).thenReturn(Optional.of(buyer));
+        when(adFeeRepository.findById(adFeeId)).thenReturn(Optional.of(adFee));
+
+        assertThatThrownBy(() -> paymentService.createPayment(buyerId, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("cafePageId is only supported for cafe page packages");
+    }
+
+    @Test
+    void createPayment_success_adFeeWithBlankCurrencyFallsBackToVnd_TC044() {
+        User buyer = user();
+        AdFee adFee = adFee(true);
+        adFee.setCurrency("  ");
+
+        mockPaymentSave();
+        mockPaymentDetailSave();
+        when(userRepository.findById(buyerId)).thenReturn(Optional.of(buyer));
+        when(adFeeRepository.findById(adFeeId)).thenReturn(Optional.of(adFee));
+
+        assertThat(paymentService.createPayment(buyerId, adFeeRequest(PaymentMethod.BANK_TRANSFER)).getCurrency())
+                .isEqualTo("VND");
+    }
+
+    @Test
+    void createPayment_fail_paymentMethodIsNull_TC045() {
+        User buyer = user();
+        ExtraFee extraFee = extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION);
+        CreatePaymentRequestDTO request = request(null);
+
+        mockPaymentSave();
+        when(userRepository.findById(buyerId)).thenReturn(Optional.of(buyer));
+        when(extraFeeRepository.findById(extraFeeId)).thenReturn(Optional.of(extraFee));
+
+        assertThatThrownBy(() -> paymentService.createPayment(buyerId, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Invalid payment method");
+    }
+
+    // ------------------------------------------------- handleVnpayReturn
+
+    @Test
+    void handleVnpayReturn_fail_invalidSignature_TC046() {
+        Map<String, String> params = vnpayParams("00", "00", "29900000", paymentId.toString());
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(false);
+
+        var result = paymentService.handleVnpayReturn(params);
+
+        assertThat(result.getStatus()).isEqualTo("failed");
+        assertThat(result.getMessage()).isEqualTo("Invalid signature");
+        assertThat(result.getPaymentId()).isNull();
+    }
+
+    @Test
+    void handleVnpayReturn_fail_unparsableTxnRef_TC047() {
+        Map<String, String> params = vnpayParams("00", "00", "29900000", "khong-phai-uuid");
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(true);
+
+        assertThat(paymentService.handleVnpayReturn(params).getMessage()).isEqualTo("Payment not found");
+    }
+
+    @Test
+    void handleVnpayReturn_fail_paymentMissingOrWrongMethod_TC048() {
+        Map<String, String> params = vnpayParams("00", "00", "29900000", paymentId.toString());
+        Payment stripePayment = pendingPayment(
+                PaymentMethod.STRIPE_CARD, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(true);
+        when(paymentRepository.findById(paymentId))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(stripePayment));
+
+        assertThat(paymentService.handleVnpayReturn(params).getMessage()).isEqualTo("Payment not found");
+        assertThat(paymentService.handleVnpayReturn(params).getMessage()).isEqualTo("Payment not found");
+    }
+
+    @Test
+    void handleVnpayReturn_fail_amountMismatch_TC049() {
+        Map<String, String> params = vnpayParams("00", "00", "10000", paymentId.toString());
+        Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(true);
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+
+        var result = paymentService.handleVnpayReturn(params);
+
+        assertThat(result.getStatus()).isEqualTo("failed");
+        assertThat(result.getMessage()).isEqualTo("Invalid amount");
+        assertThat(result.getPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
+    }
+
+    @Test
+    void handleVnpayReturn_fail_amountUnparsableOrMissing_TC050() {
+        Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+
+        Map<String, String> blankAmount = vnpayParams("00", "00", "  ", paymentId.toString());
+        Map<String, String> textAmount = vnpayParams("00", "00", "abc", paymentId.toString());
+        Map<String, String> fractionalAmount = vnpayParams("00", "00", "0.5", paymentId.toString());
+        when(vnpayPaymentClient.verifySignature(any())).thenReturn(true);
+
+        assertThat(paymentService.handleVnpayReturn(blankAmount).getMessage()).isEqualTo("Invalid amount");
+        assertThat(paymentService.handleVnpayReturn(textAmount).getMessage()).isEqualTo("Invalid amount");
+        assertThat(paymentService.handleVnpayReturn(fractionalAmount).getMessage()).isEqualTo("Invalid amount");
+    }
+
+    @Test
+    void handleVnpayReturn_success_transactionSucceeded_TC051() {
+        Map<String, String> params = vnpayParams("00", "00", "29900000", paymentId.toString());
+        Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(true);
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+
+        var result = paymentService.handleVnpayReturn(params);
+
+        assertThat(result.getStatus()).isEqualTo("success");
+        assertThat(result.getTransactionNo()).isEqualTo("14123456");
+    }
+
+    @Test
+    void handleVnpayReturn_success_alreadyPaidIsReportedAsSuccess_TC052() {
+        Map<String, String> params = vnpayParams("99", "99", "29900000", paymentId.toString());
+        Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
+        payment.setPaymentStatus(PaymentStatus.PAID);
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(true);
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+
+        assertThat(paymentService.handleVnpayReturn(params).getStatus()).isEqualTo("success");
+    }
+
+    @Test
+    void handleVnpayReturn_success_pendingTransactionStaysPending_TC053() {
+        Map<String, String> params = vnpayParams("00", "01", "29900000", paymentId.toString());
+        Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(true);
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+
+        var result = paymentService.handleVnpayReturn(params);
+
+        assertThat(result.getStatus()).isEqualTo("pending");
+        assertThat(result.getMessage()).isEqualTo("Payment pending");
+    }
+
+    @Test
+    void handleVnpayReturn_fail_declinedTransaction_TC054() {
+        Map<String, String> params = vnpayParams("24", "02", "29900000", paymentId.toString());
+        Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
+        when(vnpayPaymentClient.verifySignature(params)).thenReturn(true);
+        when(paymentRepository.findById(paymentId)).thenReturn(Optional.of(payment));
+
+        var result = paymentService.handleVnpayReturn(params);
+
+        assertThat(result.getStatus()).isEqualTo("failed");
+        assertThat(result.getMessage()).isEqualTo("Payment failed");
+        assertThat(result.getResponseCode()).isEqualTo("24");
+    }
+
+    @Test
+    void handleVnpayIpn_fail_unexpectedExceptionBecomesCode99_TC055() {
+        Map<String, String> params = vnpayParams("00", "00", "29900000", paymentId.toString());
+        when(vnpayPaymentClient.verifySignature(params)).thenThrow(new IllegalStateException("vnpay down"));
+
+        VnpayIpnResponseDTO result = paymentService.handleVnpayIpn(params);
+
+        assertThat(result.getRspCode()).isEqualTo("99");
+        assertThat(result.getMessage()).isEqualTo("Unknown error");
+    }
+
+    // ------------------------------------------------ syncStripePayment
+
+    @Test
+    void syncStripePayment_success_completeSessionMarksPaid_TC056() {
+        Payment payment = pendingPayment(PaymentMethod.STRIPE_CARD, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
+        PaymentDetail detail = paymentDetail(payment);
+        mockPaymentSave();
+        mockPaymentDetailSave();
+        mockReviewerSave();
+        when(paymentRepository.findByIdWithLock(paymentId)).thenReturn(Optional.of(payment));
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.of(detail));
+        when(stripeCheckoutClient.getSessionStatus("cs_test_123")).thenReturn("complete");
+        when(stripeCheckoutClient.getPaymentIntentId("cs_test_123")).thenReturn("pi_test_123");
+        when(reviewerRepository.findByUserUserId(buyerId)).thenReturn(Optional.empty());
+        when(userRoleAssignmentRepository.existsByUserUserIdAndRoleName(buyerId, "REVIEWER")).thenReturn(true);
+
+        PaymentResponseDTO result = paymentService.syncStripePayment(buyerId, paymentId);
+
+        assertThat(result.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
+        assertThat(detail.getProviderTransactionId()).isEqualTo("pi_test_123");
+    }
+
+    @Test
+    void syncStripePayment_success_expiredSessionMarksExpired_TC057() {
+        Payment payment = pendingPayment(PaymentMethod.STRIPE_CARD, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
+        PaymentDetail detail = paymentDetail(payment);
+        mockPaymentSave();
+        when(paymentRepository.findByIdWithLock(paymentId)).thenReturn(Optional.of(payment));
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.of(detail));
+        when(stripeCheckoutClient.getSessionStatus("cs_test_123")).thenReturn("expired");
+
+        assertThat(paymentService.syncStripePayment(buyerId, paymentId).getPaymentStatus())
+                .isEqualTo(PaymentStatus.EXPIRED);
+    }
+
+    @Test
+    void syncStripePayment_success_openSessionLeavesStatusUntouched_TC058() {
+        Payment payment = pendingPayment(PaymentMethod.STRIPE_CARD, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
+        PaymentDetail detail = paymentDetail(payment);
+        when(paymentRepository.findByIdWithLock(paymentId)).thenReturn(Optional.of(payment));
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.of(detail));
+        when(stripeCheckoutClient.getSessionStatus("cs_test_123")).thenReturn("open");
+
+        assertThat(paymentService.syncStripePayment(buyerId, paymentId).getPaymentStatus())
+                .isEqualTo(PaymentStatus.PENDING);
+        verify(paymentRepository, never()).save(any(Payment.class));
+    }
+
+    @Test
+    void syncStripePayment_success_alreadySettledPaymentIsReturnedAsIs_TC059() {
+        Payment payment = pendingPayment(PaymentMethod.STRIPE_CARD, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
+        payment.setPaymentStatus(PaymentStatus.PAID);
+        when(paymentRepository.findByIdWithLock(paymentId)).thenReturn(Optional.of(payment));
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.empty());
+
+        assertThat(paymentService.syncStripePayment(buyerId, paymentId).getPaymentStatus())
+                .isEqualTo(PaymentStatus.PAID);
+        verify(stripeCheckoutClient, never()).getSessionStatus(any());
+    }
+
+    @Test
+    void syncStripePayment_fail_paymentNotFound_TC060() {
+        when(paymentRepository.findByIdWithLock(paymentId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> paymentService.syncStripePayment(buyerId, paymentId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Payment not found");
+    }
+
+    @Test
+    void syncStripePayment_fail_notAStripePayment_TC061() {
+        Payment payment = pendingPayment(PaymentMethod.VNPAY, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
+        when(paymentRepository.findByIdWithLock(paymentId)).thenReturn(Optional.of(payment));
+
+        assertThatThrownBy(() -> paymentService.syncStripePayment(buyerId, paymentId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Sync is only supported for Stripe payments");
+    }
+
+    @Test
+    void syncStripePayment_fail_sessionAlreadyExpired_TC062() {
+        Payment payment = pendingPayment(PaymentMethod.STRIPE_CARD, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
+        payment.setExpiredAt(LocalDateTime.now().minusMinutes(1));
+        when(paymentRepository.findByIdWithLock(paymentId)).thenReturn(Optional.of(payment));
+
+        assertThatThrownBy(() -> paymentService.syncStripePayment(buyerId, paymentId))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.GONE));
+    }
+
+    @Test
+    void syncStripePayment_fail_noStripeSessionRecorded_TC063() {
+        Payment payment = pendingPayment(PaymentMethod.STRIPE_CARD, extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION));
+        when(paymentRepository.findByIdWithLock(paymentId)).thenReturn(Optional.of(payment));
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> paymentService.syncStripePayment(buyerId, paymentId))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY));
+    }
+
+    // ------------------------------------- activation failure -> refund
+
+    @Test
+    void markPaymentPaid_fail_activationErrorTriggersStripeRefund_TC064() {
+        // Gói reviewer thiếu durationMonths làm bước kích hoạt ném lỗi: tiền đã
+        // thu nên phải hoàn lại và đưa payment về REFUNDED.
+        ExtraFee brokenPackage = extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION);
+        brokenPackage.setDurationMonths(null);
+        Payment payment = pendingPayment(PaymentMethod.STRIPE_CARD, brokenPackage);
+        PaymentDetail detail = paymentDetail(payment);
+        mockPaymentSave();
+        mockPaymentDetailSave();
+        when(paymentDetailRepository.findByProviderOrderId("cs_test_123")).thenReturn(Optional.of(detail));
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.of(detail));
+
+        paymentService.handleStripeWebhook(stripePayload(), null);
+
+        assertThat(payment.getPaymentStatus()).isEqualTo(PaymentStatus.REFUNDED);
+        verify(stripeCheckoutClient).refundPaymentIntent("pi_test_123");
+    }
+
+    @Test
+    void markPaymentPaid_fail_refundFailureIsSwallowed_TC065() {
+        ExtraFee brokenPackage = extraFee(true, ExtraFeeType.REVIEWER_REGISTRATION);
+        brokenPackage.setDurationMonths(null);
+        Payment payment = pendingPayment(PaymentMethod.STRIPE_CARD, brokenPackage);
+        PaymentDetail detail = paymentDetail(payment);
+        mockPaymentSave();
+        mockPaymentDetailSave();
+        when(paymentDetailRepository.findByProviderOrderId("cs_test_123")).thenReturn(Optional.of(detail));
+        when(paymentDetailRepository.findByPaymentPaymentId(paymentId)).thenReturn(Optional.of(detail));
+        org.mockito.Mockito.doThrow(new IllegalStateException("stripe down"))
+                .when(stripeCheckoutClient).refundPaymentIntent("pi_test_123");
+
+        paymentService.handleStripeWebhook(stripePayload(), null);
+
+        assertThat(payment.getPaymentStatus()).isEqualTo(PaymentStatus.REFUNDED);
+    }
+
+    @Test
+    void handleStripeWebhook_success_ignoresOtherEventTypes_TC066() {
+        String payload = """
+                {"type":"payment_intent.created","data":{"object":{"id":"cs_x"}}}
+                """;
+
+        paymentService.handleStripeWebhook(payload, null);
+
+        verify(paymentDetailRepository, never()).findByProviderOrderId(any());
+    }
+
+    @Test
+    void handleStripeWebhook_fail_malformedPayload_TC067() {
+        assertThatThrownBy(() -> paymentService.handleStripeWebhook("khong-phai-json", null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Invalid Stripe webhook payload");
+    }
+
+    @Test
+    void handleStripeWebhook_fail_sessionNotFound_TC068() {
+        when(paymentDetailRepository.findByProviderOrderId("cs_test_123")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> paymentService.handleStripeWebhook(stripePayload(), null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Payment detail not found");
+    }
+
     private CreatePaymentRequestDTO request(PaymentMethod method) {
         CreatePaymentRequestDTO request = new CreatePaymentRequestDTO();
         request.setExtraFeeId(extraFeeId);

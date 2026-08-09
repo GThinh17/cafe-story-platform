@@ -202,6 +202,115 @@ class ReviewerRankingSnapshotServiceImplTest {
         verify(reviewerBadgeHistoryRepository, never()).findByMonthAndReviewerReviewerIdIn(any(), any());
     }
 
+    @Test
+    void initSnapshotForNewReviewer_success_createsOnePlaceholderPerPeriodType_TC007() {
+        Reviewer reviewer = reviewer();
+        when(formulaService.getActiveFormula()).thenReturn(formula());
+        when(snapshotRepository.findByReviewerReviewerIdAndPeriodAndPeriodType(
+                org.mockito.ArgumentMatchers.eq(REVIEWER_ID),
+                org.mockito.ArgumentMatchers.anyString(),
+                any(RankingPeriodType.class)))
+                .thenReturn(java.util.Optional.empty());
+
+        service.initSnapshotForNewReviewer(reviewer);
+
+        ArgumentCaptor<ReviewerRankingSnapshot> captor =
+                ArgumentCaptor.forClass(ReviewerRankingSnapshot.class);
+        verify(snapshotRepository, org.mockito.Mockito.times(RankingPeriodType.values().length))
+                .save(captor.capture());
+        assertThat(captor.getAllValues())
+                .extracting(ReviewerRankingSnapshot::getPeriodType)
+                .containsExactlyInAnyOrder(RankingPeriodType.values());
+        assertThat(captor.getAllValues()).allSatisfy(snapshot -> {
+            assertThat(snapshot.getReviewer()).isSameAs(reviewer);
+            assertThat(snapshot.getRankPosition()).isZero();
+            assertThat(snapshot.getScore()).isZero();
+            assertThat(snapshot.getLikeCount()).isZero();
+            assertThat(snapshot.getShareCount()).isZero();
+            assertThat(snapshot.getCommentCount()).isZero();
+            assertThat(snapshot.getFormula()).isNotNull();
+        });
+    }
+
+    @Test
+    void initSnapshotForNewReviewer_success_existingSnapshotIsNotDuplicated_TC008() {
+        Reviewer reviewer = reviewer();
+        when(formulaService.getActiveFormula()).thenReturn(formula());
+        when(snapshotRepository.findByReviewerReviewerIdAndPeriodAndPeriodType(
+                org.mockito.ArgumentMatchers.eq(REVIEWER_ID),
+                org.mockito.ArgumentMatchers.anyString(),
+                any(RankingPeriodType.class)))
+                .thenReturn(java.util.Optional.of(snapshot(0)));
+
+        service.initSnapshotForNewReviewer(reviewer);
+
+        verify(snapshotRepository, never()).save(any(ReviewerRankingSnapshot.class));
+    }
+
+    @Test
+    void generateSnapshot_success_defaultReferenceDateIsToday_TC009() {
+        Reviewer reviewer = reviewer();
+        stubReviewerAndFormula(reviewer);
+        stubEngagement(0L, 0L, 0L);
+        when(snapshotRepository.findByPeriodAndPeriodTypeOrderByRankPositionAsc(
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.eq(RankingPeriodType.DAILY)))
+                .thenReturn(List.of());
+
+        service.generateSnapshot(RankingPeriodType.DAILY);
+
+        verify(snapshotRepository).saveAll(org.mockito.ArgumentMatchers.anyList());
+    }
+
+    @Test
+    void generateSnapshot_success_reusesExistingSnapshotRowAndIgnoresForeignAuthors_TC010() {
+        Reviewer reviewer = reviewer();
+        ReviewerRankingSnapshot existing = snapshot(0);
+        stubReviewerAndFormula(reviewer);
+        when(blogLikeRepository.countByBlogAuthorBetween(any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(rows(4L));
+        when(blogShareRepository.countByBlogAuthorBetween(any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(foreignRows());
+        when(commentRepository.countByBlogAuthorBetween(any(LocalDateTime.class), any(LocalDateTime.class)))
+                .thenReturn(foreignRows());
+        when(snapshotRepository.findByPeriodAndPeriodTypeOrderByRankPositionAsc(
+                MONTH_PERIOD, RankingPeriodType.MONTHLY)).thenReturn(List.of(existing));
+        when(badgeThresholdService.badgeForScore(4L)).thenReturn(ReviewerBadge.IRON);
+        when(reviewerBadgeHistoryRepository.findByMonth(MONTH_PERIOD))
+                .thenReturn(List.of(badgeHistory(reviewer)));
+
+        service.generateSnapshot(RankingPeriodType.MONTHLY, REFERENCE_DATE);
+
+        ArgumentCaptor<List<ReviewerRankingSnapshot>> captor = captor();
+        verify(snapshotRepository).saveAll(captor.capture());
+        assertThat(captor.getValue()).containsExactly(existing);
+        assertThat(existing.getScore()).isEqualTo(4L);
+        assertThat(existing.getShareCount()).isZero();
+        assertThat(existing.getCommentCount()).isZero();
+    }
+
+    private List<AuthorInteractionCountRow> foreignRows() {
+        return List.of(new AuthorInteractionCountRow() {
+            @Override
+            public UUID getAuthorUserId() {
+                return UUID.randomUUID();
+            }
+
+            @Override
+            public Long getEventCount() {
+                return 99L;
+            }
+        });
+    }
+
+    private com.cafestory.entity.ReviewerBadgeHistory badgeHistory(Reviewer reviewer) {
+        com.cafestory.entity.ReviewerBadgeHistory history = new com.cafestory.entity.ReviewerBadgeHistory();
+        history.setId(UUID.randomUUID());
+        history.setReviewer(reviewer);
+        history.setMonth(MONTH_PERIOD);
+        history.setBadge(ReviewerBadge.IRON);
+        return history;
+    }
+
     private void stubReviewerAndFormula(Reviewer reviewer) {
         when(reviewerRepository.findAllWithUser()).thenReturn(List.of(reviewer));
         when(formulaService.getActiveFormula()).thenReturn(formula());

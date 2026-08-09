@@ -18,7 +18,10 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.web.server.ResponseStatusException;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class VnpayPaymentClientImplTest {
 
@@ -141,6 +144,75 @@ class VnpayPaymentClientImplTest {
 
         assertThat(result).contains("vnp_TmnCode=TESTCODE");
         assertThat(result).doesNotContain("vnp_TmnCode=+TESTCODE+");
+    }
+
+    @Test
+    void createPaymentUrl_success_paymentWithoutExpiryOmitsExpireDate_TC009() {
+        Payment payment = payment();
+        payment.setExpiredAt(null);
+
+        assertThat(client.createPaymentUrl(payment)).doesNotContain("vnp_ExpireDate");
+    }
+
+    @Test
+    void verifySignature_fail_secureHashMissingOrBlank_TC010() {
+        Map<String, String> withoutHash = new LinkedHashMap<>();
+        withoutHash.put("vnp_TxnRef", PAYMENT_ID.toString());
+        Map<String, String> blankHash = new LinkedHashMap<>(withoutHash);
+        blankHash.put("vnp_SecureHash", "   ");
+
+        assertThat(client.verifySignature(withoutHash)).isFalse();
+        assertThat(client.verifySignature(blankHash)).isFalse();
+    }
+
+    @Test
+    void secureHash_success_skipsNonVnpayAndBlankValues_TC011() {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("vnp_TxnRef", PAYMENT_ID.toString());
+        params.put("khong_phai_vnp", "bo qua");
+        params.put("vnp_OrderInfo", "   ");
+        params.put("vnp_Empty", null);
+
+        Map<String, String> onlySignable = new LinkedHashMap<>();
+        onlySignable.put("vnp_TxnRef", PAYMENT_ID.toString());
+
+        assertThat(client.secureHash(params)).isEqualTo(client.secureHash(onlySignable));
+    }
+
+    @Test
+    void createPaymentUrl_fail_configurationIsIncomplete_TC012() {
+        Payment payment = payment();
+        VnpayPaymentClientImpl noSecret = new VnpayPaymentClientImpl(
+                "TESTCODE", "  ", "https://pay", "http://return", "http://ipn");
+        VnpayPaymentClientImpl noTmnCode = new VnpayPaymentClientImpl(
+                null, "SECRETKEY", "https://pay", "http://return", "http://ipn");
+        VnpayPaymentClientImpl badPayUrl = new VnpayPaymentClientImpl(
+                "TESTCODE", "SECRETKEY", "pay.vnpay.vn", "http://return", "http://ipn");
+
+        assertThatThrownBy(() -> noSecret.createPaymentUrl(payment))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("VNPAY hash secret is not configured");
+        assertThatThrownBy(() -> noTmnCode.createPaymentUrl(payment))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("VNPAY TMN code is not configured");
+        assertThatThrownBy(() -> badPayUrl.createPaymentUrl(payment))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("must start with http:// or https://");
+    }
+
+    @Test
+    void createPaymentUrl_fail_amountIsMissingOrNotPositive_TC013() {
+        Payment noAmount = payment();
+        noAmount.setAmount(null);
+        Payment zeroAmount = payment();
+        zeroAmount.setAmount(BigDecimal.ZERO);
+
+        assertThatThrownBy(() -> client.createPaymentUrl(noAmount))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("VNPAY payment amount must be greater than 0");
+        assertThatThrownBy(() -> client.createPaymentUrl(zeroAmount))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("VNPAY payment amount must be greater than 0");
     }
 
     private Payment payment() {

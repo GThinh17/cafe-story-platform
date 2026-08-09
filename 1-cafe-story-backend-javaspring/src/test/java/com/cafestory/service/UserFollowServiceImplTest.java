@@ -246,6 +246,143 @@ class UserFollowServiceImplTest {
         verify(userFollowRepository, never()).findByFollowerUserId(followerUserId);
     }
 
+    @Test
+    void getFollowingTargetsByUserId_success_nullFilterMeansAll_TC010() {
+        UUID followerUserId = UUID.randomUUID();
+        User follower = user(followerUserId);
+        UserFollow userFollow = userFollow(UUID.randomUUID(), follower, user(UUID.randomUUID()));
+        PageFollow pageFollow = pageFollow(UUID.randomUUID(), cafePage(UUID.randomUUID(), "Cafe"), follower);
+        when(userFollowRepository.findByFollowerUserId(followerUserId)).thenReturn(List.of(userFollow));
+        when(pageFollowRepository.findByUserUserId(followerUserId)).thenReturn(List.of(pageFollow));
+
+        assertThat(userFollowService.getFollowingTargetsByUserId(followerUserId, null)).hasSize(2);
+    }
+
+    @Test
+    void getFollowingTargetsByUserId_success_filterUserOnly_TC011() {
+        UUID followerUserId = UUID.randomUUID();
+        UserFollow userFollow = userFollow(UUID.randomUUID(), user(followerUserId), user(UUID.randomUUID()));
+        when(userFollowRepository.findByFollowerUserId(followerUserId)).thenReturn(List.of(userFollow));
+
+        assertThat(userFollowService.getFollowingTargetsByUserId(followerUserId, FollowTargetFilter.USER))
+                .singleElement()
+                .satisfies(target -> assertThat(target.getTargetType()).isEqualTo(FollowTargetType.USER));
+        verify(pageFollowRepository, never()).findByUserUserId(followerUserId);
+    }
+
+    @Test
+    void getFollowingTargetsByUserId_success_danglingRowsMapToNullFields_TC012() {
+        // Dòng theo dõi trỏ tới bản ghi đã bị xoá: không được ném lỗi, chỉ để trống.
+        UUID followerUserId = UUID.randomUUID();
+        UserFollow danglingUserFollow = userFollow(UUID.randomUUID(), user(followerUserId), null);
+        PageFollow danglingPageFollow = pageFollow(UUID.randomUUID(), null, user(followerUserId));
+        when(userFollowRepository.findByFollowerUserId(followerUserId)).thenReturn(List.of(danglingUserFollow));
+        when(pageFollowRepository.findByUserUserId(followerUserId)).thenReturn(List.of(danglingPageFollow));
+
+        List<FollowTargetResponseDTO> result =
+                userFollowService.getFollowingTargetsByUserId(followerUserId, FollowTargetFilter.ALL);
+
+        assertThat(result).hasSize(2);
+        assertThat(result).allSatisfy(target -> {
+            assertThat(target.getTargetId()).isNull();
+            assertThat(target.getDisplayName()).isNull();
+            assertThat(target.getAvatar()).isNull();
+            assertThat(target.getCity()).isNull();
+        });
+        assertThat(result).anySatisfy(target -> {
+            assertThat(target.getPageName()).isNull();
+            assertThat(target.getPageStatus()).isNull();
+            assertThat(target.getPageActive()).isNull();
+            assertThat(target.getOwnerUserId()).isNull();
+        });
+    }
+
+    @Test
+    void getFollowingTargetsByUserId_success_fallsBackToUserNameWhenFullNameBlank_TC013() {
+        UUID followerUserId = UUID.randomUUID();
+        User following = user(UUID.randomUUID());
+        following.setUserName("banthan");
+        following.setUserFullName("   ");
+        UserFollow userFollow = userFollow(UUID.randomUUID(), user(followerUserId), following);
+        when(userFollowRepository.findByFollowerUserId(followerUserId)).thenReturn(List.of(userFollow));
+
+        assertThat(userFollowService.getFollowingTargetsByUserId(followerUserId, FollowTargetFilter.USER)
+                .get(0).getDisplayName()).isEqualTo("banthan");
+    }
+
+    @Test
+    void followUser_success_nullFollowerCountStartsFromZero_TC014() {
+        UUID followingUserId = UUID.randomUUID();
+        UUID followerUserId = UUID.randomUUID();
+        User followingUser = user(followingUserId);
+        followingUser.setUserFollower(null);
+        User followerUser = user(followerUserId);
+        when(userValidator.validateUserExists(followingUserId)).thenReturn(followingUser);
+        when(userValidator.validateUserExists(followerUserId)).thenReturn(followerUser);
+        when(userFollowRepository.existsByFollowerUserIdAndFollowingUserId(followerUserId, followingUserId))
+                .thenReturn(false);
+        when(userFollowRepository.save(any(UserFollow.class))).thenAnswer(invocation -> {
+            UserFollow saved = invocation.getArgument(0);
+            saved.setId(UUID.randomUUID());
+            return saved;
+        });
+        when(userFollowMapper.toUserFollowResponseDTO(any(UserFollow.class)))
+                .thenReturn(new UserFollowResponseDTO());
+
+        userFollowService.followUser(followingUserId, followerUserId);
+
+        assertThat(followingUser.getUserFollower()).isEqualTo(1);
+    }
+
+    @Test
+    void unfollowUser_success_counterNeverGoesNegativeAndTolerateDanglingRow_TC015() {
+        UUID followingUserId = UUID.randomUUID();
+        UUID followerUserId = UUID.randomUUID();
+        User followingUser = user(followingUserId);
+        followingUser.setUserFollower(0);
+        User followerUser = user(followerUserId);
+        UserFollow userFollow = userFollow(UUID.randomUUID(), followerUser, followingUser);
+        when(userValidator.validateUserExists(followingUserId)).thenReturn(followingUser);
+        when(userValidator.validateUserExists(followerUserId)).thenReturn(followerUser);
+        when(userFollowRepository.findByFollowerUserIdAndFollowingUserId(followerUserId, followingUserId))
+                .thenReturn(Optional.of(userFollow));
+
+        userFollowService.unfollowUser(followingUserId, followerUserId);
+
+        assertThat(followingUser.getUserFollower()).isZero();
+        verify(userFollowRepository).delete(userFollow);
+    }
+
+    @Test
+    void unfollowUser_success_danglingFollowingIsIgnored_TC016() {
+        UUID followingUserId = UUID.randomUUID();
+        UUID followerUserId = UUID.randomUUID();
+        User followingUser = user(followingUserId);
+        User followerUser = user(followerUserId);
+        UserFollow userFollow = userFollow(UUID.randomUUID(), followerUser, null);
+        when(userValidator.validateUserExists(followingUserId)).thenReturn(followingUser);
+        when(userValidator.validateUserExists(followerUserId)).thenReturn(followerUser);
+        when(userFollowRepository.findByFollowerUserIdAndFollowingUserId(followerUserId, followingUserId))
+                .thenReturn(Optional.of(userFollow));
+
+        userFollowService.unfollowUser(followingUserId, followerUserId);
+
+        verify(userFollowRepository).delete(userFollow);
+    }
+
+    @Test
+    void followUser_success_nullFollowingIdSkipsSelfFollowCheck_TC017() {
+        UUID followerUserId = UUID.randomUUID();
+        User followerUser = user(followerUserId);
+        when(userValidator.validateUserExists(null)).thenReturn(followerUser);
+        when(userValidator.validateUserExists(followerUserId)).thenReturn(followerUser);
+        when(userFollowRepository.existsByFollowerUserIdAndFollowingUserId(followerUserId, null))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> userFollowService.followUser(null, followerUserId))
+                .isInstanceOf(ResponseStatusException.class);
+    }
+
     private User user(UUID userId) {
         User user = new User();
         user.setUserId(userId);

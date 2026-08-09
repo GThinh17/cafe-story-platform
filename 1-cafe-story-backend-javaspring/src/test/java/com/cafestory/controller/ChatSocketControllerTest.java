@@ -2,6 +2,7 @@ package com.cafestory.controller;
 
 import com.cafestory.controller.ChatSocketController;
 import com.cafestory.dto.requestDTO.SendMessageRequestDTO;
+import com.cafestory.dto.requestDTO.SocketConversationRequestDTO;
 import com.cafestory.dto.requestDTO.TypingRequestDTO;
 import com.cafestory.dto.responseDTO.ChatMessageResponseDTO;
 import com.cafestory.dto.responseDTO.SocketEventResponseDTO;
@@ -20,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -86,6 +88,87 @@ class ChatSocketControllerTest {
         assertThat(json).contains("\"conversationId\":\"" + conversationId + "\"");
         assertThat(json).doesNotContain("\"event\":");
         assertThat(json).doesNotContain("\"payload\":");
+    }
+
+    @Test
+    void sendMessage_fail_emitsMessageFailedThenRethrows_TC004() {
+        ChatSocketController controller = new ChatSocketController(chatService, messagingTemplate);
+        UUID conversationId = UUID.randomUUID();
+        UUID senderId = UUID.randomUUID();
+        SendMessageRequestDTO request = new SendMessageRequestDTO();
+        request.setSenderId(senderId);
+        request.setType(MessageType.TEXT);
+        request.setText("hello ws");
+        when(chatService.sendMessage(conversationId, request))
+                .thenThrow(new IllegalStateException("Conversation not found"));
+
+        assertThatThrownBy(() -> controller.sendMessage(conversationId, request))
+                .isInstanceOf(IllegalStateException.class);
+
+        ArgumentCaptor<SocketEventResponseDTO> eventCaptor = ArgumentCaptor.forClass(SocketEventResponseDTO.class);
+        verify(messagingTemplate).convertAndSendToUser(
+                eq(senderId.toString()), eq("/queue/chat"), eventCaptor.capture());
+        assertThat(eventCaptor.getValue().getEvent()).isEqualTo("message_failed");
+        assertThat(eventCaptor.getValue().getPayload()).isEqualTo("Conversation not found");
+    }
+
+    @Test
+    void joinConversation_success_broadcastsJoinEvent_TC005() {
+        ChatSocketController controller = new ChatSocketController(chatService, messagingTemplate);
+        SocketConversationRequestDTO request = conversationRequest();
+
+        controller.joinConversation(request);
+
+        assertThat(capturedTopicEvent("/topic/conversations/" + request.getConversationId()).getEvent())
+                .isEqualTo("join_conversation");
+    }
+
+    @Test
+    void leaveConversation_success_broadcastsLeaveEvent_TC006() {
+        ChatSocketController controller = new ChatSocketController(chatService, messagingTemplate);
+        SocketConversationRequestDTO request = conversationRequest();
+
+        controller.leaveConversation(request);
+
+        assertThat(capturedTopicEvent("/topic/conversations/" + request.getConversationId()).getEvent())
+                .isEqualTo("leave_conversation");
+    }
+
+    @Test
+    void typingStop_success_broadcastsTypingStop_TC007() {
+        ChatSocketController controller = new ChatSocketController(chatService, messagingTemplate);
+        TypingRequestDTO request = new TypingRequestDTO();
+        request.setConversationId(UUID.randomUUID());
+        request.setUserId(UUID.randomUUID());
+
+        controller.typingStop(request);
+
+        assertThat(capturedTopicEvent("/topic/conversations/" + request.getConversationId()).getEvent())
+                .isEqualTo("typing_stop");
+    }
+
+    @Test
+    void handleSocketError_success_broadcastsFailureOnErrorQueue_TC008() {
+        ChatSocketController controller = new ChatSocketController(chatService, messagingTemplate);
+
+        controller.handleSocketError(new IllegalStateException("socket broken"));
+
+        SocketEventResponseDTO event = capturedTopicEvent("/queue/chat/errors");
+        assertThat(event.getEvent()).isEqualTo("message_failed");
+        assertThat(event.getPayload()).isEqualTo("socket broken");
+    }
+
+    private SocketEventResponseDTO capturedTopicEvent(String destination) {
+        ArgumentCaptor<SocketEventResponseDTO> eventCaptor = ArgumentCaptor.forClass(SocketEventResponseDTO.class);
+        verify(messagingTemplate).convertAndSend(eq(destination), eventCaptor.capture());
+        return eventCaptor.getValue();
+    }
+
+    private SocketConversationRequestDTO conversationRequest() {
+        SocketConversationRequestDTO request = new SocketConversationRequestDTO();
+        request.setConversationId(UUID.randomUUID());
+        request.setUserId(UUID.randomUUID());
+        return request;
     }
 
     private ChatMessageResponseDTO message(UUID conversationId, UUID senderId) {

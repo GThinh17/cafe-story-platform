@@ -82,6 +82,57 @@ class AdminExtraFeeControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    void getExtraFees_success_normalizesPaging_TC004() {
+        org.springframework.data.domain.Page<ExtraFeeResponseDTO> page =
+                new org.springframework.data.domain.PageImpl<>(java.util.List.of(response()));
+        when(adminExtraFeeService.getExtraFees(
+                org.mockito.ArgumentMatchers.eq(true),
+                org.mockito.ArgumentMatchers.any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(page);
+
+        assertThat(adminExtraFeeController.getExtraFees(true, -1, 400)).isSameAs(page);
+
+        org.mockito.ArgumentCaptor<org.springframework.data.domain.Pageable> captor =
+                org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+        verify(adminExtraFeeService).getExtraFees(
+                org.mockito.ArgumentMatchers.eq(true), captor.capture());
+        assertThat(captor.getValue().getPageNumber()).isZero();
+        assertThat(captor.getValue().getPageSize()).isEqualTo(100);
+        assertThat(captor.getValue().getSort().getOrderFor("createdAt").getDirection())
+                .isEqualTo(org.springframework.data.domain.Sort.Direction.DESC);
+    }
+
+    @Test
+    void updateExtraFee_success_delegates_TC005() {
+        UUID extraFeeId = UUID.randomUUID();
+        ExtraFeeRequestDTO request = request();
+        ExtraFeeResponseDTO response = response();
+        when(adminExtraFeeService.updateExtraFee(extraFeeId, request)).thenReturn(response);
+
+        assertThat(adminExtraFeeController.updateExtraFee(extraFeeId, request)).isSameAs(response);
+    }
+
+    @Test
+    void updateExtraFeeStatus_success_delegates_TC006() {
+        UUID extraFeeId = UUID.randomUUID();
+        AdminExtraFeeStatusUpdateRequestDTO request = new AdminExtraFeeStatusUpdateRequestDTO();
+        request.setStatus(false);
+        ExtraFeeResponseDTO response = response();
+        when(adminExtraFeeService.updateExtraFeeStatus(extraFeeId, request)).thenReturn(response);
+
+        assertThat(adminExtraFeeController.updateExtraFeeStatus(extraFeeId, request)).isSameAs(response);
+    }
+
+    @Test
+    void deleteExtraFee_success_delegates_TC007() {
+        UUID extraFeeId = UUID.randomUUID();
+
+        adminExtraFeeController.deleteExtraFee(extraFeeId);
+
+        verify(adminExtraFeeService).deleteExtraFee(extraFeeId);
+    }
+
     private ExtraFeeRequestDTO request() {
         ExtraFeeRequestDTO request = new ExtraFeeRequestDTO();
         request.setName("Reviewer monthly package");

@@ -27,6 +27,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.AbstractPlatformTransactionManager;
 import org.springframework.transaction.support.DefaultTransactionStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -36,6 +37,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -215,6 +217,285 @@ class ReportModerationServiceImplTest {
         assertThat(job.getStatus()).isEqualTo(ReportModerationJobStatus.PENDING);
         assertThat(job.getAttemptCount()).isZero();
         assertThat(job.getLastError()).isNull();
+    }
+
+    // ------------------------------------------- Webhook thật qua HttpServer
+
+    @Test
+    void processDueJobs_success_realWebhookCallParsesResponse_TC009() throws Exception {
+        ContentReport report = blogReport();
+        ReportModerationJob job = job(report);
+        givenClaimedJob(job);
+        when(moderationResultRepository.existsByContentReportId(report.getId())).thenReturn(false);
+        when(contentReportRepository.countByBlogIdAndStatusIn(eq(report.getBlog().getId()), anyCollection()))
+                .thenReturn(1L);
+        withWebhook(200, """
+                {"decision":"VIOLATION","score":88.0,"labels":["violence"],"modelName":"omni-moderation-latest"}
+                """, service -> {
+            assertThat(service.processDueJobs(5)).isEqualTo(1);
+            assertThat(job.getStatus()).isEqualTo(ReportModerationJobStatus.SUCCEEDED);
+        });
+
+        ArgumentCaptor<AiModerationResult> captor = ArgumentCaptor.forClass(AiModerationResult.class);
+        verify(moderationResultRepository).save(captor.capture());
+        assertThat(captor.getValue().getDecision()).isEqualTo(ModerationDecision.VIOLATION);
+        assertThat(captor.getValue().getScore()).isEqualTo(88.0);
+    }
+
+    @Test
+    void processDueJobs_success_webhookDecisionMissingFallsBackToNeedsReview_TC010() throws Exception {
+        ContentReport report = commentReport();
+        ReportModerationJob job = job(report);
+        givenClaimedJob(job);
+        when(moderationResultRepository.existsByContentReportId(report.getId())).thenReturn(false);
+        withWebhook(200, "{\"score\":42.0}", service -> assertThat(service.processDueJobs(5)).isEqualTo(1));
+
+        ArgumentCaptor<AiModerationResult> captor = ArgumentCaptor.forClass(AiModerationResult.class);
+        verify(moderationResultRepository).save(captor.capture());
+        assertThat(captor.getValue().getDecision()).isEqualTo(ModerationDecision.NEEDS_REVIEW);
+    }
+
+    @Test
+    void processDueJobs_fail_webhookServerErrorSchedulesRetry_TC011() throws Exception {
+        ContentReport report = blogReport();
+        ReportModerationJob job = job(report);
+        givenClaimedJob(job);
+        withWebhook(500, "{}", service -> assertThat(service.processDueJobs(5)).isEqualTo(1));
+
+        assertThat(job.getStatus()).isEqualTo(ReportModerationJobStatus.FAILED);
+        assertThat(job.getLastError()).contains("Report moderation webhook returned");
+    }
+
+    @Test
+    void processDueJobs_fail_webhookEmptyBody_TC012() throws Exception {
+        ContentReport report = blogReport();
+        ReportModerationJob job = job(report);
+        givenClaimedJob(job);
+        withWebhook(200, "   ", service -> assertThat(service.processDueJobs(5)).isEqualTo(1));
+
+        assertThat(job.getLastError()).contains("Report moderation response is empty");
+    }
+
+    @Test
+    void processDueJobs_fail_webhookInvalidJson_TC013() throws Exception {
+        ContentReport report = blogReport();
+        ReportModerationJob job = job(report);
+        givenClaimedJob(job);
+        withWebhook(200, "<html>khong phai json</html>",
+                service -> assertThat(service.processDueJobs(5)).isEqualTo(1));
+
+        assertThat(job.getLastError()).contains("Report moderation response is not valid JSON");
+    }
+
+    // ------------------------------------------------- retryReport / getJobs
+
+    @Test
+    void retryReport_fail_reportIdMissing_TC014() {
+        ReportModerationServiceImpl service = serviceReturning(response(ModerationDecision.SAFE, 0.0));
+
+        assertThatThrownBy(() -> service.retryReport(null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Report id is required");
+    }
+
+    @Test
+    void retryReport_fail_jobNotFound_TC015() {
+        UUID reportId = UUID.randomUUID();
+        ReportModerationServiceImpl service = serviceReturning(response(ModerationDecision.SAFE, 0.0));
+        when(jobRepository.findByContentReportId(reportId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.retryReport(reportId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Report moderation job not found");
+    }
+
+    @Test
+    void retryReport_fail_targetIsNotAiModerated_TC016() {
+        ContentReport report = blogReport();
+        ReportModerationJob job = job(report);
+        job.setTargetType(ReportTargetType.USER);
+        UUID reportId = report.getId();
+        ReportModerationServiceImpl service = serviceReturning(response(ModerationDecision.SAFE, 0.0));
+        when(jobRepository.findByContentReportId(reportId)).thenReturn(Optional.of(job));
+
+        assertThatThrownBy(() -> service.retryReport(reportId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Report target is not AI moderated");
+    }
+
+    @Test
+    void retryReport_fail_jobIsProcessingOrSucceeded_TC017() {
+        ContentReport processingReport = blogReport();
+        ReportModerationJob processing = job(processingReport);
+        processing.setStatus(ReportModerationJobStatus.PROCESSING);
+        ContentReport succeededReport = blogReport();
+        ReportModerationJob succeeded = job(succeededReport);
+        succeeded.setStatus(ReportModerationJobStatus.SUCCEEDED);
+        UUID processingReportId = processingReport.getId();
+        UUID succeededReportId = succeededReport.getId();
+        ReportModerationServiceImpl service = serviceReturning(response(ModerationDecision.SAFE, 0.0));
+        when(jobRepository.findByContentReportId(processingReportId)).thenReturn(Optional.of(processing));
+        when(jobRepository.findByContentReportId(succeededReportId)).thenReturn(Optional.of(succeeded));
+
+        assertThatThrownBy(() -> service.retryReport(processingReportId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("cannot be retried");
+        assertThatThrownBy(() -> service.retryReport(succeededReportId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("cannot be retried");
+    }
+
+    @Test
+    void getJobs_success_withAndWithoutStatusFilter_TC018() {
+        ReportModerationJob job = job(blogReport());
+        org.springframework.data.domain.PageRequest pageable =
+                org.springframework.data.domain.PageRequest.of(0, 10);
+        ReportModerationServiceImpl service = serviceReturning(response(ModerationDecision.SAFE, 0.0));
+        when(jobRepository.findAll(pageable))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(job)));
+        when(jobRepository.findByStatus(ReportModerationJobStatus.PENDING, pageable))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of()));
+
+        assertThat(service.getJobs(null, pageable).getContent()).hasSize(1);
+        assertThat(service.getJobs(ReportModerationJobStatus.PENDING, pageable).getContent()).isEmpty();
+    }
+
+    @Test
+    void enqueueReport_skip_reportWithoutIdIsIgnored_TC019() {
+        ContentReport report = blogReport();
+        report.setId(null);
+        ReportModerationServiceImpl service = serviceReturning(response(ModerationDecision.SAFE, 0.0));
+
+        service.enqueueReport(report);
+        service.enqueueReport(null);
+
+        verify(jobRepository, never()).save(any(ReportModerationJob.class));
+    }
+
+    @Test
+    void enqueueReport_skip_reportWithoutTargetEntity_TC020() {
+        ContentReport blogWithoutBlog = baseReport(ReportTargetType.BLOG);
+        ContentReport commentWithoutComment = baseReport(ReportTargetType.COMMENT);
+        ReportModerationServiceImpl service = serviceReturning(response(ModerationDecision.SAFE, 0.0));
+
+        service.enqueueReport(blogWithoutBlog);
+        service.enqueueReport(commentWithoutComment);
+
+        verify(jobRepository, never()).save(any(ReportModerationJob.class));
+    }
+
+    @Test
+    void enqueueReport_success_reportWithoutReasonUsesZeroSeverity_TC021() {
+        ContentReport report = commentReport();
+        report.setReason(null);
+        when(jobRepository.existsByContentReportId(report.getId())).thenReturn(false);
+        when(contentReportRepository.countByCommentIdAndStatusIn(
+                eq(report.getComment().getId()), anyCollection())).thenReturn(0L);
+
+        serviceReturning(response(ModerationDecision.SAFE, 0.0)).enqueueReport(report);
+
+        ArgumentCaptor<ReportModerationJob> captor = ArgumentCaptor.forClass(ReportModerationJob.class);
+        verify(jobRepository).save(captor.capture());
+        assertThat(captor.getValue().getReasonSeveritySignal()).isZero();
+        // Báo cáo bình luận có trọng số đích thấp hơn bài viết.
+        assertThat(captor.getValue().getPriorityScore()).isEqualTo(5.0);
+    }
+
+    @Test
+    void processDueJobs_success_commentReportWithoutCommentStillPersistsResult_TC022() {
+        ContentReport report = baseReport(ReportTargetType.COMMENT);
+        ReportModerationJob job = job(commentReport());
+        job.setContentReport(report);
+        job.setTargetType(ReportTargetType.COMMENT);
+        givenClaimedJob(job);
+        when(moderationResultRepository.existsByContentReportId(report.getId())).thenReturn(false);
+
+        assertThat(serviceReturning(response(ModerationDecision.SAFE, 0.0)).processDueJobs(1)).isEqualTo(1);
+
+        ArgumentCaptor<AiModerationResult> captor = ArgumentCaptor.forClass(AiModerationResult.class);
+        verify(moderationResultRepository).save(captor.capture());
+        assertThat(captor.getValue().getComment()).isNull();
+        assertThat(captor.getValue().getBlog()).isNull();
+        assertThat(captor.getValue().getCaption()).isNull();
+    }
+
+    @Test
+    void processDueJobs_success_blankModelNameFallsBackToDefault_TC023() {
+        ContentReport report = blogReport();
+        ReportModerationJob job = job(report);
+        givenClaimedJob(job);
+        when(moderationResultRepository.existsByContentReportId(report.getId())).thenReturn(false);
+        when(contentReportRepository.countByBlogIdAndStatusIn(
+                eq(report.getBlog().getId()), anyCollection())).thenReturn(0L);
+        ReportModerationResponseDTO blankModel = response(ModerationDecision.NEEDS_REVIEW, 50.0);
+        blankModel.setModelName("   ");
+        blankModel.setLabels(null);
+
+        serviceReturning(blankModel).processDueJobs(1);
+
+        ArgumentCaptor<AiModerationResult> captor = ArgumentCaptor.forClass(AiModerationResult.class);
+        verify(moderationResultRepository).save(captor.capture());
+        assertThat(captor.getValue().getModelName()).isEqualTo("cafestory-report-n8n-openai");
+        assertThat(captor.getValue().getTags()).isEmpty();
+        assertThat(captor.getValue().getResolved()).isFalse();
+    }
+
+    @Test
+    void processDueJobs_success_responseWithoutDecisionFallsBackToNeedsReview_TC024() {
+        ContentReport report = blogReport();
+        ReportModerationJob job = job(report);
+        givenClaimedJob(job);
+        when(moderationResultRepository.existsByContentReportId(report.getId())).thenReturn(false);
+        when(contentReportRepository.countByBlogIdAndStatusIn(
+                eq(report.getBlog().getId()), anyCollection())).thenReturn(0L);
+        ReportModerationResponseDTO withoutDecision = response(ModerationDecision.SAFE, 0.0);
+        withoutDecision.setDecision(null);
+
+        serviceReturning(withoutDecision).processDueJobs(1);
+
+        ArgumentCaptor<AiModerationResult> captor = ArgumentCaptor.forClass(AiModerationResult.class);
+        verify(moderationResultRepository).save(captor.capture());
+        assertThat(captor.getValue().getDecision()).isEqualTo(ModerationDecision.NEEDS_REVIEW);
+    }
+
+    private void givenClaimedJob(ReportModerationJob job) {
+        when(jobRepository.claimDueJobs(
+                any(Collection.class), anyString(), any(LocalDateTime.class), any(LocalDateTime.class), anyInt()))
+                .thenReturn(List.of(job));
+        when(jobRepository.save(any(ReportModerationJob.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(jobRepository.findById(job.getId())).thenReturn(Optional.of(job));
+    }
+
+    /**
+     * Dựng webhook n8n giả trong tiến trình để chạy đúng {@code callModerationWebhook}
+     * thật, thay vì ghi đè phương thức như các phép kiểm còn lại.
+     */
+    private void withWebhook(int statusCode, String body, java.util.function.Consumer<ReportModerationServiceImpl> action)
+            throws Exception {
+        com.sun.net.httpserver.HttpServer server =
+                com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/webhook", exchange -> {
+            exchange.getRequestBody().readAllBytes();
+            byte[] payload = body.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(statusCode, payload.length);
+            try (java.io.OutputStream out = exchange.getResponseBody()) {
+                out.write(payload);
+            }
+        });
+        server.start();
+        try {
+            action.accept(new ReportModerationServiceImpl(
+                    jobRepository,
+                    moderationResultRepository,
+                    contentReportRepository,
+                    new ObjectMapper(),
+                    transactionManager(),
+                    "http://127.0.0.1:" + server.getAddress().getPort() + "/webhook",
+                    5_000));
+        } finally {
+            server.stop(0);
+        }
     }
 
     private ReportModerationServiceImpl serviceReturning(ReportModerationResponseDTO response) {

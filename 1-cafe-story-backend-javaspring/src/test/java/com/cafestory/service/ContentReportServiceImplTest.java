@@ -324,6 +324,228 @@ class ContentReportServiceImplTest {
         verify(blogEventRepository, never()).save(any(BlogEvent.class));
     }
 
+    @Test
+    void createReport_success_cafePageReportDoesNotEnqueueModeration_TC012() {
+        UUID reporterId = UUID.randomUUID();
+        UUID cafePageId = UUID.randomUUID();
+        User reporter = user(reporterId, "reader");
+        com.cafestory.entity.CafePage cafePage = new com.cafestory.entity.CafePage();
+        cafePage.setId(cafePageId);
+        cafePage.setName("Quan xau");
+        cafePage.setOwner(user(UUID.randomUUID(), "owner"));
+        ContentReportRequestDTO request = request(ReportTargetType.CAFE_PAGE, cafePageId);
+        ReportReason reason = reason(request.getReasonId(), "SCAM_FRAUD_OR_SPAM", "Lua dao");
+
+        when(userValidator.validateUserExists(reporterId)).thenReturn(reporter);
+        when(reportReasonService.validateActiveReportReason(request.getReasonId(), ReportTargetType.CAFE_PAGE))
+                .thenReturn(reason);
+        when(cafePageValidator.validateCafePageExists(cafePageId)).thenReturn(cafePage);
+        when(contentReportRepository.existsByReporterUserIdAndCafePageIdAndStatusIn(
+                reporterId, cafePageId, java.util.List.of(ReportStatus.OPEN, ReportStatus.REVIEWING)))
+                .thenReturn(false);
+        when(contentReportRepository.save(any(ContentReport.class)))
+                .thenAnswer(invocation -> saved(invocation.getArgument(0)));
+
+        ContentReportResponseDTO result = contentReportService.createReport(reporterId, request);
+
+        assertThat(result.getTargetType()).isEqualTo(ReportTargetType.CAFE_PAGE);
+        assertThat(result.getTargetId()).isEqualTo(cafePageId);
+        verify(reportModerationService, never()).enqueueReport(any(ContentReport.class));
+        verify(blogEventRepository, never()).save(any(BlogEvent.class));
+    }
+
+    @Test
+    void createReport_fail_cannotReportOwnCafePage_TC013() {
+        UUID reporterId = UUID.randomUUID();
+        UUID cafePageId = UUID.randomUUID();
+        User reporter = user(reporterId, "owner");
+        com.cafestory.entity.CafePage cafePage = new com.cafestory.entity.CafePage();
+        cafePage.setId(cafePageId);
+        cafePage.setOwner(reporter);
+        ContentReportRequestDTO request = request(ReportTargetType.CAFE_PAGE, cafePageId);
+        ReportReason reason = reason(request.getReasonId(), "SCAM_FRAUD_OR_SPAM", "Lua dao");
+
+        when(userValidator.validateUserExists(reporterId)).thenReturn(reporter);
+        when(reportReasonService.validateActiveReportReason(request.getReasonId(), ReportTargetType.CAFE_PAGE))
+                .thenReturn(reason);
+        when(cafePageValidator.validateCafePageExists(cafePageId)).thenReturn(cafePage);
+
+        assertThatThrownBy(() -> contentReportService.createReport(reporterId, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Cannot report your own cafe page");
+    }
+
+    @Test
+    void createReport_fail_duplicateOpenCafePageReport_TC014() {
+        UUID reporterId = UUID.randomUUID();
+        UUID cafePageId = UUID.randomUUID();
+        User reporter = user(reporterId, "reader");
+        com.cafestory.entity.CafePage cafePage = new com.cafestory.entity.CafePage();
+        cafePage.setId(cafePageId);
+        ContentReportRequestDTO request = request(ReportTargetType.CAFE_PAGE, cafePageId);
+        ReportReason reason = reason(request.getReasonId(), "SCAM_FRAUD_OR_SPAM", "Lua dao");
+
+        when(userValidator.validateUserExists(reporterId)).thenReturn(reporter);
+        when(reportReasonService.validateActiveReportReason(request.getReasonId(), ReportTargetType.CAFE_PAGE))
+                .thenReturn(reason);
+        when(cafePageValidator.validateCafePageExists(cafePageId)).thenReturn(cafePage);
+        when(contentReportRepository.existsByReporterUserIdAndCafePageIdAndStatusIn(
+                reporterId, cafePageId, java.util.List.of(ReportStatus.OPEN, ReportStatus.REVIEWING)))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> contentReportService.createReport(reporterId, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Report already exists for this cafe page");
+    }
+
+    @Test
+    void createReport_fail_cannotReportOwnBlogOrComment_TC015() {
+        UUID reporterId = UUID.randomUUID();
+        User reporter = user(reporterId, "tacgia");
+        UUID blogId = UUID.randomUUID();
+        Blog ownBlog = blog(blogId, reporter);
+        ContentReportRequestDTO blogRequest = request(ReportTargetType.BLOG, blogId);
+        ReportReason blogReason = reason(blogRequest.getReasonId(), "SCAM_FRAUD_OR_SPAM", "Lua dao");
+
+        when(userValidator.validateUserExists(reporterId)).thenReturn(reporter);
+        when(reportReasonService.validateActiveReportReason(blogRequest.getReasonId(), ReportTargetType.BLOG))
+                .thenReturn(blogReason);
+        when(blogValidator.validateBlogExists(blogId)).thenReturn(ownBlog);
+
+        assertThatThrownBy(() -> contentReportService.createReport(reporterId, blogRequest))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Cannot report your own blog");
+    }
+
+    @Test
+    void createReport_fail_cannotReportOwnComment_TC016() {
+        UUID reporterId = UUID.randomUUID();
+        User reporter = user(reporterId, "tacgia");
+        UUID commentId = UUID.randomUUID();
+        Comment ownComment = comment(commentId, reporter);
+        ContentReportRequestDTO request = request(ReportTargetType.COMMENT, commentId);
+        ReportReason reason = reason(request.getReasonId(), "SCAM_FRAUD_OR_SPAM", "Lua dao");
+
+        when(userValidator.validateUserExists(reporterId)).thenReturn(reporter);
+        when(reportReasonService.validateActiveReportReason(request.getReasonId(), ReportTargetType.COMMENT))
+                .thenReturn(reason);
+        when(commentValidator.validateCommentExists(commentId)).thenReturn(ownComment);
+
+        assertThatThrownBy(() -> contentReportService.createReport(reporterId, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Cannot report your own comment");
+    }
+
+    @Test
+    void createReport_fail_duplicateOpenCommentReport_TC017() {
+        UUID reporterId = UUID.randomUUID();
+        User reporter = user(reporterId, "reader");
+        UUID commentId = UUID.randomUUID();
+        Comment comment = comment(commentId, user(UUID.randomUUID(), "commenter"));
+        ContentReportRequestDTO request = request(ReportTargetType.COMMENT, commentId);
+        ReportReason reason = reason(request.getReasonId(), "SCAM_FRAUD_OR_SPAM", "Lua dao");
+
+        when(userValidator.validateUserExists(reporterId)).thenReturn(reporter);
+        when(reportReasonService.validateActiveReportReason(request.getReasonId(), ReportTargetType.COMMENT))
+                .thenReturn(reason);
+        when(commentValidator.validateCommentExists(commentId)).thenReturn(comment);
+        when(contentReportRepository.existsByReporterUserIdAndCommentIdAndStatusIn(
+                reporterId, commentId, java.util.List.of(ReportStatus.OPEN, ReportStatus.REVIEWING)))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> contentReportService.createReport(reporterId, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Report already exists for this comment");
+    }
+
+    @Test
+    void getReports_success_mapsAdminPage_TC018() {
+        User reporter = user(UUID.randomUUID(), "reader");
+        ContentReport report = report(UUID.randomUUID(), reporter);
+        org.springframework.data.domain.PageRequest pageable =
+                org.springframework.data.domain.PageRequest.of(0, 10);
+        when(contentReportRepository.findAdminReports(ReportStatus.OPEN, ReportTargetType.BLOG, pageable))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(java.util.List.of(report)));
+
+        assertThat(contentReportService.getReports(ReportStatus.OPEN, ReportTargetType.BLOG, pageable).getContent())
+                .hasSize(1);
+    }
+
+    @Test
+    void getReport_success_returnsSingleReport_TC019() {
+        User reporter = user(UUID.randomUUID(), "reader");
+        ContentReport report = report(UUID.randomUUID(), reporter);
+        when(contentReportRepository.findById(report.getId())).thenReturn(java.util.Optional.of(report));
+
+        assertThat(contentReportService.getReport(report.getId()).getId()).isEqualTo(report.getId());
+    }
+
+    @Test
+    void updateStatus_fail_requestOrStatusMissing_TC020() {
+        UUID reportId = UUID.randomUUID();
+        AdminContentReportStatusUpdateRequestDTO empty = new AdminContentReportStatusUpdateRequestDTO();
+
+        assertThatThrownBy(() -> contentReportService.updateStatus(reportId, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Report status is required");
+        assertThatThrownBy(() -> contentReportService.updateStatus(reportId, empty))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Report status is required");
+    }
+
+    @Test
+    void updateStatus_success_reviewingClearsResolvedAt_TC021() {
+        User reporter = user(UUID.randomUUID(), "reader");
+        ContentReport report = report(UUID.randomUUID(), reporter);
+        report.setResolvedAt(java.time.LocalDateTime.now());
+        AdminContentReportStatusUpdateRequestDTO request = new AdminContentReportStatusUpdateRequestDTO();
+        request.setStatus(ReportStatus.REVIEWING);
+        when(contentReportRepository.findById(report.getId())).thenReturn(java.util.Optional.of(report));
+        when(contentReportRepository.save(report)).thenReturn(report);
+
+        contentReportService.updateStatus(report.getId(), request);
+
+        assertThat(report.getStatus()).isEqualTo(ReportStatus.REVIEWING);
+        assertThat(report.getResolvedAt()).isNull();
+    }
+
+    @Test
+    void updateStatus_success_rejectedStampsResolvedAt_TC022() {
+        User reporter = user(UUID.randomUUID(), "reader");
+        ContentReport report = report(UUID.randomUUID(), reporter);
+        AdminContentReportStatusUpdateRequestDTO request = new AdminContentReportStatusUpdateRequestDTO();
+        request.setStatus(ReportStatus.REJECTED);
+        when(contentReportRepository.findById(report.getId())).thenReturn(java.util.Optional.of(report));
+        when(contentReportRepository.save(report)).thenReturn(report);
+
+        contentReportService.updateStatus(report.getId(), request);
+
+        assertThat(report.getResolvedAt()).isNotNull();
+    }
+
+    @Test
+    void createReport_fail_requestValidation_TC023() {
+        UUID reporterId = UUID.randomUUID();
+        ContentReportRequestDTO noTargetType = new ContentReportRequestDTO();
+        ContentReportRequestDTO noTargetId = new ContentReportRequestDTO();
+        noTargetId.setTargetType(ReportTargetType.BLOG);
+        ContentReportRequestDTO noReason = new ContentReportRequestDTO();
+        noReason.setTargetType(ReportTargetType.BLOG);
+        noReason.setTargetId(UUID.randomUUID());
+
+        assertThatThrownBy(() -> contentReportService.createReport(reporterId, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Report request is required");
+        assertThatThrownBy(() -> contentReportService.createReport(reporterId, noTargetType))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Report target type is required");
+        assertThatThrownBy(() -> contentReportService.createReport(reporterId, noTargetId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Report target id is required");
+        assertThatThrownBy(() -> contentReportService.createReport(reporterId, noReason))
+                .isInstanceOf(ResponseStatusException.class);
+    }
+
     private ContentReportRequestDTO request(ReportTargetType targetType, UUID targetId) {
         ContentReportRequestDTO request = new ContentReportRequestDTO();
         request.setTargetType(targetType);

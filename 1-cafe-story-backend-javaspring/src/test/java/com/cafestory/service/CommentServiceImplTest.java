@@ -353,6 +353,77 @@ class CommentServiceImplTest {
         verify(commentRepository).delete(comment);
     }
 
+    @Test
+    void updateComment_success_onlyProvidedFieldsChange_TC012() {
+        UUID commentId = UUID.randomUUID();
+        Blog blog = blog(UUID.randomUUID());
+        User author = user(UUID.randomUUID());
+        Comment comment = comment(commentId, blog, author);
+        comment.setContent("Noi dung cu");
+        CommentUpdateDTO request = new CommentUpdateDTO();
+
+        when(commentValidator.validateCommentExists(commentId)).thenReturn(comment);
+        when(commentRepository.save(comment)).thenReturn(comment);
+        when(commentMapper.toCommentResponseDTO(comment)).thenReturn(new CommentResponseDTO());
+
+        commentService.updateComment(commentId, author.getUserId(), request);
+
+        assertThat(comment.getContent()).isEqualTo("Noi dung cu");
+    }
+
+    @Test
+    void updateComment_success_cafePageManagerCanEditPageComment_TC013() {
+        UUID commentId = UUID.randomUUID();
+        UUID managerUserId = UUID.randomUUID();
+        Blog blog = blog(UUID.randomUUID());
+        Comment comment = comment(commentId, blog, user(UUID.randomUUID()));
+        com.cafestory.entity.CafePage cafePage = new com.cafestory.entity.CafePage();
+        cafePage.setId(UUID.randomUUID());
+        comment.setActorContextType(com.cafestory.entity.enums.ActorContextType.CAFE_PAGE);
+        comment.setActorCafePage(cafePage);
+        CommentUpdateDTO request = new CommentUpdateDTO();
+        request.setContent("Noi dung moi");
+
+        when(commentValidator.validateCommentExists(commentId)).thenReturn(comment);
+        when(commentRepository.save(comment)).thenReturn(comment);
+        when(commentMapper.toCommentResponseDTO(comment)).thenReturn(new CommentResponseDTO());
+
+        commentService.updateComment(commentId, managerUserId, request);
+
+        assertThat(comment.getContent()).isEqualTo("Noi dung moi");
+        verify(cafePageValidator).validateUserCanManagePage(cafePage.getId(), managerUserId);
+    }
+
+    @Test
+    void updateComment_fail_strangerCannotEditUserComment_TC014() {
+        UUID commentId = UUID.randomUUID();
+        UUID strangerId = UUID.randomUUID();
+        Comment comment = comment(commentId, blog(UUID.randomUUID()), user(UUID.randomUUID()));
+        CommentUpdateDTO request = new CommentUpdateDTO();
+
+        when(commentValidator.validateCommentExists(commentId)).thenReturn(comment);
+
+        assertThatThrownBy(() -> commentService.updateComment(commentId, strangerId, request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("User is not allowed to manage this comment");
+    }
+
+    @Test
+    void deleteComment_success_nullCommentCountIsTreatedAsZero_TC015() {
+        UUID commentId = UUID.randomUUID();
+        Blog blog = blog(UUID.randomUUID());
+        blog.setCommentCount(null);
+        User author = user(UUID.randomUUID());
+        Comment comment = comment(commentId, blog, author);
+
+        when(commentValidator.validateCommentExists(commentId)).thenReturn(comment);
+
+        commentService.deleteComment(commentId, author.getUserId());
+
+        assertThat(blog.getCommentCount()).isZero();
+        verify(commentRepository).delete(comment);
+    }
+
     private CommentCreateDTO createCommentRequest(UUID blogId, UUID userId, UUID parentCommentId) {
         CommentCreateDTO request = new CommentCreateDTO();
         request.setBlogId(blogId);

@@ -27,6 +27,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -236,6 +238,151 @@ class RecommendationServiceImplTest {
         assertThat(result.get(0).getTargetType()).isEqualTo(RecommendationTargetType.CAFE_PAGE);
         assertThat(result.get(0).getTargetId()).isEqualTo(draftPage.getId());
         assertThat(result.get(0).getUsername()).isEqualTo("Draft Paid Cafe");
+    }
+
+    @Test
+    void getUserRecommendations_success_noCandidateSkipsReportQuery_TC008() {
+        UUID currentUserId = UUID.randomUUID();
+        User currentUser = user(currentUserId, "current", "Current User", "Ho Chi Minh");
+        when(userValidator.validateUserExists(currentUserId)).thenReturn(currentUser);
+        when(userRepository.findRecommendationCandidates(
+                eq(currentUserId), any(UUID.class), eq("ho chi minh"), any(Pageable.class)))
+                .thenReturn(List.of());
+
+        assertThat(recommendationService.getUserRecommendations(currentUserId, 0, 10)).isEmpty();
+
+        verify(contentReportRepository, never()).countByReportedUserIdsAndStatusIn(any(), any());
+    }
+
+    @Test
+    void getUserRecommendations_success_userWithoutRegionScoresZeroLocation_TC009() {
+        UUID currentUserId = UUID.randomUUID();
+        User currentUser = user(currentUserId, "current", "Current User", "Ho Chi Minh");
+        currentUser.setRegion(null);
+        User candidate = user(UUID.randomUUID(), "khac", "Nguoi Khac", "Da Nang");
+        candidate.setUserFollower(40);
+        when(userValidator.validateUserExists(currentUserId)).thenReturn(currentUser);
+        when(userRepository.findRecommendationCandidates(
+                eq(currentUserId), org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(), any(Pageable.class)))
+                .thenReturn(List.of(candidate));
+        when(contentReportRepository.countByReportedUserIdsAndStatusIn(any(), eq(activeStatuses())))
+                .thenReturn(List.of());
+
+        List<RecommendationCardResponseDTO> result =
+                recommendationService.getUserRecommendations(currentUserId, 0, 10);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getReason()).isEqualTo("Popular in the CafeStory community");
+    }
+
+    @Test
+    void getUserRecommendations_success_candidateWithoutRegionFallsBackToGenericReason_TC010() {
+        UUID currentUserId = UUID.randomUUID();
+        User currentUser = user(currentUserId, "current", "Current User", "Ho Chi Minh");
+        User candidate = user(UUID.randomUUID(), "khongvung", "Khong Vung", "Ha Noi");
+        candidate.setRegion(null);
+        when(userValidator.validateUserExists(currentUserId)).thenReturn(currentUser);
+        when(userRepository.findRecommendationCandidates(
+                eq(currentUserId), any(UUID.class), eq("ho chi minh"), any(Pageable.class)))
+                .thenReturn(List.of(candidate));
+        when(contentReportRepository.countByReportedUserIdsAndStatusIn(any(), eq(activeStatuses())))
+                .thenReturn(List.of());
+
+        List<RecommendationCardResponseDTO> result =
+                recommendationService.getUserRecommendations(currentUserId, 0, 10);
+
+        assertThat(result.get(0).getCity()).isNull();
+        assertThat(result.get(0).getReason()).isEqualTo("Suggested for your CafeStory circle");
+    }
+
+    @Test
+    void getReviewerRecommendations_success_inactiveReviewerLosesActiveBonus_TC011() {
+        UUID currentUserId = UUID.randomUUID();
+        User currentUser = user(currentUserId, "current", "Current User", "Ho Chi Minh");
+        User activeUser = user(UUID.randomUUID(), "active", "Active Reviewer", "Da Nang");
+        Reviewer active = reviewer(UUID.randomUUID(), activeUser);
+        User inactiveUser = user(UUID.randomUUID(), "inactive", "Inactive Reviewer", "Da Nang");
+        Reviewer inactive = reviewer(UUID.randomUUID(), inactiveUser);
+        inactive.setReviewerActive(false);
+
+        when(userValidator.validateUserExists(currentUserId)).thenReturn(currentUser);
+        when(reviewerRepository.findRecommendationCandidates(
+                eq(currentUserId), any(UUID.class), eq("ho chi minh"), any(Pageable.class)))
+                .thenReturn(List.of(inactive, active));
+        when(contentReportRepository.countByReportedUserIdsAndStatusIn(any(), eq(activeStatuses())))
+                .thenReturn(List.of());
+
+        List<RecommendationCardResponseDTO> result =
+                recommendationService.getReviewerRecommendations(currentUserId, 0, 10);
+
+        assertThat(result).extracting(RecommendationCardResponseDTO::getTargetId)
+                .containsExactly(active.getReviewerId(), inactive.getReviewerId());
+        assertThat(result.get(0).getReason()).isEqualTo("Active reviewer on CafeStory");
+    }
+
+    @Test
+    void getCafePageRecommendations_success_inactivePageLosesActiveBonus_TC012() {
+        UUID currentUserId = UUID.randomUUID();
+        User currentUser = user(currentUserId, "current", "Current User", "Ho Chi Minh");
+        CafePage activePage = cafePage(UUID.randomUUID(), "Quan dang hoat dong", "Da Nang");
+        CafePage inactivePage = cafePage(UUID.randomUUID(), "Quan tam dung", "Da Nang");
+        inactivePage.setPageActive(false);
+
+        when(userValidator.validateUserExists(currentUserId)).thenReturn(currentUser);
+        when(cafePageRepository.findRecommendationCandidates(
+                eq(currentUserId), any(UUID.class), eq("ho chi minh"), any(Pageable.class)))
+                .thenReturn(List.of(inactivePage, activePage));
+        when(contentReportRepository.countByCafePageIdsAndStatusIn(any(), eq(activeStatuses())))
+                .thenReturn(List.of());
+
+        List<RecommendationCardResponseDTO> result =
+                recommendationService.getCafePageRecommendations(currentUserId, 0, 10);
+
+        assertThat(result).extracting(RecommendationCardResponseDTO::getTargetId)
+                .containsExactly(activePage.getId(), inactivePage.getId());
+        assertThat(result.get(0).getReason()).isEqualTo("Active cafe page on CafeStory");
+    }
+
+    @Test
+    void getUserRecommendations_success_sameRegionIdScoresHigherThanSameCity_TC013() {
+        UUID currentUserId = UUID.randomUUID();
+        User currentUser = user(currentUserId, "current", "Current User", "Ho Chi Minh");
+        User sameRegion = user(UUID.randomUUID(), "cungvung", "Cung Vung", "Ho Chi Minh");
+        sameRegion.setRegion(currentUser.getRegion());
+        User sameCityOnly = user(UUID.randomUUID(), "cungthanh", "Cung Thanh Pho", "Ho Chi Minh");
+
+        when(userValidator.validateUserExists(currentUserId)).thenReturn(currentUser);
+        when(userRepository.findRecommendationCandidates(
+                eq(currentUserId), any(UUID.class), eq("ho chi minh"), any(Pageable.class)))
+                .thenReturn(List.of(sameCityOnly, sameRegion));
+        when(contentReportRepository.countByReportedUserIdsAndStatusIn(any(), eq(activeStatuses())))
+                .thenReturn(List.of());
+
+        assertThat(recommendationService.getUserRecommendations(currentUserId, 0, 10))
+                .extracting(RecommendationCardResponseDTO::getTargetId)
+                .containsExactly(sameRegion.getUserId(), sameCityOnly.getUserId());
+    }
+
+    @Test
+    void getMixedRecommendations_success_pageBeyondResultSetIsEmpty_TC014() {
+        UUID currentUserId = UUID.randomUUID();
+        User currentUser = user(currentUserId, "current", "Current User", "Ho Chi Minh");
+        when(userValidator.validateUserExists(currentUserId)).thenReturn(currentUser);
+        when(userRepository.findRecommendationCandidates(
+                eq(currentUserId), any(UUID.class), eq("ho chi minh"), any(Pageable.class)))
+                .thenReturn(List.of(user(UUID.randomUUID(), "a", "A", "Ho Chi Minh")));
+        when(reviewerRepository.findRecommendationCandidates(
+                eq(currentUserId), any(UUID.class), eq("ho chi minh"), any(Pageable.class)))
+                .thenReturn(List.of());
+        when(cafePageRepository.findRecommendationCandidates(
+                eq(currentUserId), any(UUID.class), eq("ho chi minh"), any(Pageable.class)))
+                .thenReturn(List.of());
+        when(contentReportRepository.countByReportedUserIdsAndStatusIn(any(), eq(activeStatuses())))
+                .thenReturn(List.of());
+
+        assertThat(recommendationService.getMixedRecommendations(currentUserId, 5, 10)).isEmpty();
+        assertThat(recommendationService.getMixedRecommendations(currentUserId, -1, 0)).hasSize(1);
     }
 
     private List<ReportStatus> activeStatuses() {

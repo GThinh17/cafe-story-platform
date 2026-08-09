@@ -5,6 +5,7 @@ import com.cafestory.entity.Notification;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.ActorContextType;
 import com.cafestory.entity.enums.NotificationTargetType;
+import com.cafestory.entity.enums.FollowTargetType;
 import com.cafestory.entity.enums.NotificationType;
 import com.cafestory.mapper.NotificationMapper;
 import com.cafestory.repository.NotificationRepository;
@@ -246,6 +247,138 @@ class NotificationServiceImplTest {
         assertThatThrownBy(() -> notificationService.markAsRead(otherUserId, notification.getId()))
                 .isInstanceOf(ResponseStatusException.class)
                 .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+    }
+
+    @Test
+    void createFollowPageNotification_success_withCafePageNavigation_TC013() {
+        UUID cafePageId = UUID.randomUUID();
+        mockCreate(NotificationType.FOLLOW);
+
+        var result = notificationService.createFollowPageNotification(recipientId(), actorId(), cafePageId);
+
+        assertThat(result.getType()).isEqualTo(NotificationType.FOLLOW);
+        assertThat(result.getCafePageId()).isEqualTo(cafePageId);
+        assertThat(result.getNavigation().getTargetType()).isEqualTo(NotificationTargetType.CAFE_PAGE);
+        assertThat(result.getNavigation().getTargetId()).isEqualTo(cafePageId);
+        assertThat(result.getNavigation().getAction()).isEqualTo("open_cafe_page");
+    }
+
+    @Test
+    void createModerationNotification_success_actorIsRecipientThemself_TC014() {
+        UUID blogId = UUID.randomUUID();
+        User recipient = user(recipientId());
+        when(userValidator.validateUserExists(recipientId())).thenReturn(recipient);
+        when(notificationRepository.countByRecipientUserIdAndIsRead(recipientId(), false)).thenReturn(2L);
+        doAnswer(invocation -> {
+            Notification notification = invocation.getArgument(0);
+            notification.setId(UUID.randomUUID());
+            notification.setCreatedAt(LocalDateTime.now());
+            notification.setUpdatedAt(notification.getCreatedAt());
+            return notification;
+        }).when(notificationRepository).save(any(Notification.class));
+
+        var result = notificationService.createModerationNotification(
+                recipientId(), blogId, "REJECTED", "Noi dung vi pham");
+
+        assertThat(result.getType()).isEqualTo(NotificationType.BLOG_MODERATION);
+        assertThat(result.getBlogId()).isEqualTo(blogId);
+        assertThat(result.getModerationStatus()).isEqualTo("REJECTED");
+        assertThat(result.getModerationReason()).isEqualTo("Noi dung vi pham");
+        assertThat(result.getRecipientId()).isEqualTo(recipientId());
+        assertThat(result.getActorId()).isEqualTo(recipientId());
+        assertThat(result.getNavigation().getAction()).isEqualTo("open_moderation_result");
+        verify(notificationRealtimeService).emitNewNotification(recipientId(), result);
+        verify(notificationRealtimeService).emitUnreadCountUpdated(recipientId(), 2L);
+    }
+
+    @Test
+    void createModerationNotification_fail_missingRequiredFields_TC015() {
+        UUID blogId = UUID.randomUUID();
+        UUID recipientId = recipientId();
+
+        assertThatThrownBy(() ->
+                notificationService.createModerationNotification(null, blogId, "REJECTED", null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("recipientId, blogId and moderationStatus are required");
+        assertThatThrownBy(() ->
+                notificationService.createModerationNotification(recipientId, null, "REJECTED", null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("recipientId, blogId and moderationStatus are required");
+        assertThatThrownBy(() ->
+                notificationService.createModerationNotification(recipientId, blogId, null, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("recipientId, blogId and moderationStatus are required");
+    }
+
+    @Test
+    void createNotification_fail_actorIdMissing_TC016() {
+        CreateNotificationRequestDTO request = baseRequest(NotificationType.LIKE);
+        request.setActorId(null);
+        request.setBlogId(UUID.randomUUID());
+
+        assertThatThrownBy(() -> notificationService.createNotification(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Actor id and recipient id are required");
+    }
+
+    @Test
+    void createNotification_fail_blogNotificationCarriesCafePageId_TC017() {
+        CreateNotificationRequestDTO request = baseRequest(NotificationType.LIKE);
+        request.setBlogId(UUID.randomUUID());
+        request.setCafePageId(UUID.randomUUID());
+
+        assertThatThrownBy(() -> notificationService.createNotification(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Mismatched target data");
+    }
+
+    @Test
+    void createNotification_fail_messageNotificationCarriesCafePageId_TC018() {
+        CreateNotificationRequestDTO request = baseRequest(NotificationType.MESSAGE);
+        request.setConversationId(UUID.randomUUID());
+        request.setCafePageId(UUID.randomUUID());
+
+        assertThatThrownBy(() -> notificationService.createNotification(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Mismatched target data");
+    }
+
+    @Test
+    void createNotification_fail_followCafePageWithoutCafePageId_TC019() {
+        CreateNotificationRequestDTO request = baseRequest(NotificationType.FOLLOW);
+        request.setTargetType(FollowTargetType.CAFE_PAGE);
+
+        assertThatThrownBy(() -> notificationService.createNotification(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("cafePageId is required");
+    }
+
+    @Test
+    void createNotification_fail_followMixesUserAndCafePageTargets_TC020() {
+        CreateNotificationRequestDTO userTarget = baseRequest(NotificationType.FOLLOW);
+        userTarget.setTargetType(FollowTargetType.USER);
+        userTarget.setUserId(UUID.randomUUID());
+        userTarget.setCafePageId(UUID.randomUUID());
+
+        CreateNotificationRequestDTO cafePageTarget = baseRequest(NotificationType.FOLLOW);
+        cafePageTarget.setTargetType(FollowTargetType.CAFE_PAGE);
+        cafePageTarget.setCafePageId(UUID.randomUUID());
+        cafePageTarget.setUserId(UUID.randomUUID());
+
+        CreateNotificationRequestDTO withConversation = baseRequest(NotificationType.FOLLOW);
+        withConversation.setTargetType(FollowTargetType.USER);
+        withConversation.setUserId(UUID.randomUUID());
+        withConversation.setConversationId(UUID.randomUUID());
+
+        assertThatThrownBy(() -> notificationService.createNotification(userTarget))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Mismatched target data");
+        assertThatThrownBy(() -> notificationService.createNotification(cafePageTarget))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Mismatched target data");
+        assertThatThrownBy(() -> notificationService.createNotification(withConversation))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Mismatched target data");
     }
 
     private void mockCreate(NotificationType type) {

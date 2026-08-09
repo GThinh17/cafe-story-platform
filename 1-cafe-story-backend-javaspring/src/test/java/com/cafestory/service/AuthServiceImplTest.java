@@ -270,6 +270,53 @@ class AuthServiceImplTest {
         verify(userRepository, never()).findExistingUserNamesLowercase(any());
     }
 
+    @Test
+    void suggestUserNames_nullFullName_throwsBadRequest_TC015() {
+        assertThatThrownBy(() -> service().suggestUserNames(null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Full name is required");
+    }
+
+    @Test
+    void suggestUserNames_nameWithoutLatinLetters_stillReturnsSuggestions_TC016() {
+        when(userRepository.findExistingUserNamesLowercase(any())).thenReturn(List.of());
+
+        // Tên chỉ gồm ký tự bị lọc sạch: bộ sinh phải rơi về tiền tố "user".
+        UsernameSuggestionResponse response = service().suggestUserNames("!!! ???");
+
+        assertThat(response.getSuggestions()).isNotEmpty();
+        assertThat(response.getSuggestions()).allMatch(this::isValidSuggestion);
+        assertThat(response.getSuggestions()).allMatch(candidate -> candidate.startsWith("user"));
+    }
+
+    @Test
+    void suggestUserNames_singleTokenName_skipsPenultimateCandidates_TC017() {
+        when(userRepository.findExistingUserNamesLowercase(any())).thenReturn(List.of());
+
+        UsernameSuggestionResponse response = service().suggestUserNames("Vu");
+
+        assertThat(response.getSuggestions()).isNotEmpty();
+        assertThat(response.getSuggestions()).allMatch(this::isValidSuggestion);
+    }
+
+    @Test
+    void getCurrentUser_success_returnsProfileWithoutTokens_TC018() {
+        UUID userId = UUID.randomUUID();
+        User user = user("luan123@example.com", "luan123");
+        user.setUserId(userId);
+        when(userValidator.validateUserExists(userId)).thenReturn(user);
+        when(userRoleAssignmentRepository.findByUserUserId(userId))
+                .thenReturn(List.of(assignment(user, role("USER"))));
+
+        AuthResponse response = service().getCurrentUser(userId);
+
+        assertThat(response.getUser().getUserId()).isEqualTo(userId);
+        assertThat(response.getUser().getRoles()).containsExactly("USER");
+        assertThat(response.getAccessToken()).isNull();
+        assertThat(response.getRefreshToken()).isNull();
+        verify(userValidator).validateUserActive(user);
+    }
+
     private AuthServiceImpl service() {
         return new AuthServiceImpl(
                 userRepository,

@@ -70,6 +70,32 @@ class BlogMapperTest {
         return blog;
     }
 
+    @Test
+    void resolveDisplayHelpers_success_nullBlogGivesNull() {
+        assertThat(blogMapper.resolveDisplayAuthorType(null)).isEqualTo(BlogDisplayAuthorType.USER);
+        assertThat(blogMapper.resolveDisplayName(null)).isNull();
+        assertThat(blogMapper.resolveDisplayAvatarUrl(null)).isNull();
+    }
+
+    @Test
+    void resolveDisplayHelpers_success_blogWithoutAuthorGivesNull() {
+        Blog blog = blog(null);
+        blog.setPage(null);
+
+        assertThat(blogMapper.resolveDisplayName(blog)).isNull();
+        assertThat(blogMapper.resolveDisplayAvatarUrl(blog)).isNull();
+    }
+
+    @Test
+    void resolveDisplayName_success_blankUserNameFallsBackToFullName() {
+        User author = user();
+        author.setUserName("   ");
+        Blog blog = blog(author);
+        blog.setPage(null);
+
+        assertThat(blogMapper.resolveDisplayName(blog)).isEqualTo("Reader Name");
+    }
+
     private User user() {
         User user = new User();
         user.setUserId(UUID.randomUUID());

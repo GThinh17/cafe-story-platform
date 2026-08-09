@@ -601,6 +601,46 @@ class BlogServiceImplTest {
         verify(blogRepository, never()).delete(any(Blog.class));
     }
 
+    @Test
+    void getSharedBlogsByUserId_success_shareCountSortUsesDedicatedQuery_TC018() {
+        UUID userId = UUID.randomUUID();
+        Blog blog = blog();
+
+        when(blogRepository.findSharedBlogsByUserIdOrderByShareCount(userId)).thenReturn(List.of(blog, blog));
+        when(blogRepository.findImageUrlsByBlogIds(List.of(blog.getId()))).thenReturn(List.of());
+        when(regionRepository.findAllById(List.of(blog.getRegionId()))).thenReturn(List.of());
+        when(blogSaveRepository.countSavesByBlogIds(List.of(blog.getId()))).thenReturn(List.of());
+        when(blogRatingRepository.findRatingSummariesByBlogIds(List.of(blog.getId()))).thenReturn(List.of());
+        when(blogTaggedUserRepository.findByBlogIdInWithTaggedUser(List.of(blog.getId()))).thenReturn(List.of());
+
+        // Bài trùng id bị gộp lại còn một bản ghi.
+        assertThat(blogService.getSharedBlogsByUserId(userId, null, "shareCount")).hasSize(1);
+        verify(blogRepository, never()).findSharedBlogsByUserId(userId);
+    }
+
+    @Test
+    void getSharedBlogsByUserId_success_defaultSortUsesRecentQuery_TC019() {
+        UUID userId = UUID.randomUUID();
+
+        when(blogRepository.findSharedBlogsByUserId(userId)).thenReturn(List.of());
+
+        assertThat(blogService.getSharedBlogsByUserId(userId, null, null)).isEmpty();
+        assertThat(blogService.getSharedBlogsByUserId(userId, null, "recent")).isEmpty();
+        verify(blogRepository, never()).findSharedBlogsByUserIdOrderByShareCount(userId);
+    }
+
+    @Test
+    void getAllBlogsByUserId_success_blogWithoutIdIsSkipped_TC020() {
+        UUID userId = UUID.randomUUID();
+        Blog withoutId = blog();
+        withoutId.setId(null);
+
+        when(blogRepository.findByAuthorUserId(userId)).thenReturn(List.of(withoutId));
+
+        assertThat(blogService.getAllBlogsByUserId(userId, null)).isEmpty();
+        verify(blogRepository, never()).findImageUrlsByBlogIds(any());
+    }
+
     private BlogCreateDTO createBlogRequest() {
         BlogCreateDTO request = new BlogCreateDTO();
         request.setAuthorUserId(UUID.randomUUID());

@@ -130,6 +130,107 @@ class CafePageRatingServiceImplTest {
         verify(cafePageRatingRepository, never()).save(any(CafePageRating.class));
     }
 
+    @Test
+    void rateCafePage_fail_ratingIsNull_TC005() {
+        UUID cafePageId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> cafePageRatingService.rateCafePage(cafePageId, userId, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Rating is required");
+    }
+
+    @Test
+    void rateCafePage_fail_pageActiveFlagIsOff_TC006() {
+        UUID cafePageId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        when(cafePageValidator.validateCafePageExists(cafePageId))
+                .thenReturn(cafePage(cafePageId, PageStatus.ACTIVE, false));
+
+        assertThatThrownBy(() -> cafePageRatingService.rateCafePage(cafePageId, userId, 4))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Cafe page is not available for rating");
+    }
+
+    @Test
+    void deleteRating_success_removesRating_TC007() {
+        UUID cafePageId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        User user = user(userId);
+        CafePageRating cafePageRating = rating(UUID.randomUUID(), cafePage(cafePageId, PageStatus.ACTIVE, true), user, 4);
+        when(userValidator.validateUserExists(userId)).thenReturn(user);
+        when(cafePageRatingRepository.findByUserUserIdAndCafePageId(userId, cafePageId))
+                .thenReturn(Optional.of(cafePageRating));
+
+        cafePageRatingService.deleteRating(cafePageId, userId);
+
+        verify(cafePageRatingRepository).delete(cafePageRating);
+        verify(userValidator).validateUserActive(user);
+    }
+
+    @Test
+    void deleteRating_fail_ratingNotFound_TC008() {
+        UUID cafePageId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        when(userValidator.validateUserExists(userId)).thenReturn(user(userId));
+        when(cafePageRatingRepository.findByUserUserIdAndCafePageId(userId, cafePageId))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> cafePageRatingService.deleteRating(cafePageId, userId))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Cafe page rating not found");
+        verify(cafePageRatingRepository, never()).delete(any(CafePageRating.class));
+    }
+
+    @Test
+    void getRatingsByCafePageId_success_enrichesWithAverageAndCount_TC009() {
+        UUID cafePageId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        CafePage cafePage = cafePage(cafePageId, PageStatus.ACTIVE, true);
+        CafePageRating cafePageRating = rating(UUID.randomUUID(), cafePage, user(userId), 5);
+        when(cafePageRatingRepository.countByCafePageId(cafePageId)).thenReturn(7L);
+        when(cafePageRatingRepository.findAverageRatingByCafePageId(cafePageId)).thenReturn(4.25);
+        when(cafePageRatingRepository.findByCafePageId(cafePageId)).thenReturn(java.util.List.of(cafePageRating));
+        when(cafePageInteractionMapper.toCafePageRatingResponseDTO(cafePageRating))
+                .thenReturn(response(cafePageRating.getId(), cafePageId, userId, 5));
+
+        var result = cafePageRatingService.getRatingsByCafePageId(cafePageId);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getRatingAverage()).isEqualTo(4.25);
+        assertThat(result.get(0).getRatingCount()).isEqualTo(7L);
+    }
+
+    @Test
+    void getRatingsByCafePageId_success_noRatingYetGivesZeroAverage_TC010() {
+        UUID cafePageId = UUID.randomUUID();
+        when(cafePageRatingRepository.countByCafePageId(cafePageId)).thenReturn(0L);
+        when(cafePageRatingRepository.findAverageRatingByCafePageId(cafePageId)).thenReturn(null);
+        when(cafePageRatingRepository.findByCafePageId(cafePageId)).thenReturn(java.util.List.of());
+
+        assertThat(cafePageRatingService.getRatingsByCafePageId(cafePageId)).isEmpty();
+    }
+
+    @Test
+    void getRatingsByUserId_success_enrichesPerCafePage_TC011() {
+        UUID cafePageId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        CafePage cafePage = cafePage(cafePageId, PageStatus.ACTIVE, true);
+        CafePageRating cafePageRating = rating(UUID.randomUUID(), cafePage, user(userId), 3);
+        when(cafePageRatingRepository.findByUserUserId(userId)).thenReturn(java.util.List.of(cafePageRating));
+        when(cafePageInteractionMapper.toCafePageRatingResponseDTO(cafePageRating))
+                .thenReturn(response(cafePageRating.getId(), cafePageId, userId, 3));
+        when(cafePageRatingRepository.findAverageRatingByCafePageId(cafePageId)).thenReturn(3.0);
+        when(cafePageRatingRepository.countByCafePageId(cafePageId)).thenReturn(2L);
+
+        var result = cafePageRatingService.getRatingsByUserId(userId);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getRatingAverage()).isEqualTo(3.0);
+        assertThat(result.get(0).getRatingCount()).isEqualTo(2L);
+        verify(userValidator).validateUserExists(userId);
+    }
+
     private CafePage cafePage(UUID cafePageId, PageStatus status, Boolean pageActive) {
         CafePage cafePage = new CafePage();
         cafePage.setId(cafePageId);

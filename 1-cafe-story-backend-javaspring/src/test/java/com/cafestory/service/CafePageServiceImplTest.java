@@ -41,8 +41,10 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -338,6 +340,158 @@ class CafePageServiceImplTest {
         cafePageService.deleteCafePage(cafePageId, actorUserId);
 
         verify(cafePageRepository).delete(cafePage);
+    }
+
+    @Test
+    void createCafePage_success_withoutRegionAndWithCoOwners_TC013() {
+        CafePageCreateDTO request = createRequest();
+        User owner = user(request.getOwnerUserId());
+        User coOwner = user(UUID.randomUUID());
+        request.setCoOwnerUserIds(java.util.List.of(coOwner.getUserId(), owner.getUserId()));
+        CafePage cafePage = cafePage(UUID.randomUUID(), owner);
+        CafePageResponseDTO response = response(cafePage.getId(), owner.getUserId());
+
+        when(userValidator.validateUserExists(request.getOwnerUserId())).thenReturn(owner);
+        when(userValidator.validateUserExists(coOwner.getUserId())).thenReturn(coOwner);
+        when(cafePageMapper.toCafePage(request)).thenReturn(cafePage);
+        when(cafePageRepository.save(cafePage)).thenReturn(cafePage);
+        when(cafePageMapper.toCafePageResponseDTO(cafePage)).thenReturn(response);
+
+        assertThat(cafePageService.createCafePage(request)).isEqualTo(response);
+
+        assertThat(cafePage.getRegion()).isNull();
+        org.mockito.ArgumentCaptor<java.util.List<com.cafestory.entity.PageMember>> captor =
+                org.mockito.ArgumentCaptor.forClass(java.util.List.class);
+        verify(pageMemberRepository).saveAll(captor.capture());
+        assertThat(captor.getValue()).hasSize(2);
+        verify(regionService, never()).resolveExistingRegion(any(), any());
+    }
+
+    @Test
+    void updateCafePage_success_updatesEveryOptionalField_TC014() {
+        UUID cafePageId = UUID.randomUUID();
+        CafePage cafePage = cafePage(cafePageId, user(UUID.randomUUID()));
+        UUID actorUserId = cafePage.getOwner().getUserId();
+        CafePageUpdateDTO request = new CafePageUpdateDTO();
+        request.setDescription("Mo ta moi");
+        request.setAvatarUrl("https://cdn.example.com/avatar.png");
+        request.setCoverUrl("https://cdn.example.com/cover.png");
+        CafePageResponseDTO response = response(cafePageId, actorUserId);
+
+        when(cafePageValidator.validateCafePageExists(cafePageId)).thenReturn(cafePage);
+        when(cafePageRepository.save(cafePage)).thenReturn(cafePage);
+        when(cafePageMapper.toCafePageResponseDTO(cafePage)).thenReturn(response);
+
+        cafePageService.updateCafePage(cafePageId, actorUserId, request);
+
+        assertThat(cafePage.getDescription()).isEqualTo("Mo ta moi");
+        assertThat(cafePage.getAvatarUrl()).isEqualTo("https://cdn.example.com/avatar.png");
+        assertThat(cafePage.getCoverUrl()).isEqualTo("https://cdn.example.com/cover.png");
+        // Trường không gửi lên thì giữ nguyên.
+        assertThat(cafePage.getName()).isEqualTo("Cafe Story");
+        assertThat(cafePage.getStatus()).isEqualTo(PageStatus.DRAFT);
+        verify(regionService, never()).resolveExistingRegion(any(), any());
+    }
+
+    @Test
+    void getBlogsByCafePageId_success_normalizesNonPositiveSize_TC015() {
+        UUID cafePageId = UUID.randomUUID();
+        CafePage cafePage = cafePage(cafePageId, user(UUID.randomUUID()));
+
+        when(cafePageValidator.validateCafePageExists(cafePageId)).thenReturn(cafePage);
+        when(blogRepository.findPublishedCafePageBlogsFirstPage(
+                org.mockito.ArgumentMatchers.eq(cafePageId), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(java.util.List.of());
+
+        assertThat(cafePageService.getBlogsByCafePageId(cafePageId, null, 0).getItems()).isEmpty();
+
+        org.mockito.ArgumentCaptor<org.springframework.data.domain.Pageable> captor =
+                org.mockito.ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
+        verify(blogRepository).findPublishedCafePageBlogsFirstPage(
+                org.mockito.ArgumentMatchers.eq(cafePageId), captor.capture());
+        assertThat(captor.getValue().getPageSize()).isGreaterThan(1);
+    }
+
+    @Test
+    void getBlogsByCafePageId_fail_invalidCursor_TC016() {
+        UUID cafePageId = UUID.randomUUID();
+        CafePage cafePage = cafePage(cafePageId, user(UUID.randomUUID()));
+        when(cafePageValidator.validateCafePageExists(cafePageId)).thenReturn(cafePage);
+
+        String wrongVersion = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                "{\"afterCreatedAt\":\"2026-07-01T00:00:00\",\"afterId\":\"%s\",\"version\":99}"
+                        .formatted(UUID.randomUUID()).getBytes(StandardCharsets.UTF_8));
+
+        assertThatThrownBy(() -> cafePageService.getBlogsByCafePageId(cafePageId, "khong-phai-base64!!", 10))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+        assertThatThrownBy(() -> cafePageService.getBlogsByCafePageId(cafePageId, wrongVersion, 10))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+    }
+
+    @Test
+    void getBlogsByCafePageId_success_blankCursorIsTreatedAsFirstPage_TC017() {
+        UUID cafePageId = UUID.randomUUID();
+        CafePage cafePage = cafePage(cafePageId, user(UUID.randomUUID()));
+        when(cafePageValidator.validateCafePageExists(cafePageId)).thenReturn(cafePage);
+        when(blogRepository.findPublishedCafePageBlogsFirstPage(
+                org.mockito.ArgumentMatchers.eq(cafePageId), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(java.util.List.of());
+
+        assertThat(cafePageService.getBlogsByCafePageId(cafePageId, "   ", 10).getHasMore()).isFalse();
+    }
+
+    @Test
+    void getBlogsByCafePageId_success_marksPageFollowingOnceForViewer_TC018() {
+        UUID cafePageId = UUID.randomUUID();
+        UUID viewerUserId = UUID.randomUUID();
+        CafePage cafePage = cafePage(cafePageId, user(UUID.randomUUID()));
+        Blog blog = blog(UUID.randomUUID(), cafePageId, LocalDateTime.now());
+        when(cafePageValidator.validateCafePageExists(cafePageId)).thenReturn(cafePage);
+        when(blogRepository.findPublishedCafePageBlogsFirstPage(
+                org.mockito.ArgumentMatchers.eq(cafePageId), any(org.springframework.data.domain.Pageable.class)))
+                .thenReturn(List.of(blog));
+        when(pageFollowRepository.existsByUserUserIdAndCafePageId(viewerUserId, cafePageId)).thenReturn(true);
+        when(blogMapper.toBlogResponseDTO(blog)).thenReturn(new BlogResponseDTO());
+
+        BlogCursorPageResponseDTO result =
+                cafePageService.getBlogsByCafePageId(cafePageId, null, 10, viewerUserId);
+
+        assertThat(result.getItems()).singleElement()
+                .satisfies(item -> assertThat(item.getIsPageFollowing()).isTrue());
+        assertThat(result.getHasMore()).isFalse();
+        assertThat(result.getNextCursor()).isNull();
+    }
+
+    @Test
+    void searchCafePages_success_blankQueryReturnsEmpty_TC019() {
+        assertThat(cafePageService.searchCafePages(null, null)).isEmpty();
+        assertThat(cafePageService.searchCafePages("   ", null)).isEmpty();
+
+        verify(cafePageRepository, never()).searchActiveCafePagesByName(any());
+    }
+
+    @Test
+    void searchCafePages_success_trimsQueryAndMapsResults_TC020() {
+        UUID cafePageId = UUID.randomUUID();
+        CafePage cafePage = cafePage(cafePageId, user(UUID.randomUUID()));
+        when(cafePageRepository.searchActiveCafePagesByName("story")).thenReturn(List.of(cafePage));
+        when(cafePageMapper.toCafePageResponseDTO(cafePage)).thenReturn(response(cafePageId, UUID.randomUUID()));
+        when(cafePageRatingRepository.findAverageRatingByCafePageId(cafePageId)).thenReturn(4.0);
+        when(cafePageRatingRepository.countByCafePageId(cafePageId)).thenReturn(3L);
+
+        assertThat(cafePageService.searchCafePages("  story  ", null)).hasSize(1);
+    }
+
+    @Test
+    void getActiveCafePages_success_mapsEveryActivePage_TC021() {
+        UUID cafePageId = UUID.randomUUID();
+        CafePage cafePage = cafePage(cafePageId, user(UUID.randomUUID()));
+        when(cafePageRepository.findAllActiveCafePages()).thenReturn(List.of(cafePage));
+        when(cafePageMapper.toCafePageResponseDTO(cafePage)).thenReturn(response(cafePageId, UUID.randomUUID()));
+        when(cafePageRatingRepository.findAverageRatingByCafePageId(cafePageId)).thenReturn(null);
+        when(cafePageRatingRepository.countByCafePageId(cafePageId)).thenReturn(0L);
+
+        assertThat(cafePageService.getActiveCafePages(null)).hasSize(1);
     }
 
     private CafePageCreateDTO createRequest() {

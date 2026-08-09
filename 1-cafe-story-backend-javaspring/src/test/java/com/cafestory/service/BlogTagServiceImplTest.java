@@ -136,6 +136,148 @@ class BlogTagServiceImplTest {
                 .containsExactly("following-user");
     }
 
+    @Test
+    void syncBlogTags_fail_blogMissingOrWithoutId_TC004() {
+        UUID actorUserId = UUID.randomUUID();
+        Blog withoutId = new Blog();
+
+        assertThatThrownBy(() -> blogTagService.syncBlogTags(null, actorUserId, List.of()))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Blog is required");
+        assertThatThrownBy(() -> blogTagService.syncBlogTags(withoutId, actorUserId, List.of()))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Blog is required");
+    }
+
+    @Test
+    void syncBlogTags_fail_tooManyTaggedUsers_TC005() {
+        UUID actorUserId = UUID.randomUUID();
+        Blog blog = blog(PostStatus.PUBLISHED);
+        List<UUID> tooMany = java.util.stream.Stream.generate(UUID::randomUUID).limit(21).toList();
+        when(userValidator.validateUserExists(actorUserId)).thenReturn(user(actorUserId, "actor"));
+
+        assertThatThrownBy(() -> blogTagService.syncBlogTags(blog, actorUserId, tooMany))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("A blog can tag at most 20 users");
+    }
+
+    @Test
+    void syncBlogTags_success_removesTagsNoLongerRequested_TC006() {
+        UUID actorUserId = UUID.randomUUID();
+        UUID keptUserId = UUID.randomUUID();
+        UUID droppedUserId = UUID.randomUUID();
+        Blog blog = blog(PostStatus.DRAFT);
+        User actor = user(actorUserId, "actor");
+        User kept = user(keptUserId, "kept");
+        BlogTaggedUser keptTag = taggedUser(blog, kept, actor);
+        BlogTaggedUser droppedTag = taggedUser(blog, user(droppedUserId, "dropped"), actor);
+
+        when(userValidator.validateUserExists(actorUserId)).thenReturn(actor);
+        when(userValidator.validateUserExists(keptUserId)).thenReturn(kept);
+        when(blogTaggedUserRepository.findByBlogId(blog.getId())).thenReturn(List.of(keptTag, droppedTag));
+        when(userFollowRepository.existsByFollowerUserIdAndFollowingUserId(actorUserId, keptUserId)).thenReturn(true);
+        when(blogTaggedUserRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(blogTaggedUserRepository.findByBlogIdOrderByCreatedAtAsc(blog.getId())).thenReturn(List.of(keptTag));
+        when(blogTaggedUserMapper.toBlogTaggedUserResponseDTO(keptTag)).thenReturn(new BlogTaggedUserResponseDTO());
+
+        assertThat(blogTagService.syncBlogTags(blog, actorUserId, List.of(keptUserId, keptUserId))).hasSize(1);
+
+        org.mockito.ArgumentCaptor<List<BlogTaggedUser>> deleteCaptor =
+                org.mockito.ArgumentCaptor.forClass(List.class);
+        verify(blogTaggedUserRepository).deleteAll(deleteCaptor.capture());
+        assertThat(deleteCaptor.getValue()).containsExactly(droppedTag);
+        // Bài chưa xuất bản thì không bắn thông báo.
+        verify(notificationService, never()).createTagNotification(any(), any(), any());
+    }
+
+    @Test
+    void syncBlogTags_success_actorCanTagThemself_TC007() {
+        UUID actorUserId = UUID.randomUUID();
+        Blog blog = blog(PostStatus.PUBLISHED);
+        User actor = user(actorUserId, "actor");
+
+        when(userValidator.validateUserExists(actorUserId)).thenReturn(actor);
+        when(blogTaggedUserRepository.findByBlogId(blog.getId())).thenReturn(List.of());
+        when(blogTaggedUserRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(blogTaggedUserRepository.findByBlogIdOrderByCreatedAtAsc(blog.getId())).thenReturn(List.of());
+
+        blogTagService.syncBlogTags(blog, actorUserId, List.of(actorUserId));
+
+        verify(userFollowRepository, never())
+                .existsByFollowerUserIdAndFollowingUserId(any(UUID.class), any(UUID.class));
+    }
+
+    @Test
+    void syncBlogTags_success_userFromFollowedPageIsTaggable_TC008() {
+        UUID actorUserId = UUID.randomUUID();
+        UUID taggedUserId = UUID.randomUUID();
+        Blog blog = blog(PostStatus.PUBLISHED);
+        User actor = user(actorUserId, "actor");
+        User tagged = user(taggedUserId, "tagged");
+
+        when(userValidator.validateUserExists(actorUserId)).thenReturn(actor);
+        when(userValidator.validateUserExists(taggedUserId)).thenReturn(tagged);
+        when(blogTaggedUserRepository.findByBlogId(blog.getId())).thenReturn(List.of());
+        when(userFollowRepository.existsByFollowerUserIdAndFollowingUserId(actorUserId, taggedUserId))
+                .thenReturn(false);
+        when(pageFollowRepository.existsTaggableUserFromFollowedPages(
+                actorUserId, taggedUserId, PageMemberStatus.ACTIVE)).thenReturn(true);
+        when(blogTaggedUserRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(blogTaggedUserRepository.findByBlogIdOrderByCreatedAtAsc(blog.getId())).thenReturn(List.of());
+
+        blogTagService.syncBlogTags(blog, actorUserId, List.of(taggedUserId));
+
+        verify(blogTaggedUserRepository).saveAll(any());
+    }
+
+    @Test
+    void getTaggedUsersByBlogIds_success_groupsByBlog_TC009() {
+        Blog firstBlog = blog(PostStatus.PUBLISHED);
+        Blog secondBlog = blog(PostStatus.PUBLISHED);
+        User actor = user(UUID.randomUUID(), "actor");
+        BlogTaggedUser firstTag = taggedUser(firstBlog, user(UUID.randomUUID(), "a"), actor);
+        BlogTaggedUser secondTag = taggedUser(firstBlog, user(UUID.randomUUID(), "b"), actor);
+        BlogTaggedUser thirdTag = taggedUser(secondBlog, user(UUID.randomUUID(), "c"), actor);
+        List<UUID> blogIds = List.of(firstBlog.getId(), secondBlog.getId());
+
+        when(blogTaggedUserRepository.findByBlogIdInWithTaggedUser(blogIds))
+                .thenReturn(List.of(firstTag, secondTag, thirdTag));
+        when(blogTaggedUserMapper.toBlogTaggedUserResponseDTO(any(BlogTaggedUser.class)))
+                .thenReturn(new BlogTaggedUserResponseDTO());
+
+        var result = blogTagService.getTaggedUsersByBlogIds(blogIds);
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(firstBlog.getId())).hasSize(2);
+        assertThat(result.get(secondBlog.getId())).hasSize(1);
+    }
+
+    @Test
+    void getTaggedUsersByBlogIds_success_emptyInputSkipsQuery_TC010() {
+        assertThat(blogTagService.getTaggedUsersByBlogIds(null)).isEmpty();
+        assertThat(blogTagService.getTaggedUsersByBlogIds(List.of())).isEmpty();
+
+        verify(blogTaggedUserRepository, never()).findByBlogIdInWithTaggedUser(any());
+    }
+
+    @Test
+    void deleteBlogTags_success_delegatesToRepository_TC011() {
+        UUID blogId = UUID.randomUUID();
+
+        blogTagService.deleteBlogTags(blogId);
+
+        verify(blogTaggedUserRepository).deleteByBlogId(blogId);
+    }
+
+    private BlogTaggedUser taggedUser(Blog blog, User taggedUser, User taggedBy) {
+        BlogTaggedUser tag = new BlogTaggedUser();
+        tag.setId(UUID.randomUUID());
+        tag.setBlog(blog);
+        tag.setTaggedUser(taggedUser);
+        tag.setTaggedByUser(taggedBy);
+        return tag;
+    }
+
     private Blog blog(PostStatus status) {
         Blog blog = new Blog();
         blog.setId(UUID.randomUUID());

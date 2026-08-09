@@ -163,6 +163,68 @@ class PageFollowServiceImplTest {
         verify(userValidator).validateUserExists(userId);
     }
 
+    @Test
+    void followPage_success_notifiesOwnerAndCoOwnersOnce_TC007() {
+        UUID cafePageId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        CafePage cafePage = cafePage(cafePageId);
+        User owner = user(UUID.randomUUID());
+        User coOwner = user(UUID.randomUUID());
+        cafePage.setOwner(owner);
+        cafePage.setFollowerCount(null);
+        User follower = user(userId);
+        PageFollow savedFollow = pageFollow(UUID.randomUUID(), cafePage, follower);
+
+        when(cafePageValidator.validateCafePageExists(cafePageId)).thenReturn(cafePage);
+        when(userValidator.validateUserExists(userId)).thenReturn(follower);
+        when(pageFollowRepository.existsByUserUserIdAndCafePageId(userId, cafePageId)).thenReturn(false);
+        when(pageFollowRepository.save(any(PageFollow.class))).thenReturn(savedFollow);
+        when(cafePageInteractionMapper.toPageFollowResponseDTO(savedFollow))
+                .thenReturn(response(savedFollow.getId(), cafePageId, userId));
+        when(pageMemberRepository.findByCafePageIdAndStatus(
+                cafePageId, com.cafestory.entity.enums.PageMemberStatus.ACTIVE))
+                .thenReturn(java.util.List.of(
+                        pageMember(owner, com.cafestory.entity.PageMember.ROLE_OWNER),
+                        pageMember(coOwner, com.cafestory.entity.PageMember.ROLE_CO_OWNER),
+                        pageMember(user(UUID.randomUUID()), "MEMBER"),
+                        pageMember(null, com.cafestory.entity.PageMember.ROLE_CO_OWNER)));
+
+        pageFollowService.followPage(cafePageId, userId);
+
+        assertThat(cafePage.getFollowerCount()).isEqualTo(1);
+        verify(notificationService).createFollowPageNotification(owner.getUserId(), userId, cafePageId);
+        verify(notificationService).createFollowPageNotification(coOwner.getUserId(), userId, cafePageId);
+        verify(notificationService, org.mockito.Mockito.times(2))
+                .createFollowPageNotification(any(UUID.class), any(UUID.class), any(UUID.class));
+    }
+
+    @Test
+    void unfollowPage_success_followerCountNeverGoesNegative_TC008() {
+        UUID cafePageId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        CafePage cafePage = cafePage(cafePageId);
+        cafePage.setFollowerCount(null);
+        User follower = user(userId);
+        PageFollow existing = pageFollow(UUID.randomUUID(), cafePage, follower);
+
+        when(cafePageValidator.validateCafePageExists(cafePageId)).thenReturn(cafePage);
+        when(userValidator.validateUserExists(userId)).thenReturn(follower);
+        when(pageFollowRepository.findByUserUserIdAndCafePageId(userId, cafePageId))
+                .thenReturn(java.util.Optional.of(existing));
+
+        pageFollowService.unfollowPage(cafePageId, userId);
+
+        assertThat(cafePage.getFollowerCount()).isZero();
+        verify(pageFollowRepository).delete(existing);
+    }
+
+    private com.cafestory.entity.PageMember pageMember(User user, String roleName) {
+        com.cafestory.entity.PageMember member = new com.cafestory.entity.PageMember();
+        member.setUser(user);
+        member.setRoleName(roleName);
+        return member;
+    }
+
     private CafePage cafePage(UUID cafePageId) {
         CafePage cafePage = new CafePage();
         cafePage.setId(cafePageId);

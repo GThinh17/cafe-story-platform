@@ -879,6 +879,151 @@ class BlogFeedRankingServiceImplTest {
     }
 
     @SuppressWarnings("unchecked")
+    // ------------------------------------------- getPersonalizedFeedPage
+
+    @Test
+    void getPersonalizedFeedPage_success_firstPageEmitsNextCursor_TC016() {
+        User user = user();
+        Blog blog = blog(user.getRegion().getRegionId());
+        BlogFeedRankingServiceImpl service = service();
+        givenCachedRecommendation(user, blog);
+
+        // size = 1 và trả về đúng 1 bài ⇒ còn trang sau.
+        FeedResponseDTO response = service.getPersonalizedFeedPage(
+                user.getUserId(), TrendWindowType.HOUR_24, null, null, 1);
+
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getItems().getFirst().getPosition()).isZero();
+        assertThat(response.getItems().getFirst().getItemType()).isEqualTo(FeedItemType.CAFE_PAGE_BLOG);
+        assertThat(response.getHasMore()).isTrue();
+        assertThat(response.getNextCursor()).isNotBlank();
+    }
+
+    @Test
+    void getPersonalizedFeedPage_success_cursorMovesToNextPage_TC017() {
+        User user = user();
+        Blog blog = blog(user.getRegion().getRegionId());
+        BlogFeedRankingServiceImpl service = service();
+        givenCachedRecommendation(user, blog);
+
+        String cursor = service.getPersonalizedFeedPage(
+                user.getUserId(), TrendWindowType.HOUR_24, null, null, 1).getNextCursor();
+
+        FeedResponseDTO secondPage = service.getPersonalizedFeedPage(
+                user.getUserId(), TrendWindowType.HOUR_24, null, cursor, 1);
+
+        // Trang 2 không còn bản ghi nào nên hết con trỏ.
+        assertThat(secondPage.getItems()).isEmpty();
+        assertThat(secondPage.getHasMore()).isFalse();
+        assertThat(secondPage.getNextCursor()).isNull();
+    }
+
+    @Test
+    void getPersonalizedFeedPage_fail_invalidCursor_TC018() {
+        UUID userId = UUID.randomUUID();
+        BlogFeedRankingServiceImpl service = service();
+        String wrongVersion = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                "{\"nextPage\":1,\"version\":99}".getBytes(StandardCharsets.UTF_8));
+        String negativePage = Base64.getUrlEncoder().withoutPadding().encodeToString(
+                "{\"nextPage\":-3,\"version\":1}".getBytes(StandardCharsets.UTF_8));
+
+        assertThatThrownBy(() -> service.getPersonalizedFeedPage(
+                userId, TrendWindowType.HOUR_24, null, "khong-phai-base64!!", 10))
+                .hasMessageContaining("Invalid personalized feed cursor");
+        assertThatThrownBy(() -> service.getPersonalizedFeedPage(
+                userId, TrendWindowType.HOUR_24, null, wrongVersion, 10))
+                .hasMessageContaining("Invalid personalized feed cursor");
+        assertThatThrownBy(() -> service.getPersonalizedFeedPage(
+                userId, TrendWindowType.HOUR_24, null, negativePage, 10))
+                .hasMessageContaining("Invalid personalized feed cursor");
+    }
+
+    // ------------------------------- rebuildRecommendationCacheForAllActiveUsers
+
+    @Test
+    void rebuildRecommendationCacheForAllActiveUsers_success_coversEveryWindow_TC019() {
+        User withRegion = user();
+        User withoutRegion = user();
+        withoutRegion.setRegion(null);
+        BlogFeedRankingServiceImpl service = service();
+        when(userRepository.findByAccountStatusTrue()).thenReturn(List.of(withRegion, withoutRegion));
+        when(userValidator.validateUserExists(withRegion.getUserId())).thenReturn(withRegion);
+        when(userValidator.validateUserExists(withoutRegion.getUserId())).thenReturn(withoutRegion);
+        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of());
+
+        service.rebuildRecommendationCacheForAllActiveUsers();
+
+        // 2 người dùng × 3 khung thời gian.
+        verify(userValidator, times(3)).validateUserExists(withRegion.getUserId());
+        verify(userValidator, times(3)).validateUserExists(withoutRegion.getUserId());
+        verify(blogRepository, times(6)).findByStatus(PostStatus.PUBLISHED);
+    }
+
+    @Test
+    void rebuildRecommendationCache_success_noPublishedBlogShortCircuitsEveryLookup_TC020() {
+        User user = user();
+        BlogFeedRankingServiceImpl service = service();
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
+        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of());
+
+        assertThat(service.rebuildRecommendationCache(
+                user.getUserId(), TrendWindowType.HOUR_24, user.getRegion().getRegionId())).isEmpty();
+
+        // Không có bài viết nào thì mọi truy vấn theo lô đều bị bỏ qua.
+        verify(userFollowRepository, never()).findFollowedUserIds(any(UUID.class), any());
+        verify(pageFollowRepository, never()).findFollowedCafePageIds(any(UUID.class), any());
+        verify(aiModerationResultRepository, never()).findBlogIdsByBlogIdInAndDecision(any(), any());
+        verify(contentReportRepository, never()).countByBlogIdsAndStatusIn(any(), any());
+    }
+
+    @Test
+    void getOrganicFeed_success_noPublishedBlogReturnsEmptyPage_TC021() {
+        BlogFeedRankingServiceImpl service = service();
+        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of());
+
+        FeedResponseDTO response = service.getOrganicFeed(null, null, 10);
+
+        assertThat(response.getItems()).isEmpty();
+        assertThat(response.getHasMore()).isFalse();
+        assertThat(response.getNextCursor()).isNull();
+        verify(blogRepository, never()).findByIdIn(any());
+    }
+
+    @Test
+    void getOrganicFeed_success_sizeIsNormalized_TC022() {
+        BlogFeedRankingServiceImpl service = service();
+        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of());
+
+        assertThat(service.getOrganicFeed(null, null, 0).getItems()).isEmpty();
+        assertThat(service.getOrganicFeed(null, null, 10_000).getItems()).isEmpty();
+    }
+
+    private void givenCachedRecommendation(User user, Blog blog) {
+        LocalDateTime computedAt = LocalDateTime.now();
+        BlogRecommendationScore score = recommendationScore(user, blog, 120.0, 1);
+        score.setComputedAt(computedAt);
+        score.setFormulaVersion(FeedScoreCalculationService.FORMULA_VERSION);
+        when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
+        when(blogRecommendationScoreRepository.findLatestComputedAt(
+                user.getUserId(), TrendWindowType.HOUR_24, user.getRegion().getRegionId()))
+                .thenReturn(computedAt);
+        when(blogRecommendationScoreRepository.findLatestPage(
+                eq(user.getUserId()),
+                eq(TrendWindowType.HOUR_24),
+                eq(user.getRegion().getRegionId()),
+                eq(computedAt),
+                any(Pageable.class)))
+                .thenAnswer(invocation -> {
+                    Pageable pageable = invocation.getArgument(4);
+                    return pageable.getPageNumber() == 0 ? List.of(score) : List.of();
+                });
+        lenient().when(blogRepository.findFirstByAuthorUserIdAndStatusOrderByCreatedAtDescIdDesc(
+                user.getUserId(), PostStatus.PUBLISHED)).thenReturn(Optional.empty());
+        lenient().when(blogRecommendationScoreRepository.findFormulaVersionsAtComputedAt(
+                user.getUserId(), TrendWindowType.HOUR_24, user.getRegion().getRegionId(), computedAt))
+                .thenReturn(List.of(FeedScoreCalculationService.FORMULA_VERSION));
+    }
+
     private List<Object[]> upsertArguments() {
         return mockingDetails(recommendationScoreBatchWriter).getInvocations().stream()
                 .filter(invocation -> invocation.getMethod().getName().equals("upsertAll"))

@@ -134,6 +134,42 @@ class BlogSaveServiceImplTest {
         verify(blogSaveRepository).delete(blogSave);
     }
 
+    @Test
+    void getSavesByBlogId_success_marksEveryRowSavedWithSharedCount_TC005() {
+        UUID blogId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        BlogSave save = blogSave(UUID.randomUUID(), blog(blogId, PostStatus.PUBLISHED), user(userId));
+        when(blogSaveRepository.countByBlogId(blogId)).thenReturn(12L);
+        when(blogSaveRepository.findByBlogId(blogId)).thenReturn(java.util.List.of(save));
+        when(blogInteractionMapper.toBlogSaveResponseDTO(save))
+                .thenReturn(response(save.getId(), blogId, userId));
+
+        var result = blogSaveService.getSavesByBlogId(blogId);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getSaved()).isTrue();
+        assertThat(result.get(0).getSaveCount()).isEqualTo(12L);
+        verify(blogValidator).validateBlogExists(blogId);
+    }
+
+    @Test
+    void getSavesByUserId_success_countsPerBlog_TC006() {
+        UUID blogId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        BlogSave save = blogSave(UUID.randomUUID(), blog(blogId, PostStatus.PUBLISHED), user(userId));
+        when(blogSaveRepository.findByUserUserId(userId)).thenReturn(java.util.List.of(save));
+        when(blogInteractionMapper.toBlogSaveResponseDTO(save))
+                .thenReturn(response(save.getId(), blogId, userId));
+        when(blogSaveRepository.countByBlogId(blogId)).thenReturn(4L);
+
+        var result = blogSaveService.getSavesByUserId(userId);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getSaveCount()).isEqualTo(4L);
+        assertThat(result.get(0).getSaved()).isTrue();
+        verify(userValidator).validateUserExists(userId);
+    }
+
     private Blog blog(UUID blogId, PostStatus status) {
         Blog blog = new Blog();
         blog.setId(blogId);

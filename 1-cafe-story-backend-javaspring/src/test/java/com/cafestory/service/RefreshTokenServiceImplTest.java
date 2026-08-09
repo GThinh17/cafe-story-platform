@@ -87,6 +87,54 @@ class RefreshTokenServiceImplTest {
         verify(refreshTokenRepository).save(refreshToken);
     }
 
+    @Test
+    void validateRefreshToken_fail_rawTokenMissing_TC006() {
+        RefreshTokenServiceImpl service = service();
+
+        assertThatThrownBy(() -> service.validateRefreshToken(null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Refresh token is required");
+        assertThatThrownBy(() -> service.validateRefreshToken("   "))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Refresh token is required");
+    }
+
+    @Test
+    void validateRefreshToken_fail_tokenNotFound_TC007() {
+        RefreshTokenServiceImpl service = service();
+        when(refreshTokenRepository.findByTokenHash(anyString())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.validateRefreshToken("raw-refresh-token"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Refresh token is invalid");
+    }
+
+    @Test
+    void revokeRefreshToken_success_blankTokenIsIgnored_TC008() {
+        RefreshTokenServiceImpl service = service();
+
+        service.revokeRefreshToken(null);
+        service.revokeRefreshToken("   ");
+
+        verify(refreshTokenRepository, org.mockito.Mockito.never()).findByTokenHash(anyString());
+    }
+
+    @Test
+    void revokeRefreshToken_success_alreadyRevokedTokenIsNotSavedAgain_TC009() {
+        RefreshToken refreshToken = validRefreshToken();
+        refreshToken.setRevokedAt(LocalDateTime.now().minusDays(1));
+        when(refreshTokenRepository.findByTokenHash(anyString())).thenReturn(Optional.of(refreshToken));
+
+        service().revokeRefreshToken("raw-refresh-token");
+
+        verify(refreshTokenRepository, org.mockito.Mockito.never()).save(refreshToken);
+    }
+
+    @Test
+    void getRefreshTokenSeconds_success_exposesConfiguredLifetime_TC010() {
+        assertThat(service().getRefreshTokenSeconds()).isEqualTo(604800L);
+    }
+
     private RefreshTokenServiceImpl service() {
         return new RefreshTokenServiceImpl(refreshTokenRepository, 604800);
     }

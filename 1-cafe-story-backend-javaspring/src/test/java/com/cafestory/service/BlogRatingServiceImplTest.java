@@ -125,6 +125,87 @@ class BlogRatingServiceImplTest {
                         .isEqualTo("Blog rating not found"));
     }
 
+    @Test
+    void rateBlog_fail_ratingIsNull_TC005() {
+        UUID blogId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        assertThatThrownBy(() -> blogRatingService.rateBlog(blogId, userId, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Rating is required");
+    }
+
+    @Test
+    void rateBlog_fail_blogIsNotPublished_TC006() {
+        UUID blogId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        when(blogValidator.validateBlogExists(blogId)).thenReturn(blog(blogId, PostStatus.HIDDEN));
+
+        assertThatThrownBy(() -> blogRatingService.rateBlog(blogId, userId, 4))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Blog is not available");
+    }
+
+    @Test
+    void deleteRating_success_removesRating_TC007() {
+        UUID blogId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        User user = user(userId);
+        BlogRating blogRating = rating(UUID.randomUUID(), blog(blogId, PostStatus.PUBLISHED), user, 4);
+        when(userValidator.validateUserExists(userId)).thenReturn(user);
+        when(blogRatingRepository.findByUserUserIdAndBlogId(userId, blogId)).thenReturn(Optional.of(blogRating));
+
+        blogRatingService.deleteRating(blogId, userId);
+
+        verify(blogRatingRepository).delete(blogRating);
+    }
+
+    @Test
+    void getRatingsByBlogId_success_enrichesWithAverageAndCount_TC008() {
+        UUID blogId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        BlogRating blogRating = rating(UUID.randomUUID(), blog(blogId, PostStatus.PUBLISHED), user(userId), 5);
+        when(blogRatingRepository.countByBlogId(blogId)).thenReturn(9L);
+        when(blogRatingRepository.findAverageRatingByBlogId(blogId)).thenReturn(4.5);
+        when(blogRatingRepository.findByBlogId(blogId)).thenReturn(java.util.List.of(blogRating));
+        when(blogInteractionMapper.toBlogRatingResponseDTO(blogRating))
+                .thenReturn(response(blogRating.getId(), blogId, userId, 5));
+
+        var result = blogRatingService.getRatingsByBlogId(blogId);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getRatingAverage()).isEqualTo(4.5);
+        assertThat(result.get(0).getRatingCount()).isEqualTo(9L);
+    }
+
+    @Test
+    void getRatingsByBlogId_success_noRatingYetGivesZeroAverage_TC009() {
+        UUID blogId = UUID.randomUUID();
+        when(blogRatingRepository.countByBlogId(blogId)).thenReturn(0L);
+        when(blogRatingRepository.findAverageRatingByBlogId(blogId)).thenReturn(null);
+        when(blogRatingRepository.findByBlogId(blogId)).thenReturn(java.util.List.of());
+
+        assertThat(blogRatingService.getRatingsByBlogId(blogId)).isEmpty();
+    }
+
+    @Test
+    void getRatingsByUserId_success_enrichesPerBlog_TC010() {
+        UUID blogId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        BlogRating blogRating = rating(UUID.randomUUID(), blog(blogId, PostStatus.PUBLISHED), user(userId), 3);
+        when(blogRatingRepository.findByUserUserId(userId)).thenReturn(java.util.List.of(blogRating));
+        when(blogInteractionMapper.toBlogRatingResponseDTO(blogRating))
+                .thenReturn(response(blogRating.getId(), blogId, userId, 3));
+        when(blogRatingRepository.findAverageRatingByBlogId(blogId)).thenReturn(3.0);
+        when(blogRatingRepository.countByBlogId(blogId)).thenReturn(1L);
+
+        var result = blogRatingService.getRatingsByUserId(userId);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getRatingAverage()).isEqualTo(3.0);
+        verify(userValidator).validateUserExists(userId);
+    }
+
     private Blog blog(UUID blogId, PostStatus status) {
         Blog blog = new Blog();
         blog.setId(blogId);

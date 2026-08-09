@@ -167,6 +167,77 @@ class BlogLikeServiceImplTest {
         verify(userValidator).validateUserExists(userId);
     }
 
+    @Test
+    void likeBlog_success_cafePageActorAndNullCounters_TC007() {
+        UUID blogId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        Blog blog = blog(blogId);
+        blog.setLikeCount(null);
+        blog.getAuthor().setUserLike(null);
+        User user = user(userId);
+        com.cafestory.entity.CafePage cafePage = new com.cafestory.entity.CafePage();
+        cafePage.setId(UUID.randomUUID());
+        BlogLike savedLike = blogLike(UUID.randomUUID(), blog, user);
+
+        when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
+        when(actorContextResolver.resolve(userId, ActorContextType.CAFE_PAGE, cafePage.getId()))
+                .thenReturn(new ActorContext(user, ActorContextType.CAFE_PAGE, cafePage));
+        when(blogLikeRepository.existsByActor(userId, blogId, ActorContextType.CAFE_PAGE, cafePage.getId()))
+                .thenReturn(false);
+        when(blogLikeRepository.save(any(BlogLike.class))).thenReturn(savedLike);
+        when(blogInteractionMapper.toBlogLikeResponseDTO(savedLike))
+                .thenReturn(response(savedLike.getId(), blogId, userId));
+
+        blogLikeService.likeBlog(blogId, userId, ActorContextType.CAFE_PAGE, cafePage.getId());
+
+        assertThat(blog.getLikeCount()).isEqualTo(1);
+        assertThat(blog.getAuthor().getUserLike()).isEqualTo(1);
+    }
+
+    @Test
+    void unlikeBlog_success_countersNeverGoNegativeAndAuthorMayBeMissing_TC008() {
+        UUID blogId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        Blog blog = blog(blogId);
+        blog.setLikeCount(null);
+        blog.setAuthor(null);
+        User user = user(userId);
+        BlogLike existingLike = blogLike(UUID.randomUUID(), blog, user);
+
+        when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
+        when(actorContextResolver.resolve(userId, ActorContextType.USER, null))
+                .thenReturn(new ActorContext(user, ActorContextType.USER, null));
+        when(blogLikeRepository.findByActor(userId, blogId, ActorContextType.USER, null))
+                .thenReturn(java.util.Optional.of(existingLike));
+
+        blogLikeService.unlikeBlog(blogId, userId);
+
+        assertThat(blog.getLikeCount()).isZero();
+        verify(blogLikeRepository).delete(existingLike);
+    }
+
+    @Test
+    void likeBlog_success_authorMissingSkipsUserLikeCounter_TC009() {
+        UUID blogId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        Blog blog = blog(blogId);
+        blog.setAuthor(null);
+        User user = user(userId);
+        BlogLike savedLike = blogLike(UUID.randomUUID(), blog, user);
+
+        when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
+        when(actorContextResolver.resolve(userId, ActorContextType.USER, null))
+                .thenReturn(new ActorContext(user, ActorContextType.USER, null));
+        when(blogLikeRepository.existsByActor(userId, blogId, ActorContextType.USER, null)).thenReturn(false);
+        when(blogLikeRepository.save(any(BlogLike.class))).thenReturn(savedLike);
+        when(blogInteractionMapper.toBlogLikeResponseDTO(savedLike))
+                .thenReturn(response(savedLike.getId(), blogId, userId));
+
+        blogLikeService.likeBlog(blogId, userId);
+
+        assertThat(blog.getLikeCount()).isEqualTo(1);
+    }
+
     private Blog blog(UUID blogId) {
         Blog blog = new Blog();
         blog.setId(blogId);
