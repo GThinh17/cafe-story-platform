@@ -8,7 +8,7 @@ import java.util.Set;
 @Data
 public class AdminReportAiResolutionCreateRequestDTO {
 
-    private static final Set<Integer> ALLOWED_AUTO_APPLY_DELAYS = Set.of(15, 30, 60, 120, 360, 720);
+    private static final Set<Integer> ALLOWED_AUTO_APPLY_DELAYS = Set.of(5, 15, 30, 60, 120, 360, 720);
 
     private Boolean autoApplyEnabled = false;
 
@@ -18,11 +18,11 @@ public class AdminReportAiResolutionCreateRequestDTO {
         return Boolean.TRUE.equals(autoApplyEnabled);
     }
 
-    @AssertTrue(message = "autoApplyDelayMinutes must be one of 15, 30, 60, 120, 360, 720")
+    @AssertTrue(message = "autoApplyDelayMinutes must be blank or one of 5, 15, 30, 60, 120, 360, 720")
     public boolean isAutoApplyDelayValid() {
         if (!isAutoApplyEnabled()) {
             return true;
         }
-        return autoApplyDelayMinutes != null && ALLOWED_AUTO_APPLY_DELAYS.contains(autoApplyDelayMinutes);
+        return autoApplyDelayMinutes == null || ALLOWED_AUTO_APPLY_DELAYS.contains(autoApplyDelayMinutes);
     }
 }

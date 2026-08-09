@@ -1,0 +1,18 @@
+{
+  "id": "M07-FX-14",
+  "description": "Một rule substantiated không bù rule material khác còn unassessable.",
+  "base": "blog-resolve.json",
+  "operations": [
+    {"op":"replace","path":"/policyContext/candidateRuleIds","value":["CSR.SAF.001","CSR.SEX.001"]},
+    {"op":"add","path":"/ruleEvaluations/-","value":{"ruleId":"CSR.SEX.001","material":true,"outcome":"UNASSESSABLE","supportingEvidenceIds":[],"counterEvidenceIds":[],"missingEvidenceIds":["ME-SECOND-RULE-MEDIA"]}},
+    {"op":"add","path":"/missingEvidence/-","value":{"missingEvidenceId":"ME-SECOND-RULE-MEDIA","requiredByRuleId":"CSR.SEX.001","requirementType":"EVIDENCE_KIND","requiredEvidenceKind":"VERIFIED_MEDIA_OBSERVATION","semanticRequirementCode":null,"triggerCondition":"SECOND_MATERIAL_RULE","critical":true,"availability":"NOT_COLLECTED","reasonCode":"VERIFIED_MEDIA_COLLECTOR_NOT_AVAILABLE","recommendedNextStep":"HUMAN_REVIEW_MEDIA","decisionEffect":"NEEDS_MANUAL_REVIEW"}},
+    {"op":"replace","path":"/recommendation/reportDecision","value":"NEEDS_MANUAL_REVIEW"},
+    {"op":"replace","path":"/recommendation/candidateTargetAction","value":"NO_ACTION"},
+    {"op":"replace","path":"/recommendation/evidenceSufficiency","value":"UNASSESSABLE"}
+  ],
+  "expected": {
+    "schemaValid": true,
+    "semanticValid": true,
+    "errorCodes": []
+  }
+}

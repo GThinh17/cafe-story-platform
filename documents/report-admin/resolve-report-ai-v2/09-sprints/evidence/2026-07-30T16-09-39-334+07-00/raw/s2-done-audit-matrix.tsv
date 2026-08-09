@@ -1,0 +1,16 @@
+id	criterion	expected	actual	status	evidence
+S2DOD-01	S2-01..S2-04 approval	all approved	all approved	PASS	status.json; approval-gates.md
+S2DOD-02	S2-05 disposition	approved or deferred	deferred after partial run	PASS_WITH_SCOPE	IMPLEMENT_S2_DONE_AUDIT; S2-05 evidence
+S2DOD-03	policy lifecycle	fail closed	manual/no-action	PASS	focused Backend; dataset
+S2DOD-04	evidence binding	enforced	enforced	PASS	S2 contracts; Backend focused
+S2DOD-05	semantic burden	enforced	enforced	PASS	AdminReportAiSemanticValidatorTest
+S2DOD-06	safe projection	untrusted separate	4/4 mutation; 12/12 ADV	PASS	prompt/adversarial gates
+S2DOD-07	schema/parity	bounded and synced	7/7; nested/parity pass	PASS	S2 contracts
+S2DOD-08	versioned dataset	versioned/fingerprinted	1.0.0-rc.1	PASS	dataset manifest
+S2DOD-09	hard safety	100%	100%	PASS	evaluation dataset gate
+S2DOD-10	A0/no mutation	pass	pass	PASS	adversarial; Backend full
+S2DOD-11	regression/security	executable pass	Backend 638 pass; security harness fail	PARTIAL	S2DONE-ISSUE-004
+S2DOD-12	changed coverage	line 100%; branch >=85%	ResolutionService 98.77%/88.43%	PARTIAL	S2DONE-ISSUE-003
+S2DOD-13	traceability	required artifacts	S2-01 summary.json missing	PARTIAL	S2DONE-ISSUE-002
+S2DOD-14	production readiness	independent status	9/14 NOT_READY	PASS	status.json
+

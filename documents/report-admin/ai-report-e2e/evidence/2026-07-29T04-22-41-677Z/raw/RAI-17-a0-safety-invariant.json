@@ -1,0 +1,93 @@
+{
+  "resolution": {
+    "id": "e82aa378-89a6-4ad1-a3fc-8d09768e91b6",
+    "contractVersion": "2.0",
+    "correlationId": "5eac0a30-dbf3-499d-8cac-9697f5619aaf",
+    "automationMode": "A0_RECOMMEND_ONLY",
+    "recommendationState": "NEEDS_MANUAL_REVIEW",
+    "contentReportId": "769de633-0354-4d65-9e74-234ced29b3c1",
+    "targetType": "COMMENT",
+    "targetId": "c158cd15-5584-4852-9095-32e9d2012b0d",
+    "reportDecision": "NEEDS_MANUAL_REVIEW",
+    "targetAction": "NO_ACTION",
+    "confidenceScore": null,
+    "riskScore": null,
+    "labels": [
+      "RESTRICTED_GOODS",
+      "UNTRUSTED_REPORTER_CLAIM"
+    ],
+    "ruleCode": null,
+    "explanation": "Due to the presence of low-quality evidence related to the restricted goods designation and the overall inconclusive nature of the evidence, further manual review is required.",
+    "modelName": "gpt-4o-mini-2024-07-18",
+    "createdAt": "2026-07-29T11:23:08.26941",
+    "autoApplyJob": null,
+    "autoApplyWarning": "Automation mode A0_RECOMMEND_ONLY is active; AI recommendations require an admin decision.",
+    "findings": [],
+    "evidenceSummary": {
+      "usedEvidenceIds": [
+        "EV-TARGET-IDENTITY",
+        "EV-TARGET-CONTENT",
+        "EV-TARGET-STATE",
+        "EV-REASON-ROUTE",
+        "EV-PARENT-CONTEXT"
+      ],
+      "counterEvidenceIds": [],
+      "missingEvidenceIds": []
+    },
+    "blockedReasons": [
+      "EVIDENCE_NOT_SUFFICIENT"
+    ],
+    "evidenceQuality": "MEDIUM",
+    "evidenceSufficiency": "INSUFFICIENT",
+    "violationLikelihood": "UNKNOWN",
+    "harmSeverity": "UNKNOWN",
+    "actionRisk": "LOW",
+    "policyVersion": "PF-2.0.0-proposed.1",
+    "ruleCatalogVersion": "RC-2.0.0-proposed.1",
+    "promptVersion": "report-ai-v2-sprint1.1",
+    "workflowVersion": "cafestory-admin-report-ai-resolution-v2",
+    "targetSnapshotHash": "f462150ff0498f890d0207c77a7df46253e2638dbd99f7bb8ac49487b1d92222"
+  },
+  "reportAfter": {
+    "id": "769de633-0354-4d65-9e74-234ced29b3c1",
+    "reporterUserId": "a7150bf3-3312-422c-b028-08f05362eb83",
+    "reporterUserName": "g012e_admin",
+    "reporterUserAvatar": null,
+    "targetType": "COMMENT",
+    "targetId": "c158cd15-5584-4852-9095-32e9d2012b0d",
+    "blogId": null,
+    "commentId": "c158cd15-5584-4852-9095-32e9d2012b0d",
+    "reportedUserId": null,
+    "cafePageId": null,
+    "reasonId": "d5ddb2c9-9200-461a-9a11-92b8fa0215a7",
+    "reasonCode": "RESTRICTED_GOODS",
+    "reason": "Bán hoặc quảng bá mặt hàng bị hạn chế",
+    "reasonLabel": "Bán hoặc quảng bá mặt hàng bị hạn chế",
+    "reasonSeverity": 4,
+    "description": "E2E Report Admin AI RAI-02 COMMENT 1785298970130",
+    "status": "OPEN",
+    "createdAt": "2026-07-29T11:22:50.199871",
+    "resolvedAt": null
+  },
+  "targetBefore": {
+    "targetType": "COMMENT",
+    "targetId": "c158cd15-5584-4852-9095-32e9d2012b0d",
+    "state": {
+      "blogId": "4f04a3f0-e3c5-492b-a65a-b387f1c1a6ec",
+      "content": "G0-12E synthetic published comment evidence fixture",
+      "status": "PUBLISHED",
+      "userId": "b99f66c0-06bf-4769-b819-ed918a4fa0d0"
+    }
+  },
+  "targetAfter": {
+    "targetType": "COMMENT",
+    "targetId": "c158cd15-5584-4852-9095-32e9d2012b0d",
+    "state": {
+      "blogId": "4f04a3f0-e3c5-492b-a65a-b387f1c1a6ec",
+      "content": "G0-12E synthetic published comment evidence fixture",
+      "status": "PUBLISHED",
+      "userId": "b99f66c0-06bf-4769-b819-ed918a4fa0d0"
+    }
+  },
+  "targetNoMutation": true
+}

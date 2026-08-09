@@ -1,0 +1,41 @@
+{
+  "gate": "S2-DONE-FIX-01",
+  "token": "IMPLEMENT_S2_DONE_FIX_01",
+  "status": "PARTIAL_BLOCKED_OUT_OF_SCOPE",
+  "tests": {
+    "securityHarness": "PASS",
+    "backendFocused": {
+      "status": "PASS",
+      "tests": 53,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "backendFull": {
+      "status": "PASS",
+      "tests": 641,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "e2eProviderFailurePhase": "PASS",
+    "e2eProviderRecovery": "FAIL_BLOCKED_BY_SCHEMA",
+    "e2eCriticalEvidenceManual": "FAIL_BLOCKED_BY_SCHEMA",
+    "noMutation": "PASS",
+    "cleanup": "PASS"
+  },
+  "issues": {
+    "testBugsResolvedVerified": 5,
+    "testDataResolvedVerified": 1,
+    "codeBugsBlockedOutOfScope": 1
+  },
+  "blocker": {
+    "id": "S2DONEFIX-ISSUE-007",
+    "field": "targetSnapshotHash",
+    "canonicalLength": 71,
+    "databaseColumn": "target_snapshot_hash",
+    "databaseLimit": 64,
+    "requiredAction": "Create a new Flyway migration and align the entity length; do not edit an applied migration."
+  },
+  "nextToken": "IMPLEMENT_S2_DONE_FIX_02_DB_HASH_LENGTH"
+}

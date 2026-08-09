@@ -1,0 +1,11 @@
+Command:
+node -e "<load Ajv 2020 strict; compile evidence-metadata-contract.schema.json>"
+
+First run:
+FAIL — missing type object for unevaluatedProperties.
+
+Focused re-test 1:
+FAIL — snapshotVersion.pattern missing explicit string type.
+
+Focused re-test 2:
+SCHEMA_COMPILE=PASS

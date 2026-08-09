@@ -1,0 +1,5 @@
+source_layer	source_count	matrix_count	missing_ids	unknown_ids	result
+CURRENT_GAP	19	19	0	0	PASS
+THEORY_DECISION	74	74	0	0	PASS
+POLICY_CLAUSE	92	92	0	0	PASS
+RULE_OR_CONTROL	24	24	0	0	PASS

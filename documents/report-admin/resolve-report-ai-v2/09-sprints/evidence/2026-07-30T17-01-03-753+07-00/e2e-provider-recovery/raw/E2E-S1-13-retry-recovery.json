@@ -1,0 +1,58 @@
+{
+  "httpStatus": 200,
+  "resolution": {
+    "id": "d692ea93-9b3e-432a-937a-00bca9810c89",
+    "contractVersion": "2.0",
+    "correlationId": "49463495-3f46-492a-b3c1-1f44d1b26324",
+    "automationMode": "A0_RECOMMEND_ONLY",
+    "recommendationState": "NEEDS_MANUAL_REVIEW",
+    "contentReportId": "eac970ed-cb3a-4fca-8ef7-41d4c0146f47",
+    "targetType": "BLOG",
+    "targetId": "7bcfeb15-bf17-4c0a-ba90-034edce708cb",
+    "reportDecision": "NEEDS_MANUAL_REVIEW",
+    "targetAction": "NO_ACTION",
+    "confidenceScore": null,
+    "riskScore": null,
+    "labels": [
+      "RESTRICTED_GOODS"
+    ],
+    "ruleCode": null,
+    "explanation": "The evidence provided does not sufficiently substantiate the claim due to missing contextual requirements, necessitating manual review.",
+    "modelName": "gpt-4o-mini-2024-07-18",
+    "createdAt": "2026-07-30T17:07:58.2377506",
+    "autoApplyJob": null,
+    "autoApplyWarning": null,
+    "findings": [],
+    "evidenceSummary": {
+      "usedEvidenceIds": [
+        "EV-TARGET-IDENTITY",
+        "EV-TARGET-CONTENT",
+        "EV-TARGET-STATE"
+      ],
+      "missingEvidenceIds": [],
+      "counterEvidenceIds": []
+    },
+    "blockedReasons": [
+      "VERSION_PIN_MISMATCH",
+      "POLICY_OR_RULE_CATALOG_NOT_ACTIVE",
+      "EVIDENCE_NOT_SUFFICIENT"
+    ],
+    "evidenceQuality": "HIGH",
+    "evidenceSufficiency": "INSUFFICIENT",
+    "violationLikelihood": "UNKNOWN",
+    "harmSeverity": "UNKNOWN",
+    "actionRisk": "LOW",
+    "policyVersion": "PF-2.0.0-proposed.1",
+    "ruleCatalogVersion": "RC-2.0.0-proposed.2",
+    "promptVersion": "report-ai-v2-sprint2.2",
+    "workflowVersion": "cafestory-admin-report-ai-resolution-v2-s2.2",
+    "targetSnapshotHash": "sha256:0c0a57f89de1edbe90a31aea12e02e83149ed3344d36bd8c60fefc9a9b59a1da"
+  },
+  "resolutionCountAfterRetry": 1,
+  "noTargetMutation": true,
+  "noReportMutation": true,
+  "autoApplyJobCount": 0,
+  "screenshots": [
+    "screenshots/E2E-S1-13-provider-boundary-operational-error.png"
+  ]
+}

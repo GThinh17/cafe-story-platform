@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0",
+  "gate": "G0-10C",
+  "approval": "APPROVE_G0-10C",
+  "status": "PARTIAL_WAITING_USER_APPROVAL",
+  "approvedDecision": {
+    "decisionId": "BD-003",
+    "selectedOption": "C1_RISK_TIERED_QUORUM",
+    "distinctActorRequiredForHighImpact": true
+  },
+  "progress": {
+    "approved": 3,
+    "total": 12,
+    "current": "G0-10D"
+  },
+  "currentProposal": {
+    "decisionId": "BD-004",
+    "recommendedOption": "D1_NO_NUMERIC_BUSINESS_THRESHOLD_IN_SPRINT1"
+  },
+  "nextRequiredApproval": "APPROVE_G0-10D",
+  "sourceOrDataMutation": false,
+  "g0_11Authorized": false
+}

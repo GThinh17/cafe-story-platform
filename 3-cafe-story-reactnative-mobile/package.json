@@ -7,7 +7,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "node --stack_size=8192 ./node_modules/typescript/lib/tsc.js --noEmit"
   },
   "dependencies": {
     "@react-navigation/bottom-tabs": "^7.17.2",

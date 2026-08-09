@@ -1,0 +1,5 @@
+{
+  "ok": false,
+  "status": 404,
+  "message": "n8n report AI webhook is not active or published at http://localhost:5678/webhook/cafestory-admin-report-ai-resolution"
+}

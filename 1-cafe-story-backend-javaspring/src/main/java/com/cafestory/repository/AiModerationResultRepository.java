@@ -23,6 +23,10 @@ public interface AiModerationResultRepository
 
     Optional<AiModerationResult> findTopByContentReportIdOrderByCreatedAtDesc(UUID contentReportId);
 
+    Optional<AiModerationResult> findTopByBlogIdOrderByCreatedAtDesc(UUID blogId);
+
+    Optional<AiModerationResult> findTopByCommentIdOrderByCreatedAtDesc(UUID commentId);
+
     @Query("""
             select distinct result.blog.id
             from AiModerationResult result

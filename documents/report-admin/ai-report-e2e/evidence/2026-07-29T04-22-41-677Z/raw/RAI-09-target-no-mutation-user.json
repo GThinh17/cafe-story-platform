@@ -1,0 +1,19 @@
+{
+  "targetBefore": {
+    "targetType": "USER",
+    "targetId": "b99f66c0-06bf-4769-b819-ed918a4fa0d0",
+    "state": {
+      "accountStatus": true,
+      "userName": "g012e_target"
+    }
+  },
+  "targetAfter": {
+    "targetType": "USER",
+    "targetId": "b99f66c0-06bf-4769-b819-ed918a4fa0d0",
+    "state": {
+      "accountStatus": true,
+      "userName": "g012e_target"
+    }
+  },
+  "noMutation": true
+}

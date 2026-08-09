@@ -1,0 +1,22 @@
+id	criterion	previous_result	remediation	evidence	result
+DOD-01	A0 default and no automation enable	PASS		G0-12E plus unit tests	PASS
+DOD-02	No new job or report/target AI mutation	PASS		Unit plus four-target no-mutation matrix	PASS
+DOD-03	Legacy quarantine and cancel	PASS		Unit plus supplemental legacy cancel	PASS
+DOD-04	Contract V2 semantics and references	PASS		G0-12M plus Backend plus RAI-12	PASS
+DOD-05	USER/PAGE local manual only	PASS		Backend mock plus RAI-09/10	PASS
+DOD-06	Unknown/critical missing clamp	PASS		Backend semantic/service tests	PASS
+DOD-07	No raw/score action authority	PASS		Backend/UI/secret scan	PASS
+DOD-08	Migration and constraints	PASS_DISPOSABLE		G0-12C disposable PostgreSQL	PASS_DISPOSABLE
+DOD-09	Coverage and regression	PASS		G0-12B/E plus re-audit Backend 625	PASS
+DOD-10	Signed security and replay	PASS_WITH_RESIDUAL		G0-12D	PASS_WITH_RESIDUAL
+DOD-11	Exact published webhook/provider	PASS_LOCAL_RUNTIME		G0-12D local runtime	PASS_LOCAL_RUNTIME
+DOD-12	Evidence-first Admin UI	PASS		G0-12E plus FIX-04/05/06	PASS
+DOD-13	Four-target representative runtime	PASS		RAI-07 through RAI-10	PASS
+DOD-14	Prompt adversarial executable suite	BLOCKED_TEST_EVIDENCE	DOD-FIX-01	ADV-001 through ADV-012 12/12	PASS
+DOD-15	Changed-snapshot stale non-reuse	BLOCKED_TEST_EVIDENCE	DOD-FIX-02	CT-010 and SAF-010	PASS
+DOD-16	COMMENT missing-critical-context full E2E	BLOCKED_E2E_FIXTURE	DOD-FIX-03	E2E-S1-04 1/1	PASS_FULL_PATH
+DOD-17	Provider unavailable full E2E	BLOCKED_E2E_SCENARIO	DOD-FIX-04	E2E-S1-13 failure and recovery	PASS_FULL_PATH
+DOD-18	Bulk partial failure no mutation	BLOCKED_E2E_SCENARIO	DOD-FIX-05	E2E-S1-09 HTTP 200/409	PASS_FULL_PATH
+DOD-19	Terminal report BE and FE guard	PARTIAL	DOD-FIX-06	E2E-S1-10 UI request 0 and BE 409	PASS_DEFENSE_IN_DEPTH
+DOD-20	Operations plans exist	PASS_DESIGN_ONLY		11-operations documents	PASS_DESIGN_ONLY
+DOD-21	As-built traceability	PASS		G0-12F plus FIX DD plus SHA-256 manifest	PASS_WITH_WORKTREE_FINGERPRINT

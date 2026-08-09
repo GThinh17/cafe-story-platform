@@ -1,0 +1,29 @@
+GATE=G0-12B
+STATUS=IMPLEMENTED_COVERAGE_VERIFIED_AWAITING_APPROVAL
+
+FOCUSED_COMMAND=mvn -Dtest=AdminReportAiResolutionServiceImplTest,AdminReportAiAutoApplyJobServiceImplTest,AdminReportAiSemanticValidatorTest,AdminReportAiWebhookSignerTest test
+FOCUSED_TESTS=56
+FOCUSED_FAILURES=0
+FOCUSED_ERRORS=0
+FOCUSED_SKIPPED=0
+FOCUSED_BUILD=SUCCESS
+
+FULL_COMMAND=mvn test
+FULL_TESTS=617
+FULL_FAILURES=0
+FULL_ERRORS=0
+FULL_SKIPPED=1
+FULL_BUILD=SUCCESS
+SKIPPED_SCOPE=FeedQueryCountPostgresIntegrationTest; PostgreSQL runtime belongs to G0-12C
+
+AdminReportAiAutoApplyJobServiceImpl LINE=71/71 100.00% BRANCH=30/30 100.00% GATE=PASS
+AdminReportAiResolutionServiceImpl LINE=418/418 100.00% BRANCH=159/181 87.85% GATE=PASS
+AdminReportAiPolicyCatalog LINE=35/35 100.00% BRANCH=2/2 100.00% GATE=PASS
+AdminReportAiSemanticValidator LINE=71/71 100.00% BRANCH=79/80 98.75% GATE=PASS
+AdminReportAiWebhookSigner LINE=88/88 100.00% BRANCH=48/56 85.71% GATE=PASS
+
+JACOCO_XML=1-cafe-story-backend-javaspring/target/site/jacoco/jacoco.xml
+JACOCO_HTML=1-cafe-story-backend-javaspring/target/site/jacoco/index.html
+PRODUCTION_DEPLOYMENT=NOT_AUTHORIZED
+NEXT_TOKEN=APPROVE_G0-12B
+

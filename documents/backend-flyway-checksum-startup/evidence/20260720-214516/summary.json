@@ -1,0 +1,58 @@
+{
+  "featureSlug": "backend-flyway-checksum-startup",
+  "evidenceTimestamp": "20260720-214516",
+  "status": "FIXED",
+  "commands": [
+    {
+      "command": "python .agents/skills/cafestory-engineering-workflows/scripts/check_project.py .",
+      "result": "PASS"
+    },
+    {
+      "command": "mvn test before repair",
+      "result": "PASS",
+      "testsRun": 571,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    {
+      "command": "mvn spring-boot:run before repair",
+      "result": "FAIL_APPLICATION_STARTUP",
+      "failure": "Flyway checksum mismatch for migration version 20260719.01",
+      "appliedChecksum": 698173291,
+      "resolvedChecksum": 1984372332
+    },
+    {
+      "command": "read-only schema check via JDBC",
+      "result": "PASS",
+      "expectedColumnsFound": 8,
+      "formulaIndexExists": true
+    },
+    {
+      "command": "Flyway repair via API after APPROVE_REPAIR",
+      "result": "PASS",
+      "beforeDescription": "performance indexes",
+      "beforeChecksum": 698173291,
+      "afterDescription": "feed expert v1 score components",
+      "afterChecksum": 1984372332
+    },
+    {
+      "command": "runtime smoke against http://localhost:8080",
+      "result": "PASS",
+      "apiDocsStatus": 200,
+      "swaggerStatus": 200,
+      "rootStatus": 401
+    },
+    {
+      "command": "mvn test after repair",
+      "result": "PASS",
+      "testsRun": 571,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    }
+  ],
+  "sourceChanged": false,
+  "databaseMetadataChanged": true,
+  "secretsStored": false
+}

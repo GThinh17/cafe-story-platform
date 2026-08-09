@@ -1,4 +1,14 @@
-import { expect, request, test, type APIRequestContext, type APIResponse, type Page } from "@playwright/test";
+import {
+  expect,
+  request,
+  test,
+  type APIRequestContext,
+  type APIResponse,
+  type Page,
+  type Response as PlaywrightResponse,
+} from "@playwright/test";
+import { execFileSync } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -7,7 +17,7 @@ type ReportStatus = "OPEN" | "REVIEWING" | "RESOLVED" | "REJECTED";
 type PostStatus = "DRAFT" | "PUBLISHED" | "HIDDEN" | "REMOVED";
 type PageStatus = "DRAFT" | "ACTIVE" | "SUSPENDED";
 type ReportDecision = "RESOLVE" | "REJECT" | "NEEDS_MANUAL_REVIEW";
-type TargetAction = "APPROVE" | "HIDE" | "REMOVE" | "KEEP_ACTIVE" | "SUSPEND_USER" | "SUSPEND_PAGE" | "NONE";
+type TargetAction = "KEEP_VISIBLE" | "NO_ACTION" | "APPROVE" | "HIDE" | "REMOVE" | "KEEP_ACTIVE" | "SUSPEND_USER" | "SUSPEND_PAGE" | "NONE";
 type AutoJobStatus = "SCHEDULED" | "APPLYING" | "APPLIED" | "CANCELLED" | "FAILED" | "SKIPPED";
 
 type PageResponse<T> = {
@@ -88,6 +98,9 @@ type ContentReport = {
 
 type AiResolution = {
   id: string;
+  contractVersion: "2.0" | "legacy-v1";
+  correlationId: string | null;
+  automationMode: "A0_RECOMMEND_ONLY";
   contentReportId: string;
   targetType: ReportTargetType;
   targetId: string;
@@ -99,10 +112,46 @@ type AiResolution = {
   ruleCode: string | null;
   explanation: string | null;
   modelName: string | null;
-  rawResponse: Record<string, unknown> | null;
   createdAt: string;
   autoApplyJob?: AutoApplyJob | null;
   autoApplyWarning?: string | null;
+  findings: Array<{
+    ruleId: string;
+    ruleVersion: string;
+    outcome: "SUPPORTED" | "NOT_SUPPORTED" | "INCONCLUSIVE";
+    evidenceIds: string[];
+    counterEvidenceIds: string[];
+    missingEvidenceIds: string[];
+    violationLikelihood: "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
+    rationale: string;
+  }> | null;
+  evidenceSummary: {
+    usedEvidenceIds?: string[];
+    counterEvidenceIds?: string[];
+    missingEvidenceIds?: string[];
+  } | null;
+  blockedReasons: string[] | null;
+  evidenceQuality: "HIGH" | "MEDIUM" | "LOW" | "UNUSABLE" | null;
+  evidenceSufficiency: "SUFFICIENT" | "INSUFFICIENT" | "CONFLICTED" | "UNASSESSABLE" | null;
+  violationLikelihood: "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN" | null;
+  harmSeverity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN" | null;
+  actionRisk: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | null;
+  policyVersion: string | null;
+  ruleCatalogVersion: string | null;
+  promptVersion: string | null;
+  workflowVersion: string | null;
+  targetSnapshotHash: string | null;
+};
+
+type AdminReportAiOperationalError = {
+  statusCode: number;
+  status: "Fail";
+  message: string;
+  data: null;
+  code: "AI_PROVIDER_BOUNDARY_FAILED";
+  correlationId: string;
+  retryable: true;
+  stage: "N8N_PROVIDER";
 };
 
 type AutoApplyJob = {
@@ -129,6 +178,12 @@ type TargetSeed = {
   targetId: string;
   reason: ReportReason;
   source: Blog | Comment | AdminUser | CafePage;
+};
+
+type TargetSnapshot = {
+  targetType: ReportTargetType;
+  targetId: string;
+  state: Record<string, string | boolean | null>;
 };
 
 type ScenarioRecord = {
@@ -167,6 +222,10 @@ const reportAiWebhookUrl = `${n8nBaseUrl.replace(/\/$/, "")}/webhook/cafestory-a
 const TEST_MARKER = "E2E Report Admin AI";
 const LATENCY_PASS_MS = 30_000;
 const LATENCY_FAIL_MS = 45_000;
+const REPORT_AI_TEST_POSTGRES_CONTAINER =
+  process.env.ADMIN_REPORT_AI_TEST_POSTGRES_CONTAINER ?? "cafestory-g0-12c-postgres";
+const REPORT_AI_N8N_CONTAINER =
+  process.env.ADMIN_REPORT_AI_N8N_CONTAINER ?? "cafestory-n8n";
 
 const scenarioDefinitions = [
   ["RAI-01", "Seed BLOG report va thay trong /reports", "Report OPEN, BLOG, visible in table/detail."],
@@ -180,22 +239,22 @@ const scenarioDefinitions = [
   ["RAI-09", "Ask AI cho USER", "AI recommendation exists, USER action valid."],
   ["RAI-10", "Ask AI cho CAFE_PAGE", "AI recommendation exists, CAFE_PAGE action valid."],
   ["RAI-11", "AI history refresh", "Latest recommendation appears in history."],
-  ["RAI-12", "AI response contract", "decision, action, confidence, risk, explanation, modelName present."],
+  ["RAI-12", "AI response Contract V2", "Evidence, findings, categorical risk, versions, and no raw provider payload."],
   ["RAI-13", "n8n/OpenAI latency", "Ask AI <30s pass, 30-45s warn, >45s fail."],
-  ["RAI-14", "Ask AI bat auto apply 15m", "Job or safe warning, UI does not crash."],
-  ["RAI-15", "Countdown hien thi", "Scheduled job shows countdown when present."],
-  ["RAI-16", "Cancel auto apply", "Job becomes CANCELLED and target not mutated."],
-  ["RAI-17", "Auto apply safety gate", "Warning/no job when recommendation is not safe enough."],
-  ["RAI-18", "Schedule moi thay job cu", "New request cancels/replaces existing scheduled job or returns safe warning."],
-  ["RAI-19", "Auto job history", "Latest auto job status appears in detail/history."],
+  ["RAI-14", "UI khong tao auto apply", "No auto-apply creation control; A0 notice is visible."],
+  ["RAI-15", "Legacy request bi chan A0", "autoApply=true returns warning and creates no job."],
+  ["RAI-16", "Cancel legacy auto apply", "Existing SCHEDULED job can still be cancelled when fixture exists."],
+  ["RAI-17", "A0 safety invariant", "AI creates no job and does not mutate report or target."],
+  ["RAI-18", "Lap lai legacy request", "Repeated autoApply=true still creates no job."],
+  ["RAI-19", "Legacy auto job history", "History remains readable while creation stays disabled."],
   ["RAI-20", "Resolve report", "Report becomes RESOLVED."],
   ["RAI-21", "Reopen report", "Report becomes OPEN."],
   ["RAI-22", "Mark reviewing", "Report becomes REVIEWING."],
   ["RAI-23", "Reject report", "Report becomes REJECTED and resolvedAt is set."],
   ["RAI-24", "Bulk dialog selected mode", "Dialog opens and selected mode can be used."],
-  ["RAI-25", "Bulk Ask AI selected", "Progress reports done/failed/scheduled/skipped."],
-  ["RAI-26", "Bulk auto apply confirm", "Auto apply requires explicit confirmation."],
-  ["RAI-27", "Bulk auto apply selected", "Creates jobs or safe warnings without immediate target mutation."],
+  ["RAI-25", "Bulk Ask AI selected", "Progress separates recommended/manual/failed."],
+  ["RAI-26", "Bulk A0 notice", "Automation-disabled notice is visible and no auto-apply control exists."],
+  ["RAI-27", "Bulk recommendation only", "Bulk creates recommendations/manual outcomes and no jobs."],
   ["RAI-28", "Security check", "No token/password/API key appears in UI/raw evidence."],
   ["RAI-29", "Performance classification", "Report contains UI/BE/n8n/OpenAI bottleneck classification."],
   ["RAI-30", "Cleanup verification", "Test reports are not left OPEN/REVIEWING and jobs are cancelled."],
@@ -396,26 +455,37 @@ async function assertReachable(context: APIRequestContext, url: string, label: s
 }
 
 async function checkWebhookActive(context: APIRequestContext) {
-  const response = await context.post(reportAiWebhookUrl, {
-    data: { preflight: true },
-    failOnStatusCode: false,
-    timeout: 15_000,
-  });
-  if (response.status() === 404) {
-    return {
-      ok: false,
-      status: response.status(),
-      message: `n8n report AI webhook is not active or published at ${reportAiWebhookUrl}`,
-    };
+  let lastStatus = 0;
+  for (let attempt = 1; attempt <= 8; attempt += 1) {
+    const response = await context.post(reportAiWebhookUrl, {
+      data: {
+        reportId: "00000000-0000-0000-0000-000000000000",
+        targetType: "BLOG",
+        targetId: "00000000-0000-0000-0000-000000000001",
+        reasonCode: "E2E_PREFLIGHT",
+        reasonLabel: "E2E preflight",
+        reportStatus: "OPEN",
+      },
+      failOnStatusCode: false,
+      timeout: 45_000,
+    });
+    lastStatus = response.status();
+    if (response.ok()) {
+      return {
+        ok: true,
+        status: lastStatus,
+        attempts: attempt,
+        message: `n8n report AI webhook preflight returned ${lastStatus}`,
+      };
+    }
+    if (attempt < 8) await new Promise((resolve) => setTimeout(resolve, 2_000));
   }
-  if (response.status() >= 500) {
-    return {
-      ok: false,
-      status: response.status(),
-      message: `n8n report AI webhook returned ${response.status()} during preflight at ${reportAiWebhookUrl}`,
-    };
-  }
-  return { ok: true, status: response.status(), message: `n8n report AI webhook preflight returned ${response.status()}` };
+  return {
+    ok: false,
+    status: lastStatus,
+    attempts: 8,
+    message: `n8n report AI webhook returned ${lastStatus} after readiness retries at ${reportAiWebhookUrl}`,
+  };
 }
 
 async function loginAsAdmin(page: Page, email: string, password: string) {
@@ -548,23 +618,265 @@ async function createReportWithSelfHeal(
   return { report: second.data, raw: { first: first.raw, staleReports, second: second.raw }, selfHealed: true };
 }
 
+function psqlForReportAiFixture(sql: string) {
+  const databaseUser = execFileSync(
+    "docker",
+    ["exec", REPORT_AI_TEST_POSTGRES_CONTAINER, "printenv", "POSTGRES_USER"],
+    { encoding: "utf8" },
+  ).trim();
+  const databaseName = execFileSync(
+    "docker",
+    ["exec", REPORT_AI_TEST_POSTGRES_CONTAINER, "printenv", "POSTGRES_DB"],
+    { encoding: "utf8" },
+  ).trim();
+  if (!databaseUser || !databaseName) {
+    throw new Error("Disposable PostgreSQL fixture container is missing POSTGRES_USER or POSTGRES_DB.");
+  }
+  return execFileSync(
+    "docker",
+    [
+      "exec",
+      REPORT_AI_TEST_POSTGRES_CONTAINER,
+      "psql",
+      "-v",
+      "ON_ERROR_STOP=1",
+      "-U",
+      databaseUser,
+      "-d",
+      databaseName,
+      "-At",
+      "-c",
+      sql,
+    ],
+    { encoding: "utf8" },
+  ).trim();
+}
+
+function assertUuid(value: string, label: string) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+    throw new Error(`${label} must be a UUID.`);
+  }
+}
+
+function createMissingCriticalCommentContextFixture(adminUserId: string) {
+  assertUuid(adminUserId, "adminUserId");
+  const targetOwnerId = psqlForReportAiFixture(
+    `select user_id from users where account_status=true and user_id <> '${adminUserId}'::uuid order by user_id limit 1;`,
+  );
+  assertUuid(targetOwnerId, "targetOwnerId");
+  const blogId = randomUUID();
+  const commentId = randomUUID();
+  psqlForReportAiFixture(`
+    insert into blogs (
+      allow_comment, comment_count, is_pinned, like_count, share_count,
+      created_at, author_user_id, id, content, status
+    ) values (
+      true, 1, false, 0, 0,
+      now(), '${targetOwnerId}'::uuid, '${blogId}'::uuid, '   ', 'PUBLISHED'
+    );
+    insert into comments (
+      created_at, blog_id, id, user_id, actor_context_type, content, status
+    ) values (
+      now(), '${blogId}'::uuid, '${commentId}'::uuid, '${targetOwnerId}'::uuid,
+      'USER', 'Đúng vậy.', 'PUBLISHED'
+    );
+  `);
+  return { blogId, commentId, targetOwnerId };
+}
+
+function cleanupMissingCriticalCommentContextFixture(
+  fixture: { blogId: string; commentId: string },
+  reportId?: string,
+) {
+  assertUuid(fixture.blogId, "blogId");
+  assertUuid(fixture.commentId, "commentId");
+  if (reportId) assertUuid(reportId, "reportId");
+  psqlForReportAiFixture(`
+    ${reportId ? `delete from admin_report_ai_auto_apply_jobs where content_report_id='${reportId}'::uuid;` : ""}
+    ${reportId ? `delete from admin_report_ai_resolutions where content_report_id='${reportId}'::uuid;` : ""}
+    ${reportId ? `delete from report_moderation_jobs where content_report_id='${reportId}'::uuid;` : ""}
+    ${reportId ? `delete from ai_moderation_results where content_report_id='${reportId}'::uuid;` : ""}
+    ${reportId ? `delete from content_reports where id='${reportId}'::uuid;` : ""}
+    delete from ai_moderation_results where comment_id='${fixture.commentId}'::uuid;
+    delete from comments where id='${fixture.commentId}'::uuid;
+    delete from blogs where id='${fixture.blogId}'::uuid;
+  `);
+}
+
+function createProviderUnavailableBlogFixture(adminUserId: string) {
+  assertUuid(adminUserId, "adminUserId");
+  const targetOwnerId = psqlForReportAiFixture(
+    `select user_id from users where account_status=true and user_id <> '${adminUserId}'::uuid order by user_id limit 1;`,
+  );
+  assertUuid(targetOwnerId, "targetOwnerId");
+  const blogId = randomUUID();
+  psqlForReportAiFixture(`
+    insert into blogs (
+      allow_comment, comment_count, is_pinned, like_count, share_count,
+      created_at, author_user_id, id, content, status
+    ) values (
+      true, 0, false, 0, 0,
+      now(), '${targetOwnerId}'::uuid, '${blogId}'::uuid,
+      'Bài viết fixture dùng để kiểm chứng lỗi vận hành provider.', 'PUBLISHED'
+    );
+  `);
+  return { blogId, targetOwnerId };
+}
+
+function cleanupProviderUnavailableBlogFixture(
+  fixture: { blogId: string },
+  reportId?: string,
+) {
+  assertUuid(fixture.blogId, "blogId");
+  if (reportId) assertUuid(reportId, "reportId");
+  psqlForReportAiFixture(`
+    ${reportId ? `delete from admin_report_ai_auto_apply_jobs where content_report_id='${reportId}'::uuid;` : ""}
+    ${reportId ? `delete from admin_report_ai_resolutions where content_report_id='${reportId}'::uuid;` : ""}
+    ${reportId ? `delete from report_moderation_jobs where content_report_id='${reportId}'::uuid;` : ""}
+    ${reportId ? `delete from ai_moderation_results where content_report_id='${reportId}'::uuid;` : ""}
+    ${reportId ? `delete from content_reports where id='${reportId}'::uuid;` : ""}
+    delete from ai_moderation_results where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_daily_metrics where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_events where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_images where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_likes where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_ranking_overrides where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_ratings where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_recommendation_scores where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_saves where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_shares where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_tagged_users where blog_id='${fixture.blogId}'::uuid;
+    delete from blog_trending_scores where blog_id='${fixture.blogId}'::uuid;
+    delete from feed_impressions where blog_id='${fixture.blogId}'::uuid;
+    delete from blogs where id='${fixture.blogId}'::uuid;
+  `);
+}
+
+function assertSafeDockerContainerName(containerName: string) {
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_.-]+$/.test(containerName)) {
+    throw new Error("ADMIN_REPORT_AI_N8N_CONTAINER contains an unsafe container name.");
+  }
+}
+
+function stopN8nForProviderBoundaryTest() {
+  assertSafeDockerContainerName(REPORT_AI_N8N_CONTAINER);
+  execFileSync("docker", ["stop", REPORT_AI_N8N_CONTAINER], {
+    encoding: "utf8",
+    timeout: 30_000,
+  });
+}
+
+function startN8nAfterProviderBoundaryTest() {
+  assertSafeDockerContainerName(REPORT_AI_N8N_CONTAINER);
+  execFileSync("docker", ["start", REPORT_AI_N8N_CONTAINER], {
+    encoding: "utf8",
+    timeout: 30_000,
+  });
+}
+
+async function waitForN8nRecovery(apiContext: APIRequestContext) {
+  for (let attempt = 1; attempt <= 30; attempt += 1) {
+    try {
+      const response = await apiContext.get(`${n8nBaseUrl.replace(/\/$/, "")}/healthz`, {
+        failOnStatusCode: false,
+        timeout: 5_000,
+      });
+      if (response.ok()) {
+        const webhook = await checkWebhookActive(apiContext);
+        if (webhook.ok) return;
+      }
+    } catch {
+      // Expected while the disposable n8n container is restarting.
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
+  throw new Error("n8n did not recover after the injected provider-boundary outage.");
+}
+
+function createFix03EvidenceDir() {
+  const configured = process.env.DOD_FIX03_EVIDENCE_DIR;
+  const evidenceDir = configured
+    ? path.resolve(configured)
+    : path.resolve(
+        process.cwd(),
+        "..",
+        "documents",
+        "report-admin",
+        "resolve-report-ai-v2",
+        "09-sprints",
+        "evidence",
+        new Date().toISOString().replace(/[:.]/g, "-"),
+      );
+  fs.mkdirSync(path.join(evidenceDir, "screenshots"), { recursive: true });
+  fs.mkdirSync(path.join(evidenceDir, "raw"), { recursive: true });
+  return evidenceDir;
+}
+
+function createFix04EvidenceDir() {
+  const configured = process.env.DOD_FIX04_EVIDENCE_DIR;
+  const evidenceDir = configured
+    ? path.resolve(configured)
+    : path.resolve(
+        process.cwd(),
+        "..",
+        "documents",
+        "report-admin",
+        "resolve-report-ai-v2",
+        "09-sprints",
+        "evidence",
+        new Date().toISOString().replace(/[:.]/g, "-"),
+      );
+  fs.mkdirSync(path.join(evidenceDir, "screenshots"), { recursive: true });
+  fs.mkdirSync(path.join(evidenceDir, "raw"), { recursive: true });
+  return evidenceDir;
+}
+
+function createRemediationEvidenceDir(envName: "DOD_FIX05_EVIDENCE_DIR" | "DOD_FIX06_EVIDENCE_DIR") {
+  const configured = process.env[envName];
+  const evidenceDir = configured
+    ? path.resolve(configured)
+    : path.resolve(
+        process.cwd(),
+        "..",
+        "documents",
+        "report-admin",
+        "resolve-report-ai-v2",
+        "09-sprints",
+        "evidence",
+        new Date().toISOString().replace(/[:.]/g, "-"),
+      );
+  fs.mkdirSync(path.join(evidenceDir, "screenshots"), { recursive: true });
+  fs.mkdirSync(path.join(evidenceDir, "raw"), { recursive: true });
+  return evidenceDir;
+}
+
 function allowedActionForTarget(targetType: ReportTargetType, action: TargetAction) {
-  if (action === "NONE") return true;
-  if (targetType === "BLOG" || targetType === "COMMENT") return ["APPROVE", "HIDE", "REMOVE"].includes(action);
-  if (targetType === "USER") return ["KEEP_ACTIVE", "SUSPEND_USER"].includes(action);
-  return ["KEEP_ACTIVE", "SUSPEND_PAGE"].includes(action);
+  if (action === "NO_ACTION" || action === "NONE") return true;
+  if (targetType === "BLOG" || targetType === "COMMENT") {
+    return ["KEEP_VISIBLE", "APPROVE", "HIDE", "REMOVE"].includes(action);
+  }
+  return false;
 }
 
 function resolutionContractOk(resolution: AiResolution | null | undefined) {
   return Boolean(
     resolution?.id &&
+      resolution.contractVersion === "2.0" &&
+      resolution.automationMode === "A0_RECOMMEND_ONLY" &&
       resolution.contentReportId &&
       resolution.targetType &&
       resolution.targetId &&
       resolution.reportDecision &&
       resolution.targetAction &&
-      typeof resolution.confidenceScore === "number" &&
-      typeof resolution.riskScore === "number" &&
+      resolution.evidenceQuality &&
+      resolution.evidenceSufficiency &&
+      resolution.violationLikelihood &&
+      resolution.harmSeverity &&
+      resolution.actionRisk &&
+      resolution.policyVersion &&
+      resolution.ruleCatalogVersion &&
+      resolution.promptVersion &&
+      resolution.workflowVersion &&
       resolution.explanation &&
       resolution.modelName,
   );
@@ -586,6 +898,92 @@ async function createAiResolution(
     },
   );
   return { ...result, durationMs: Date.now() - started };
+}
+
+async function fetchTargetSnapshot(
+  page: Page,
+  targetType: ReportTargetType,
+  targetId: string,
+): Promise<TargetSnapshot> {
+  if (targetType === "BLOG") {
+    const result = await apiFetch<Blog>(page, `/api/admin/blogs/${encodeURIComponent(targetId)}`);
+    if (!result.data) throw new Error(`BLOG target ${targetId} was not returned.`);
+    return {
+      targetType,
+      targetId,
+      state: {
+        authorUserId: result.data.authorUserId,
+        content: result.data.content,
+        status: result.data.status,
+      },
+    };
+  }
+  if (targetType === "COMMENT") {
+    const result = await apiFetch<Comment>(page, `/api/admin/comments/${encodeURIComponent(targetId)}`);
+    if (!result.data) throw new Error(`COMMENT target ${targetId} was not returned.`);
+    return {
+      targetType,
+      targetId,
+      state: {
+        blogId: result.data.blogId,
+        content: result.data.content,
+        status: result.data.status,
+        userId: result.data.userId,
+      },
+    };
+  }
+  if (targetType === "USER") {
+    const result = await apiFetch<AdminUser>(page, `/api/admin/users/${encodeURIComponent(targetId)}`);
+    if (!result.data) throw new Error(`USER target ${targetId} was not returned.`);
+    return {
+      targetType,
+      targetId,
+      state: {
+        accountStatus: result.data.accountStatus,
+        userName: result.data.userName,
+      },
+    };
+  }
+  const result = await apiFetch<CafePage>(page, `/api/admin/cafe-pages/${encodeURIComponent(targetId)}`);
+  if (!result.data) throw new Error(`CAFE_PAGE target ${targetId} was not returned.`);
+  return {
+    targetType,
+    targetId,
+    state: {
+      name: result.data.name,
+      ownerUserId: result.data.ownerUserId,
+      status: result.data.status,
+    },
+  };
+}
+
+function targetWasNotMutated(before: TargetSnapshot, after: TargetSnapshot) {
+  return JSON.stringify(before) === JSON.stringify(after);
+}
+
+function reportStateSnapshot(report: ContentReport) {
+  return {
+    id: report.id,
+    reporterUserId: report.reporterUserId,
+    targetType: report.targetType,
+    targetId: report.targetId,
+    blogId: report.blogId,
+    commentId: report.commentId,
+    reportedUserId: report.reportedUserId,
+    cafePageId: report.cafePageId,
+    reasonId: report.reasonId,
+    reasonCode: report.reasonCode,
+    reasonLabel: report.reasonLabel,
+    reasonSeverity: report.reasonSeverity,
+    description: report.description,
+    status: report.status,
+    createdAt: report.createdAt,
+    resolvedAt: report.resolvedAt,
+  };
+}
+
+function reportWasNotMutated(before: ContentReport, after: ContentReport) {
+  return JSON.stringify(reportStateSnapshot(before)) === JSON.stringify(reportStateSnapshot(after));
 }
 
 async function openReportDetail(page: Page, report: ContentReport) {
@@ -705,6 +1103,654 @@ function buildReport(evidenceDir: string, records: ScenarioRecord[], seedData: S
 }
 
 test.describe("admin report AI E2E evidence", () => {
+  test("E2E-S1-09 bulk partial failure keeps success and has no AI mutation", async ({ page }) => {
+    test.setTimeout(10 * 60_000);
+    loadLocalEnv();
+    const adminEmail = requireEnv("ADMIN_TEST_EMAIL");
+    const adminPassword = requireEnv("ADMIN_TEST_PASSWORD");
+    const evidenceDir = createRemediationEvidenceDir("DOD_FIX05_EVIDENCE_DIR");
+    const fixtures: Array<ReturnType<typeof createProviderUnavailableBlogFixture>> = [];
+    const reports: ContentReport[] = [];
+
+    try {
+      const preflight = await request.newContext();
+      await assertReachable(preflight, adminBaseUrl, "Admin UI");
+      await assertReachable(preflight, `${apiBaseUrl.replace(/\/$/, "")}/api/auth/me`, "Backend API");
+      await assertReachable(preflight, `${n8nBaseUrl.replace(/\/$/, "")}/healthz`, "n8n");
+      const webhookPreflight = await checkWebhookActive(preflight);
+      await preflight.dispose();
+      expect(webhookPreflight.ok, webhookPreflight.message).toBe(true);
+
+      await loginAsAdmin(page, adminEmail, adminPassword);
+      const auth = await apiFetch<AuthResponse>(page, "/api/auth/me");
+      const adminUserId = auth.data?.user.userId ?? "";
+      if (!adminUserId) throw new Error("Unable to resolve current admin user id.");
+
+      const reason = await chooseReason(page, "BLOG");
+      for (const label of ["success", "terminal-failure"] as const) {
+        const fixture = createProviderUnavailableBlogFixture(adminUserId);
+        fixtures.push(fixture);
+        const seed: TargetSeed = {
+          targetType: "BLOG",
+          targetId: fixture.blogId,
+          reason,
+          source: {
+            id: fixture.blogId,
+            authorUserId: fixture.targetOwnerId,
+            status: "PUBLISHED",
+            content: `Bulk partial failure fixture ${label}.`,
+          },
+        };
+        const created = await createReportWithSelfHeal(
+          page,
+          seed,
+          `${TEST_MARKER} E2E-S1-09 ${label} ${Date.now()} ${randomUUID()}`,
+          adminUserId,
+        );
+        reports.push(created.report);
+      }
+
+      const [successfulReport, failingReport] = reports;
+      const targetBefore = await Promise.all(
+        reports.map((report) => fetchTargetSnapshot(page, report.targetType, report.targetId)),
+      );
+      const reportBefore = await Promise.all(
+        reports.map((report) =>
+          apiFetch<ContentReport>(page, `/api/admin/reports/${encodeURIComponent(report.id)}`)),
+      );
+      const historyBefore = await Promise.all(
+        reports.map((report) =>
+          apiFetch<PageResponse<AiResolution>>(
+            page,
+            withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-resolutions`, {
+              page: 0,
+              size: 20,
+            }),
+          )),
+      );
+
+      await page.goto("/reports");
+      await expect(page.getByRole("heading", { name: "Reports" })).toBeVisible();
+      await page.getByRole("button", { name: "Generate AI recommendations" }).click();
+      const bulkDialog = page.getByRole("dialog").filter({ hasText: "Generate AI recommendations" });
+      await bulkDialog.getByRole("button", { name: "Selected reports" }).click();
+      for (const report of reports) {
+        const reportRow = bulkDialog.locator("label").filter({ hasText: report.description ?? report.id });
+        await expect(reportRow).toBeVisible();
+        await reportRow.getByRole("checkbox").check();
+      }
+      await expect(bulkDialog.getByText("Selected: 2 of", { exact: false })).toBeVisible();
+
+      const terminalReport = await updateReportStatus(page, failingReport.id, "RESOLVED");
+      expect(terminalReport.status).toBe("RESOLVED");
+      const terminalReportBeforeBulk = await apiFetch<ContentReport>(
+        page,
+        `/api/admin/reports/${encodeURIComponent(failingReport.id)}`,
+      );
+      expect(terminalReportBeforeBulk.data?.status).toBe("RESOLVED");
+      const reportBeforeBulk = [reportBefore[0].data!, terminalReportBeforeBulk.data!];
+
+      const itemResponses: Array<{ reportId: string; status: number }> = [];
+      const responseListener = (response: PlaywrightResponse) => {
+        if (response.request().method() !== "POST") return;
+        const match = response.url().match(/\/api\/admin\/reports\/([^/]+)\/ai-resolution(?:\?|$)/);
+        if (match) itemResponses.push({ reportId: match[1], status: response.status() });
+      };
+      page.on("response", responseListener);
+      await bulkDialog.getByRole("button", { name: "Run AI", exact: true }).click();
+      await expect(bulkDialog.getByText("Total: 2", { exact: true })).toBeVisible({ timeout: 30_000 });
+      await expect(bulkDialog.getByText("Remaining: 0", { exact: true })).toBeVisible({ timeout: 180_000 });
+      page.off("response", responseListener);
+
+      await expect(bulkDialog.getByText("Completed: 1", { exact: true })).toBeVisible();
+      await expect(bulkDialog.getByText("Failed: 1", { exact: true })).toBeVisible();
+      const failureAlert = bulkDialog.getByRole("alert");
+      await expect(failureAlert).toContainText("1 report failed. Successful recommendations were kept.");
+      await expect(bulkDialog.getByText(failingReport.id.slice(0, 8), { exact: true })).toBeVisible();
+      const recommended = Number((await bulkDialog.getByText(/^Recommended:/).textContent())?.split(":")[1].trim());
+      const manualReview = Number((await bulkDialog.getByText(/^Needs manual review:/).textContent())?.split(":")[1].trim());
+      expect(recommended + manualReview).toBe(1);
+      await failureAlert.scrollIntoViewIfNeeded();
+      const partialFailureScreenshot = await screenshot(
+        page,
+        evidenceDir,
+        "E2E-S1-09",
+        "bulk-partial-failure",
+      );
+
+      const historyAfter = await Promise.all(
+        reports.map((report) =>
+          apiFetch<PageResponse<AiResolution>>(
+            page,
+            withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-resolutions`, {
+              page: 0,
+              size: 20,
+            }),
+          )),
+      );
+      const targetAfter = await Promise.all(
+        reports.map((report) => fetchTargetSnapshot(page, report.targetType, report.targetId)),
+      );
+      const reportAfter = await Promise.all(
+        reports.map((report) =>
+          apiFetch<ContentReport>(page, `/api/admin/reports/${encodeURIComponent(report.id)}`)),
+      );
+      const jobsAfter = await Promise.all(
+        reports.map((report) =>
+          apiFetch<PageResponse<AutoApplyJob>>(
+            page,
+            withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-auto-resolutions`, {
+              page: 0,
+              size: 20,
+            }),
+            { failOnStatusCode: false },
+          )),
+      );
+
+      const result = {
+        itemResponses,
+        successfulReport: {
+          id: successfulReport.id,
+          resolutionCountBefore: historyBefore[0].data?.totalElements ?? 0,
+          resolutionCountAfter: historyAfter[0].data?.totalElements ?? 0,
+          reportStatusBefore: reportBefore[0].data?.status,
+          reportStatusAfter: reportAfter[0].data?.status,
+          reportStateBefore: reportStateSnapshot(reportBeforeBulk[0]),
+          reportStateAfter: reportStateSnapshot(reportAfter[0].data!),
+          reportMutation: !reportWasNotMutated(reportBeforeBulk[0], reportAfter[0].data!),
+          targetMutation: !targetWasNotMutated(targetBefore[0], targetAfter[0]),
+          autoApplyJobCount: jobsAfter[0].data?.totalElements ?? 0,
+        },
+        failedReport: {
+          id: failingReport.id,
+          injectedStatus: terminalReport.status,
+          resolutionCountBefore: historyBefore[1].data?.totalElements ?? 0,
+          resolutionCountAfter: historyAfter[1].data?.totalElements ?? 0,
+          reportStatusAfter: reportAfter[1].data?.status,
+          reportStateBefore: reportStateSnapshot(reportBeforeBulk[1]),
+          reportStateAfter: reportStateSnapshot(reportAfter[1].data!),
+          reportMutation: !reportWasNotMutated(reportBeforeBulk[1], reportAfter[1].data!),
+          targetMutation: !targetWasNotMutated(targetBefore[1], targetAfter[1]),
+          autoApplyJobCount: jobsAfter[1].data?.totalElements ?? 0,
+        },
+        ui: {
+          completed: 1,
+          recommended,
+          manualReview,
+          failed: 1,
+          remaining: 0,
+        },
+        screenshots: [partialFailureScreenshot],
+      };
+      rawFile(evidenceDir, "E2E-S1-09", "bulk-partial-failure-result", result);
+
+      expect(itemResponses.map((item) => item.status).sort()).toEqual([200, 409]);
+      expect(historyAfter[0].data?.totalElements ?? 0).toBe(
+        (historyBefore[0].data?.totalElements ?? 0) + 1,
+      );
+      expect(historyAfter[1].data?.totalElements ?? 0).toBe(
+        historyBefore[1].data?.totalElements ?? 0,
+      );
+      expect(reportWasNotMutated(reportBeforeBulk[0], reportAfter[0].data!)).toBe(true);
+      expect(reportWasNotMutated(reportBeforeBulk[1], reportAfter[1].data!)).toBe(true);
+      expect(targetWasNotMutated(targetBefore[0], targetAfter[0])).toBe(true);
+      expect(targetWasNotMutated(targetBefore[1], targetAfter[1])).toBe(true);
+      expect(jobsAfter.flatMap((resultItem) => resultItem.data?.content ?? [])).toEqual([]);
+    } finally {
+      for (const report of reports) {
+        await cancelScheduledJobs(page, report.id).catch(() => undefined);
+      }
+      for (const [index, fixture] of fixtures.entries()) {
+        cleanupProviderUnavailableBlogFixture(fixture, reports[index]?.id);
+      }
+      if (fixtures.length) {
+        const blogIds = fixtures.map((fixture) => `'${fixture.blogId}'::uuid`).join(",");
+        const reportIds = reports.map((report) => `'${report.id}'::uuid`).join(",");
+        const cleanupCounts = psqlForReportAiFixture(`
+          select count(*) from blogs where id in (${blogIds});
+          ${reportIds ? `select count(*) from content_reports where id in (${reportIds});` : ""}
+        `);
+        rawFile(evidenceDir, "E2E-S1-09", "cleanup-verification", {
+          remainingRowCounts: cleanupCounts.split(/\r?\n/).filter(Boolean).map(Number),
+        });
+      }
+    }
+  });
+
+  test("E2E-S1-10 terminal report disables Ask AI and Backend rejects bypass", async ({ page }) => {
+    test.setTimeout(5 * 60_000);
+    loadLocalEnv();
+    const adminEmail = requireEnv("ADMIN_TEST_EMAIL");
+    const adminPassword = requireEnv("ADMIN_TEST_PASSWORD");
+    const evidenceDir = createRemediationEvidenceDir("DOD_FIX06_EVIDENCE_DIR");
+    let fixture: ReturnType<typeof createProviderUnavailableBlogFixture> | null = null;
+    let report: ContentReport | null = null;
+
+    try {
+      const preflight = await request.newContext();
+      await assertReachable(preflight, adminBaseUrl, "Admin UI");
+      await assertReachable(preflight, `${apiBaseUrl.replace(/\/$/, "")}/api/auth/me`, "Backend API");
+      await preflight.dispose();
+
+      await loginAsAdmin(page, adminEmail, adminPassword);
+      const auth = await apiFetch<AuthResponse>(page, "/api/auth/me");
+      const adminUserId = auth.data?.user.userId ?? "";
+      if (!adminUserId) throw new Error("Unable to resolve current admin user id.");
+
+      fixture = createProviderUnavailableBlogFixture(adminUserId);
+      const reason = await chooseReason(page, "BLOG");
+      const created = await createReportWithSelfHeal(
+        page,
+        {
+          targetType: "BLOG",
+          targetId: fixture.blogId,
+          reason,
+          source: {
+            id: fixture.blogId,
+            authorUserId: fixture.targetOwnerId,
+            status: "PUBLISHED",
+            content: "Terminal report FE guard fixture.",
+          },
+        },
+        `${TEST_MARKER} E2E-S1-10 terminal FE guard ${Date.now()}`,
+        adminUserId,
+      );
+      report = created.report;
+      const targetBefore = await fetchTargetSnapshot(page, report.targetType, report.targetId);
+      const terminalReport = await updateReportStatus(page, report.id, "RESOLVED");
+      const persistedTerminalReport = await apiFetch<ContentReport>(
+        page,
+        `/api/admin/reports/${encodeURIComponent(report.id)}`,
+      );
+      expect(persistedTerminalReport.data?.status).toBe("RESOLVED");
+      const historyBefore = await apiFetch<PageResponse<AiResolution>>(
+        page,
+        withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-resolutions`, {
+          page: 0,
+          size: 20,
+        }),
+      );
+
+      let uiAiRequestCount = 0;
+      const requestListener = (outgoingRequest: { method: () => string; url: () => string }) => {
+        if (
+          outgoingRequest.method() === "POST" &&
+          outgoingRequest.url().includes(`/api/admin/reports/${report!.id}/ai-resolution`)
+        ) {
+          uiAiRequestCount += 1;
+        }
+      };
+      page.on("request", requestListener);
+      await openReportDetail(page, persistedTerminalReport.data!);
+      const detailDialog = page.getByRole("dialog").filter({ hasText: "Report detail" });
+      const askAiButton = detailDialog.getByRole("button", { name: "Ask AI" });
+      await expect(askAiButton).toBeDisabled();
+      await askAiButton.evaluate((button: HTMLButtonElement) => button.click());
+      await page.waitForTimeout(300);
+      page.off("request", requestListener);
+      expect(uiAiRequestCount).toBe(0);
+      const terminalGuardScreenshot = await screenshot(
+        page,
+        evidenceDir,
+        "E2E-S1-10",
+        "terminal-report-ask-ai-disabled",
+      );
+
+      const bypassAttempt = await createAiResolution(page, persistedTerminalReport.data!);
+      const historyAfter = await apiFetch<PageResponse<AiResolution>>(
+        page,
+        withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-resolutions`, {
+          page: 0,
+          size: 20,
+        }),
+      );
+      const reportAfter = await apiFetch<ContentReport>(
+        page,
+        `/api/admin/reports/${encodeURIComponent(report.id)}`,
+      );
+      const targetAfter = await fetchTargetSnapshot(page, report.targetType, report.targetId);
+      const jobsAfter = await apiFetch<PageResponse<AutoApplyJob>>(
+        page,
+        withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-auto-resolutions`, {
+          page: 0,
+          size: 20,
+        }),
+        { failOnStatusCode: false },
+      );
+      rawFile(evidenceDir, "E2E-S1-10", "terminal-report-guard-result", {
+        terminalStatus: terminalReport.status,
+        askAiDisabled: await askAiButton.isDisabled(),
+        uiAiRequestCount,
+        bypassHttpStatus: bypassAttempt.response.status(),
+        bypassResponse: bypassAttempt.raw,
+        resolutionCountBefore: historyBefore.data?.totalElements ?? 0,
+        resolutionCountAfter: historyAfter.data?.totalElements ?? 0,
+        reportStatusAfter: reportAfter.data?.status,
+        reportStateBefore: reportStateSnapshot(persistedTerminalReport.data!),
+        reportStateAfter: reportStateSnapshot(reportAfter.data!),
+        reportMutation: !reportWasNotMutated(persistedTerminalReport.data!, reportAfter.data!),
+        targetMutation: !targetWasNotMutated(targetBefore, targetAfter),
+        autoApplyJobCount: jobsAfter.data?.totalElements ?? 0,
+        screenshots: [terminalGuardScreenshot],
+      });
+
+      expect(bypassAttempt.response.status()).toBe(409);
+      expect(historyAfter.data?.totalElements ?? 0).toBe(historyBefore.data?.totalElements ?? 0);
+      expect(reportWasNotMutated(persistedTerminalReport.data!, reportAfter.data!)).toBe(true);
+      expect(targetWasNotMutated(targetBefore, targetAfter)).toBe(true);
+      expect(jobsAfter.data?.content ?? []).toEqual([]);
+    } finally {
+      if (report) {
+        await cancelScheduledJobs(page, report.id).catch(() => undefined);
+      }
+      if (fixture) {
+        cleanupProviderUnavailableBlogFixture(fixture, report?.id);
+        const cleanupCounts = psqlForReportAiFixture(`
+          select count(*) from blogs where id='${fixture.blogId}'::uuid;
+          ${report ? `select count(*) from content_reports where id='${report.id}'::uuid;` : ""}
+        `);
+        rawFile(evidenceDir, "E2E-S1-10", "cleanup-verification", {
+          remainingRowCounts: cleanupCounts.split(/\r?\n/).filter(Boolean).map(Number),
+        });
+      }
+    }
+  });
+
+  test("E2E-S1-13 provider boundary unavailable is operational error and retryable", async ({ page }) => {
+    test.setTimeout(10 * 60_000);
+    loadLocalEnv();
+    const adminEmail = requireEnv("ADMIN_TEST_EMAIL");
+    const adminPassword = requireEnv("ADMIN_TEST_PASSWORD");
+    const evidenceDir = createFix04EvidenceDir();
+    let fixture: ReturnType<typeof createProviderUnavailableBlogFixture> | null = null;
+    let report: ContentReport | null = null;
+    let n8nStopped = false;
+
+    try {
+      const preflight = await request.newContext();
+      await assertReachable(preflight, adminBaseUrl, "Admin UI");
+      await assertReachable(preflight, `${apiBaseUrl.replace(/\/$/, "")}/api/auth/me`, "Backend API");
+      await assertReachable(preflight, `${n8nBaseUrl.replace(/\/$/, "")}/healthz`, "n8n");
+      const webhookPreflight = await checkWebhookActive(preflight);
+      await preflight.dispose();
+      expect(webhookPreflight.ok, webhookPreflight.message).toBe(true);
+
+      await loginAsAdmin(page, adminEmail, adminPassword);
+      const auth = await apiFetch<AuthResponse>(page, "/api/auth/me");
+      const adminUserId = auth.data?.user.userId ?? "";
+      if (!adminUserId) throw new Error("Unable to resolve current admin user id.");
+
+      fixture = createProviderUnavailableBlogFixture(adminUserId);
+      const reason = await chooseReason(page, "BLOG");
+      const seed: TargetSeed = {
+        targetType: "BLOG",
+        targetId: fixture.blogId,
+        reason,
+        source: {
+          id: fixture.blogId,
+          authorUserId: fixture.targetOwnerId,
+          status: "PUBLISHED",
+          content: "Bài viết fixture dùng để kiểm chứng lỗi vận hành provider.",
+        },
+      };
+      const created = await createReportWithSelfHeal(
+        page,
+        seed,
+        `${TEST_MARKER} E2E-S1-13 provider unavailable ${Date.now()}`,
+        adminUserId,
+      );
+      report = created.report;
+      const targetBefore = await fetchTargetSnapshot(page, "BLOG", fixture.blogId);
+      const reportBefore = await apiFetch<ContentReport>(
+        page,
+        `/api/admin/reports/${encodeURIComponent(report.id)}`,
+      );
+      const historyBefore = await apiFetch<PageResponse<AiResolution>>(
+        page,
+        withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-resolutions`, {
+          page: 0,
+          size: 20,
+        }),
+      );
+
+      await openReportDetail(page, report);
+      const detailDialog = page.getByRole("dialog").filter({ hasText: "Report detail" });
+      await detailDialog.getByRole("button", { name: "Ask AI" }).click();
+      const askDialog = page.getByRole("dialog").filter({ hasText: "Ask AI for report resolution" });
+      await expect(askDialog).toBeVisible();
+
+      stopN8nForProviderBoundaryTest();
+      n8nStopped = true;
+      const failureResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes(`/api/admin/reports/${report!.id}/ai-resolution`) &&
+          response.request().method() === "POST",
+        { timeout: 120_000 },
+      );
+      await askDialog.getByRole("button", { name: "Ask AI" }).click();
+      const failureResponse = await failureResponsePromise;
+      const failureParsed = await parseResponse<AdminReportAiOperationalError>(failureResponse);
+      const historyAfterFailure = await apiFetch<PageResponse<AiResolution>>(
+        page,
+        withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-resolutions`, {
+          page: 0,
+          size: 20,
+        }),
+      );
+      rawFile(evidenceDir, "E2E-S1-13", "provider-boundary-failure", {
+        httpStatus: failureResponse.status(),
+        error: failureParsed.raw,
+        resolutionCountBefore: historyBefore.data?.totalElements ?? 0,
+        resolutionCountAfterFailure: historyAfterFailure.data?.totalElements ?? 0,
+      });
+
+      expect(historyAfterFailure.data?.totalElements ?? 0).toBe(
+        historyBefore.data?.totalElements ?? 0,
+      );
+
+      const alert = askDialog.getByRole("alert");
+      const failureScreenshot = await screenshot(
+        page,
+        evidenceDir,
+        "E2E-S1-13",
+        "provider-boundary-operational-error",
+      );
+      await expect(alert).toContainText("AI recommendation was not created.");
+      await expect(alert).toContainText("AI recommendation service is unavailable.");
+      await expect(alert).toContainText("AI_PROVIDER_BOUNDARY_FAILED");
+      await expect(alert).toContainText("Retry available");
+      await expect(alert).toContainText((failureParsed.raw as AdminReportAiOperationalError).correlationId);
+      expect(failureResponse.status()).toBe(502);
+      expect(failureParsed.raw).toMatchObject({
+        code: "AI_PROVIDER_BOUNDARY_FAILED",
+        message: "AI recommendation service is unavailable.",
+        retryable: true,
+        stage: "N8N_PROVIDER",
+      });
+      expect((failureParsed.raw as AdminReportAiOperationalError).correlationId).toMatch(
+        /^[0-9a-f-]{36}$/i,
+      );
+
+      startN8nAfterProviderBoundaryTest();
+      n8nStopped = false;
+      await waitForN8nRecovery(page.request);
+      await expect(askDialog.getByRole("button", { name: "Ask AI" })).toBeEnabled();
+
+      const retryResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes(`/api/admin/reports/${report!.id}/ai-resolution`) &&
+          response.request().method() === "POST",
+        { timeout: 120_000 },
+      );
+      await askDialog.getByRole("button", { name: "Ask AI" }).click();
+      const retryResponse = await retryResponsePromise;
+      const retryParsed = await parseResponse<AiResolution>(retryResponse);
+      await expect(askDialog).toBeHidden();
+
+      const targetAfter = await fetchTargetSnapshot(page, "BLOG", fixture.blogId);
+      const reportAfter = await apiFetch<ContentReport>(
+        page,
+        `/api/admin/reports/${encodeURIComponent(report.id)}`,
+      );
+      const historyAfterRetry = await apiFetch<PageResponse<AiResolution>>(
+        page,
+        withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-resolutions`, {
+          page: 0,
+          size: 20,
+        }),
+      );
+      const jobs = await apiFetch<PageResponse<AutoApplyJob>>(
+        page,
+        withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-auto-resolutions`, {
+          page: 0,
+          size: 20,
+        }),
+        { failOnStatusCode: false },
+      );
+      const noTargetMutation = targetWasNotMutated(targetBefore, targetAfter);
+      const noReportMutation = reportBefore.data?.status === reportAfter.data?.status;
+      rawFile(evidenceDir, "E2E-S1-13", "retry-recovery", {
+        httpStatus: retryResponse.status(),
+        resolution: retryParsed.data,
+        resolutionCountAfterRetry: historyAfterRetry.data?.totalElements ?? 0,
+        noTargetMutation,
+        noReportMutation,
+        autoApplyJobCount: jobs.data?.totalElements ?? jobs.data?.content.length ?? 0,
+        screenshots: [failureScreenshot],
+      });
+
+      expect(retryResponse.ok()).toBe(true);
+      expect(resolutionContractOk(retryParsed.data)).toBe(true);
+      expect(historyAfterRetry.data?.totalElements ?? 0).toBe(
+        (historyBefore.data?.totalElements ?? 0) + 1,
+      );
+      expect(noTargetMutation).toBe(true);
+      expect(noReportMutation).toBe(true);
+      expect(jobs.data?.content ?? []).toEqual([]);
+    } finally {
+      if (n8nStopped) {
+        startN8nAfterProviderBoundaryTest();
+        await waitForN8nRecovery(page.request).catch(() => undefined);
+      }
+      if (report) {
+        await cancelScheduledJobs(page, report.id).catch(() => undefined);
+        await closeReport(page, report.id, "REJECTED").catch(() => undefined);
+      }
+      if (fixture) {
+        cleanupProviderUnavailableBlogFixture(fixture, report?.id);
+        const cleanupCounts = psqlForReportAiFixture(`
+          select count(*) from blogs where id='${fixture.blogId}'::uuid;
+          ${report ? `select count(*) from content_reports where id='${report.id}'::uuid;` : ""}
+        `);
+        rawFile(evidenceDir, "E2E-S1-13", "cleanup-verification", {
+          remainingRowCounts: cleanupCounts.split(/\r?\n/).filter(Boolean).map(Number),
+        });
+      }
+    }
+  });
+
+  test("E2E-S1-04 COMMENT missing critical parent context is manual and has no mutation", async ({ page }) => {
+    test.setTimeout(10 * 60_000);
+    loadLocalEnv();
+    const adminEmail = requireEnv("ADMIN_TEST_EMAIL");
+    const adminPassword = requireEnv("ADMIN_TEST_PASSWORD");
+    const evidenceDir = createFix03EvidenceDir();
+    let fixture: ReturnType<typeof createMissingCriticalCommentContextFixture> | null = null;
+    let report: ContentReport | null = null;
+
+    try {
+      const preflight = await request.newContext();
+      await assertReachable(preflight, adminBaseUrl, "Admin UI");
+      await assertReachable(preflight, `${apiBaseUrl.replace(/\/$/, "")}/api/auth/me`, "Backend API");
+      await assertReachable(preflight, `${n8nBaseUrl.replace(/\/$/, "")}/healthz`, "n8n");
+      const webhookPreflight = await checkWebhookActive(preflight);
+      await preflight.dispose();
+      expect(webhookPreflight.ok, webhookPreflight.message).toBe(true);
+
+      await loginAsAdmin(page, adminEmail, adminPassword);
+      const auth = await apiFetch<AuthResponse>(page, "/api/auth/me");
+      const adminUserId = auth.data?.user.userId ?? "";
+      if (!adminUserId) throw new Error("Unable to resolve current admin user id.");
+
+      fixture = createMissingCriticalCommentContextFixture(adminUserId);
+      const reason = await chooseReason(page, "COMMENT");
+      const seed: TargetSeed = {
+        targetType: "COMMENT",
+        targetId: fixture.commentId,
+        reason,
+        source: {
+          id: fixture.commentId,
+          blogId: fixture.blogId,
+          userId: fixture.targetOwnerId,
+          status: "PUBLISHED",
+          content: "Đúng vậy.",
+        },
+      };
+      const created = await createReportWithSelfHeal(
+        page,
+        seed,
+        `${TEST_MARKER} E2E-S1-04 missing critical parent context ${Date.now()}`,
+        adminUserId,
+      );
+      report = created.report;
+      const targetBefore = await fetchTargetSnapshot(page, "COMMENT", fixture.commentId);
+      const result = await createAiResolution(page, report);
+      const targetAfter = await fetchTargetSnapshot(page, "COMMENT", fixture.commentId);
+      const jobs = await apiFetch<PageResponse<AutoApplyJob>>(
+        page,
+        withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-auto-resolutions`, {
+          page: 0,
+          size: 20,
+        }),
+        { failOnStatusCode: false },
+      );
+      const noMutation = targetWasNotMutated(targetBefore, targetAfter);
+      const resolution = result.data;
+      rawFile(evidenceDir, "E2E-S1-04", "runtime-result", {
+        httpStatus: result.response.status(),
+        resolution,
+        noMutation,
+        autoApplyJobCount: jobs.data?.totalElements ?? jobs.data?.content.length ?? 0,
+      });
+
+      await openReportDetail(page, report);
+      await expect(page.getByText("CRITICAL_EVIDENCE_MISSING")).toBeVisible();
+      await expect(page.getByText("UNASSESSABLE", { exact: true })).toBeVisible();
+      const screenshotFile = await screenshot(
+        page,
+        evidenceDir,
+        "E2E-S1-04",
+        "comment-missing-critical-context-manual",
+      );
+      rawFile(evidenceDir, "E2E-S1-04", "ui-result", { screenshotFile });
+
+      expect(result.response.ok()).toBe(true);
+      expect(resolution?.reportDecision).toBe("NEEDS_MANUAL_REVIEW");
+      expect(resolution?.targetAction).toBe("NO_ACTION");
+      expect(resolution?.findings ?? []).toEqual([]);
+      expect(resolution?.blockedReasons).toContain("CRITICAL_EVIDENCE_MISSING");
+      expect(resolution?.evidenceSufficiency).toBe("UNASSESSABLE");
+      expect(noMutation).toBe(true);
+      expect(jobs.data?.content ?? []).toEqual([]);
+    } finally {
+      if (report) {
+        await cancelScheduledJobs(page, report.id).catch(() => undefined);
+        await closeReport(page, report.id, "REJECTED").catch(() => undefined);
+      }
+      if (fixture) {
+        cleanupMissingCriticalCommentContextFixture(fixture, report?.id);
+        const cleanupCounts = psqlForReportAiFixture(`
+          select count(*) from comments where id='${fixture.commentId}'::uuid;
+          select count(*) from blogs where id='${fixture.blogId}'::uuid;
+          ${report ? `select count(*) from content_reports where id='${report.id}'::uuid;` : ""}
+        `);
+        rawFile(evidenceDir, "E2E-S1-04", "cleanup-verification", {
+          remainingRowCounts: cleanupCounts.split(/\r?\n/).filter(Boolean).map(Number),
+        });
+      }
+    }
+  });
+
   test("creates reports, asks AI, evaluates 30 scenarios, and cleans up", async ({ page }) => {
     test.setTimeout(45 * 60_000);
     loadLocalEnv();
@@ -724,7 +1770,8 @@ test.describe("admin report AI E2E evidence", () => {
       const webhookPreflight = await checkWebhookActive(preflight);
       rawFile(evidenceDir, "PRE", "n8n-webhook-preflight", webhookPreflight);
       if (!webhookPreflight.ok) {
-        fixLog.push(`Preflight: ${webhookPreflight.message}. Republish/activate existing workflow cafestory-admin-report-ai-resolution; do not create a new workflow.`);
+        await preflight.dispose();
+        throw new Error(`Hard preflight failed: ${webhookPreflight.message}`);
       }
       await preflight.dispose();
 
@@ -823,7 +1870,13 @@ test.describe("admin report AI E2E evidence", () => {
         records.push(makeRecord("RAI-06", { status: "BLOCKED", notes: ["No report is available for detail UI check."] }));
       }
 
-      const aiResults: Partial<Record<ReportTargetType, { resolution: AiResolution | null; durationMs: number; rawFile: string }>> = {};
+      const aiResults: Partial<Record<ReportTargetType, {
+        resolution: AiResolution | null;
+        durationMs: number;
+        rawFile: string;
+        targetBefore: TargetSnapshot;
+        targetAfter: TargetSnapshot;
+      }>> = {};
       for (const [scenarioId, targetType] of [
         ["RAI-07", "BLOG"],
         ["RAI-08", "COMMENT"],
@@ -836,6 +1889,7 @@ test.describe("admin report AI E2E evidence", () => {
           records.push(makeRecord(scenarioId, { status: "BLOCKED", notes: [`No ${targetType} report is available.`] }));
           continue;
         }
+        const targetBefore = await fetchTargetSnapshot(page, targetType, report.targetId);
         const result = scenarioId === "RAI-07"
           ? await askAiViaUi(page, report).then((uiResult) => ({
               data: uiResult.data,
@@ -844,9 +1898,22 @@ test.describe("admin report AI E2E evidence", () => {
               durationMs: Date.now() - started,
             }))
           : await createAiResolution(page, report);
+        const targetAfter = await fetchTargetSnapshot(page, targetType, report.targetId);
+        const noMutation = targetWasNotMutated(targetBefore, targetAfter);
         const resolution = result.data;
         const raw = rawFile(evidenceDir, scenarioId, `ai-resolution-${targetType}`, result.raw);
-        aiResults[targetType] = { resolution: resolution ?? null, durationMs: result.durationMs, rawFile: raw };
+        const noMutationRaw = rawFile(evidenceDir, scenarioId, `target-no-mutation-${targetType}`, {
+          targetBefore,
+          targetAfter,
+          noMutation,
+        });
+        aiResults[targetType] = {
+          resolution: resolution ?? null,
+          durationMs: result.durationMs,
+          rawFile: raw,
+          targetBefore,
+          targetAfter,
+        };
         if (scenarioId !== "RAI-07") await openReportDetail(page, report);
         const shot = await screenshot(page, evidenceDir, scenarioId, `ai-resolution-${targetType}`);
         const aiFixes = result.response.ok()
@@ -855,8 +1922,8 @@ test.describe("admin report AI E2E evidence", () => {
         records.push(makeRecord(scenarioId, {
           durationMs: Date.now() - started,
           screenshots: [shot],
-          rawFiles: [raw],
-          notes: [performanceNote(result.durationMs)],
+          rawFiles: [raw, noMutationRaw],
+          notes: [performanceNote(result.durationMs), `Target unchanged: ${noMutation}.`],
           fixRecommendations: [
             ...aiFixes,
             ...(result.durationMs > LATENCY_PASS_MS ? ["Investigate n8n/OpenAI latency for admin report AI resolution workflow."] : []),
@@ -865,7 +1932,7 @@ test.describe("admin report AI E2E evidence", () => {
             setup: true,
             ui: true,
             apiAi: result.response.ok() && Boolean(resolution) && allowedActionForTarget(targetType, resolution!.targetAction),
-            safety: isSecretSafe(result.raw),
+            safety: isSecretSafe(result.raw) && noMutation,
             performance: performanceCriterion(result.durationMs),
           },
         }));
@@ -904,15 +1971,25 @@ test.describe("admin report AI E2E evidence", () => {
           : ["No valid AI recommendation contract was returned; check n8n workflow publication, ADMIN_REPORT_AI_WEBHOOK_URL, OpenAI credentials, and AdminReportAiResolutionWebhookResponseDTO mapping."],
       }));
 
-      const measuredAiDurations = Object.values(aiResults).map((item) => item?.durationMs ?? 0).filter(Boolean);
+      const validAiResults = Object.values(aiResults).filter(
+        (item): item is {
+          resolution: AiResolution;
+          durationMs: number;
+          rawFile: string;
+          targetBefore: TargetSnapshot;
+          targetAfter: TargetSnapshot;
+        } =>
+          Boolean(item?.resolution) && resolutionContractOk(item?.resolution ?? null),
+      );
+      const measuredAiDurations = validAiResults.map((item) => item.durationMs);
       const maxAiDuration = measuredAiDurations.length ? Math.max(...measuredAiDurations) : 0;
       records.push(makeRecord("RAI-13", {
         durationMs: maxAiDuration,
         notes: [`Max AI duration: ${performanceNote(maxAiDuration)}`],
         criteria: {
-          setup: measuredAiDurations.length > 0,
+          setup: validAiResults.length > 0,
           ui: true,
-          apiAi: measuredAiDurations.length > 0,
+          apiAi: validAiResults.length > 0,
           safety: true,
           performance: performanceCriterion(maxAiDuration),
         },
@@ -924,46 +2001,59 @@ test.describe("admin report AI E2E evidence", () => {
       let autoJob: AutoApplyJob | null = null;
       if (autoReport) {
         const started = Date.now();
-        const result = await createAiResolution(page, autoReport, { autoApplyEnabled: true, autoApplyDelayMinutes: 15 });
-        autoResolution = result.data ?? null;
-        autoJob = autoResolution?.autoApplyJob ?? null;
-        const raw = rawFile(evidenceDir, "RAI-14", "auto-apply-resolution", result.raw);
         await openReportDetail(page, autoReport);
-        const shot = await screenshot(page, evidenceDir, "RAI-14", "auto-apply-ui");
+        const detailDialog = page.getByRole("dialog").filter({ hasText: "Report detail" });
+        await detailDialog.getByRole("button", { name: "Ask AI" }).click();
+        const askDialog = page.getByRole("dialog").filter({ hasText: "Ask AI for report resolution" });
+        const a0NoticeVisible = await askDialog.getByText("A0 recommendation-only mode").isVisible();
+        const autoCreationControlVisible = await askDialog.getByText("Auto apply after delay").isVisible().catch(() => false);
+        const uiShot = await screenshot(page, evidenceDir, "RAI-14", "a0-recommendation-only-ui");
+        await askDialog.getByRole("button", { name: "Close" }).click();
         records.push(makeRecord("RAI-14", {
           durationMs: Date.now() - started,
-          screenshots: [shot],
-          rawFiles: [raw],
-          notes: [autoResolution?.autoApplyWarning ?? (autoJob ? "Auto apply job scheduled." : "No job returned.")],
-          fixRecommendations: result.response.ok()
-            ? []
-            : [`POST /api/admin/reports/{reportId}/ai-resolution auto apply returned ${result.response.status()}; fix admin report AI service before validating auto-apply scheduling.`],
+          screenshots: [uiShot],
           criteria: {
             setup: true,
-            ui: true,
-            apiAi: result.response.ok() && Boolean(autoResolution),
-            safety: isSecretSafe(result.raw),
-            performance: performanceCriterion(result.durationMs),
-          },
-        }));
-
-        records.push(makeRecord("RAI-15", {
-          durationMs: result.durationMs,
-          screenshots: [shot],
-          rawFiles: [raw],
-          notes: [autoJob ? `Scheduled at ${autoJob.scheduledAt}` : "No SCHEDULED job; AI returned safe warning or did not meet safety gate."],
-          criteria: {
-            setup: true,
-            ui: autoJob ? await page.getByText(/Due now|\d+[hms]/).first().isVisible().catch(() => false) : true,
+            ui: a0NoticeVisible && !autoCreationControlVisible,
             apiAi: true,
             safety: true,
             performance: true,
           },
         }));
 
-        if (autoJob?.status === "SCHEDULED") {
+        const targetBeforeAutoRequest = await fetchTargetSnapshot(page, autoReport.targetType, autoReport.targetId);
+        const result = await createAiResolution(page, autoReport, { autoApplyEnabled: true, autoApplyDelayMinutes: 15 });
+        const targetAfterAutoRequest = await fetchTargetSnapshot(page, autoReport.targetType, autoReport.targetId);
+        autoResolution = result.data ?? null;
+        autoJob = autoResolution?.autoApplyJob ?? null;
+        const raw = rawFile(evidenceDir, "RAI-15", "a0-blocked-auto-apply", result.raw);
+        await openReportDetail(page, autoReport);
+        const shot = await screenshot(page, evidenceDir, "RAI-15", "a0-blocked-auto-apply-ui");
+        records.push(makeRecord("RAI-15", {
+          durationMs: result.durationMs,
+          screenshots: [shot],
+          rawFiles: [raw],
+          notes: [autoResolution?.autoApplyWarning ?? "No A0 warning returned."],
+          fixRecommendations: result.response.ok()
+            ? []
+            : [`Legacy autoApply request returned ${result.response.status()}; inspect A0 compatibility handling.`],
+          criteria: {
+            setup: true,
+            ui: true,
+            apiAi: result.response.ok() && Boolean(autoResolution),
+            safety: !autoJob && Boolean(autoResolution?.autoApplyWarning?.includes("A0_RECOMMEND_ONLY")),
+            performance: performanceCriterion(result.durationMs),
+          },
+        }));
+
+        const legacyJobs = await apiFetch<PageResponse<AutoApplyJob>>(
+          page,
+          withQuery(`/api/admin/reports/${encodeURIComponent(autoReport.id)}/ai-auto-resolutions`, { page: 0, size: 20 }),
+        );
+        const cancellableLegacyJob = legacyJobs.data?.content.find((job) => job.status === "SCHEDULED") ?? null;
+        if (cancellableLegacyJob) {
           const cancelStarted = Date.now();
-          const cancel = await apiFetch<AutoApplyJob>(page, `/api/admin/reports/ai-auto-resolutions/${encodeURIComponent(autoJob.id)}/cancel`, { method: "POST" });
+          const cancel = await apiFetch<AutoApplyJob>(page, `/api/admin/reports/ai-auto-resolutions/${encodeURIComponent(cancellableLegacyJob.id)}/cancel`, { method: "POST" });
           const rawCancel = rawFile(evidenceDir, "RAI-16", "cancel-auto-apply", cancel.raw);
           await openReportDetail(page, autoReport);
           const cancelShot = await screenshot(page, evidenceDir, "RAI-16", "cancel-auto-apply-ui");
@@ -981,72 +2071,62 @@ test.describe("admin report AI E2E evidence", () => {
           }));
         } else {
           records.push(makeRecord("RAI-16", {
-            status: "WARN",
-            notes: ["No scheduled job was created; cancel path is conditionally skipped."],
-            criteria: { setup: true, ui: true, apiAi: true, safety: true, performance: true },
+            status: "BLOCKED",
+            score: 0,
+            notes: ["No pre-existing SCHEDULED legacy job fixture exists; cancel endpoint remains covered by Backend tests."],
           }));
         }
-      } else {
-        for (const id of ["RAI-14", "RAI-15", "RAI-16"] as const) {
-          records.push(makeRecord(id, { status: "BLOCKED", notes: ["No report is available for auto apply test."] }));
-        }
-      }
 
-      records.push(makeRecord("RAI-17", {
-        rawFiles: autoResolution ? [rawFile(evidenceDir, "RAI-17", "auto-apply-safety", autoResolution)] : [],
-        notes: [autoResolution?.autoApplyWarning ?? (autoResolution?.autoApplyJob ? "Safety gate allowed scheduling." : "No auto apply response.")],
-        fixRecommendations: autoResolution ? [] : ["Auto apply safety gate cannot be evaluated until admin report AI recommendation endpoint returns a valid response."],
-        criteria: {
-          setup: Boolean(autoResolution),
-          ui: true,
-          apiAi: Boolean(autoResolution),
-          safety: autoResolution ? Boolean(autoResolution.autoApplyWarning || autoResolution.autoApplyJob) : false,
-          performance: true,
-        },
-      }));
-
-      if (autoReport) {
-        const started = Date.now();
-        const replace = await createAiResolution(page, autoReport, { autoApplyEnabled: true, autoApplyDelayMinutes: 15 });
-        const replacement = replace.data ?? null;
-        const raw = rawFile(evidenceDir, "RAI-18", "replacement-auto-apply", replace.raw);
-        if (replacement?.autoApplyJob?.status === "SCHEDULED") await cancelScheduledJobs(page, autoReport.id);
-        records.push(makeRecord("RAI-18", {
-          durationMs: Date.now() - started,
-          rawFiles: [raw],
-          notes: [replacement?.autoApplyWarning ?? (replacement?.autoApplyJob ? "Replacement scheduling returned a new job." : "No replacement job created.")],
+        const reportAfter = await apiFetch<ContentReport>(
+          page,
+          `/api/admin/reports/${encodeURIComponent(autoReport.id)}`,
+        );
+        const targetNoMutation = targetWasNotMutated(targetBeforeAutoRequest, targetAfterAutoRequest);
+        records.push(makeRecord("RAI-17", {
+          rawFiles: [rawFile(evidenceDir, "RAI-17", "a0-safety-invariant", {
+            resolution: autoResolution,
+            reportAfter: reportAfter.data,
+            targetBefore: targetBeforeAutoRequest,
+            targetAfter: targetAfterAutoRequest,
+            targetNoMutation,
+          })],
           criteria: {
-            setup: true,
+            setup: Boolean(autoResolution),
             ui: true,
-            apiAi: replace.response.ok() && Boolean(replacement),
-            safety: isSecretSafe(replace.raw),
-            performance: performanceCriterion(replace.durationMs),
+            apiAi: !autoJob,
+            safety: reportAfter.data?.status === autoReport.status && targetNoMutation,
+            performance: true,
           },
         }));
-      } else {
-        records.push(makeRecord("RAI-18", { status: "BLOCKED", notes: ["No report is available for replacement scheduling."] }));
-      }
 
-      if (autoReport) {
-        const started = Date.now();
-        const jobs = await apiFetch<PageResponse<AutoApplyJob>>(
-          page,
-          withQuery(`/api/admin/reports/${encodeURIComponent(autoReport.id)}/ai-auto-resolutions`, { page: 0, size: 20 }),
-        );
-        const raw = rawFile(evidenceDir, "RAI-19", "auto-job-history", jobs.raw);
-        records.push(makeRecord("RAI-19", {
-          durationMs: Date.now() - started,
-          rawFiles: [raw],
+        const repeat = await createAiResolution(page, autoReport, { autoApplyEnabled: true, autoApplyDelayMinutes: 15 });
+        const repeatResolution = repeat.data ?? null;
+        records.push(makeRecord("RAI-18", {
+          durationMs: repeat.durationMs,
+          rawFiles: [rawFile(evidenceDir, "RAI-18", "repeat-a0-request", repeat.raw)],
           criteria: {
             setup: true,
             ui: true,
-            apiAi: Array.isArray(jobs.data?.content),
-            safety: isSecretSafe(jobs.raw),
+            apiAi: repeat.response.ok() && Boolean(repeatResolution),
+            safety: !repeatResolution?.autoApplyJob,
+            performance: performanceCriterion(repeat.durationMs),
+          },
+        }));
+
+        records.push(makeRecord("RAI-19", {
+          rawFiles: [rawFile(evidenceDir, "RAI-19", "legacy-auto-job-history", legacyJobs.raw)],
+          criteria: {
+            setup: true,
+            ui: await page.getByText("Legacy auto-apply history").isVisible().catch(() => false),
+            apiAi: Array.isArray(legacyJobs.data?.content),
+            safety: isSecretSafe(legacyJobs.raw),
             performance: true,
           },
         }));
       } else {
-        records.push(makeRecord("RAI-19", { status: "BLOCKED", notes: ["No report is available for auto job history."] }));
+        for (const id of ["RAI-14", "RAI-15", "RAI-16", "RAI-17", "RAI-18", "RAI-19"] as const) {
+          records.push(makeRecord(id, { status: "BLOCKED", notes: ["No report is available for auto apply test."] }));
+        }
       }
 
       const statusSeed = seedState.targets.USER ?? seedState.targets.CAFE_PAGE ?? seedState.targets.BLOG ?? seedState.targets.COMMENT;
@@ -1117,9 +2197,9 @@ test.describe("admin report AI E2E evidence", () => {
         await page.goto("/reports");
         await expect(page.getByRole("heading", { name: "Reports" })).toBeVisible();
         const started = Date.now();
-        await page.getByRole("button", { name: "AI resolve all" }).click();
-        let bulkDialog = page.getByRole("dialog").filter({ hasText: "AI resolve reports" });
-        await expect(bulkDialog.getByRole("heading", { name: "AI resolve reports" })).toBeVisible();
+        await page.getByRole("button", { name: "Generate AI recommendations" }).click();
+        let bulkDialog = page.getByRole("dialog").filter({ hasText: "Generate AI recommendations" });
+        await expect(bulkDialog.getByRole("heading", { name: "Generate AI recommendations" })).toBeVisible();
         await bulkDialog.getByRole("button", { name: "Selected reports" }).click();
         const shot = await screenshot(page, evidenceDir, "RAI-24", "bulk-dialog-selected");
         records.push(makeRecord("RAI-24", {
@@ -1132,38 +2212,54 @@ test.describe("admin report AI E2E evidence", () => {
         await bulkDialog.getByRole("button", { name: "Run AI", exact: true }).click();
         await expect(page.getByText("Total:")).toBeVisible({ timeout: 30_000 });
         await expect(page.getByText(/Remaining: 0/)).toBeVisible({ timeout: 180_000 });
+        const selectedBulkSucceeded = await bulkDialog.getByText("Failed: 0").isVisible().catch(() => false)
+          && await bulkDialog.getByText(/Completed: [1-9]\d*/).isVisible().catch(() => false);
         const bulkShot = await screenshot(page, evidenceDir, "RAI-25", "bulk-run-selected");
         records.push(makeRecord("RAI-25", {
           durationMs: Date.now() - bulkStarted,
           screenshots: [bulkShot],
           notes: [performanceNote(Date.now() - bulkStarted)],
-          criteria: { setup: true, ui: true, apiAi: true, safety: true, performance: performanceCriterion(Date.now() - bulkStarted) },
+          criteria: { setup: true, ui: true, apiAi: selectedBulkSucceeded, safety: true, performance: performanceCriterion(Date.now() - bulkStarted) },
         }));
         await bulkDialog.getByRole("button", { name: "Close" }).click();
 
-        await page.getByRole("button", { name: "AI resolve all" }).click();
-        bulkDialog = page.getByRole("dialog").filter({ hasText: "AI resolve reports" });
+        await page.getByRole("button", { name: "Generate AI recommendations" }).click();
+        bulkDialog = page.getByRole("dialog").filter({ hasText: "Generate AI recommendations" });
         await bulkDialog.getByRole("button", { name: "Selected reports" }).click();
-        await bulkDialog.getByText("Auto apply after delay").last().click();
-        const runButton = bulkDialog.getByRole("button", { name: "Run AI", exact: true });
-        const disabledBeforeConfirm = await runButton.isDisabled();
-        const confirmShot = await screenshot(page, evidenceDir, "RAI-26", "bulk-auto-confirm-required");
+        const a0BulkNotice = await bulkDialog.getByText("Recommendation only — automation is disabled").isVisible();
+        const autoControlVisible = await bulkDialog.getByText("Auto apply after delay").isVisible().catch(() => false);
+        const confirmShot = await screenshot(page, evidenceDir, "RAI-26", "bulk-a0-notice");
         records.push(makeRecord("RAI-26", {
           screenshots: [confirmShot],
-          criteria: { setup: true, ui: disabledBeforeConfirm, apiAi: true, safety: true, performance: true },
-          fixRecommendations: disabledBeforeConfirm ? [] : ["Bulk auto apply can run without explicit confirmation; inspect AdminReportsPage bulkAutoApplyConfirmed guard."],
+          criteria: { setup: true, ui: a0BulkNotice && !autoControlVisible, apiAi: true, safety: true, performance: true },
         }));
 
-        await page.getByText("I understand this may schedule target actions").click();
-        const bulkAutoStarted = Date.now();
-        await runButton.click();
+        const bulkRecommendationStarted = Date.now();
+        await bulkDialog.getByRole("button", { name: "Run AI", exact: true }).click();
         await expect(page.getByText("Total:")).toBeVisible({ timeout: 30_000 });
         await expect(page.getByText(/Remaining: 0/)).toBeVisible({ timeout: 180_000 });
-        const bulkAutoShot = await screenshot(page, evidenceDir, "RAI-27", "bulk-auto-run");
+        const bulkRecommendationSucceeded = await bulkDialog.getByText("Failed: 0").isVisible().catch(() => false)
+          && await bulkDialog.getByText(/Completed: [1-9]\d*/).isVisible().catch(() => false);
+        const bulkJobs = await Promise.all(
+          bulkReports.map((report) =>
+            apiFetch<PageResponse<AutoApplyJob>>(
+              page,
+              withQuery(`/api/admin/reports/${encodeURIComponent(report.id)}/ai-auto-resolutions`, { page: 0, size: 20 }),
+            )),
+        );
+        const noNewJobs = bulkJobs.every((result) =>
+          (result.data?.content ?? []).every((job) => job.status !== "SCHEDULED" && job.status !== "APPLYING"));
+        const bulkAutoShot = await screenshot(page, evidenceDir, "RAI-27", "bulk-recommendation-only");
         records.push(makeRecord("RAI-27", {
-          durationMs: Date.now() - bulkAutoStarted,
+          durationMs: Date.now() - bulkRecommendationStarted,
           screenshots: [bulkAutoShot],
-          criteria: { setup: true, ui: true, apiAi: true, safety: true, performance: performanceCriterion(Date.now() - bulkAutoStarted) },
+          criteria: {
+            setup: true,
+            ui: true,
+            apiAi: bulkRecommendationSucceeded,
+            safety: noNewJobs,
+            performance: performanceCriterion(Date.now() - bulkRecommendationStarted),
+          },
         }));
         await bulkDialog.getByRole("button", { name: "Close" }).click();
       } else {

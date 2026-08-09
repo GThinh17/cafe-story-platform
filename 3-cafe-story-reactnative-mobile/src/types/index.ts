@@ -1,4 +1,5 @@
 export * from "./api";
+export * from "./ai-chat";
 export * from "./ad-campaign";
 export * from "./ad-fee";
 export * from "./auth";

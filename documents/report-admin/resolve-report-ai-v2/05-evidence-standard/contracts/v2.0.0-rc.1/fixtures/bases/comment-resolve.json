@@ -1,0 +1,90 @@
+{
+  "contractVersion": "2.0.0-rc.1",
+  "schemaVersion": "1.0.0-rc.1",
+  "correlationId": "COR-COMMENT-BASE",
+  "policyContext": {
+    "policyVersion": "POLICY-2.0.0-ACTIVE-FIXTURE",
+    "policyStatus": "ACTIVE",
+    "ruleCatalogVersion": "RC-2.0.0-ACTIVE-FIXTURE",
+    "ruleCatalogStatus": "ACTIVE",
+    "evidenceKindCatalogVersion": "1.0.0-rc.1",
+    "candidateRuleIds": ["CSR.HAR.001"]
+  },
+  "targetSnapshot": {
+    "targetType": "COMMENT",
+    "targetAlias": "target-comment-1",
+    "snapshotVersion": "comment-1.0.0",
+    "snapshotHash": "sha256:comment-snapshot-001",
+    "capturedAt": "2026-07-26T03:00:00Z",
+    "freshness": "CURRENT",
+    "reportTargetAssociation": {
+      "reportAlias": "report-2",
+      "targetAlias": "target-comment-1",
+      "associationValidated": true
+    },
+    "data": {
+      "state": {
+        "status": "PUBLISHED",
+        "createdAt": "2026-07-25T02:00:00Z",
+        "updatedAt": "2026-07-26T02:55:00Z"
+      },
+      "content": {
+        "sanitizedText": "Targeted insult in a direct reply fixture.",
+        "sourceLength": 42,
+        "capturedLength": 42,
+        "truncated": false,
+        "sanitizerVersion": "comment-content-sanitizer-1.0.0",
+        "contentDigest": "sha256:comment-content-001"
+      },
+      "context": {
+        "scope": "DIRECT_PARENT_AND_BLOG_ONLY",
+        "parentRelationPresent": true
+      },
+      "media": []
+    }
+  },
+  "providerExecution": {
+    "eligible": true,
+    "called": true,
+    "route": "N8N_PROVIDER"
+  },
+  "evidence": [
+    {"evidenceId":"EV-COMMENT-IDENTITY","envelopeVersion":"1.0.0-rc.1","evidenceKind":"TARGET_IDENTITY","subject":{"targetType":"COMMENT","targetAlias":"target-comment-1","snapshotVersion":"comment-1.0.0","snapshotHash":"sha256:comment-snapshot-001"},"source":{"sourceType":"TARGET_SNAPSHOT","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"FixtureCollector","collectorVersion":"1.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-comment-identity"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"HIGH","reasonCodes":["DIRECT_PLATFORM_RECORD"]},"privacy":{"classification":"RESTRICTED","containsPersonalData":false,"redactionStatus":"APPLIED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":[],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"targetType":"COMMENT","targetRef":"target-comment-1"},"reference":null,"truncated":false}},
+    {"evidenceId":"EV-COMMENT-REPORT-ASSOCIATION","envelopeVersion":"1.0.0-rc.1","evidenceKind":"REPORT_TARGET_ASSOCIATION","subject":{"targetType":"COMMENT","targetAlias":"target-comment-1","snapshotVersion":"comment-1.0.0","snapshotHash":"sha256:comment-snapshot-001"},"source":{"sourceType":"PLATFORM_RECORD","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"FixtureCollector","collectorVersion":"1.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-comment-association"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"HIGH","reasonCodes":["DIRECT_PLATFORM_RECORD"]},"privacy":{"classification":"RESTRICTED","containsPersonalData":false,"redactionStatus":"APPLIED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":[],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"reportAlias":"report-2","associationValidated":true},"reference":null,"truncated":false}},
+    {"evidenceId":"EV-COMMENT-STATE","envelopeVersion":"1.0.0-rc.1","evidenceKind":"TARGET_STATE","subject":{"targetType":"COMMENT","targetAlias":"target-comment-1","snapshotVersion":"comment-1.0.0","snapshotHash":"sha256:comment-snapshot-001"},"source":{"sourceType":"TARGET_SNAPSHOT","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"FixtureCollector","collectorVersion":"1.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-comment-state"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"HIGH","reasonCodes":["FRESH_AT_CAPTURE"]},"privacy":{"classification":"INTERNAL_MODERATION","containsPersonalData":false,"redactionStatus":"NOT_REQUIRED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":[],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"status":"PUBLISHED"},"reference":null,"truncated":false}},
+    {"evidenceId":"EV-COMMENT-TEXT","envelopeVersion":"1.0.0-rc.1","evidenceKind":"TARGET_TEXT_CONTENT","subject":{"targetType":"COMMENT","targetAlias":"target-comment-1","snapshotVersion":"comment-1.0.0","snapshotHash":"sha256:comment-snapshot-001"},"source":{"sourceType":"TARGET_SNAPSHOT","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"FixtureCollector","collectorVersion":"1.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[{"type":"SANITIZE_CONTENT","version":"1.0.0","materiality":"NON_MATERIAL"}]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-comment-text"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"HIGH","reasonCodes":["AUTHORITATIVE_PLATFORM_FIELD"]},"privacy":{"classification":"PUBLIC_CONTENT","containsPersonalData":false,"redactionStatus":"APPLIED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"RULE_EVALUATION_CANDIDATE","collectedForRuleIds":["CSR.HAR.001"],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"sanitizedText":"Targeted insult in a direct reply fixture."},"reference":null,"truncated":false}},
+    {"evidenceId":"EV-COMMENT-ACTOR","envelopeVersion":"1.0.0-rc.1","evidenceKind":"TARGET_ACTOR_ASSOCIATION","subject":{"targetType":"COMMENT","targetAlias":"target-comment-1","snapshotVersion":"comment-1.0.0","snapshotHash":"sha256:comment-snapshot-001"},"source":{"sourceType":"TARGET_SNAPSHOT","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"FixtureCollector","collectorVersion":"1.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-comment-actor"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"HIGH","reasonCodes":["DIRECT_PLATFORM_RECORD"]},"privacy":{"classification":"RESTRICTED","containsPersonalData":true,"redactionStatus":"APPLIED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":[],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"underlyingUserAlias":"actor-user-2","relationIntegrity":"CONSISTENT"},"reference":null,"truncated":false}},
+    {"evidenceId":"EV-COMMENT-PAGE","envelopeVersion":"1.0.0-rc.1","evidenceKind":"TARGET_PAGE_ASSOCIATION","subject":{"targetType":"COMMENT","targetAlias":"target-comment-1","snapshotVersion":"comment-1.0.0","snapshotHash":"sha256:comment-snapshot-001"},"source":{"sourceType":"TARGET_SNAPSHOT","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"FixtureCollector","collectorVersion":"1.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-comment-page"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"HIGH","reasonCodes":["DIRECT_PLATFORM_RECORD"]},"privacy":{"classification":"RESTRICTED","containsPersonalData":false,"redactionStatus":"APPLIED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":[],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"associationPresent":false,"pageAlias":null},"reference":null,"truncated":false}},
+    {"evidenceId":"EV-COMMENT-BLOG-CONTEXT","envelopeVersion":"1.0.0-rc.1","evidenceKind":"PARENT_BLOG_CONTEXT","subject":{"targetType":"COMMENT","targetAlias":"target-comment-1","snapshotVersion":"comment-1.0.0","snapshotHash":"sha256:comment-snapshot-001"},"source":{"sourceType":"TARGET_SNAPSHOT","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"FixtureCollector","collectorVersion":"1.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[{"type":"SANITIZE_AND_BOUND_CONTEXT","version":"1.0.0","materiality":"MATERIALITY_UNKNOWN"}]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-comment-blog-context"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"MEDIUM","reasonCodes":["BOUNDED_CONTEXT"]},"privacy":{"classification":"PUBLIC_CONTENT","containsPersonalData":false,"redactionStatus":"APPLIED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":[],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"relationship":"PARENT_BLOG_OF_TARGET_COMMENT","sanitizedExcerpt":"Bounded blog context"},"reference":null,"truncated":false}},
+    {"evidenceId":"EV-COMMENT-PARENT-CONTEXT","envelopeVersion":"1.0.0-rc.1","evidenceKind":"PARENT_COMMENT_CONTEXT","subject":{"targetType":"COMMENT","targetAlias":"target-comment-1","snapshotVersion":"comment-1.0.0","snapshotHash":"sha256:comment-snapshot-001"},"source":{"sourceType":"TARGET_SNAPSHOT","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"FixtureCollector","collectorVersion":"1.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[{"type":"SANITIZE_AND_BOUND_CONTEXT","version":"1.0.0","materiality":"MATERIALITY_UNKNOWN"}]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-comment-parent-context"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"MEDIUM","reasonCodes":["BOUNDED_CONTEXT"]},"privacy":{"classification":"PUBLIC_CONTENT","containsPersonalData":false,"redactionStatus":"APPLIED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":[],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"relationship":"DIRECT_PARENT_COMMENT","sanitizedExcerpt":"Bounded parent context"},"reference":null,"truncated":false}}
+  ],
+  "ruleEvaluations": [
+    {
+      "ruleId": "CSR.HAR.001",
+      "material": true,
+      "outcome": "SUBSTANTIATED",
+      "supportingEvidenceIds": ["EV-COMMENT-TEXT"],
+      "counterEvidenceIds": ["EV-COMMENT-PARENT-CONTEXT"],
+      "missingEvidenceIds": []
+    }
+  ],
+  "missingEvidence": [],
+  "conflicts": [],
+  "scopeEvaluation": {
+    "complete": false,
+    "evidenceControlRuleIds": []
+  },
+  "recommendation": {
+    "operationalStatus": "VALID",
+    "reportDecision": "RESOLVE",
+    "candidateTargetAction": "HIDE",
+    "evidenceSufficiency": "SUFFICIENT",
+    "findings": [
+      {
+        "ruleId": "CSR.HAR.001",
+        "evidenceIds": ["EV-COMMENT-TEXT"]
+      }
+    ],
+    "assessmentConfidence": 0.82
+  }
+}

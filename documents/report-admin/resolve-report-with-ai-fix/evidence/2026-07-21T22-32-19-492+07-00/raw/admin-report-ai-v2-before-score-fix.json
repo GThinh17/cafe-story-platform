@@ -1,0 +1,192 @@
+[
+  {
+    "updatedAt": "2026-07-21T15:40:55.000Z",
+    "createdAt": "2026-07-21T15:40:52.405Z",
+    "id": "cafestory-admin-report-ai-resolution-v2",
+    "name": "CafeStory Admin Report AI Resolution",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "cafestory-admin-report-ai-resolution",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "id": "910a5be7-74f5-4e3b-a029-7f9b1e80eb82",
+        "name": "Admin Report AI Resolution Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          -760,
+          0
+        ],
+        "webhookId": "cafestory-admin-report-ai-resolution"
+      },
+      {
+        "parameters": {
+          "jsCode": "const body = $json.body ?? $json;\nconst required = ['reportId', 'targetType', 'targetId', 'reasonCode', 'reasonLabel', 'reportStatus'];\nfor (const key of required) {\n  if (!body[key]) {\n    throw new Error(`Missing required field: ${key}`);\n  }\n}\nconst targetType = String(body.targetType);\nconst allowedTypes = ['BLOG', 'COMMENT', 'USER', 'CAFE_PAGE'];\nif (!allowedTypes.includes(targetType)) {\n  throw new Error(`Unsupported targetType: ${targetType}`);\n}\nconst aiContext = {\n  reportId: body.reportId,\n  targetType,\n  targetId: body.targetId,\n  reasonCode: body.reasonCode,\n  reasonLabel: body.reasonLabel,\n  reasonSeverity: Number(body.reasonSeverity ?? 1),\n  description: body.description ?? '',\n  contentText: body.contentText ?? '',\n  imageUrls: Array.isArray(body.imageUrls) ? body.imageUrls.slice(0, 10) : [],\n  reportStatus: body.reportStatus,\n  existingModerationResult: body.existingModerationResult ?? null,\n  sameTargetOpenReportCount: Number(body.sameTargetOpenReportCount ?? 0),\n};\nconst schema = {\n  type: 'object',\n  additionalProperties: false,\n  properties: {\n    reportDecision: { type: 'string', enum: ['RESOLVE', 'REJECT', 'NEEDS_MANUAL_REVIEW'] },\n    targetAction: { type: 'string', enum: ['APPROVE', 'HIDE', 'REMOVE', 'KEEP_ACTIVE', 'SUSPEND_USER', 'SUSPEND_PAGE', 'NONE'] },\n    confidenceScore: { type: 'number', minimum: 0, maximum: 100 },\n    riskScore: { type: 'number', minimum: 0, maximum: 100 },\n    labels: { type: 'array', items: { type: 'string' } },\n    ruleCode: { type: 'string' },\n    explanation: { type: 'string' }\n  },\n  required: ['reportDecision', 'targetAction', 'confidenceScore', 'riskScore', 'labels', 'ruleCode', 'explanation']\n};\nconst policy = [\n  'You recommend how an admin should resolve a CafeStory user report. You never execute actions.',\n  'Allowed reportDecision values: RESOLVE, REJECT, NEEDS_MANUAL_REVIEW.',\n  'BLOG/COMMENT: false or low risk -> REJECT + APPROVE; unclear -> NEEDS_MANUAL_REVIEW + NONE; clear violation -> RESOLVE + HIDE or REMOVE.',\n  'USER: weak report -> REJECT + KEEP_ACTIVE; unclear -> NEEDS_MANUAL_REVIEW + NONE; severe repeated abuse -> RESOLVE + SUSPEND_USER.',\n  'CAFE_PAGE: weak report -> REJECT + KEEP_ACTIVE; unclear -> NEEDS_MANUAL_REVIEW + NONE; severe page policy issue -> RESOLVE + SUSPEND_PAGE.',\n  'Use REMOVE only for severe content that should not remain visible. Use HIDE for clear but less severe BLOG/COMMENT violations.',\n  'sameTargetOpenReportCount and existingModerationResult can increase risk, but uncertainty should use NEEDS_MANUAL_REVIEW.'\n].join('\\n');\nreturn [{\n  json: {\n    report: aiContext,\n    openaiRequest: {\n      model: $env.OPENAI_DECISION_MODEL || 'gpt-4o-mini',\n      input: [\n        {\n          role: 'system',\n          content: [\n            { type: 'input_text', text: policy }\n          ]\n        },\n        {\n          role: 'user',\n          content: [\n            { type: 'input_text', text: JSON.stringify(aiContext, null, 2) }\n          ]\n        }\n      ],\n      text: {\n        format: {\n          type: 'json_schema',\n          name: 'admin_report_ai_resolution',\n          strict: true,\n          schema\n        }\n      }\n    }\n  }\n}];"
+        },
+        "id": "3a868632-b23c-4657-9c93-620260ab1d7e",
+        "name": "Validate And Build Decision Request",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          -500,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.openai.com/v1/responses",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{$env.OPENAI_API_KEY}}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ $json.openaiRequest }}",
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "id": "ee9183c7-d9ff-405e-a49d-65047cf834e3",
+        "name": "OpenAI Admin Decision",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "retryOnFail": true,
+        "maxTries": 3,
+        "waitBetweenTries": 2000,
+        "position": [
+          -220,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "const report = $('Validate And Build Decision Request').first().json.report;\nfunction outputText(response) {\n  if (typeof response.output_text === 'string') return response.output_text;\n  const output = Array.isArray(response.output) ? response.output : [];\n  for (const item of output) {\n    const content = Array.isArray(item.content) ? item.content : [];\n    for (const part of content) {\n      if (typeof part.text === 'string') return part.text;\n    }\n  }\n  return '';\n}\nfunction parseDecision(response) {\n  const text = outputText(response).trim();\n  if (!text) throw new Error('OpenAI response did not include output_text');\n  return JSON.parse(text);\n}\nfunction clamp(value) {\n  const numeric = Number(value);\n  if (!Number.isFinite(numeric)) return 0;\n  return Math.max(0, Math.min(100, numeric));\n}\nfunction allowedAction(targetType, action) {\n  if (action === 'NONE') return true;\n  if (['BLOG', 'COMMENT'].includes(targetType)) return ['APPROVE', 'HIDE', 'REMOVE'].includes(action);\n  if (targetType === 'USER') return ['KEEP_ACTIVE', 'SUSPEND_USER'].includes(action);\n  if (targetType === 'CAFE_PAGE') return ['KEEP_ACTIVE', 'SUSPEND_PAGE'].includes(action);\n  return false;\n}\nconst decision = parseDecision($json);\nlet reportDecision = decision.reportDecision;\nlet targetAction = decision.targetAction;\nlet ruleCode = decision.ruleCode || `${report.targetType}_AI_RECOMMENDATION`;\nlet explanation = decision.explanation || 'AI returned a structured recommendation.';\nif (!allowedAction(report.targetType, targetAction)) {\n  reportDecision = 'NEEDS_MANUAL_REVIEW';\n  targetAction = 'NONE';\n  ruleCode = 'INVALID_ACTION_FALLBACK';\n  explanation = `AI returned invalid action for ${report.targetType}; manual review required.`;\n}\nreturn [{\n  json: {\n    reportDecision,\n    targetAction,\n    confidenceScore: clamp(decision.confidenceScore),\n    riskScore: clamp(decision.riskScore),\n    labels: Array.isArray(decision.labels) ? decision.labels.map(String) : [],\n    ruleCode,\n    explanation,\n    modelName: $json.model || $env.OPENAI_DECISION_MODEL || 'gpt-4o-mini',\n    rawResponse: {\n      openaiResponseId: $json.id,\n      reportId: report.reportId,\n      targetType: report.targetType,\n      targetId: report.targetId,\n      sourceDecision: decision\n    }\n  }\n}];"
+        },
+        "id": "42ea6e1f-ddf7-4823-9817-385219c31ca2",
+        "name": "Normalize CafeStory Admin Recommendation",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          60,
+          0
+        ]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ $json }}",
+          "options": {}
+        },
+        "id": "ead076c3-5730-45fa-8cfd-9635432f51ef",
+        "name": "Respond To Backend",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          320,
+          0
+        ]
+      }
+    ],
+    "connections": {
+      "Admin Report AI Resolution Webhook": {
+        "main": [
+          [
+            {
+              "node": "Validate And Build Decision Request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Validate And Build Decision Request": {
+        "main": [
+          [
+            {
+              "node": "OpenAI Admin Decision",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenAI Admin Decision": {
+        "main": [
+          [
+            {
+              "node": "Normalize CafeStory Admin Recommendation",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Normalize CafeStory Admin Recommendation": {
+        "main": [
+          [
+            {
+              "node": "Respond To Backend",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "meta": {
+      "templateCredsSetupCompleted": true
+    },
+    "nodeGroups": [],
+    "pinData": {},
+    "versionId": "bcf88dec-c758-4dae-ac16-83155503d646",
+    "activeVersionId": "bcf88dec-c758-4dae-ac16-83155503d646",
+    "versionCounter": 1,
+    "triggerCount": 1,
+    "sourceWorkflowId": null,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-07-21T15:40:52.409Z",
+        "createdAt": "2026-07-21T15:40:52.409Z",
+        "role": "workflow:owner",
+        "workflowId": "cafestory-admin-report-ai-resolution-v2",
+        "projectId": "PXsibJ2PRzofuhZi",
+        "project": {
+          "updatedAt": "2026-06-10T14:54:05.854Z",
+          "createdAt": "2026-06-10T14:52:10.548Z",
+          "id": "PXsibJ2PRzofuhZi",
+          "name": "Tran trangiathinh0309@gmail.com <trangiathinh0309@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "customTelemetryTags": [],
+          "creatorId": "ef0f845a-415e-4c14-9b3e-684b73d30729"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  }
+]

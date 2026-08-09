@@ -1,0 +1,9 @@
+Focused Backend security regression
+command=mvn -q '-Dtest=AdminReportAiWebhookSignerTest,AdminReportAiResolutionServiceImplTest' test
+AdminReportAiWebhookSignerTest.tests=16
+AdminReportAiResolutionServiceImplTest.tests=21
+total.tests=37
+failures=0
+errors=0
+skipped=0
+STATUS=PASS

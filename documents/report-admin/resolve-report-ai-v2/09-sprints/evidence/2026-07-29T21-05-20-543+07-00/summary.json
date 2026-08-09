@@ -1,0 +1,50 @@
+{
+  "package": "S2-01",
+  "status": "COMPLETED_VERIFIED_APPROVED",
+  "implementationToken": "IMPLEMENT_S2_01",
+  "approval": "APPROVE_S2_01",
+  "versions": {
+    "contract": "2.0",
+    "runtimeRuleContext": "RRC-1.0.0-rc.1",
+    "evidenceEnvelope": "1.0.0-rc.1",
+    "prompt": "report-ai-v2-sprint2.1",
+    "workflow": "cafestory-admin-report-ai-resolution-v2-s2.1"
+  },
+  "verification": {
+    "backendFocusedPassed": 40,
+    "backendFull": {
+      "tests": 628,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "adversarialPassed": 12,
+    "contractGuardsPassed": 3,
+    "evidenceContractFixturesPassed": 18,
+    "evidenceCrossReviewChecksPassed": 16,
+    "changedProductionLineCoveragePercent": 100.0,
+    "minimumChangedProductionBranchCoveragePercent": 88.84
+  },
+  "issues": {
+    "detected": 3,
+    "resolvedVerified": 3,
+    "openRequired": 0
+  },
+  "authority": {
+    "policyActivated": false,
+    "providerCalled": false,
+    "runtimePublished": false,
+    "databaseChanged": false,
+    "frontendChangedByPackage": false,
+    "productionDeploymentAuthorized": false
+  },
+  "reconstructedBy": "S2-DONE-FIX-01",
+  "reconstructionBasis": [
+    "bao-cao-danh-gia.md",
+    "coverage.md",
+    "issue.md",
+    "test-log.md",
+    "workflow-improvement.md",
+    "status.json sprint2Implementation.s2_01"
+  ]
+}

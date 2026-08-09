@@ -1,0 +1,17 @@
+{
+  "id": "M07-FX-12",
+  "description": "Unknown Rule ID, Evidence Kind và semantic requirement phải fail closed ở schema boundary.",
+  "base": "blog-resolve.json",
+  "operations": [
+    {"op":"replace","path":"/policyContext/candidateRuleIds/0","value":"CSR.UNKNOWN.999"},
+    {"op":"replace","path":"/evidence/0/evidenceKind","value":"UNKNOWN_EVIDENCE_KIND"},
+    {"op":"add","path":"/missingEvidence/-","value":{"missingEvidenceId":"ME-UNKNOWN-REQUIREMENT","requiredByRuleId":"CSR.SAF.001","requirementType":"SEMANTIC_REQUIREMENT","requiredEvidenceKind":null,"semanticRequirementCode":"SEM-UNKNOWN","triggerCondition":"UNKNOWN","critical":true,"availability":"NOT_COLLECTED","reasonCode":"UNKNOWN","recommendedNextStep":"FAIL_CLOSED","decisionEffect":"NEEDS_MANUAL_REVIEW"}}
+  ],
+  "expected": {
+    "schemaValid": false,
+    "semanticValid": null,
+    "errorCodes": [
+      "SCHEMA_INVALID"
+    ]
+  }
+}

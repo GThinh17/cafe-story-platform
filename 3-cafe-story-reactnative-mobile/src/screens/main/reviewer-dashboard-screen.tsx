@@ -15,7 +15,14 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { Avatar, Button, EmptyState, LoadingState, Screen } from "../../components";
+import {
+  Avatar,
+  Button,
+  EmptyState,
+  LoadingState,
+  Screen,
+} from "../../components";
+import { PayoutHistoryList } from "../../components/reviewer-dashboard/payout-history-list";
 import { useAuth } from "../../features/auth";
 import {
   ApiError,
@@ -50,6 +57,10 @@ const periods: {
   { label: "Month", value: "month" },
   { label: "3M", value: "3months" },
 ];
+
+type PayoutHistoryRow = ReviewerDashboardPayout & {
+  badge: ReviewerDashboardBadge | null;
+};
 
 function normalizeRole(role: string) {
   return role.replace(/^ROLE_/, "").toUpperCase();
@@ -186,6 +197,25 @@ function buildPerformancePoints(
   ];
 }
 
+function buildPayoutHistoryRows({
+  badges,
+  payouts,
+  profileBadge,
+}: {
+  badges: ReviewerDashboardBadgeHistoryItem[];
+  payouts: ReviewerDashboardPayout[];
+  profileBadge?: ReviewerDashboardBadge | null;
+}): PayoutHistoryRow[] {
+  const badgesByMonth = new Map(
+    badges.map((badge) => [badge.month, badge.badge]),
+  );
+
+  return payouts.map((payout) => ({
+    ...payout,
+    badge: badgesByMonth.get(payout.payoutMonth) ?? profileBadge ?? "IRON",
+  }));
+}
+
 function buildActivities({
   currentPayout,
   currentRank,
@@ -267,10 +297,19 @@ export function ReviewerDashboardScreen() {
   const [isDashboardLoading, setIsDashboardLoading] = useState(false);
   const [isPeriodLoading, setIsPeriodLoading] = useState(false);
   const isReviewer = hasReviewerRole(user);
-  const currentPayout = payouts[0];
+  const payoutHistoryRows = useMemo(
+    () =>
+      buildPayoutHistoryRows({
+        badges,
+        payouts,
+        profileBadge: profile?.badge,
+      }),
+    [badges, payouts, profile?.badge],
+  );
+  const currentPayout = payoutHistoryRows[0];
   const allTimePayout = useMemo(
-    () => payouts.reduce((total, payout) => total + payout.totalAmount, 0),
-    [payouts],
+    () => payoutHistoryRows.reduce((total, payout) => total + payout.totalAmount, 0),
+    [payoutHistoryRows],
   );
   const currentRank = ranking.find(
     (item) => item.reviewerId === profile?.reviewerId,
@@ -565,7 +604,10 @@ export function ReviewerDashboardScreen() {
           title="Payout wallet"
         />
         {currentPayout ? (
-          <WalletCard payout={currentPayout} total={allTimePayout} />
+          <>
+            <WalletCard payout={currentPayout} total={allTimePayout} />
+            <PayoutHistoryList rows={payoutHistoryRows} />
+          </>
         ) : (
           <DashboardStateCard
             description={payoutError ?? "Payout rows will appear after monthly payout generation."}

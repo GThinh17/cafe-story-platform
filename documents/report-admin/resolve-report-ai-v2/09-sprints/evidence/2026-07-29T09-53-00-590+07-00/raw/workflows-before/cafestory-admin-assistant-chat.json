@@ -1,0 +1,256 @@
+{
+  "updatedAt": "2026-07-09T04:24:00.000Z",
+  "createdAt": "2026-07-06T08:25:44.188Z",
+  "id": "cafestory-admin-assistant-chat",
+  "name": "CafeStory Admin Assistant Chat",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cafestory-admin-assistant-chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a55ad48e-3f1e-4ef0-a67e-2fb4d69b3c7c",
+      "name": "Admin Assistant Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -900,
+        0
+      ],
+      "webhookId": "cafestory-admin-assistant-chat"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $json.body ?? $json;\nif (!body.conversationId || !body.messageId || !body.adminUserId || !body.message) {\n  throw new Error('conversationId, messageId, adminUserId and message are required');\n}\nconst message = String(body.message);\nconst lower = message.toLowerCase();\nconst normalized = lower\n  .normalize('NFD')\n  .replace(/[\\u0300-\\u036f]/g, '')\n  .replace(/\\u0111/g, 'd')\n  .replace(/[^a-z0-9\\s_/-]/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim();\nconst uuidMatches = [...message.matchAll(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi)].map((match) => match[0]);\nconst firstUuid = uuidMatches[0];\nconst vietnameseAccentPattern = /[\\u0103\\u00e2\\u0111\\u00ea\\u00f4\\u01a1\\u01b0\\u00e1\\u00e0\\u1ea3\\u00e3\\u1ea1\\u1eaf\\u1eb1\\u1eb3\\u1eb5\\u1eb7\\u1ea5\\u1ea7\\u1ea9\\u1eab\\u1ead\\u00e9\\u00e8\\u1ebb\\u1ebd\\u1eb9\\u1ebf\\u1ec1\\u1ec3\\u1ec5\\u1ec7\\u00ed\\u00ec\\u1ec9\\u0129\\u1ecb\\u00f3\\u00f2\\u1ecf\\u00f5\\u1ecd\\u1ed1\\u1ed3\\u1ed5\\u1ed7\\u1ed9\\u1edb\\u1edd\\u1edf\\u1ee1\\u1ee3\\u00fa\\u00f9\\u1ee7\\u0169\\u1ee5\\u1ee9\\u1eeb\\u1eed\\u1eef\\u1ef1\\u00fd\\u1ef3\\u1ef7\\u1ef9\\u1ef5]/i;\nconst hasVietnamese = vietnameseAccentPattern.test(message)\n  || /(bao cao|bai viet|binh luan|nguoi dung|kiem duyet|lua dao|quan|dang review|da xu ly|tu choi|xoa|khoa|dinh chi)/.test(normalized);\nconst locale = hasVietnamese ? 'vi' : 'en';\nconst genericSearchTerms = new Set(['bao','cao','report','reports','kiem','duyet','moderation','hang','doi','bai','viet','blog','blogs','binh','luan','comment','comments','nguoi','dung','user','users','quan','cafe','page','pages','cho','toi','xem','tim','gan','day','moi','nhat','dang','da','bi','co','khoa','vi']);\nfunction hasAny(...terms) {\n  return terms.some((term) => normalized.includes(term));\n}\nfunction hasWord(word) {\n  return normalized.split(/\\s+/).includes(word);\n}\nfunction compactSearchQuery() {\n  if (!normalized) return undefined;\n  const tokens = normalized.split(/\\s+/).filter((token) => token && !genericSearchTerms.has(token));\n  return tokens.length ? tokens.join(' ') : normalized;\n}\nfunction inferStatus() {\n  if (hasAny('reviewing', 'review', 'dang review', 'can xem', 'can duyet', 'kiem tra')) return 'REVIEWING';\n  if (hasAny('resolved', 'da xu ly', 'da giai quyet', 'closed', 'dong')) return 'RESOLVED';\n  if (hasAny('rejected', 'tu choi', 'false report', 'sai', 'khong hop le')) return 'REJECTED';\n  if (hasAny('open', 'chua xu ly', 'moi', 'dang mo')) return 'OPEN';\n  return undefined;\n}\nfunction inferTargetType() {\n  if (hasAny('bai viet', 'blog', 'post')) return 'BLOG';\n  if (hasAny('binh luan', 'comment')) return 'COMMENT';\n  if (hasAny('nguoi dung', 'user', 'tai khoan', 'account')) return 'USER';\n  if (hasAny('cafe page', 'trang quan', 'quan', 'page')) return 'CAFE_PAGE';\n  return undefined;\n}\nfunction inferPostStatus() {\n  if (hasAny('removed', 'remove', 'xoa', 'go bo')) return 'REMOVED';\n  if (hasAny('hidden', 'hide', 'bi an') || hasWord('an')) return 'HIDDEN';\n  if (hasAny('draft', 'nhap')) return 'DRAFT';\n  if (hasAny('published', 'cong khai', 'hien thi')) return 'PUBLISHED';\n  return undefined;\n}\nfunction inferPageStatus() {\n  if (hasAny('suspended', 'tam khoa', 'dinh chi', 'bi khoa')) return 'SUSPENDED';\n  if (hasAny('draft', 'nhap')) return 'DRAFT';\n  if (hasAny('active', 'dang hoat dong', 'hoat dong', 'kich hoat')) return 'ACTIVE';\n  return undefined;\n}\nfunction inferAccountStatus() {\n  if (hasAny('inactive', 'disabled', 'deactivated', 'suspended', 'tam khoa', 'bi khoa', 'khoa')) return false;\n  if (hasAny('active', 'dang hoat dong', 'hoat dong', 'kich hoat')) return true;\n  return undefined;\n}\nfunction baseInput(extra = {}) {\n  return Object.assign({ page: 0, size: 5, query: message, normalizedQuery: normalized, locale }, extra);\n}\nfunction addTool(planned, toolName, input = {}) {\n  if (planned.length >= 3 || planned.some((tool) => tool.toolName === toolName)) return;\n  planned.push({ toolName, input });\n}\nconst planned = [];\nconst asksAllowedActions = hasAny('allowed action', 'action allowed', 'draft action', 'hanh dong', 'xu ly duoc gi', 'duoc phep');\nconst asksReport = hasAny('report', 'reports', 'bao cao', 'to cao');\nconst asksModeration = hasAny('moderation', 'kiem duyet', 'queue', 'hang doi', 'ai moderation');\nconst asksUser = hasAny('user', 'users', 'nguoi dung', 'tai khoan');\nconst asksBlog = hasAny('blog', 'blogs', 'bai viet', 'post');\nconst asksComment = hasAny('comment', 'comments', 'binh luan');\nconst asksCafe = hasAny('cafe', 'page', 'pages', 'quan', 'trang quan');\nconst asksDashboard = hasAny('dashboard', 'summary', 'tong quan', 'thong ke');\nconst asksAction = asksAllowedActions || hasAny('resolve', 'giai quyet', 'xu ly', 'tu choi', 'reject', 'hoi ai', 'ai resolution', 'tao action', 'hide', 'remove', 'suspend', 'xoa', 'khoa', 'dinh chi') || hasWord('an');\nif (asksReport) {\n  if (firstUuid) {\n    addTool(planned, 'get_report_detail', { reportId: firstUuid, query: message, normalizedQuery: normalized, locale });\n  } else {\n    const reportInput = baseInput({ status: inferStatus(), targetType: inferTargetType() });\n    Object.keys(reportInput).forEach((key) => reportInput[key] === undefined && delete reportInput[key]);\n    addTool(planned, 'search_reports', reportInput);\n  }\n}\nif (asksModeration || asksReport || asksAllowedActions) {\n  addTool(planned, 'get_moderation_queue_summary', baseInput());\n}\nif (asksUser && !(asksReport && firstUuid)) {\n  const input = firstUuid ? { userId: firstUuid, query: message, normalizedQuery: normalized, locale } : baseInput({ accountStatus: inferAccountStatus(), search: compactSearchQuery() });\n  addTool(planned, firstUuid ? 'get_user_summary' : 'search_users', input);\n}\nif (asksBlog && !(asksReport && firstUuid)) {\n  addTool(planned, firstUuid ? 'get_blog_summary' : 'search_blogs', firstUuid ? { blogId: firstUuid, query: message, normalizedQuery: normalized, locale } : baseInput({ status: inferPostStatus() }));\n}\nif (asksComment && !(asksReport && firstUuid)) {\n  addTool(planned, firstUuid ? 'get_comment_summary' : 'search_comments', firstUuid ? { commentId: firstUuid, query: message, normalizedQuery: normalized, locale } : baseInput({ status: inferPostStatus() }));\n}\nif (asksCafe && !asksReport && !asksBlog) {\n  addTool(planned, firstUuid ? 'get_cafe_page_summary' : 'search_cafe_pages', firstUuid ? { pageId: firstUuid, query: message, normalizedQuery: normalized, locale } : baseInput({ status: inferPageStatus() }));\n}\nif ((asksAction || asksDashboard || planned.length === 0) && planned.length === 0) {\n  addTool(planned, 'dashboard_summary', baseInput());\n}\nconst toolApi = body.toolApi ?? {};\nconst baseUrl = toolApi.baseUrl || $env.ADMIN_ASSISTANT_TOOL_BASE_URL || 'http://host.docker.internal:8080/api/admin/assistant/tools';\nreturn planned.slice(0, 3).map((tool, index) => ({\n  json: {\n    request: body,\n    planner: {\n      locale,\n      normalizedQuery: normalized,\n      uuidMatches,\n      asksAction,\n      maxTools: 3,\n      selectedIndex: index,\n      selectedTools: planned.map((item) => item.toolName)\n    },\n    toolName: tool.toolName,\n    toolUrl: baseUrl.replace(/\\/$/, '') + '/' + tool.toolName,\n    toolToken: toolApi.token || $env.ADMIN_ASSISTANT_TOOL_TOKEN,\n    toolPayload: {\n      conversationId: body.conversationId,\n      messageId: body.messageId,\n      adminUserId: body.adminUserId,\n      input: Object.fromEntries(Object.entries(tool.input).filter(([, value]) => value !== undefined && value !== null && value !== ''))\n    }\n  }\n}));"
+      },
+      "id": "6620d2f8-ecb3-439f-8651-efc3c8f47f06",
+      "name": "Select BE Tool",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.toolUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Admin-Assistant-Tool-Token",
+              "value": "={{ $json.toolToken }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.toolPayload }}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "1e981465-111f-434b-b872-f9d2ec9d556a",
+      "name": "Call BE Assistant Tool",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -360,
+        0
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const selectedItems = $('Select BE Tool').all().map((item) => item.json);\nconst request = selectedItems[0]?.request ?? {};\nconst planner = selectedItems[0]?.planner ?? { locale: 'en', selectedTools: [] };\nconst toolResponses = $input.all().map((item, index) => {\n  const selected = selectedItems[index] ?? {};\n  const toolResponse = item.json.data ?? item.json;\n  return {\n    toolName: selected.toolName,\n    input: selected.toolPayload?.input ?? {},\n    response: toolResponse,\n    error: item.json.error ?? toolResponse?.error ?? null,\n    maskedFields: toolResponse?.maskedFields ?? [],\n    sourceRefs: toolResponse?.sourceRefs ?? []\n  };\n});\nconst sourceRefSchema = {\n  type: 'object',\n  additionalProperties: false,\n  properties: {\n    type: { type: ['string', 'null'] },\n    toolName: { type: ['string', 'null'] },\n    id: { type: ['string', 'null'] }\n  },\n  required: ['type', 'toolName', 'id']\n};\nconst draftPayloadSchema = {\n  type: 'object',\n  additionalProperties: false,\n  properties: {\n    reportId: { type: ['string', 'null'] },\n    blogId: { type: ['string', 'null'] },\n    commentId: { type: ['string', 'null'] },\n    userId: { type: ['string', 'null'] },\n    pageId: { type: ['string', 'null'] },\n    jobId: { type: ['string', 'null'] }\n  },\n  required: ['reportId', 'blogId', 'commentId', 'userId', 'pageId', 'jobId']\n};\nconst schema = {\n  type: 'object',\n  additionalProperties: false,\n  properties: {\n    answer: { type: 'string' },\n    citations: { type: 'array', items: sourceRefSchema },\n    draftAction: {\n      anyOf: [\n        { type: 'null' },\n        {\n          type: 'object',\n          additionalProperties: false,\n          properties: {\n            actionType: { type: 'string', enum: ['REPORT_RESOLVE', 'REPORT_REJECT', 'REPORT_ASK_AI_RESOLUTION', 'REPORT_CANCEL_AUTO_APPLY', 'BLOG_HIDE', 'BLOG_REMOVE', 'COMMENT_HIDE', 'COMMENT_REMOVE', 'USER_DEACTIVATE', 'CAFE_PAGE_SUSPEND'] },\n            payload: draftPayloadSchema,\n            explanation: { type: 'string' },\n            sourceRefs: { type: 'array', items: sourceRefSchema }\n          },\n          required: ['actionType', 'payload', 'explanation', 'sourceRefs']\n        }\n      ]\n    }\n  },\n  required: ['answer', 'citations', 'draftAction']\n};\nconst policy = [\n  'You are CafeStory Admin Assistant for the admin operations workspace.',\n  'Mirror the admin user language: answer Vietnamese prompts in Vietnamese and English prompts in English.',\n  'Keep technical IDs, enum values, statuses, and actionType names exactly as returned by tools, without translating them.',\n  'When asked what actions are allowed, explicitly list relevant actionType enum names such as REPORT_RESOLVE, REPORT_REJECT, REPORT_ASK_AI_RESOLUTION, BLOG_HIDE, BLOG_REMOVE, COMMENT_HIDE, COMMENT_REMOVE, USER_DEACTIVATE, and CAFE_PAGE_SUSPEND.',\n  'Use BE tool results as the source of truth. Do not invent counts, statuses, users, reports, or actions not present in toolResults or docsContext.',\n  'If a tool result contains an error, explain that the target could not be verified and do not create a draftAction for that failed target.',\n  'You may combine at most the provided toolResults. Never ask n8n or the model to query SQL directly.',\n  'Masking is intentional. Never reveal passwords, tokens, secrets, raw payment data, or unmasked contact details.',\n  'Create draftAction only when the admin clearly asks for an action, the exact target id is available, and sourceRefs support the action.',\n  'Draft actions are proposals only. Backend will require admin confirmation before execution.',\n  'Payments and payouts are out of scope for V2 assistant actions.'\n].join('\\n');\nconst docs = [\n  { id: 'vi-report-resolve', keywords: ['report', 'bao cao', 'resolve', 'xu ly', 'tu choi'], text: 'Report trong CafeStory duoc xu ly rieng voi moderation result. Resolve report chi dong report; moderation resolve moi tac dong HIDE/REMOVE content. Allowed report draft action types: REPORT_RESOLVE, REPORT_REJECT, REPORT_ASK_AI_RESOLUTION, REPORT_CANCEL_AUTO_APPLY.' },\n  { id: 'vi-draft-action', keywords: ['hanh dong', 'action', 'hide', 'remove', 'suspend', 'draft'], text: 'Chatbot chi duoc tao draft action khi co target id ro rang va bang chung tu tool. Admin phai confirm thi backend moi execute. Content/user/page action types: BLOG_HIDE, BLOG_REMOVE, COMMENT_HIDE, COMMENT_REMOVE, USER_DEACTIVATE, CAFE_PAGE_SUSPEND.' },\n  { id: 'vi-moderation', keywords: ['kiem duyet', 'moderation', 'queue', 'ai'], text: 'Moderation queue uu tien noi dung can admin review. AI recommendation la ho tro quyet dinh; admin la final authority.' },\n  { id: 'vi-privacy', keywords: ['user', 'nguoi dung', 'email', 'phone', 'secret', 'token'], text: 'Tool output co masking mac dinh. Assistant khong duoc yeu cau hoac tiet lo password, token, secret, email/phone raw, payment/payout data.' },\n  { id: 'vi-scope', keywords: ['dashboard', 'comment', 'cafe', 'page', 'blog'], text: 'V2 chatbot tap trung reports va moderation, van co the doc du lieu core ops lien quan nhu users, blogs, comments, cafe pages qua tool whitelist.' }\n];\nconst normalized = String(planner.normalizedQuery || '').toLowerCase();\nconst selectedToolText = toolResponses.map((item) => item.toolName).join(' ');\nconst docsContext = docs.filter((doc) => doc.keywords.some((keyword) => normalized.includes(keyword) || selectedToolText.includes(keyword))).slice(0, 4);\nif (!docsContext.length) docsContext.push(docs.find((doc) => doc.id === 'vi-scope'));\nreturn [{\n  json: {\n    request,\n    selectedTools: toolResponses.map((item) => item.toolName),\n    toolResponses,\n    docsContext,\n    planner,\n    openaiRequest: {\n      model: request.model || $env.OPENAI_ASSISTANT_MODEL || 'gpt-4o-mini',\n      input: [\n        { role: 'system', content: [{ type: 'input_text', text: policy }] },\n        { role: 'user', content: [{ type: 'input_text', text: JSON.stringify({ message: request.message, locale: planner.locale, pageContext: request.pageContext ?? {}, history: request.history ?? [], selectedTools: toolResponses.map((item) => item.toolName), docsContext, toolResults: toolResponses }, null, 2) }] }\n      ],\n      text: { format: { type: 'json_schema', name: 'cafestory_admin_assistant_response', strict: true, schema } }\n    }\n  }\n}];"
+      },
+      "id": "8d97b524-645b-478c-b030-dd792ca5f98a",
+      "name": "Build OpenAI Assistant Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/responses",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.OPENAI_API_KEY}}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.openaiRequest }}",
+        "options": {
+          "timeout": 90000
+        }
+      },
+      "id": "43f5d89c-5475-40ee-94d1-b9df4d3a95b7",
+      "name": "OpenAI Admin Assistant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const build = $('Build OpenAI Assistant Request').first().json;\nconst selectedTools = build.selectedTools ?? [];\nconst toolResponses = build.toolResponses ?? [];\nconst request = build.request ?? {};\nconst planner = build.planner ?? {};\nfunction outputText(response) {\n  if (typeof response.output_text === 'string') return response.output_text;\n  const output = Array.isArray(response.output) ? response.output : [];\n  for (const item of output) {\n    const content = Array.isArray(item.content) ? item.content : [];\n    for (const part of content) {\n      if (typeof part.text === 'string') return part.text;\n    }\n  }\n  return '';\n}\nfunction normalizeText(value) {\n  return String(value || '').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').replace(/\\u0111/g, 'd').replace(/[^a-z0-9\\s_/-]/g, ' ').replace(/\\s+/g, ' ').trim();\n}\nfunction hasAny(normalized, ...terms) {\n  return terms.some((term) => normalized.includes(term));\n}\nfunction firstSuccessfulTool(toolName) {\n  return toolResponses.find((item) => item.toolName === toolName && !item.error);\n}\nfunction sourceRefsFor(tool) {\n  const refs = Array.isArray(tool?.sourceRefs) && tool.sourceRefs.length ? tool.sourceRefs : [{ type: 'tool', toolName: tool?.toolName || null, id: null }];\n  return refs.map((ref) => ({ type: ref.type ?? 'tool', toolName: ref.toolName ?? tool?.toolName ?? null, id: ref.id ?? null }));\n}\nfunction cleanDraft(draftAction) {\n  if (!draftAction || !draftAction.payload) return null;\n  draftAction.payload = Object.fromEntries(Object.entries(draftAction.payload).filter(([, value]) => value !== null && value !== undefined && value !== ''));\n  return Object.keys(draftAction.payload).length ? draftAction : null;\n}\nfunction deterministicDraft(parsedDraft) {\n  const normalized = normalizeText(request.message || planner.normalizedQuery || '');\n  if (!planner.asksAction) return cleanDraft(parsedDraft);\n  const reportTool = firstSuccessfulTool('get_report_detail');\n  if (reportTool?.input?.reportId) {\n    const reportStatus = String(reportTool.response?.status || reportTool.response?.data?.status || '').toUpperCase();\n    if (reportStatus && !['OPEN', 'REVIEWING'].includes(reportStatus)) {\n      return null;\n    }\n    let actionType = null;\n    if (hasAny(normalized, 'hoi ai', 'ai resolution')) actionType = 'REPORT_ASK_AI_RESOLUTION';\n    else if (hasAny(normalized, 'tu choi', 'reject')) actionType = 'REPORT_REJECT';\n    else if (hasAny(normalized, 'resolve', 'giai quyet', 'xu ly', 'tao action')) actionType = 'REPORT_RESOLVE';\n    if (actionType) {\n      return { actionType, payload: { reportId: reportTool.input.reportId }, explanation: 'Draft action created from verified report detail tool evidence.', sourceRefs: sourceRefsFor(reportTool) };\n    }\n  }\n  const blogTool = firstSuccessfulTool('get_blog_summary');\n  if (blogTool?.input?.blogId) {\n    if (hasAny(normalized, 'remove', 'xoa', 'go bo')) return { actionType: 'BLOG_REMOVE', payload: { blogId: blogTool.input.blogId }, explanation: 'Draft action created from verified blog detail tool evidence.', sourceRefs: sourceRefsFor(blogTool) };\n    if (hasAny(normalized, 'hide', 'an')) return { actionType: 'BLOG_HIDE', payload: { blogId: blogTool.input.blogId }, explanation: 'Draft action created from verified blog detail tool evidence.', sourceRefs: sourceRefsFor(blogTool) };\n  }\n  const commentTool = firstSuccessfulTool('get_comment_summary');\n  if (commentTool?.input?.commentId) {\n    if (hasAny(normalized, 'remove', 'xoa', 'go bo')) return { actionType: 'COMMENT_REMOVE', payload: { commentId: commentTool.input.commentId }, explanation: 'Draft action created from verified comment detail tool evidence.', sourceRefs: sourceRefsFor(commentTool) };\n    if (hasAny(normalized, 'hide', 'an')) return { actionType: 'COMMENT_HIDE', payload: { commentId: commentTool.input.commentId }, explanation: 'Draft action created from verified comment detail tool evidence.', sourceRefs: sourceRefsFor(commentTool) };\n  }\n  const userTool = firstSuccessfulTool('get_user_summary');\n  if (userTool?.input?.userId && hasAny(normalized, 'khoa', 'deactivate', 'disable', 'suspend')) {\n    return { actionType: 'USER_DEACTIVATE', payload: { userId: userTool.input.userId }, explanation: 'Draft action created from verified user detail tool evidence.', sourceRefs: sourceRefsFor(userTool) };\n  }\n  const pageTool = firstSuccessfulTool('get_cafe_page_summary');\n  if (pageTool?.input?.pageId && hasAny(normalized, 'dinh chi', 'suspend')) {\n    return { actionType: 'CAFE_PAGE_SUSPEND', payload: { pageId: pageTool.input.pageId }, explanation: 'Draft action created from verified cafe page detail tool evidence.', sourceRefs: sourceRefsFor(pageTool) };\n  }\n  return cleanDraft(parsedDraft);\n}\nconst text = outputText($json).trim();\nlet parsed = text ? JSON.parse(text) : { answer: 'No assistant response was generated.', citations: [], draftAction: null };\nparsed.draftAction = deterministicDraft(parsed.draftAction);\nconst citations = Array.isArray(parsed.citations) ? parsed.citations : [];\nif (!citations.length) {\n  for (const toolName of selectedTools) citations.push({ type: 'tool', toolName, id: null });\n}\nreturn [{\n  json: {\n    answer: String(parsed.answer || 'No assistant response was generated.'),\n    modelName: $json.model || $env.OPENAI_ASSISTANT_MODEL || 'gpt-4o-mini',\n    citations,\n    toolCalls: toolResponses.map((item) => ({\n      toolName: item.toolName,\n      input: item.input,\n      error: item.error || null,\n      maskedFields: item.maskedFields || [],\n      sourceRefs: item.sourceRefs || []\n    })),\n    draftAction: parsed.draftAction || null\n  }\n}];"
+      },
+      "id": "5945cb1c-4b2e-46a3-9321-b84d04f61584",
+      "name": "Normalize Assistant Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "a260d82c-cc32-4f68-8c7b-0e2f48b434f3",
+      "name": "Respond To Backend",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        740,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Admin Assistant Webhook": {
+      "main": [
+        [
+          {
+            "node": "Select BE Tool",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select BE Tool": {
+      "main": [
+        [
+          {
+            "node": "Call BE Assistant Tool",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call BE Assistant Tool": {
+      "main": [
+        [
+          {
+            "node": "Build OpenAI Assistant Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build OpenAI Assistant Request": {
+      "main": [
+        [
+          {
+            "node": "OpenAI Admin Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Admin Assistant": {
+      "main": [
+        [
+          {
+            "node": "Normalize Assistant Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Assistant Response": {
+      "main": [
+        [
+          {
+            "node": "Respond To Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "1845a3fb-5898-47f6-8616-7782db99b954",
+  "activeVersionId": "1845a3fb-5898-47f6-8616-7782db99b954",
+  "versionCounter": 8,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-07-06T08:25:44.192Z",
+      "createdAt": "2026-07-06T08:25:44.192Z",
+      "role": "workflow:owner",
+      "workflowId": "cafestory-admin-assistant-chat",
+      "projectId": "PXsibJ2PRzofuhZi",
+      "project": {
+        "updatedAt": "2026-06-10T14:54:05.854Z",
+        "createdAt": "2026-06-10T14:52:10.548Z",
+        "id": "PXsibJ2PRzofuhZi",
+        "name": "Tran trangiathinh0309@gmail.com <trangiathinh0309@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "ef0f845a-415e-4c14-9b3e-684b73d30729"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}

@@ -1,0 +1,8 @@
+- Preflight: n8n report AI webhook is not active or published at http://localhost:5678/webhook/cafestory-admin-report-ai-resolution. Republish/activate existing workflow cafestory-admin-report-ai-resolution; do not create a new workflow.
+- RAI-02: Seed at least one COMMENT target not owned by the admin test account.
+- RAI-07: POST /api/admin/reports/{reportId}/ai-resolution returned 502; check BE webhook URL, active n8n workflow cafestory-admin-report-ai-resolution, and OpenAI credentials in n8n.
+- RAI-09: POST /api/admin/reports/{reportId}/ai-resolution returned 502; check BE webhook URL, active n8n workflow cafestory-admin-report-ai-resolution, and OpenAI credentials in n8n.
+- RAI-10: POST /api/admin/reports/{reportId}/ai-resolution returned 502; check BE webhook URL, active n8n workflow cafestory-admin-report-ai-resolution, and OpenAI credentials in n8n.
+- RAI-12: No valid AI recommendation contract was returned; check n8n workflow publication, ADMIN_REPORT_AI_WEBHOOK_URL, OpenAI credentials, and AdminReportAiResolutionWebhookResponseDTO mapping.
+- RAI-14: POST /api/admin/reports/{reportId}/ai-resolution auto apply returned 502; fix admin report AI service before validating auto-apply scheduling.
+- RAI-17: Auto apply safety gate cannot be evaluated until admin report AI recommendation endpoint returns a valid response.

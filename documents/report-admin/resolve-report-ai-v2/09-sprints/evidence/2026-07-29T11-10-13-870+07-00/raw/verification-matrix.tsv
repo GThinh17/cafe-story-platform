@@ -1,0 +1,13 @@
+check	expected	actual	status
+backend_focused	AdminReportAiResolutionServiceImplTest and AdminReportAiAutoApplyJobServiceImplTest pass	32 tests; 0 failure; 0 error	PASS
+backend_changed_class_line_coverage	100 percent	421 covered; 0 missed; 100 percent	PASS
+backend_changed_class_branch_coverage	at least 85 percent	159 covered; 22 missed; 87.85 percent	PASS
+backend_full_regression	no failure/error	618 tests; 0 failure; 0 error; 1 integration skip	PASS
+admin_typecheck	exit 0	exit 0	PASS
+admin_build	exit 0	exit 0	PASS
+playwright_command	exit 0	1 test passed in 54.6 seconds	PASS
+playwright_scenarios	no failed scenario	29 PASSED; 0 WARN; 0 FAILED; 1 BLOCKED fixture	PARTIAL
+legacy_cancel_supplement	SCHEDULED visible and cancellable	CANCELLED; ADMIN_CANCELLED; applied_at null	PASS
+effective_gate_scenarios	all 30 covered	29 automated plus 1 supplemental	PASS
+target_no_mutation	all four target snapshots unchanged	BLOG COMMENT USER CAFE_PAGE unchanged	PASS
+cleanup	no active test report and scoped runtime stopped	activeLeft empty; Backend/Admin/DB stopped	PASS

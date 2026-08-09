@@ -1,0 +1,15 @@
+{
+  "id": "M08-FX-17",
+  "description": "Nested payload có forbidden PII field phải bị semantic validator chặn dù generic payload shape hợp schema.",
+  "base": "blog-resolve.json",
+  "operations": [
+    {"op":"add","path":"/evidence/3/payload/value/userEmail","value":"[REDACTED]"}
+  ],
+  "expected": {
+    "schemaValid": true,
+    "semanticValid": false,
+    "errorCodes": [
+      "FORBIDDEN_FIELD_PRESENT"
+    ]
+  }
+}

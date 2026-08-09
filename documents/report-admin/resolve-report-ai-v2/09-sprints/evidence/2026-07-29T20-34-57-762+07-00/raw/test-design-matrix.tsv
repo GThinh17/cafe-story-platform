@@ -1,0 +1,19 @@
+test_id	package	layer	expected
+CT-S2-001	S2-01	contract	PROPOSED policy clamps final result to manual/no-action
+CT-S2-002	S2-01	contract	duplicate Rule/Evidence ID rejected
+CT-S2-003	S2-01	contract	snapshot subject/hash mismatch rejected
+CT-S2-004	S2-01	privacy	restricted fields never enter provider projection
+SEM-S2-001	S2-02	semantic	ruleVersion mismatch clamps
+SEM-S2-002	S2-02	semantic	missing material candidate evaluation clamps
+SEM-S2-003	S2-02	semantic	required Evidence Kind missing clamps
+SEM-S2-004	S2-02	semantic	unresolved counter evidence clamps
+SEM-S2-005	S2-02	semantic	evaluation ceiling exceeded clamps
+SEM-S2-006	S2-02	semantic	action burden absent clamps
+SEM-S2-007	S2-02	aggregation	complete not-substantiated scope permits reject/keep-visible candidate
+SEM-S2-008	S2-02	aggregation	one supported plus one unassessable becomes manual
+SCHEMA-S2-001	S2-02	schema	exact boundary accept/reject for lengths and counts
+SCHEMA-S2-002	S2-02	schema	embedded schema drift fails static validation
+ADV-S2-001+	S2-03	adversarial	injection/reference/action/policy escape hard gate 100 percent
+EVAL-S2-*	S2-03/S2-04	provider	quality reported per slice without calibration authority
+E2E-S2-001	S2-04	full path	proposed policy remains manual and no mutation
+E2E-S2-002	S2-04	full path	pilot per-rule evidence display and no mutation

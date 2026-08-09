@@ -1,0 +1,787 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cafestory.local/contracts/admin-report-ai-runtime-request-s2.schema.json",
+  "title": "CafeStory Admin Report AI Runtime Request S2",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "contractVersion": {
+      "const": "2.0"
+    },
+    "correlationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "idempotencyKey": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "requestedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "automationMode": {
+      "type": "string",
+      "enum": ["A0_RECOMMEND_ONLY", "A1_AUTO_HIDE_BLOG_COMMENT"]
+    },
+    "reportId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "targetType": {
+      "$ref": "#/$defs/targetType"
+    },
+    "targetId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "reasonCode": {
+      "$ref": "#/$defs/nullableCode"
+    },
+    "reasonLabel": {
+      "$ref": "#/$defs/nullableText4000"
+    },
+    "reasonSeverity": {
+      "type": ["integer", "null"]
+    },
+    "description": {
+      "$ref": "#/$defs/nullableText4000"
+    },
+    "contentText": {
+      "type": ["string", "null"]
+    },
+    "imageUrls": {
+      "type": ["array", "null"],
+      "maxItems": 32,
+      "items": {
+        "type": "string",
+        "maxLength": 4000
+      }
+    },
+    "reportStatus": {
+      "type": ["string", "null"],
+      "maxLength": 128
+    },
+    "existingModerationResult": {
+      "type": ["object", "null"]
+    },
+    "sameTargetOpenReportCount": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "reportClaim": {
+      "$ref": "#/$defs/reportClaim"
+    },
+    "targetSnapshot": {
+      "$ref": "#/$defs/targetSnapshot"
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "$ref": "#/$defs/evidence"
+      }
+    },
+    "policyContext": {
+      "$ref": "#/$defs/policyContext"
+    },
+    "executionConstraints": {
+      "$ref": "#/$defs/executionConstraints"
+    }
+  },
+  "required": [
+    "contractVersion",
+    "correlationId",
+    "idempotencyKey",
+    "requestedAt",
+    "automationMode",
+    "reportId",
+    "targetType",
+    "targetId",
+    "reasonCode",
+    "reportClaim",
+    "targetSnapshot",
+    "evidence",
+    "policyContext",
+    "executionConstraints"
+  ],
+  "$defs": {
+    "code": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "nullableCode": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/code"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nullableText4000": {
+      "type": ["string", "null"],
+      "maxLength": 4000
+    },
+    "targetType": {
+      "type": "string",
+      "enum": ["BLOG", "COMMENT"]
+    },
+    "codeList8": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/code"
+      }
+    },
+    "codeList16": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/code"
+      }
+    },
+    "codeList32": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/code"
+      }
+    },
+    "reportClaim": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "reportId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "status": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "reasonCode": {
+          "$ref": "#/$defs/nullableCode"
+        },
+        "reasonCatalogVersion": {
+          "$ref": "#/$defs/code"
+        },
+        "description": {
+          "$ref": "#/$defs/nullableText4000"
+        },
+        "trustLevel": {
+          "const": "UNTRUSTED_REPORTER_CLAIM"
+        }
+      },
+      "required": [
+        "reportId",
+        "status",
+        "reasonCode",
+        "reasonCatalogVersion",
+        "description",
+        "trustLevel"
+      ]
+    },
+    "targetSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "targetType": {
+          "$ref": "#/$defs/targetType"
+        },
+        "targetId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "targetAlias": {
+          "$ref": "#/$defs/code"
+        },
+        "snapshotVersion": {
+          "$ref": "#/$defs/code"
+        },
+        "capturedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "observableFields": {
+          "$ref": "#/$defs/observableFields"
+        },
+        "snapshotHash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "targetType",
+        "targetId",
+        "targetAlias",
+        "snapshotVersion",
+        "capturedAt",
+        "observableFields",
+        "snapshotHash"
+      ]
+    },
+    "observableFields": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contentText": {
+          "type": ["string", "null"]
+        },
+        "imageUrls": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "string",
+            "maxLength": 4000
+          }
+        },
+        "status": {
+          "type": ["string", "null"],
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": ["string", "null"]
+        },
+        "updatedAt": {
+          "type": ["string", "null"]
+        },
+        "parentBlogId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "parentBlogExcerpt": {
+          "type": ["string", "null"],
+          "maxLength": 1000
+        }
+      },
+      "required": ["contentText", "imageUrls", "status", "createdAt", "updatedAt"]
+    },
+    "policyContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contextSchemaVersion": {
+          "const": "RRC-1.0.0-rc.1"
+        },
+        "policyVersion": {
+          "const": "PF-2.0.0-proposed.1"
+        },
+        "policyStatus": {
+          "$ref": "#/$defs/lifecycle"
+        },
+        "ruleCatalogVersion": {
+          "const": "RC-2.0.0-proposed.2"
+        },
+        "ruleCatalogStatus": {
+          "$ref": "#/$defs/lifecycle"
+        },
+        "requirementMatrixVersion": {
+          "const": "1.0.0-rc.1"
+        },
+        "evidenceKindCatalogVersion": {
+          "const": "1.0.0-rc.1"
+        },
+        "evaluationMode": {
+          "type": "string",
+          "enum": ["PROPOSED_EVALUATION_ONLY", "ACTIVE_RUNTIME"]
+        },
+        "candidateRules": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/candidateRule"
+          }
+        },
+        "availableEvidenceKinds": {
+          "$ref": "#/$defs/codeList32"
+        },
+        "missingRequirements": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/missingRequirement"
+          }
+        },
+        "currentEvaluationCeiling": {
+          "$ref": "#/$defs/code"
+        }
+      },
+      "required": [
+        "contextSchemaVersion",
+        "policyVersion",
+        "policyStatus",
+        "ruleCatalogVersion",
+        "ruleCatalogStatus",
+        "requirementMatrixVersion",
+        "evidenceKindCatalogVersion",
+        "evaluationMode",
+        "candidateRules",
+        "availableEvidenceKinds",
+        "missingRequirements",
+        "currentEvaluationCeiling"
+      ]
+    },
+    "lifecycle": {
+      "type": "string",
+      "enum": ["DRAFT", "PROPOSED", "APPROVED", "ACTIVE", "DEPRECATED", "RETIRED"]
+    },
+    "candidateRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ruleId": {
+          "$ref": "#/$defs/code"
+        },
+        "ruleVersion": {
+          "$ref": "#/$defs/code"
+        },
+        "ruleStatus": {
+          "$ref": "#/$defs/lifecycle"
+        },
+        "ruleFamily": {
+          "$ref": "#/$defs/code"
+        },
+        "ruleType": {
+          "type": "string",
+          "enum": ["VIOLATION", "ROUTING"]
+        },
+        "material": {
+          "type": "boolean"
+        },
+        "applicableTargetTypes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/targetType"
+          }
+        },
+        "requirementProfileIds": {
+          "$ref": "#/$defs/codeList32"
+        },
+        "requiredEvidenceKinds": {
+          "$ref": "#/$defs/codeList32"
+        },
+        "conditionalRequirements": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/conditionalRequirement"
+          }
+        },
+        "semanticRequirementCodes": {
+          "$ref": "#/$defs/codeList32"
+        },
+        "counterEvidenceRequired": {
+          "type": "boolean"
+        },
+        "exceptionCodes": {
+          "$ref": "#/$defs/codeList32"
+        },
+        "evaluationCeiling": {
+          "$ref": "#/$defs/code"
+        },
+        "allowedOutcomes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "SUBSTANTIATED",
+              "NOT_SUBSTANTIATED",
+              "NOT_APPLICABLE",
+              "UNASSESSABLE",
+              "CONFLICTED",
+              "POLICY_INVALID"
+            ]
+          }
+        },
+        "allowedCandidateActions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["KEEP_VISIBLE", "HIDE", "REMOVE", "NO_ACTION"]
+          }
+        }
+      },
+      "required": [
+        "ruleId",
+        "ruleVersion",
+        "ruleStatus",
+        "ruleFamily",
+        "ruleType",
+        "material",
+        "applicableTargetTypes",
+        "requirementProfileIds",
+        "requiredEvidenceKinds",
+        "conditionalRequirements",
+        "semanticRequirementCodes",
+        "counterEvidenceRequired",
+        "exceptionCodes",
+        "evaluationCeiling",
+        "allowedOutcomes",
+        "allowedCandidateActions"
+      ]
+    },
+    "conditionalRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requirementCode": {
+          "$ref": "#/$defs/code"
+        },
+        "evidenceKind": {
+          "$ref": "#/$defs/code"
+        },
+        "requirementType": {
+          "$ref": "#/$defs/code"
+        },
+        "trigger": {
+          "$ref": "#/$defs/code"
+        },
+        "missingBehavior": {
+          "$ref": "#/$defs/code"
+        }
+      },
+      "required": [
+        "requirementCode",
+        "evidenceKind",
+        "requirementType",
+        "trigger",
+        "missingBehavior"
+      ]
+    },
+    "missingRequirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "missingRequirementId": {
+          "$ref": "#/$defs/code"
+        },
+        "ruleId": {
+          "$ref": "#/$defs/code"
+        },
+        "requirementCode": {
+          "$ref": "#/$defs/code"
+        },
+        "evidenceKind": {
+          "$ref": "#/$defs/nullableCode"
+        },
+        "status": {
+          "const": "MISSING"
+        },
+        "reasonCode": {
+          "$ref": "#/$defs/code"
+        }
+      },
+      "required": [
+        "missingRequirementId",
+        "ruleId",
+        "requirementCode",
+        "evidenceKind",
+        "status",
+        "reasonCode"
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "evidenceId": {
+          "$ref": "#/$defs/code"
+        },
+        "envelopeVersion": {
+          "const": "1.0.0-rc.1"
+        },
+        "evidenceKind": {
+          "$ref": "#/$defs/code"
+        },
+        "subject": {
+          "$ref": "#/$defs/subject"
+        },
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "capture": {
+          "$ref": "#/$defs/capture"
+        },
+        "integrity": {
+          "$ref": "#/$defs/integrity"
+        },
+        "availability": {
+          "$ref": "#/$defs/availability"
+        },
+        "quality": {
+          "$ref": "#/$defs/quality"
+        },
+        "privacy": {
+          "$ref": "#/$defs/privacy"
+        },
+        "intendedUse": {
+          "$ref": "#/$defs/code"
+        },
+        "collectedForRuleIds": {
+          "$ref": "#/$defs/codeList8"
+        },
+        "payload": {
+          "$ref": "#/$defs/payload"
+        }
+      },
+      "required": [
+        "evidenceId",
+        "envelopeVersion",
+        "evidenceKind",
+        "subject",
+        "source",
+        "capture",
+        "integrity",
+        "availability",
+        "quality",
+        "privacy",
+        "intendedUse",
+        "collectedForRuleIds",
+        "payload"
+      ]
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "targetType": {
+          "$ref": "#/$defs/targetType"
+        },
+        "targetAlias": {
+          "$ref": "#/$defs/code"
+        },
+        "snapshotVersion": {
+          "$ref": "#/$defs/code"
+        },
+        "snapshotHash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "required": ["targetType", "targetAlias", "snapshotVersion", "snapshotHash"]
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sourceType": {
+          "$ref": "#/$defs/code"
+        },
+        "sourceSystem": {
+          "$ref": "#/$defs/code"
+        },
+        "sourceEntityType": {
+          "$ref": "#/$defs/nullableCode"
+        },
+        "sourceEntityAlias": {
+          "$ref": "#/$defs/nullableCode"
+        },
+        "sourceFieldPath": {
+          "$ref": "#/$defs/nullableCode"
+        },
+        "verificationStatus": {
+          "$ref": "#/$defs/code"
+        },
+        "authorityScope": {
+          "$ref": "#/$defs/code"
+        }
+      },
+      "required": ["sourceType", "sourceSystem", "verificationStatus", "authorityScope"]
+    },
+    "capture": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "collectorName": {
+          "$ref": "#/$defs/code"
+        },
+        "collectorVersion": {
+          "$ref": "#/$defs/code"
+        },
+        "capturedAt": {
+          "type": ["string", "null"],
+          "format": "date-time"
+        },
+        "sourceUpdatedAt": {
+          "type": ["string", "null"]
+        },
+        "transformations": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 16,
+          "items": {
+            "$ref": "#/$defs/transformation"
+          }
+        }
+      },
+      "required": ["collectorName", "collectorVersion", "transformations"]
+    },
+    "transformation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/code"
+        },
+        "version": {
+          "$ref": "#/$defs/code"
+        },
+        "materiality": {
+          "$ref": "#/$defs/code"
+        }
+      },
+      "required": ["type", "version", "materiality"]
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "canonicalization": {
+          "$ref": "#/$defs/code"
+        },
+        "digestAlgorithm": {
+          "$ref": "#/$defs/code"
+        },
+        "payloadDigest": {
+          "type": ["string", "null"],
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "sourceDigest": {
+          "type": ["string", "null"],
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        }
+      },
+      "required": ["canonicalization", "digestAlgorithm"]
+    },
+    "availability": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["AVAILABLE", "MISSING", "NOT_COLLECTED", "STALE", "UNREADABLE"]
+        },
+        "reasonCode": {
+          "$ref": "#/$defs/nullableCode"
+        }
+      },
+      "required": ["status"]
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["HIGH", "MEDIUM", "LOW", "UNUSABLE"]
+        },
+        "reasonCodes": {
+          "$ref": "#/$defs/codeList16"
+        }
+      },
+      "required": ["level", "reasonCodes"]
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "classification": {
+          "$ref": "#/$defs/code"
+        },
+        "containsPersonalData": {
+          "type": "boolean"
+        },
+        "redactionStatus": {
+          "$ref": "#/$defs/code"
+        },
+        "retentionClass": {
+          "$ref": "#/$defs/code"
+        }
+      },
+      "required": [
+        "classification",
+        "containsPersonalData",
+        "redactionStatus",
+        "retentionClass"
+      ]
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "representation": {
+          "$ref": "#/$defs/code"
+        },
+        "mediaType": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "value": {
+          "type": ["object", "null"]
+        },
+        "reference": {
+          "type": ["object", "null"]
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": ["representation", "mediaType", "truncated"]
+    },
+    "executionConstraints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "recommendationOnly": {
+          "const": true
+        },
+        "allowedCandidateActions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["NO_ACTION", "KEEP_VISIBLE", "HIDE", "REMOVE"]
+          }
+        },
+        "criticalMissingBehavior": {
+          "const": "NEEDS_MANUAL_REVIEW"
+        },
+        "criticalEvidenceMissing": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "recommendationOnly",
+        "allowedCandidateActions",
+        "criticalMissingBehavior",
+        "criticalEvidenceMissing"
+      ]
+    }
+  }
+}

@@ -1,0 +1,180 @@
+{
+  "updatedAt": "2026-07-09T04:39:21.000Z",
+  "createdAt": "2026-06-10T14:57:50.823Z",
+  "id": "cGCZ2OVEwCmDumgi",
+  "name": "CafeStory AI Moderation - Gemini",
+  "description": null,
+  "active": false,
+  "isArchived": true,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cafestory-ai-moderation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "123decb1-9304-40dd-ae58-0a8b9a1978d9",
+      "name": "Webhook - Receive Report",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        1248,
+        320
+      ],
+      "webhookId": "cafestory-ai-moderation"
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $json.body ?? $json;\n\nconst imageUrls = Array.isArray(payload.imageUrls) ? payload.imageUrls : [];\n\nconst moderationPrompt = `\nBan la AI moderation assistant cho nen tang CafeStory.\n\nHay phan tich noi dung bi user report.\n\nQuy tac:\n- Chi tra ve JSON hop le, khong markdown.\n- Khong tu xoa noi dung.\n- Phan biet review tieu cuc hop le voi noi dung vi pham.\n- SAFE: noi dung an toan hoac report co ve sai.\n- NEEDS_REVIEW: chua chac chan, can admin xem.\n- VIOLATION: vi pham ro rang.\n\nReport:\n- targetType: ${payload.targetType}\n- reason: ${payload.reason ?? \"\"}\n- description: ${payload.description ?? \"\"}\n\nNoi dung:\n${payload.content ?? \"\"}\n\nImage URLs:\n${imageUrls.join(\"\\n\")}\n\nJSON schema bat buoc:\n{\n  \"decision\": \"SAFE | NEEDS_REVIEW | VIOLATION\",\n  \"score\": 0.0,\n  \"labels\": [\"SPAM\"],\n  \"explanation\": \"Giai thich ngan gon bang tieng Viet\"\n}\n`;\n\nreturn [\n  {\n    json: {\n      originalPayload: payload,\n      geminiRequest: {\n        contents: [\n          {\n            role: \"user\",\n            parts: [\n              {\n                text: moderationPrompt\n              }\n            ]\n          }\n        ],\n        generationConfig: {\n          temperature: 0.1,\n          responseMimeType: \"application/json\"\n        }\n      }\n    }\n  }\n];"
+      },
+      "id": "8c9c2850-967c-43b9-8be0-8e1535fe0109",
+      "name": "Code - Build Gemini Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/{{$env.GEMINI_MODEL || 'gemini-2.0-flash'}}:generateContent?key={{$env.GEMINI_API_KEY}}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{$json.geminiRequest}}",
+        "options": {}
+      },
+      "id": "09e16fcb-4401-4e44-81f3-fae5177d8eef",
+      "name": "HTTP Request - Call Gemini",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1792,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function cleanJsonText(text) {\n  return String(text ?? \"\")\n    .replace(/^```json\\s*/i, \"\")\n    .replace(/^```\\s*/i, \"\")\n    .replace(/\\s*```$/i, \"\")\n    .trim();\n}\n\nconst candidateText = $json.candidates?.[0]?.content?.parts?.[0]?.text;\n\nlet parsed;\ntry {\n  parsed = JSON.parse(cleanJsonText(candidateText));\n} catch (error) {\n  parsed = {\n    decision: \"NEEDS_REVIEW\",\n    score: 0.0,\n    labels: [\"AI_PARSE_ERROR\"],\n    explanation: \"Gemini tra ve response khong dung JSON schema.\"\n  };\n}\n\nconst allowedDecisions = [\"SAFE\", \"NEEDS_REVIEW\", \"VIOLATION\"];\nconst decision = allowedDecisions.includes(parsed.decision)\n  ? parsed.decision\n  : \"NEEDS_REVIEW\";\n\nconst rawScore = Number(parsed.score);\nconst score = Number.isFinite(rawScore)\n  ? Math.max(0, Math.min(1, rawScore))\n  : 0.0;\n\nconst labels = Array.isArray(parsed.labels) && parsed.labels.length > 0\n  ? parsed.labels.map(String)\n  : [decision];\n\nreturn [\n  {\n    json: {\n      decision,\n      score,\n      labels,\n      explanation: parsed.explanation || \"Khong co giai thich tu Gemini.\",\n      modelName: $env.GEMINI_MODEL || \"gemini-2.0-flash\"\n    }\n  }\n];"
+      },
+      "id": "d2ba60a5-a36f-49a4-bdb6-91ccd82347a9",
+      "name": "Code - Normalize Gemini Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2080,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$json}}",
+        "options": {}
+      },
+      "id": "b4caaf47-48c7-4686-b24d-eb17b23fef83",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        2336,
+        320
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - Receive Report": {
+      "main": [
+        [
+          {
+            "node": "Code - Build Gemini Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Build Gemini Request": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Call Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Call Gemini": {
+      "main": [
+        [
+          {
+            "node": "Code - Normalize Gemini Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Normalize Gemini Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "staticData": null,
+  "meta": null,
+  "nodeGroups": [],
+  "pinData": {},
+  "versionId": "06c1d24d-787a-455b-9733-57df1465683f",
+  "activeVersionId": null,
+  "versionCounter": 3,
+  "triggerCount": 1,
+  "sourceWorkflowId": null,
+  "tags": [],
+  "shared": [
+    {
+      "updatedAt": "2026-06-10T14:57:50.830Z",
+      "createdAt": "2026-06-10T14:57:50.830Z",
+      "role": "workflow:owner",
+      "workflowId": "cGCZ2OVEwCmDumgi",
+      "projectId": "PXsibJ2PRzofuhZi",
+      "project": {
+        "updatedAt": "2026-06-10T14:54:05.854Z",
+        "createdAt": "2026-06-10T14:52:10.548Z",
+        "id": "PXsibJ2PRzofuhZi",
+        "name": "Tran trangiathinh0309@gmail.com <trangiathinh0309@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "customTelemetryTags": [],
+        "creatorId": "ef0f845a-415e-4c14-9b3e-684b73d30729"
+      }
+    }
+  ],
+  "versionMetadata": {
+    "name": null,
+    "description": null
+  }
+}

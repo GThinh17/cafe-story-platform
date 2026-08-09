@@ -15,6 +15,14 @@ public class AdminReportAiResolutionResponseDTO {
 
     private UUID id;
 
+    private String contractVersion;
+
+    private UUID correlationId;
+
+    private String automationMode;
+
+    private String recommendationState;
+
     private UUID contentReportId;
 
     private ReportTargetType targetType;
@@ -37,11 +45,35 @@ public class AdminReportAiResolutionResponseDTO {
 
     private String modelName;
 
-    private Map<String, Object> rawResponse;
-
     private LocalDateTime createdAt;
 
     private AdminReportAiAutoApplyJobResponseDTO autoApplyJob;
 
     private String autoApplyWarning;
+
+    private List<Map<String, Object>> findings;
+
+    private Map<String, Object> evidenceSummary;
+
+    private List<String> blockedReasons;
+
+    private String evidenceQuality;
+
+    private String evidenceSufficiency;
+
+    private String violationLikelihood;
+
+    private String harmSeverity;
+
+    private String actionRisk;
+
+    private String policyVersion;
+
+    private String ruleCatalogVersion;
+
+    private String promptVersion;
+
+    private String workflowVersion;
+
+    private String targetSnapshotHash;
 }

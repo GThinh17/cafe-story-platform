@@ -1,0 +1,15 @@
+{
+  "gate": { "linePercent": 100, "branchPercent": 85 },
+  "classes": {
+    "AdminReportAiResolutionServiceImpl": {
+      "line": { "covered": 253, "missed": 0, "percent": 100 },
+      "branch": { "covered": 129, "missed": 21, "percent": 86 }
+    },
+    "AdminReportAiAutoApplyJobServiceImpl": {
+      "line": { "covered": 251, "missed": 0, "percent": 100 },
+      "branch": { "covered": 121, "missed": 15, "percent": 88.97 }
+    }
+  },
+  "gateResult": "PASSED",
+  "source": "1-cafe-story-backend-javaspring/target/site/jacoco/jacoco.xml"
+}

@@ -43,6 +43,38 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
     @EntityGraph(attributePaths = {"user", "actorCafePage"})
     List<Comment> findByParentCommentId(UUID parentCommentId);
 
+    @Query("""
+            select c
+            from Comment c
+            where c.blog.id = :blogId
+            and c.id <> :targetId
+            and c.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
+            and c.createdAt < :createdAt
+            order by c.createdAt desc
+            """)
+    @EntityGraph(attributePaths = {"user", "actorCafePage", "parentComment"})
+    List<Comment> findContextBeforeInBlog(
+            @Param("blogId") UUID blogId,
+            @Param("targetId") UUID targetId,
+            @Param("createdAt") LocalDateTime createdAt,
+            Pageable pageable);
+
+    @Query("""
+            select c
+            from Comment c
+            where c.blog.id = :blogId
+            and c.id <> :targetId
+            and c.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
+            and c.createdAt > :createdAt
+            order by c.createdAt asc
+            """)
+    @EntityGraph(attributePaths = {"user", "actorCafePage", "parentComment"})
+    List<Comment> findContextAfterInBlog(
+            @Param("blogId") UUID blogId,
+            @Param("targetId") UUID targetId,
+            @Param("createdAt") LocalDateTime createdAt,
+            Pageable pageable);
+
     long countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(UUID userId, LocalDateTime startDate, LocalDateTime endDate);
 
     List<Comment> findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(LocalDateTime startDate, LocalDateTime endDate);

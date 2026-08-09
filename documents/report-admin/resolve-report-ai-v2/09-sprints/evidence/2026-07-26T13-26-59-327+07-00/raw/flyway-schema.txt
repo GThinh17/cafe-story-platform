@@ -1,0 +1,17 @@
+Environment: PostgreSQL 17.10, disposable local container, localhost-only port 55432
+External database touched: no
+
+Flyway history:
+1|20260719.01|g0-12c-pre-v2-snapshot|BASELINE|true
+2|20260723.01|admin report ai contract v2|SQL|true
+
+Restart validation:
+Successfully validated 10 migrations
+Current version: 20260723.01
+Schema is up to date; no migration necessary
+
+Schema contract:
+- V2 columns: 17/17 present with expected PostgreSQL types/lengths
+- V2 CHECK constraints: 8/8 present and validated
+- V2 unique indexes: 2/2 unique and valid
+

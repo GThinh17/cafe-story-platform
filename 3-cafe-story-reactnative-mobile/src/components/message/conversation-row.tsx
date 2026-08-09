@@ -17,7 +17,11 @@ export function ConversationRow({ conversation, onPress }: ConversationRowProps)
       style={({ pressed }) => [styles.container, pressed && styles.pressed]}
     >
       <View style={styles.avatarWrap}>
-        <Avatar size={58} uri={conversation.avatarUri} />
+        <Avatar
+          initials={conversation.initials}
+          size={58}
+          uri={conversation.avatarUri}
+        />
         {conversation.isOnline ? <View style={styles.onlineDot} /> : null}
       </View>
 

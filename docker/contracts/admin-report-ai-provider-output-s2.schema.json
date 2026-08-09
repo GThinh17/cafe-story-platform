@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cafestory.local/contracts/admin-report-ai-provider-output-s2.schema.json",
+  "title": "CafeStory Admin Report AI Provider Output S2",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "recommendationState": {
+      "type": "string",
+      "enum": ["RESOLVE", "REJECT", "NEEDS_MANUAL_REVIEW"]
+    },
+    "reportDecision": {
+      "type": "string",
+      "enum": ["RESOLVE", "REJECT", "NEEDS_MANUAL_REVIEW"]
+    },
+    "targetAction": {
+      "type": "string",
+      "enum": ["KEEP_VISIBLE", "HIDE", "REMOVE", "NO_ACTION"]
+    },
+    "findings": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 8,
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    },
+    "evidenceSummary": {
+      "$ref": "#/$defs/evidenceSummary"
+    },
+    "blockedReasons": {
+      "$ref": "#/$defs/codeList16"
+    },
+    "evidenceQuality": {
+      "type": "string",
+      "enum": ["HIGH", "MEDIUM", "LOW", "UNUSABLE"]
+    },
+    "evidenceSufficiency": {
+      "type": "string",
+      "enum": ["SUFFICIENT", "INSUFFICIENT", "CONFLICTED", "UNASSESSABLE"]
+    },
+    "violationLikelihood": {
+      "$ref": "#/$defs/likelihood"
+    },
+    "harmSeverity": {
+      "type": "string",
+      "enum": ["CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"]
+    },
+    "labels": {
+      "$ref": "#/$defs/codeList16"
+    },
+    "explanation": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    }
+  },
+  "required": [
+    "recommendationState",
+    "reportDecision",
+    "targetAction",
+    "findings",
+    "evidenceSummary",
+    "blockedReasons",
+    "evidenceQuality",
+    "evidenceSufficiency",
+    "violationLikelihood",
+    "harmSeverity",
+    "labels",
+    "explanation"
+  ],
+  "$defs": {
+    "code": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "codeList16": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 16,
+      "items": {
+        "$ref": "#/$defs/code"
+      }
+    },
+    "evidenceReferences": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 32,
+      "items": {
+        "$ref": "#/$defs/code"
+      }
+    },
+    "likelihood": {
+      "type": "string",
+      "enum": ["HIGH", "MEDIUM", "LOW", "UNKNOWN"]
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ruleId": {
+          "$ref": "#/$defs/code"
+        },
+        "ruleVersion": {
+          "$ref": "#/$defs/code"
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "SUBSTANTIATED",
+            "NOT_SUBSTANTIATED",
+            "NOT_APPLICABLE",
+            "UNASSESSABLE",
+            "CONFLICTED",
+            "POLICY_INVALID"
+          ]
+        },
+        "evidenceIds": {
+          "$ref": "#/$defs/evidenceReferences"
+        },
+        "counterEvidenceIds": {
+          "$ref": "#/$defs/evidenceReferences"
+        },
+        "missingEvidenceIds": {
+          "$ref": "#/$defs/evidenceReferences"
+        },
+        "violationLikelihood": {
+          "$ref": "#/$defs/likelihood"
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        }
+      },
+      "required": [
+        "ruleId",
+        "ruleVersion",
+        "outcome",
+        "evidenceIds",
+        "counterEvidenceIds",
+        "missingEvidenceIds",
+        "violationLikelihood",
+        "rationale"
+      ]
+    },
+    "evidenceSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "usedEvidenceIds": {
+          "$ref": "#/$defs/evidenceReferences"
+        },
+        "counterEvidenceIds": {
+          "$ref": "#/$defs/evidenceReferences"
+        },
+        "missingEvidenceIds": {
+          "$ref": "#/$defs/evidenceReferences"
+        }
+      },
+      "required": [
+        "usedEvidenceIds",
+        "counterEvidenceIds",
+        "missingEvidenceIds"
+      ]
+    }
+  }
+}

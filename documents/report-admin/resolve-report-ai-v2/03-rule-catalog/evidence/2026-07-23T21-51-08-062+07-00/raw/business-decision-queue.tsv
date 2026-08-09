@@ -1,0 +1,13 @@
+decision_id	topic	target_gate
+BD-001	Policy/catalog owner and approval authority	G0-10
+BD-002	Exact auto-apply allowlist and HIDE disposition	G0-10
+BD-003	Two-person approval override and role matrix	G0-10
+BD-004	Threshold and calibration acceptance	G0-10
+BD-005	Protected characteristics	G0-10
+BD-006	Sexual/sensitive exceptions and age-sensitive scope	G0-10
+BD-007	Misinformation scope and authoritative source model	G0-10
+BD-008	Restricted-goods list and jurisdiction	G0-10
+BD-009	IP/privacy legal workflow	G0-10
+BD-010	Intake reason active deprecated alias disposition	G0-10
+BD-011	Target-specific depth in Sprint 1	G0-10
+BD-012	Retention appeal rollback SLA and operations owner	G0-10

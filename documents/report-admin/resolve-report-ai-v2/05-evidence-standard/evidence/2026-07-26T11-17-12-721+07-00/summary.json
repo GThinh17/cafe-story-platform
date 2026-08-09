@@ -1,0 +1,20 @@
+{
+  "gate": "G0-12M-08",
+  "status": "READY_FOR_REVIEW",
+  "contractVersion": "2.0.0-rc.1",
+  "reviewedGates": 8,
+  "issuesFound": 4,
+  "issuesFixed": 4,
+  "openIssues": 0,
+  "crossReviewChecks": {
+    "passed": 16,
+    "failed": 0
+  },
+  "fixtureRegression": {
+    "passed": 18,
+    "failed": 0
+  },
+  "runtimeAuthority": false,
+  "sourceRuntimeMutation": "NONE",
+  "nextRequiredApproval": "APPROVE_G0-12M-08"
+}

@@ -1,0 +1,67 @@
+{
+  "resolution": {
+    "id": "f74fe1f1-aafb-47e0-a82d-43276a8e38d9",
+    "contractVersion": "2.0",
+    "correlationId": "a19a58c9-8c40-4954-8bf3-9bb1f798cc20",
+    "automationMode": "A0_RECOMMEND_ONLY",
+    "recommendationState": "NEEDS_MANUAL_REVIEW",
+    "contentReportId": "98f8cd57-9f14-4f80-a013-842cb7d2a6e4",
+    "targetType": "COMMENT",
+    "targetId": "c158cd15-5584-4852-9095-32e9d2012b0d",
+    "reportDecision": "NEEDS_MANUAL_REVIEW",
+    "targetAction": "NO_ACTION",
+    "confidenceScore": null,
+    "riskScore": null,
+    "labels": [
+      "RESTRICTED_GOODS"
+    ],
+    "ruleCode": null,
+    "explanation": "The available evidence includes various pieces that support the claim but lacks sufficient quality in critical areas to support a definitive action.",
+    "modelName": "gpt-4o-mini-2024-07-18",
+    "createdAt": "2026-07-29T11:15:45.695847",
+    "autoApplyJob": null,
+    "autoApplyWarning": null,
+    "findings": [],
+    "evidenceSummary": {
+      "usedEvidenceIds": [
+        "EV-REASON-ROUTE"
+      ],
+      "counterEvidenceIds": [],
+      "missingEvidenceIds": []
+    },
+    "blockedReasons": [
+      "EVIDENCE_NOT_SUFFICIENT"
+    ],
+    "evidenceQuality": "LOW",
+    "evidenceSufficiency": "INSUFFICIENT",
+    "violationLikelihood": "UNKNOWN",
+    "harmSeverity": "MEDIUM",
+    "actionRisk": "LOW",
+    "policyVersion": "PF-2.0.0-proposed.1",
+    "ruleCatalogVersion": "RC-2.0.0-proposed.1",
+    "promptVersion": "report-ai-v2-sprint1.1",
+    "workflowVersion": "cafestory-admin-report-ai-resolution-v2",
+    "targetSnapshotHash": "f462150ff0498f890d0207c77a7df46253e2638dbd99f7bb8ac49487b1d92222"
+  },
+  "reportAfter": {
+    "id": "98f8cd57-9f14-4f80-a013-842cb7d2a6e4",
+    "reporterUserId": "a7150bf3-3312-422c-b028-08f05362eb83",
+    "reporterUserName": "g012e_admin",
+    "reporterUserAvatar": null,
+    "targetType": "COMMENT",
+    "targetId": "c158cd15-5584-4852-9095-32e9d2012b0d",
+    "blogId": null,
+    "commentId": "c158cd15-5584-4852-9095-32e9d2012b0d",
+    "reportedUserId": null,
+    "cafePageId": null,
+    "reasonId": "d5ddb2c9-9200-461a-9a11-92b8fa0215a7",
+    "reasonCode": "RESTRICTED_GOODS",
+    "reason": "Bán hoặc quảng bá mặt hàng bị hạn chế",
+    "reasonLabel": "Bán hoặc quảng bá mặt hàng bị hạn chế",
+    "reasonSeverity": 4,
+    "description": "E2E Report Admin AI RAI-02 COMMENT 1785298527811",
+    "status": "OPEN",
+    "createdAt": "2026-07-29T11:15:27.843482",
+    "resolvedAt": null
+  }
+}

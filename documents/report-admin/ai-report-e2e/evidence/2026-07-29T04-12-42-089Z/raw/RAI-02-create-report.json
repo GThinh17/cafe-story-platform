@@ -1,0 +1,26 @@
+{
+  "statusCode": 201,
+  "status": "Success",
+  "message": "Request processed successfully",
+  "data": {
+    "id": "d3f15bd6-6614-4580-a615-6e1b6ca3f93e",
+    "reporterUserId": "a7150bf3-3312-422c-b028-08f05362eb83",
+    "reporterUserName": "g012e_admin",
+    "reporterUserAvatar": null,
+    "targetType": "COMMENT",
+    "targetId": "c158cd15-5584-4852-9095-32e9d2012b0d",
+    "blogId": null,
+    "commentId": "c158cd15-5584-4852-9095-32e9d2012b0d",
+    "reportedUserId": null,
+    "cafePageId": null,
+    "reasonId": "d5ddb2c9-9200-461a-9a11-92b8fa0215a7",
+    "reasonCode": "RESTRICTED_GOODS",
+    "reason": "Bán hoặc quảng bá mặt hàng bị hạn chế",
+    "reasonLabel": "Bán hoặc quảng bá mặt hàng bị hạn chế",
+    "reasonSeverity": 4,
+    "description": "E2E Report Admin AI RAI-02 COMMENT 1785298369197",
+    "status": "OPEN",
+    "createdAt": "2026-07-29T11:12:49.2539571",
+    "resolvedAt": null
+  }
+}

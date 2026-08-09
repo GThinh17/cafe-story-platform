@@ -1,0 +1,20 @@
+{
+  "id": "M07-FX-07",
+  "description": "IP claim thiếu claimant authority phải đi human/legal lane.",
+  "base": "blog-resolve.json",
+  "operations": [
+    {"op":"replace","path":"/policyContext/candidateRuleIds","value":["CSR.IP.001"]},
+    {"op":"replace","path":"/evidence/3/collectedForRuleIds","value":["CSR.IP.001"]},
+    {"op":"replace","path":"/ruleEvaluations/0","value":{"ruleId":"CSR.IP.001","material":true,"outcome":"UNASSESSABLE","supportingEvidenceIds":["EV-BLOG-TEXT"],"counterEvidenceIds":[],"missingEvidenceIds":["ME-IP-CLAIMANT-AUTHORITY"]}},
+    {"op":"add","path":"/missingEvidence/-","value":{"missingEvidenceId":"ME-IP-CLAIMANT-AUTHORITY","requiredByRuleId":"CSR.IP.001","requirementType":"SEMANTIC_REQUIREMENT","requiredEvidenceKind":null,"semanticRequirementCode":"SEM-CLAIMANT-AUTHORITY","triggerCondition":"COPYRIGHT_CLAIM_SELECTED","critical":true,"availability":"NOT_COLLECTED","reasonCode":"SECURE_LEGAL_INTAKE_NOT_IMPLEMENTED","recommendedNextStep":"HUMAN_LEGAL_REVIEW","decisionEffect":"NEEDS_MANUAL_REVIEW"}},
+    {"op":"replace","path":"/recommendation/reportDecision","value":"NEEDS_MANUAL_REVIEW"},
+    {"op":"replace","path":"/recommendation/candidateTargetAction","value":"NO_ACTION"},
+    {"op":"replace","path":"/recommendation/evidenceSufficiency","value":"UNASSESSABLE"},
+    {"op":"replace","path":"/recommendation/findings","value":[]}
+  ],
+  "expected": {
+    "schemaValid": true,
+    "semanticValid": true,
+    "errorCodes": []
+  }
+}

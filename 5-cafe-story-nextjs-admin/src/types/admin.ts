@@ -10,6 +10,8 @@ export type AdminReportAiReportDecision =
   | "REJECT"
   | "NEEDS_MANUAL_REVIEW";
 export type AdminReportAiTargetAction =
+  | "KEEP_VISIBLE"
+  | "NO_ACTION"
   | "APPROVE"
   | "HIDE"
   | "REMOVE"
@@ -279,6 +281,10 @@ export type ContentReport = {
 
 export type AdminReportAiResolution = {
   id: UUID;
+  contractVersion: "2.0" | "legacy-v1";
+  correlationId: UUID | null;
+  automationMode: "A0_RECOMMEND_ONLY";
+  recommendationState: AdminReportAiReportDecision | null;
   contentReportId: UUID;
   targetType: ReportTargetType;
   targetId: UUID;
@@ -290,10 +296,45 @@ export type AdminReportAiResolution = {
   ruleCode: string | null;
   explanation: string | null;
   modelName: string | null;
-  rawResponse: Record<string, unknown> | null;
   createdAt: string;
   autoApplyJob?: AdminReportAiAutoApplyJob | null;
   autoApplyWarning?: string | null;
+  findings: AdminReportAiFinding[] | null;
+  evidenceSummary: AdminReportAiEvidenceSummary | null;
+  blockedReasons: string[] | null;
+  evidenceQuality: "HIGH" | "MEDIUM" | "LOW" | "UNUSABLE" | null;
+  evidenceSufficiency:
+    | "SUFFICIENT"
+    | "INSUFFICIENT"
+    | "CONFLICTED"
+    | "UNASSESSABLE"
+    | null;
+  violationLikelihood: "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN" | null;
+  harmSeverity: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN" | null;
+  actionRisk: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | null;
+  policyVersion: string | null;
+  ruleCatalogVersion: string | null;
+  promptVersion: string | null;
+  workflowVersion: string | null;
+  targetSnapshotHash: string | null;
+};
+
+export type AdminReportAiFinding = {
+  ruleId: string;
+  ruleVersion: string;
+  outcome: "SUPPORTED" | "NOT_SUPPORTED" | "INCONCLUSIVE";
+  evidenceIds: string[];
+  counterEvidenceIds: string[];
+  missingEvidenceIds: string[];
+  violationLikelihood: "HIGH" | "MEDIUM" | "LOW" | "UNKNOWN";
+  rationale: string;
+};
+
+export type AdminReportAiEvidenceSummary = {
+  usedEvidenceIds?: string[];
+  counterEvidenceIds?: string[];
+  missingEvidenceIds?: string[];
+  [key: string]: unknown;
 };
 
 export type AdminReportAiAutoApplyRequest = {

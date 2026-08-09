@@ -1,0 +1,60 @@
+{
+  "gate": "DOD-FIX-03",
+  "status": "COMPLETED_VERIFIED_APPROVED",
+  "approvalTokenExpected": "APPROVE_G0-12-DONE-FIX-03",
+  "approvalReceived": true,
+  "approvalTokenReceived": "APPROVE_G0-12-DONE-FIX-03",
+  "date": "2026-07-29",
+  "traceability": [
+    "DOD-16",
+    "E2E-S1-04",
+    "SEM-009"
+  ],
+  "issues": {
+    "testBugsFixedVerified": 1,
+    "codeBugsFixedVerified": 2,
+    "openInScope": 0
+  },
+  "verification": {
+    "backendServiceAndSemantic": {
+      "passed": 37,
+      "total": 37
+    },
+    "backendFocused": {
+      "passed": 63,
+      "total": 63
+    },
+    "backendFull": {
+      "tests": 624,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "adminTypecheck": "PASS",
+    "adminBuild": "PASS",
+    "fullPathE2e": {
+      "passed": 1,
+      "total": 1
+    },
+    "targetMutation": false,
+    "autoApplyJobCount": 0,
+    "cleanupRemainingRows": [
+      0,
+      0,
+      0
+    ]
+  },
+  "expectedOutcome": {
+    "reportDecision": "NEEDS_MANUAL_REVIEW",
+    "targetAction": "NO_ACTION",
+    "evidenceSufficiency": "UNASSESSABLE",
+    "blockedReason": "CRITICAL_EVIDENCE_MISSING",
+    "findings": []
+  },
+  "productionDeployment": "NOT_AUTHORIZED",
+  "remaining": [
+    "DOD-FIX-04",
+    "DOD-FIX-05",
+    "DOD-FIX-06"
+  ]
+}

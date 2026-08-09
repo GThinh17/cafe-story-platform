@@ -84,6 +84,7 @@ export type MockChatMessage = {
 export type ConversationListItem = {
   avatarUri: string | null;
   id: string;
+  initials?: string;
   isMuted?: boolean;
   isOnline?: boolean;
   lastMessage: string;

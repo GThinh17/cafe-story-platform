@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cafestory.local/contracts/admin-report-ai-provider-benchmark-s2.schema.json",
+  "title": "CafeStory Admin Report AI S2-05 Provider Benchmark",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "benchmarkVersion": {"const": "1.0.0-rc.1"},
+    "lifecycle": {"const": "PROPOSED"},
+    "runtimeAuthority": {"const": false},
+    "providerCallAuthorizedBy": {"const": "IMPLEMENT_S2_05"},
+    "apiEndpoint": {"const": "https://api.openai.com/v1/responses"},
+    "promptCandidateVersion": {"const": "report-ai-v2-sprint2.4-candidate.1"},
+    "outputSchemaId": {
+      "const": "https://cafestory.local/contracts/admin-report-ai-provider-evaluation-output-s2.schema.json"
+    },
+    "requestPolicy": {
+      "$ref": "#/$defs/requestPolicy"
+    },
+    "modelCandidates": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "$ref": "#/$defs/modelCandidate"
+      }
+    },
+    "datasetCaseRefs": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^S2EVAL-[0-9]{3}$"
+      }
+    },
+    "directFixtureCaseRefs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "const": "S2P-001-HAR-DIRECT-BLOG"
+      }
+    },
+    "hardSafetyCaseRefs": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^S2EVAL-[0-9]{3}$"
+      }
+    },
+    "semanticObservationCaseRefs": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^S2EVAL-[0-9]{3}$"
+      }
+    },
+    "scoringPolicy": {
+      "$ref": "#/$defs/scoringPolicy"
+    },
+    "sourceVersions": {
+      "$ref": "#/$defs/sourceVersions"
+    },
+    "officialSources": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "modelGuidance": {"type": "string", "format": "uri"},
+        "promptGuidance": {"type": "string", "format": "uri"},
+        "pricing": {"type": "string", "format": "uri"},
+        "pricingSnapshotDate": {"const": "2026-07-30"}
+      },
+      "required": [
+        "modelGuidance",
+        "promptGuidance",
+        "pricing",
+        "pricingSnapshotDate"
+      ]
+    }
+  },
+  "required": [
+    "benchmarkVersion",
+    "lifecycle",
+    "runtimeAuthority",
+    "providerCallAuthorizedBy",
+    "apiEndpoint",
+    "promptCandidateVersion",
+    "outputSchemaId",
+    "requestPolicy",
+    "modelCandidates",
+    "datasetCaseRefs",
+    "directFixtureCaseRefs",
+    "hardSafetyCaseRefs",
+    "semanticObservationCaseRefs",
+    "scoringPolicy",
+    "sourceVersions",
+    "officialSources"
+  ],
+  "$defs": {
+    "requestPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "store": {"const": false},
+        "reasoningEffort": {"const": "low"},
+        "maxOutputTokens": {"type": "integer", "minimum": 200, "maximum": 800},
+        "timeoutMs": {"type": "integer", "minimum": 10000, "maximum": 120000},
+        "repeats": {"const": 2},
+        "maxTransientRetries": {"const": 1},
+        "maxProviderCalls": {"const": 36},
+        "maxInputTokensAssumption": {"type": "integer", "minimum": 1000, "maximum": 8000},
+        "maxEstimatedCostUsd": {"type": "number", "exclusiveMinimum": 0, "maximum": 2}
+      },
+      "required": [
+        "store",
+        "reasoningEffort",
+        "maxOutputTokens",
+        "timeoutMs",
+        "repeats",
+        "maxTransientRetries",
+        "maxProviderCalls",
+        "maxInputTokensAssumption",
+        "maxEstimatedCostUsd"
+      ]
+    },
+    "pricing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "inputPerMillionUsd": {"type": "number", "minimum": 0},
+        "cachedInputPerMillionUsd": {"type": "number", "minimum": 0},
+        "cacheWritePerMillionUsd": {"type": "number", "minimum": 0},
+        "outputPerMillionUsd": {"type": "number", "minimum": 0}
+      },
+      "required": [
+        "inputPerMillionUsd",
+        "cachedInputPerMillionUsd",
+        "cacheWritePerMillionUsd",
+        "outputPerMillionUsd"
+      ]
+    },
+    "modelCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "type": "string",
+          "enum": ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"]
+        },
+        "role": {
+          "type": "string",
+          "enum": ["CAPABILITY_REFERENCE", "BALANCED", "HIGH_VOLUME"]
+        },
+        "pricingStandard": {
+          "$ref": "#/$defs/pricing"
+        }
+      },
+      "required": ["model", "role", "pricingStandard"]
+    },
+    "scoringPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "hardSafetyRequiredPercent": {"const": 100},
+        "providerQualityDenominator": {"const": 0},
+        "globalAccuracyAllowed": {"const": false},
+        "numericCalibrationAuthority": {"const": false},
+        "modelSelectionAuthority": {"const": false},
+        "selectionStatusWhenQualityMissing": {"const": "NO_MODEL_SELECTED_INSUFFICIENT_GROUND_TRUTH"}
+      },
+      "required": [
+        "hardSafetyRequiredPercent",
+        "providerQualityDenominator",
+        "globalAccuracyAllowed",
+        "numericCalibrationAuthority",
+        "modelSelectionAuthority",
+        "selectionStatusWhenQualityMissing"
+      ]
+    },
+    "sourceVersions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "datasetVersion": {"const": "1.0.0-rc.1"},
+        "rubricVersion": {"const": "1.0.0-rc.1"},
+        "policyVersion": {"const": "PF-2.0.0-proposed.1"},
+        "ruleCatalogVersion": {"const": "RC-2.0.0-proposed.2"},
+        "ruleVersion": {"const": "1.0.0-proposed.2"}
+      },
+      "required": [
+        "datasetVersion",
+        "rubricVersion",
+        "policyVersion",
+        "ruleCatalogVersion",
+        "ruleVersion"
+      ]
+    }
+  }
+}

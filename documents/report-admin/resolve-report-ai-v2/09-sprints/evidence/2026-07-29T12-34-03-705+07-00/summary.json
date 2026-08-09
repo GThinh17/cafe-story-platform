@@ -1,0 +1,45 @@
+{
+  "gate": "DOD-FIX-01",
+  "status": "COMPLETED_VERIFIED_APPROVED",
+  "approvalToken": "APPROVE_G0-12-DONE-FIX-01",
+  "approvalReceived": true,
+  "adversarialSuite": {
+    "total": 12,
+    "passed": 12,
+    "failed": 0,
+    "providerCalled": false
+  },
+  "issues": {
+    "codeBugFixedVerified": 2,
+    "testBugFixedVerified": 2
+  },
+  "backend": {
+    "focusedTests": 60,
+    "focusedFailures": 0,
+    "fullTests": 621,
+    "fullFailures": 0,
+    "fullErrors": 0,
+    "fullSkipped": 1
+  },
+  "coverage": {
+    "class": "AdminReportAiSemanticValidator",
+    "lineCovered": 104,
+    "lineTotal": 104,
+    "linePercent": 100.0,
+    "branchCovered": 114,
+    "branchTotal": 118,
+    "branchPercent": 96.61
+  },
+  "workflowJsonParse": "PASS",
+  "n8nSecuritySuite": "PASS",
+  "secretPatternHits": 0,
+  "publishedN8nRuntimeUpdated": false,
+  "productionDeployment": "NOT_AUTHORIZED",
+  "remainingRemediation": [
+    "DOD-FIX-02",
+    "DOD-FIX-03",
+    "DOD-FIX-04",
+    "DOD-FIX-05",
+    "DOD-FIX-06"
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "id": "M07-FX-10",
+  "description": "REJECT khi scope chưa complete và thiếu EVD.004 phải bị validator chặn.",
+  "base": "blog-resolve.json",
+  "operations": [
+    {"op":"replace","path":"/ruleEvaluations/0/outcome","value":"NOT_SUBSTANTIATED"},
+    {"op":"replace","path":"/ruleEvaluations/0/supportingEvidenceIds","value":[]},
+    {"op":"replace","path":"/recommendation/reportDecision","value":"REJECT"},
+    {"op":"replace","path":"/recommendation/candidateTargetAction","value":"KEEP_VISIBLE"},
+    {"op":"replace","path":"/recommendation/findings","value":[]}
+  ],
+  "expected": {
+    "schemaValid": true,
+    "semanticValid": false,
+    "errorCodes": [
+      "REJECT_SCOPE_INCOMPLETE",
+      "REJECT_EVD004_MISSING"
+    ]
+  }
+}

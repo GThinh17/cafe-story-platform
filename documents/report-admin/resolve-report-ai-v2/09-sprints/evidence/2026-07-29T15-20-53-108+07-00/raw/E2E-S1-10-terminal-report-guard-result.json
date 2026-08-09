@@ -1,0 +1,57 @@
+{
+  "terminalStatus": "RESOLVED",
+  "askAiDisabled": true,
+  "uiAiRequestCount": 0,
+  "bypassHttpStatus": 409,
+  "bypassResponse": {
+    "statusCode": 409,
+    "status": "Fail",
+    "message": "AI resolution can only be requested for OPEN or REVIEWING reports",
+    "data": null
+  },
+  "resolutionCountBefore": 0,
+  "resolutionCountAfter": 0,
+  "reportStatusAfter": "RESOLVED",
+  "reportStateBefore": {
+    "id": "07196ec5-2399-44c3-a91b-6bb1a48b0471",
+    "reporterUserId": "a7150bf3-3312-422c-b028-08f05362eb83",
+    "targetType": "BLOG",
+    "targetId": "1cbe58a0-6028-470a-b834-dadc24606c0e",
+    "blogId": "1cbe58a0-6028-470a-b834-dadc24606c0e",
+    "commentId": null,
+    "reportedUserId": null,
+    "cafePageId": null,
+    "reasonId": "d5ddb2c9-9200-461a-9a11-92b8fa0215a7",
+    "reasonCode": "RESTRICTED_GOODS",
+    "reasonLabel": "Bán hoặc quảng bá mặt hàng bị hạn chế",
+    "reasonSeverity": 4,
+    "description": "E2E Report Admin AI E2E-S1-10 terminal FE guard 1785314958244",
+    "status": "RESOLVED",
+    "createdAt": "2026-07-29T15:49:18.277471",
+    "resolvedAt": "2026-07-29T15:49:18.34867"
+  },
+  "reportStateAfter": {
+    "id": "07196ec5-2399-44c3-a91b-6bb1a48b0471",
+    "reporterUserId": "a7150bf3-3312-422c-b028-08f05362eb83",
+    "targetType": "BLOG",
+    "targetId": "1cbe58a0-6028-470a-b834-dadc24606c0e",
+    "blogId": "1cbe58a0-6028-470a-b834-dadc24606c0e",
+    "commentId": null,
+    "reportedUserId": null,
+    "cafePageId": null,
+    "reasonId": "d5ddb2c9-9200-461a-9a11-92b8fa0215a7",
+    "reasonCode": "RESTRICTED_GOODS",
+    "reasonLabel": "Bán hoặc quảng bá mặt hàng bị hạn chế",
+    "reasonSeverity": 4,
+    "description": "E2E Report Admin AI E2E-S1-10 terminal FE guard 1785314958244",
+    "status": "RESOLVED",
+    "createdAt": "2026-07-29T15:49:18.277471",
+    "resolvedAt": "2026-07-29T15:49:18.34867"
+  },
+  "reportMutation": false,
+  "targetMutation": false,
+  "autoApplyJobCount": 0,
+  "screenshots": [
+    "screenshots/E2E-S1-10-terminal-report-ask-ai-disabled.png"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1.0",
+  "gate": "G0-06D",
+  "approval": "APPROVE_G0-06D",
+  "status": "DONE",
+  "mode": "CURRENT_STATE_CONSOLIDATION",
+  "inputFindingCounts": {
+    "backend": 17,
+    "frontend": 13,
+    "n8n": 14,
+    "database": 16,
+    "total": 60
+  },
+  "consolidatedGapCounts": {
+    "total": 19,
+    "P0": 6,
+    "P1": 11,
+    "P2": 2,
+    "MISSING": 8,
+    "CONFLICT": 6,
+    "LEGACY": 3,
+    "UNKNOWN": 2
+  },
+  "readiness": {
+    "policyDraft": "READY",
+    "implementation": "NOT_READY",
+    "destructiveAutomation": "NOT_READY"
+  },
+  "sourceOrDataMutation": false,
+  "nextRequiredApproval": "APPROVE_G0-07"
+}

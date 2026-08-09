@@ -1,0 +1,65 @@
+{
+  "feature": "admin-resolve-report-with-ai",
+  "reviewedAt": "2026-07-21T22:16:00+07:00",
+  "status": "PARTIAL",
+  "sourceChanged": false,
+  "documentationChanged": true,
+  "verification": {
+    "focusedBackendTests": {
+      "status": "PASS",
+      "testsRun": 26,
+      "failures": 0,
+      "errors": 0
+    },
+    "backendRegression": {
+      "status": "PASS",
+      "testsRun": 580,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "projectStructure": {
+      "status": "PASS",
+      "warnings": 0
+    },
+    "adminTypecheck": {
+      "status": "PASS"
+    },
+    "adminBuild": {
+      "status": "PASS",
+      "staticPages": 21
+    },
+    "n8nHealth": {
+      "status": "PASS",
+      "httpStatus": 200
+    },
+    "n8nProductionWebhook": {
+      "status": "FAIL",
+      "httpStatus": 404
+    },
+    "backendAiRuntime": {
+      "status": "FAIL",
+      "httpStatus": 502
+    },
+    "playwrightE2E": {
+      "status": "FAIL",
+      "reportedAggregatePercent": 86,
+      "note": "Aggregate score is not a functional pass; several downstream scenarios produced false positives after AI calls failed."
+    },
+    "commentTarget": {
+      "status": "BLOCKED",
+      "reason": "No safe deterministic COMMENT fixture was available."
+    },
+    "cleanup": {
+      "status": "PASS",
+      "activeReportsLeft": 0
+    }
+  },
+  "priorityCounts": {
+    "P0": 1,
+    "P1": 4,
+    "P2": 4,
+    "P3": 1
+  },
+  "primaryBlocker": "n8n production webhook cafestory-admin-report-ai-resolution returns HTTP 404"
+}

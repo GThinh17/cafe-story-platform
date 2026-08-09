@@ -1,0 +1,23 @@
+G0-12D runtime verification summary
+workflow_id=cafestory-admin-report-ai-resolution-v2
+published_version_id=4e221ccf-12a3-4583-8336-c4fda22b5b70
+published_active=true
+repo_runtime_node_parity=5/5
+openai_provider_auth_http=200
+valid_request_http=200
+provider_response_received=true
+response_signature_verified=true
+decision=NEEDS_MANUAL_REVIEW
+target_action=NO_ACTION
+score_fields_absent=true
+replay_execution_status=error
+stale_execution_status=error
+future_execution_status=error
+invalid_signature_execution_status=error
+tampered_body_execution_status=error
+missing_headers_execution_status=error
+negative_transport_behavior=http_200_empty_body
+backend_fail_closed_on_unsigned_or_empty_response=true
+nonce_files_persisted_across_restart=true
+secret_values_printed=false
+status=PASS_WITH_DOCUMENTED_TRANSPORT_HARDENING

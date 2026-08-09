@@ -1,0 +1,15 @@
+Transaction-scoped negative probes:
+
+CHECK_INVALID_AUTOMATION=PASS
+CHECK_MANUAL_REVIEW_NO_ACTION=PASS
+CHECK_UNIQUE_CORRELATION=PASS
+CHECK_UNIQUE_IDEMPOTENCY=PASS
+ROLLBACK
+POST_ROLLBACK_ROWS=0
+
+Initial probe issue:
+- Invalid fixture decision NO_VIOLATION was rejected by the existing report-decision constraint.
+- Classification: TEST_BUG.
+- Corrected fixture: REJECT/NO_ACTION.
+- No source or migration was changed.
+
