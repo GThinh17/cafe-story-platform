@@ -394,10 +394,12 @@ public class ReportModerationServiceImpl implements ReportModerationService {
 
     private List<String> imageUrls(ContentReport report) {
         if (report.getTargetType() == ReportTargetType.BLOG && report.getBlog() != null) {
-            return report.getBlog().getImageUrls() == null ? List.of() : report.getBlog().getImageUrls();
+            return report.getBlog().getImageUrls() == null ? List.of() : List.copyOf(report.getBlog().getImageUrls());
         }
         if (report.getTargetType() == ReportTargetType.COMMENT && report.getComment() != null) {
-            return report.getComment().getImageUrls() == null ? List.of() : report.getComment().getImageUrls();
+            return report.getComment().getImageUrls() == null
+                    ? List.of()
+                    : List.copyOf(report.getComment().getImageUrls());
         }
         return List.of();
     }
