@@ -124,6 +124,5 @@ export type TopCafe = {
   id?: string;
   name: string;
   avatarUrl?: string;
-  rating: string;
   type: string;
 };

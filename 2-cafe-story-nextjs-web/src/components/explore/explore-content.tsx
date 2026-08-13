@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ExploreSearchHeader } from "@/components/cafe/explore-search-header";
 import { ExploreTabs } from "@/components/explore/explore-tabs";
@@ -8,8 +8,8 @@ import { ExploreCafeCard } from "@/components/explore/explore-cafe-card";
 import { ExploreReviewerCard } from "@/components/explore/explore-reviewer-card";
 import { ExploreBlogGrid } from "@/components/explore/explore-blog-grid";
 import { PostCommentsModal } from "@/components/feed/post-comments-modal";
-import { mapBlogResponsesToFeedPosts } from "@/features/blogs/blog-feed-adapter";
-import { getBlogById, getTrendingBlogs } from "@/lib/api/blogs";
+import { mapBlogTrendingToFeedPosts } from "@/features/blogs/blog-feed-adapter";
+import { getTrendingBlogs } from "@/lib/api/blogs";
 import { getAllCafePages, getTopCafePages } from "@/lib/api/cafes";
 import {
   getAllActiveReviewers,
@@ -192,10 +192,16 @@ function ExploreContentInner() {
   const [cafes, setCafes] = useState<ExploreCafeItem[]>([]);
   const [reviewers, setReviewers] = useState<ExploreReviewerItem[]>([]);
   const [trendingPosts, setTrendingPosts] = useState<FeedPost[]>([]);
-  const [loadedTabs, setLoadedTabs] = useState<Partial<Record<ExploreTab, boolean>>>({});
   const [errors, setErrors] = useState<Partial<Record<ExploreTab, string>>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [selectedPost, setSelectedPost] = useState<FeedPost | null>(null);
+
+  // What a tab's results actually depend on. Switching tabs is not one of those
+  // things, so each tab records the key it was last loaded for and skips the
+  // refetch on the way back. Previously only `trending` was guarded, and the
+  // cafe/reviewer region cascade re-ran in full on every tab switch.
+  const loadKey = `${searchQuery}|${user?.userId ?? "anon"}`;
+  const loadedKeysRef = useRef<Partial<Record<ExploreTab, string>>>({});
 
   const loadCafes = useCallback(async () => {
     setIsLoading(true);
@@ -210,7 +216,6 @@ function ExploreContentInner() {
       }));
     } finally {
       setIsLoading(false);
-      setLoadedTabs((prev) => ({ ...prev, cafes: true }));
     }
   }, [searchQuery, t, user]);
 
@@ -228,7 +233,6 @@ function ExploreContentInner() {
       }));
     } finally {
       setIsLoading(false);
-      setLoadedTabs((prev) => ({ ...prev, reviewers: true }));
     }
   }, [searchQuery, t, user]);
 
@@ -236,16 +240,7 @@ function ExploreContentInner() {
     setIsLoading(true);
     try {
       const trending = await getTrendingBlogs({ page: 0, size: 12, windowType: "HOUR_24" });
-      const blogResults = await Promise.allSettled(
-        trending.map((item) => getBlogById(item.blogId)),
-      );
-      const blogs = blogResults
-        .filter(
-          (r): r is PromiseFulfilledResult<Awaited<ReturnType<typeof getBlogById>>> =>
-            r.status === "fulfilled",
-        )
-        .map((r) => r.value);
-      setTrendingPosts(mapBlogResponsesToFeedPosts(blogs, t));
+      setTrendingPosts(mapBlogTrendingToFeedPosts(trending, t));
       setErrors((prev) => ({ ...prev, trending: undefined }));
     } catch (err) {
       setErrors((prev) => ({
@@ -255,29 +250,31 @@ function ExploreContentInner() {
       }));
     } finally {
       setIsLoading(false);
-      setLoadedTabs((prev) => ({ ...prev, trending: true }));
     }
   }, [t]);
 
   useEffect(() => {
-    if (activeTab === "trending") {
-      if (!loadedTabs.trending) void loadTrending();
+    if (loadedKeysRef.current[activeTab] === loadKey) {
       return;
     }
-    if (activeTab === "cafes") {
-      void loadCafes();
-      return;
-    }
-    if (activeTab === "reviewers") {
-      void loadReviewers();
-    }
-  }, [activeTab, searchQuery]);
+    loadedKeysRef.current[activeTab] = loadKey;
+
+    const load =
+      activeTab === "trending"
+        ? loadTrending
+        : activeTab === "cafes"
+          ? loadCafes
+          : loadReviewers;
+
+    // Clear the marker on failure so coming back to the tab retries instead of
+    // leaving the user stuck on an error until they reload the page.
+    void load().catch(() => {
+      loadedKeysRef.current[activeTab] = undefined;
+    });
+  }, [activeTab, loadKey, loadCafes, loadReviewers, loadTrending]);
 
   function handleTabChange(tab: ExploreTab) {
     setActiveTab(tab);
-    if (tab !== "trending") {
-      setLoadedTabs((prev) => ({ ...prev, [tab]: false }));
-    }
   }
 
   function handlePostLikeClick(post: FeedPost) {

@@ -12,13 +12,12 @@ import { getMe } from "@/lib/api/auth";
 import { getMixedFeed } from "@/lib/api/feed";
 import { getTopCafePages } from "@/lib/api/cafes";
 import { getConversations } from "@/lib/api/chat";
-import { getFollowingTargetsByUserId } from "@/lib/api/users";
+import { getFollowingTargetsByUserId, getUserById } from "@/lib/api/users";
 import { DEFAULT_AVATAR_IMAGE } from "@/lib/avatar";
 import { imageWidths, optimizeImageUrl } from "@/lib/image-optimizer";
 import { getServerTranslator } from "@/lib/i18n/server";
 import { ACCESS_TOKEN_COOKIE } from "@/lib/routes";
 import type { Translate } from "@/lib/i18n";
-import type { AuthUser } from "@/types/auth";
 import type { CafePageRankingResponse } from "@/types/cafe";
 import type { FeedRenderableItem, StoryItem, TopCafe } from "@/types/feed";
 import type { FollowTargetResponse } from "@/types/user";
@@ -39,24 +38,55 @@ const getMeCached = cache((cookieHeader: string) =>
   getMe({ headers: { Cookie: cookieHeader } }).catch(() => null),
 );
 
+type ViewerRegion = {
+  area: string | null;
+  city: string | null;
+  province: string | null;
+};
+
+/**
+ * `/api/auth/me` only carries identity fields — the region lives on the user
+ * profile, so it has to be read separately or every viewer looks region-less.
+ */
+const getViewerRegionCached = cache(
+  async (cookieHeader: string): Promise<ViewerRegion | null> => {
+    const me = await getMeCached(cookieHeader);
+    const userId = me?.user?.userId;
+    if (!userId) return null;
+
+    try {
+      const profile = await getUserById(userId, {
+        headers: { Cookie: cookieHeader },
+      });
+      return {
+        area: profile.regionArea?.trim() || null,
+        city: profile.regionCity?.trim() || null,
+        province: profile.regionProvince?.trim() || null,
+      };
+    } catch {
+      return null;
+    }
+  },
+);
+
 /**
  * Narrowest region the viewer belongs to first, widening only when a level has
  * no cafe pages. Mirrors the cascade in `explore-content.tsx` so "near you"
  * means the same thing on both screens. Without this the endpoint ranks
  * nationally and a Da Nang page can surface for a Can Tho viewer.
  */
-function buildRegionCascade(user: AuthUser | null) {
+function buildRegionCascade(region: ViewerRegion | null) {
   const params: Array<{ area?: string; city?: string; province?: string }> = [];
-  if (user?.regionArea) params.push({ area: user.regionArea });
-  if (user?.regionCity) params.push({ city: user.regionCity });
-  if (user?.regionProvince) params.push({ province: user.regionProvince });
+  if (region?.area) params.push({ area: region.area });
+  if (region?.city) params.push({ city: region.city });
+  if (region?.province) params.push({ province: region.province });
   return params;
 }
 
 async function loadTopCafes(
   t: Translate,
   cookieHeader: string,
-  user: AuthUser | null,
+  region: ViewerRegion | null,
 ): Promise<TopCafe[]> {
   const toTopCafe = (cafe: CafePageRankingResponse): TopCafe => ({
     id: cafe.id,
@@ -64,14 +94,12 @@ async function loadTopCafes(
     avatarUrl: optimizeImageUrl(cafe.avatarUrl, {
       width: imageWidths.cafeAvatar,
     }),
-    rating:
-      typeof cafe.rankingScore === "number"
-        ? cafe.rankingScore.toFixed(1)
-        : t("home.newRating"),
     type: cafe.regionCity ?? t("home.cafePageLabel"),
   });
 
-  for (const regionParam of buildRegionCascade(user)) {
+  const cascade = buildRegionCascade(region);
+
+  for (const regionParam of cascade) {
     try {
       const cafes = await getTopCafePages(
         { ...regionParam, size: 5 },
@@ -81,6 +109,12 @@ async function loadTopCafes(
     } catch {
       /* try the next, wider region */
     }
+  }
+
+  // A viewer with a region set must never be shown another province: the
+  // national ranking is only a fallback for viewers whose region is unknown.
+  if (cascade.length > 0) {
+    return [];
   }
 
   try {
@@ -317,8 +351,8 @@ async function TopCafesSection({
   hasSession: boolean;
 }) {
   const t = await getServerTranslator();
-  const me = hasSession ? await getMeCached(cookieHeader) : null;
-  const topCafes = await loadTopCafes(t, cookieHeader, me?.user ?? null);
+  const region = hasSession ? await getViewerRegionCached(cookieHeader) : null;
+  const topCafes = await loadTopCafes(t, cookieHeader, region);
 
   if (topCafes.length === 0) {
     return null;

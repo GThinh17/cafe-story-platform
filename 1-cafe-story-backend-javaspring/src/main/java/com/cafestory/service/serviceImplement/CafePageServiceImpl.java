@@ -188,7 +188,10 @@ public class CafePageServiceImpl implements CafePageService {
 
     @Override
     @Transactional(readOnly = true)
-    @Cacheable(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, key = "'top:' + (#p0 == null ? 'none' : #p0) + ':' + (#p1 == null ? 'none' : #p1) + ':' + (#p2 == null ? 'none' : #p2) + ':' + (#p3 == null ? 'none' : #p3) + ':' + #p4")
+    // The viewer belongs in the key: the response carries isFollowing, which is
+    // per-viewer, so leaving p5 out served the first caller's follow state to
+    // everyone else looking at the same region.
+    @Cacheable(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, key = "'top:' + (#p0 == null ? 'none' : #p0) + ':' + (#p1 == null ? 'none' : #p1) + ':' + (#p2 == null ? 'none' : #p2) + ':' + (#p3 == null ? 'none' : #p3) + ':' + #p4 + ':' + (#p5 == null ? 'anon' : #p5)")
     public List<CafePageRankingResponseDTO> getTopCafePages(UUID regionId, String city, String area, String province, int size, UUID viewerUserId) {
         String normalizedCity = normalizeString(city);
         String normalizedArea = normalizeString(area);

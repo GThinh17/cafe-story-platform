@@ -139,13 +139,31 @@ export type CommentCreateRequest = {
   imageUrls?: string[];
 };
 
+/**
+ * Mirrors `BlogTrendingResponse.java` field for field. The trending endpoint
+ * already bulk-hydrates images, counters and the viewer's like/save state, so
+ * nothing here needs a follow-up `GET /api/blogs/{id}`.
+ */
 export type BlogTrendingResponse = {
   blogId: string;
   contentPreview: string | null;
+  imageUrls?: string[] | null;
+  likeCount?: number | null;
+  commentCount?: number | null;
+  shareCount?: number | null;
   authorUserId: string;
   authorUserName: string | null;
+  authorUserFullName?: string | null;
+  authorUserAvatar?: string | null;
   pageId: string | null;
   pageName: string | null;
+  pageAvatarUrl?: string | null;
+  pageCoverUrl?: string | null;
+  displayAuthorType?: BlogDisplayAuthorType | null;
+  displayName?: string | null;
+  displayAvatarUrl?: string | null;
+  isLike?: boolean | null;
+  isSave?: boolean | null;
   windowType: TrendWindowType;
   trendScore: number | null;
   rankPosition: number | null;

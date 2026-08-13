@@ -583,7 +583,25 @@ class BlogServiceImplTest {
 
         blogService.deleteBlog(blogId, actorUserId);
 
-        verify(blogRepository).delete(blog);
+        // Xoá mềm: giữ lại bản ghi, chỉ chuyển trạng thái sang REMOVED.
+        assertThat(blog.getStatus()).isEqualTo(PostStatus.REMOVED);
+        verify(blogRepository).save(blog);
+        verify(blogRepository, never()).delete(any(Blog.class));
+    }
+
+    @Test
+    void deleteBlog_alreadyRemoved_isNoOp_TC016b() {
+        UUID blogId = UUID.randomUUID();
+        Blog blog = blog();
+        blog.setStatus(PostStatus.REMOVED);
+        UUID actorUserId = blog.getAuthor().getUserId();
+
+        when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
+
+        blogService.deleteBlog(blogId, actorUserId);
+
+        verify(blogRepository, never()).save(any(Blog.class));
+        verify(blogRepository, never()).delete(any(Blog.class));
     }
 
     @Test

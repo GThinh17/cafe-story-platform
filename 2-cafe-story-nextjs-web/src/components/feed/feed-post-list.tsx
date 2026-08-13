@@ -8,12 +8,14 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PostActionConfirmDialog } from "@/components/feed/post-action-confirm-dialog";
 import { PostCard } from "@/components/feed/post-card";
 import { PostCommentsModal } from "@/components/feed/post-comments-modal";
 import { ReportPostModal } from "@/components/feed/report-post-modal";
 import { SponsoredCafeCard } from "@/components/feed/sponsored-cafe-card";
 import { mapMixedFeedToRenderableItems } from "@/features/blogs/blog-feed-adapter";
 import {
+  deleteBlog,
   likeBlog,
   saveBlog,
   shareBlog,
@@ -58,6 +60,9 @@ export function FeedPostList({
   const [unshareConfirmPost, setUnshareConfirmPost] = useState<FeedPost | null>(null);
   const [isSharePending, setIsSharePending] = useState(false);
   const [reportingPost, setReportingPost] = useState<FeedPost | null>(null);
+  const [deleteConfirmPost, setDeleteConfirmPost] = useState<FeedPost | null>(null);
+  const [isDeletePending, setIsDeletePending] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const { user } = useCurrentUser();
 
   const selectedPost = useMemo(
@@ -253,6 +258,34 @@ export function FeedPostList({
     }
   }
 
+  async function handleConfirmDelete(post: FeedPost) {
+    if (!post.id || isDeletePending) {
+      return;
+    }
+
+    setIsDeletePending(true);
+    setDeleteError(null);
+
+    try {
+      await deleteBlog(post.id);
+      // Only drop the card once the server confirms: an optimistic removal would
+      // leave the author with no way to get the post back if the call failed.
+      setFeedItems((currentItems) =>
+        currentItems.filter(
+          (item) => !(item.kind === "post" && item.post.id === post.id),
+        ),
+      );
+      if (selectedPostId === post.id) {
+        setSelectedPostId(null);
+      }
+      setDeleteConfirmPost(null);
+    } catch {
+      setDeleteError(t("feed.delete.error"));
+    } finally {
+      setIsDeletePending(false);
+    }
+  }
+
   async function handleConfirmUnshare(post: FeedPost) {
     if (!post.id || isSharePending) {
       return;
@@ -321,6 +354,7 @@ export function FeedPostList({
                   setSelectedPostId(selectedPost.id);
                 }
               }}
+              onDeleteClick={setDeleteConfirmPost}
               onLikeClick={handleLikeClick}
               onReportClick={setReportingPost}
               onSaveClick={handleSaveClick}
@@ -370,6 +404,7 @@ export function FeedPostList({
             setSelectedPostId(null);
           }
         }}
+        onPostDeleteClick={setDeleteConfirmPost}
         onPostLikeClick={handleLikeClick}
         onPostSaveClick={handleSaveClick}
         post={selectedPost}
@@ -487,6 +522,22 @@ export function FeedPostList({
           </div>
         </DialogContent>
       </Dialog>
+
+      <PostActionConfirmDialog
+        cancelLabel={t("feed.delete.keep")}
+        confirmLabel={t("feed.delete.confirm")}
+        errorMessage={deleteError}
+        isPending={isDeletePending}
+        notice={t("feed.delete.notice")}
+        onCancel={() => {
+          setDeleteConfirmPost(null);
+          setDeleteError(null);
+        }}
+        onConfirm={(post) => void handleConfirmDelete(post)}
+        pendingLabel={t("feed.delete.pending")}
+        post={deleteConfirmPost}
+        title={t("feed.delete.title")}
+      />
     </>
   );
 }

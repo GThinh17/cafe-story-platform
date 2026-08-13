@@ -35,7 +35,7 @@ export function TopCafesNearby({ cafes }: TopCafesNearbyProps) {
                 {cafe.name}
               </span>
               <span className="block text-xs font-medium text-muted">
-                {cafe.rating} - {cafe.type}
+                {cafe.type}
               </span>
             </span>
             <span className="text-xs font-bold text-primary">{t("topCafes.view")}</span>

@@ -91,10 +91,35 @@ export async function createModeratedBlog(
 }
 
 export function getBlogById(blogId: string, options: ApiRequestOptions = {}) {
-  return apiFetch<BlogResponse>(apiEndpoints.blogs.byId(blogId), {
+  return cachedApiCall(`blogs:detail:${blogId}`, apiCacheTtl.dynamic, () =>
+    apiFetch<BlogResponse>(apiEndpoints.blogs.byId(blogId), {
+      headers: options.headers,
+      method: "GET",
+    }),
+  );
+}
+
+/**
+ * The detail response carries the viewer's own like/save state and the counters,
+ * so any interaction with a blog has to drop its cached copy.
+ */
+function invalidateBlogDetailCache(blogId: string) {
+  invalidateApiCache(`blogs:detail:${blogId}`);
+}
+
+/**
+ * Soft delete — the backend flips the post to REMOVED and hides it from every read
+ * path, so the caller only has to drop it from whatever list it is rendering.
+ */
+export async function deleteBlog(blogId: string, options: ApiRequestOptions = {}) {
+  await apiFetch<void>(apiEndpoints.blogs.byId(blogId), {
     headers: options.headers,
-    method: "GET",
+    method: "DELETE",
   });
+  invalidateBlogDetailCache(blogId);
+  invalidateApiCache("blogs:by-user:");
+  invalidateApiCache("blogs:shared-by-user:");
+  invalidateBlogSaveCache();
 }
 
 export function getBlogsByUser(
@@ -120,16 +145,17 @@ export function getTrendingBlogs(
   params: Omit<BlogFeedParams, "regionId"> = {},
   options: ApiRequestOptions = {},
 ) {
-  return apiFetch<BlogTrendingResponse[]>(
-    withQuery(apiEndpoints.blogs.trending, {
-      page: params.page,
-      size: params.size,
-      windowType: params.windowType,
-    }),
-    {
+  const path = withQuery(apiEndpoints.blogs.trending, {
+    page: params.page,
+    size: params.size,
+    windowType: params.windowType,
+  });
+
+  return cachedApiCall(`blogs:trending:${path}`, apiCacheTtl.dynamic, () =>
+    apiFetch<BlogTrendingResponse[]>(path, {
       headers: options.headers,
       method: "GET",
-    },
+    }),
   );
 }
 
@@ -144,6 +170,7 @@ export async function likeBlog(blogId: string, options: ActorContextOptions = {}
     method: "POST",
     },
   );
+  invalidateBlogDetailCache(blogId);
   invalidateApiCache("blogs:likes-by-user:");
   return response;
 }
@@ -156,6 +183,7 @@ export async function unlikeBlog(blogId: string, options: ActorContextOptions = 
     headers: options.headers,
     method: "DELETE",
   });
+  invalidateBlogDetailCache(blogId);
   invalidateApiCache("blogs:likes-by-user:");
 }
 
@@ -211,6 +239,7 @@ export async function shareBlog(
       method: "POST",
     },
   );
+  invalidateBlogDetailCache(blogId);
   invalidateApiCache("blogs:shared-by-user:");
   return response;
 }
@@ -219,6 +248,7 @@ export async function unshareBlog(blogId: string) {
   await apiFetch<void>(apiEndpoints.blogs.shares(blogId), {
     method: "DELETE",
   });
+  invalidateBlogDetailCache(blogId);
   invalidateApiCache("blogs:shared-by-user:");
 }
 
@@ -230,6 +260,7 @@ export async function saveBlog(blogId: string, options: ApiRequestOptions = {}) 
       method: "POST",
     },
   );
+  invalidateBlogDetailCache(blogId);
   invalidateBlogSaveCache();
   return response;
 }
@@ -239,6 +270,7 @@ export async function unsaveBlog(blogId: string, options: ApiRequestOptions = {}
     headers: options.headers,
     method: "DELETE",
   });
+  invalidateBlogDetailCache(blogId);
   invalidateBlogSaveCache();
 }
 

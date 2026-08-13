@@ -7,6 +7,7 @@ import {
   MoreHorizontalIcon,
   Repeat2Icon,
   SmileIcon,
+  Trash2Icon,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -49,8 +50,10 @@ type PostCommentsModalProps = {
     patch: Pick<FeedPost, "commentCount" | "comments">,
   ) => void;
   onOpenChange: (open: boolean) => void;
+  onPostDeleteClick?: (post: FeedPost) => void;
   onPostLikeClick: (post: FeedPost) => void;
   onPostSaveClick?: (post: FeedPost) => void;
+  onPostUnshareClick?: (post: FeedPost) => void;
   post: FeedPost | null;
 };
 
@@ -347,8 +350,10 @@ export function PostCommentsModal({
   currentUser,
   onCommentCountChange,
   onOpenChange,
+  onPostDeleteClick,
   onPostLikeClick,
   onPostSaveClick,
+  onPostUnshareClick,
   post,
 }: PostCommentsModalProps) {
   const { t } = useI18n();
@@ -428,7 +433,10 @@ export function PostCommentsModal({
 
     setResolvedAllowComment(post.allowComment ?? null);
 
-    if (post.allowComment === false) {
+    // Feed and profile items already carry allowComment, so trust it and skip the
+    // round trip. Only trending items reach here undefined — the trending DTO has
+    // no allowComment — and those are the ones that still need the lookup.
+    if (typeof post.allowComment === "boolean") {
       setIsLoadingCommentPermission(false);
       return;
     }
@@ -483,6 +491,11 @@ export function PostCommentsModal({
   const likeCount =
     typeof post.likeCount === "number" ? formatCount(post.likeCount) : post.likes;
   const postId = post.id;
+  const isOwnPost = Boolean(
+    currentUser?.userId &&
+      post.authorUserId &&
+      currentUser.userId === post.authorUserId,
+  );
 
   function handleReply(target: PostCommentReplyTarget) {
     if (isCommentDisabled) {
@@ -643,7 +656,7 @@ export function PostCommentsModal({
                 ) : null}
               </div>
             </div>
-            {currentUser?.userId !== post.authorUserId && post.id ? (
+            {post.id ? (
               <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -656,14 +669,48 @@ export function PostCommentsModal({
                     <MoreHorizontalIcon />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    className="!cursor-pointer focus:!bg-transparent focus:!text-inherit"
-                    onClick={() => setIsReportOpen(true)}
-                  >
-                    <FlagIcon className="size-4" />
-                    <span>{t("post.action.report")}</span>
-                  </DropdownMenuItem>
+                {/*
+                  Portaled to <body>, which sits *under* the dialog: the overlay and
+                  the dialog panel are both z-[70], so the menu's default z-50 hides
+                  it, and the modal dialog leaves body at pointer-events: none. Both
+                  have to be overridden here or the trigger looks dead.
+                */}
+                <DropdownMenuContent
+                  align="end"
+                  className="pointer-events-auto z-[80]"
+                >
+                  {isOwnPost ? (
+                    <DropdownMenuItem
+                      className="!cursor-pointer"
+                      onClick={() => onPostDeleteClick?.(post)}
+                      variant="destructive"
+                    >
+                      <Trash2Icon className="size-4" />
+                      <span>{t("post.action.delete")}</span>
+                    </DropdownMenuItem>
+                  ) : (
+                    <DropdownMenuItem
+                      className="!cursor-pointer focus:!bg-transparent focus:!text-inherit"
+                      onClick={() => setIsReportOpen(true)}
+                    >
+                      <FlagIcon className="size-4" />
+                      <span>{t("post.action.report")}</span>
+                    </DropdownMenuItem>
+                  )}
+                  {/*
+                    Independent of authorship: you can share someone else's post, and
+                    you can share your own. Both are undone from here.
+                  */}
+                  {post.isShared && onPostUnshareClick ? (
+                    <DropdownMenuItem
+                      className="!cursor-pointer"
+                      onClick={() => onPostUnshareClick(post)}
+                      variant="destructive"
+                    >
+                      <Repeat2Icon className="size-4" />
+                      <span>{t("post.action.unshare")}</span>
+                    </DropdownMenuItem>
+                  ) : null}
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : null}

@@ -85,6 +85,17 @@ function buildCafeTags(cafe: CafePageResponse, t: Translate) {
   ].filter(Boolean) as string[];
 }
 
+/**
+ * The backend returns `0.0`, not null, for a cafe nobody has rated yet, so a bare
+ * `typeof === "number"` check renders "0.0" as if it were a real average. Anything
+ * at or below zero is "no rating yet" — same rule as `CafeRatingControl`.
+ */
+function formatRatingScore(score: number | null | undefined, t: Translate) {
+  return typeof score === "number" && score > 0
+    ? score.toFixed(1)
+    : t("cafe.newRating");
+}
+
 function mapCafePageResponseToCafeSummary(
   cafe: CafePageResponse,
   t: Translate,
@@ -98,10 +109,7 @@ function mapCafePageResponseToCafeSummary(
     optimizeImageUrl(firstNonEmpty([cafe.coverUrl, cafe.avatarUrl]), {
       width: imageWidths.cover,
     }) || undefined;
-  const rating =
-    typeof cafe.ratingScore === "number"
-      ? cafe.ratingScore.toFixed(1)
-      : t("cafe.newRating");
+  const rating = formatRatingScore(cafe.ratingScore, t);
   const tags = buildCafeTags(cafe, t);
   const description =
     cafe.description?.trim() || t("cafe.defaultDescription", { name: cafe.name });
@@ -444,10 +452,7 @@ export function CafePageContent({ cafePageId }: CafePageContentProps) {
               myRating: next.myRating,
               ratingCount: next.ratingCount,
               ratingScore: next.ratingScore,
-              rating:
-                typeof next.ratingScore === "number" && next.ratingScore > 0
-                  ? next.ratingScore.toFixed(1)
-                  : t("cafe.newRating"),
+              rating: formatRatingScore(next.ratingScore, t),
               reviewCount: t("cafe.ratingCount", {
                 count: formatCount(next.ratingCount),
               }),

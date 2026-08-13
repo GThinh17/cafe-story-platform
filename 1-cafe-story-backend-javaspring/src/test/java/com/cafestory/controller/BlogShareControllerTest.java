@@ -54,6 +54,16 @@ class BlogShareControllerTest {
     }
 
     @Test
+    void deleteShare_success_TC004() {
+        UUID blogId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        blogShareController.deleteShare(blogId, principal(userId));
+
+        verify(blogShareService).deleteShare(blogId, userId);
+    }
+
+    @Test
     void getSharesByBlogId_success_TC002() {
         UUID blogId = UUID.randomUUID();
         List<BlogShareResponseDTO> response = List.of(response());

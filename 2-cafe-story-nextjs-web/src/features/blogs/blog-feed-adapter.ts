@@ -1,5 +1,9 @@
 import { imageWidths, optimizeImageUrl } from "@/lib/image-optimizer";
-import type { BlogFeedResponse, BlogResponse } from "@/types/blog";
+import type {
+  BlogFeedResponse,
+  BlogResponse,
+  BlogTrendingResponse,
+} from "@/types/blog";
 import type { Translate } from "@/lib/i18n";
 import type {
   FeedPost,
@@ -174,6 +178,85 @@ export function mapBlogFeedToFeedPosts(
       time: formatRelativeTime(item.createdAt, t),
       isAuthorFollowing: item.isAuthorFollowing ?? false,
       isPageFollowing: item.isPageFollowing ?? false,
+    };
+  });
+}
+
+/**
+ * `GET /api/blogs/trending` already returns images, counters and the viewer's
+ * like/save state, so a trending card renders from the list response alone.
+ *
+ * Two fields the trending DTO genuinely does not carry:
+ * - `allowComment` stays undefined on purpose. The comments modal treats that as
+ *   "unknown" and looks it up once, which is the only way a locked-comment post
+ *   opened from /explore is honoured.
+ * - there is no region on the DTO, so `location`/`tags` are empty rather than wrong.
+ */
+export function mapBlogTrendingToFeedPosts(
+  trending: BlogTrendingResponse[],
+  t: Translate,
+): FeedPost[] {
+  return trending.map((item, index) => {
+    const authorUsername = firstNonEmpty([item.authorUserName]);
+    const pageName = firstNonEmpty([item.pageName]);
+    const media = mapImageUrlsToMedia(
+      item.imageUrls,
+      item.blogId,
+      t,
+      firstNonEmpty([item.displayName, pageName, authorUsername]),
+    );
+    const image = optimizeImageUrl(
+      firstNonEmpty([
+        ...media.map((mediaItem) => mediaItem.src),
+        item.pageCoverUrl,
+        item.pageAvatarUrl,
+      ]),
+      { width: imageWidths.postMedia },
+    ) || undefined;
+
+    return {
+      id: item.blogId,
+      author:
+        firstNonEmpty([item.authorUserName, item.authorUserFullName]) ??
+        "cafestory_user",
+      authorUserId: item.authorUserId,
+      authorUsername,
+      authorAvatar: optimizeImageUrl(
+        firstNonEmpty([item.displayAvatarUrl, item.authorUserAvatar]) ??
+          "/images/default-avatar.svg",
+        { width: imageWidths.avatar },
+      ),
+      cafe: pageName ?? "",
+      caption: item.contentPreview?.trim() || t("feed.defaultCaption"),
+      commentCount: item.commentCount ?? 0,
+      comments: formatCount(item.commentCount),
+      displayAuthorType: item.displayAuthorType ?? undefined,
+      displayAvatarUrl:
+        optimizeImageUrl(firstNonEmpty([item.displayAvatarUrl]), {
+          width: imageWidths.avatar,
+        }) || undefined,
+      displayName: firstNonEmpty([item.displayName]),
+      image: image ?? fallbackImages[index % fallbackImages.length],
+      isLiked: item.isLike ?? false,
+      likeCount: item.likeCount ?? 0,
+      likes: formatCount(item.likeCount),
+      location: "",
+      media,
+      pageAvatarUrl:
+        optimizeImageUrl(firstNonEmpty([item.pageAvatarUrl]), {
+          width: imageWidths.avatar,
+        }) || undefined,
+      pageId: item.pageId,
+      pageName,
+      rating: item.rankPosition ? `#${item.rankPosition}` : "Trending",
+      shares: formatCount(item.shareCount),
+      saves: formatCount(0),
+      saveCount: 0,
+      isSaved: item.isSave ?? false,
+      isAuthorFollowing: false,
+      isPageFollowing: false,
+      tags: [],
+      time: formatRelativeTime(item.createdAt, t),
     };
   });
 }

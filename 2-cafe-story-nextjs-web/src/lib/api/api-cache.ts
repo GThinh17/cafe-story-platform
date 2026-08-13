@@ -1,6 +1,10 @@
+// The promise is stored, not the resolved value, so callers that arrive while a
+// request is still in flight join that request instead of starting their own.
+// Screens that fan out over a list (mention picker, notification actors, chat
+// participants) ask for the same key many times within the same tick.
 type CacheEntry<T> = {
   expiresAt: number;
-  value: T;
+  promise: Promise<T>;
 };
 
 const apiCache = new Map<string, CacheEntry<unknown>>();
@@ -11,7 +15,7 @@ function isBrowser() {
   return typeof window !== "undefined";
 }
 
-export async function cachedApiCall<T>(
+export function cachedApiCall<T>(
   key: string,
   ttlMs: number,
   loader: () => Promise<T>,
@@ -24,15 +28,23 @@ export async function cachedApiCall<T>(
   const cached = apiCache.get(key) as CacheEntry<T> | undefined;
 
   if (cached && cached.expiresAt > now) {
-    return cached.value;
+    return cached.promise;
   }
 
-  const value = await loader();
-  apiCache.set(key, {
-    expiresAt: now + ttlMs,
-    value,
+  const promise = loader();
+  const entry: CacheEntry<T> = { expiresAt: now + ttlMs, promise };
+  apiCache.set(key, entry);
+
+  // A failed request must not be served for the rest of the TTL. Only drop the
+  // entry if it is still the one this call installed — a later invalidate or a
+  // newer request may already have replaced it.
+  promise.catch(() => {
+    if (apiCache.get(key) === entry) {
+      apiCache.delete(key);
+    }
   });
-  return value;
+
+  return promise;
 }
 
 export function invalidateApiCache(keyOrPrefix?: string) {

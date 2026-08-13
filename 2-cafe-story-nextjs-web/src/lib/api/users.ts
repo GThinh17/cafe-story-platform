@@ -166,4 +166,7 @@ function invalidateFollowCache(userId: string) {
   invalidateApiCache("users:following-targets:");
   invalidateApiCache("users:followers:");
   invalidateApiCache("auth:me");
+  // Reviewer discovery DTOs carry the viewer's own isFollowing, so they go stale
+  // the moment a follow changes.
+  invalidateApiCache("reviewers:");
 }

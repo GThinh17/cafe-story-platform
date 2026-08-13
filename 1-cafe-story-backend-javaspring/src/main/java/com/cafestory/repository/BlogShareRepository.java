@@ -18,6 +18,10 @@ public interface BlogShareRepository extends JpaRepository<BlogShare, UUID> {
     @EntityGraph(attributePaths = {"user", "actorCafePage"})
     List<BlogShare> findByUserUserId(UUID userId);
 
+    // Nothing stops a user from sharing the same blog twice, so this returns a list
+    // rather than an Optional — unsharing clears every one of them.
+    List<BlogShare> findByUserUserIdAndBlogId(UUID userId, UUID blogId);
+
     @Query("""
             select distinct share.blog.id
             from BlogShare share

@@ -18,6 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.UUID;
@@ -86,6 +88,44 @@ class BlogShareServiceImplTest {
                 .hasMessageContaining("Page only share requires a blog that belongs to a page");
 
         verify(blogShareRepository, never()).save(any(BlogShare.class));
+    }
+
+    @Test
+    void deleteShare_success_removesEveryShareAndRestoresCount_TC005() {
+        UUID blogId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        Blog blog = blog(blogId);
+        blog.setShareCount(3);
+        User user = user(userId);
+        List<BlogShare> shares = List.of(
+                blogShare(UUID.randomUUID(), blog, user, ShareType.PUBLIC),
+                blogShare(UUID.randomUUID(), blog, user, ShareType.PUBLIC));
+
+        when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
+        when(blogShareRepository.findByUserUserIdAndBlogId(userId, blogId)).thenReturn(shares);
+
+        blogShareService.deleteShare(blogId, userId);
+
+        verify(blogShareRepository).deleteAll(shares);
+        // Chia sẻ 2 lần thì gỡ trả lại đúng 2 điểm, không âm.
+        assertThat(blog.getShareCount()).isEqualTo(1);
+    }
+
+    @Test
+    void deleteShare_fail_notShared_TC006() {
+        UUID blogId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        Blog blog = blog(blogId);
+
+        when(blogValidator.validateBlogExists(blogId)).thenReturn(blog);
+        when(blogShareRepository.findByUserUserIdAndBlogId(userId, blogId)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> blogShareService.deleteShare(blogId, userId))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(error -> assertThat(((ResponseStatusException) error).getStatusCode())
+                        .isEqualTo(HttpStatus.NOT_FOUND));
+
+        assertThat(blog.getShareCount()).isZero();
     }
 
     @Test

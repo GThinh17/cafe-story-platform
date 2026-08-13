@@ -6,6 +6,7 @@ import {
   MessageCircleIcon,
   MoreHorizontalIcon,
   Repeat2Icon,
+  Trash2Icon,
 } from "lucide-react";
 import Link from "next/link";
 import { useI18n } from "@/components/providers/locale-provider";
@@ -41,6 +42,7 @@ type PostCardProps = {
   currentUserId?: string;
   eagerMedia?: boolean;
   onCommentClick?: (post: FeedPost) => void;
+  onDeleteClick?: (post: FeedPost) => void;
   onLikeClick?: (post: FeedPost) => void;
   onReportClick?: (post: FeedPost) => void;
   onSaveClick?: (post: FeedPost) => void;
@@ -76,7 +78,7 @@ function formatPostLikeCount(post: FeedPost) {
   return typeof post.likeCount === "number" ? formatCount(post.likeCount) : post.likes;
 }
 
-export function PostCard({ currentUserId, eagerMedia, onCommentClick, onLikeClick, onReportClick, onSaveClick, onShareClick, post }: PostCardProps) {
+export function PostCard({ currentUserId, eagerMedia, onCommentClick, onDeleteClick, onLikeClick, onReportClick, onSaveClick, onShareClick, post }: PostCardProps) {
   const { t } = useI18n();
   const identity = getPostIdentity(post);
   const locationLabel = post.locationLabel?.trim() || post.location?.trim();
@@ -141,7 +143,7 @@ export function PostCard({ currentUserId, eagerMedia, onCommentClick, onLikeClic
             ) : null}
           </div>
         </div>
-        {!isOwnPost && post.id ? (
+        {post.id ? (
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <button
@@ -153,13 +155,24 @@ export function PostCard({ currentUserId, eagerMedia, onCommentClick, onLikeClic
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                className="!cursor-pointer focus:!bg-transparent focus:!text-inherit"
-                onClick={() => onReportClick?.(post)}
-              >
-                <FlagIcon className="size-4" />
-                <span>{t("post.action.report")}</span>
-              </DropdownMenuItem>
+              {isOwnPost ? (
+                <DropdownMenuItem
+                  className="!cursor-pointer"
+                  onClick={() => onDeleteClick?.(post)}
+                  variant="destructive"
+                >
+                  <Trash2Icon className="size-4" />
+                  <span>{t("post.action.delete")}</span>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  className="!cursor-pointer focus:!bg-transparent focus:!text-inherit"
+                  onClick={() => onReportClick?.(post)}
+                >
+                  <FlagIcon className="size-4" />
+                  <span>{t("post.action.report")}</span>
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         ) : null}

@@ -173,7 +173,7 @@ public class BlogServiceImpl implements BlogService {
     @Override
     @Transactional(readOnly = true)
     public List<BlogResponseDTO> getAllBlogs(UUID viewerUserId) {
-        return toBlogResponseDTOs(blogRepository.findAll(), viewerUserId);
+        return toBlogResponseDTOs(excludeRemoved(blogRepository.findAll()), viewerUserId);
     }
 
     @Override
@@ -212,10 +212,15 @@ public class BlogServiceImpl implements BlogService {
                     HttpStatus.FORBIDDEN,
                     "Only the author can view non-published blogs");
         }
+        // Deleted posts are gone for everyone, so asking for them explicitly is not a
+        // way around the filter below.
+        if (status == PostStatus.REMOVED) {
+            return List.of();
+        }
 
         List<Blog> blogs = status != null
                 ? blogRepository.findByAuthorUserIdAndStatus(userId, status)
-                : blogRepository.findByAuthorUserId(userId);
+                : excludeRemoved(blogRepository.findByAuthorUserId(userId));
 
         if (status == null && !isOwner) {
             blogs = blogs.stream()
@@ -233,7 +238,7 @@ public class BlogServiceImpl implements BlogService {
             key = "'saved:' + #p0 + ':' + (#p1 == null ? 'anon' : #p1)")
     public List<BlogResponseDTO> getSavedBlogsByUserId(UUID userId, UUID viewerUserId) {
         userValidator.validateUserExists(userId);
-        return toBlogResponseDTOs(blogRepository.findSavedBlogsByUserId(userId), viewerUserId);
+        return toBlogResponseDTOs(excludeRemoved(blogRepository.findSavedBlogsByUserId(userId)), viewerUserId);
     }
 
     @Override
@@ -243,7 +248,9 @@ public class BlogServiceImpl implements BlogService {
             key = "'shared:' + #p0 + ':' + (#p1 == null ? 'anon' : #p1)")
     public List<BlogResponseDTO> getSharedBlogsByUserId(UUID userId, UUID viewerUserId) {
         userValidator.validateUserExists(userId);
-        return toBlogResponseDTOs(distinctByBlogId(blogRepository.findSharedBlogsByUserId(userId)), viewerUserId);
+        return toBlogResponseDTOs(
+                excludeRemoved(distinctByBlogId(blogRepository.findSharedBlogsByUserId(userId))),
+                viewerUserId);
     }
 
     @Override
@@ -256,7 +263,7 @@ public class BlogServiceImpl implements BlogService {
         List<Blog> blogs = isShareCountSort(sort)
                 ? blogRepository.findSharedBlogsByUserIdOrderByShareCount(userId)
                 : blogRepository.findSharedBlogsByUserId(userId);
-        return toBlogResponseDTOs(distinctByBlogId(blogs), viewerUserId);
+        return toBlogResponseDTOs(excludeRemoved(distinctByBlogId(blogs)), viewerUserId);
     }
 
     private boolean isShareCountSort(String sort) {
@@ -271,7 +278,7 @@ public class BlogServiceImpl implements BlogService {
             key = "'tagged:' + #p0 + ':' + (#p1 == null ? 'anon' : #p1)")
     public List<BlogResponseDTO> getTaggedBlogsByUserId(UUID userId, UUID viewerUserId) {
         userValidator.validateUserExists(userId);
-        return toBlogResponseDTOs(blogRepository.findTaggedBlogsByUserId(userId), viewerUserId);
+        return toBlogResponseDTOs(excludeRemoved(blogRepository.findTaggedBlogsByUserId(userId)), viewerUserId);
     }
 
     @Override
@@ -285,7 +292,7 @@ public class BlogServiceImpl implements BlogService {
     @Transactional(readOnly = true)
     @Cacheable(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0", condition = "#p1 == null")
     public BlogResponseDTO getBlogById(UUID blogId, UUID viewerUserId) {
-        return toBlogResponseDTO(blogValidator.validateBlogExists(blogId), viewerUserId);
+        return toBlogResponseDTO(validateBlogVisible(blogId), viewerUserId);
     }
 
     @Override
@@ -345,17 +352,45 @@ public class BlogServiceImpl implements BlogService {
             @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0"),
             @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
     })
+    /**
+     * Soft delete: the row stays so likes, comments, shares and moderation history
+     * keep their foreign keys, and the RAG tombstone sweep
+     * ({@code findRagTombstoneBlogIds}) can drop the post from the index. Every read
+     * path filters {@link PostStatus#REMOVED} out, including for the author.
+     */
     public void deleteBlog(UUID blogId, UUID actorUserId) {
         Blog blog = blogValidator.validateBlogExists(blogId);
         validateBlogOwner(blog, actorUserId);
-        blogTagService.deleteBlogTags(blogId);
-        blogRepository.delete(blog);
+        if (blog.getStatus() == PostStatus.REMOVED) {
+            return;
+        }
+        blog.setStatus(PostStatus.REMOVED);
+        blogRepository.save(blog);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<BlogTaggedUserResponseDTO> getTagSuggestions(UUID actorUserId, String keyword) {
         return blogTagService.getTagSuggestions(actorUserId, keyword);
+    }
+
+    /**
+     * A soft-deleted blog is invisible on every viewer-facing list, the author's own
+     * profile included. Admin and moderation screens go through their own queries
+     * ({@code findAdminBlogs}, {@code findRagTombstoneBlogIds}) and still see it.
+     */
+    private List<Blog> excludeRemoved(List<Blog> blogs) {
+        return blogs.stream()
+                .filter(blog -> blog.getStatus() != PostStatus.REMOVED)
+                .collect(Collectors.toList());
+    }
+
+    private Blog validateBlogVisible(UUID blogId) {
+        Blog blog = blogValidator.validateBlogExists(blogId);
+        if (blog.getStatus() == PostStatus.REMOVED) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog not found");
+        }
+        return blog;
     }
 
     private void validateBlogOwner(Blog blog, UUID actorUserId) {

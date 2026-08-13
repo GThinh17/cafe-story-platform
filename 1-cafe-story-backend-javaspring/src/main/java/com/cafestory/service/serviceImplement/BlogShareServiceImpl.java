@@ -84,6 +84,30 @@ public class BlogShareServiceImpl implements BlogShareService {
         return blogInteractionMapper.toBlogShareResponseDTO(savedBlogShare);
     }
 
+    /**
+     * Mirror of {@link #shareBlog}: the web client treats sharing as a toggle on
+     * {@code isShared}, so unsharing clears every share this user made on the blog
+     * and gives the counter back the same number of points sharing took.
+     */
+    @Override
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(cacheNames = CacheConfig.BLOG_DETAIL_CACHE, key = "#p0"),
+            @CacheEvict(cacheNames = CacheConfig.USER_PROFILE_BLOGS_CACHE, allEntries = true)
+    })
+    public void deleteShare(UUID blogId, UUID userId) {
+        Blog blog = blogValidator.validateBlogExists(blogId);
+        userValidator.validateUserExists(userId);
+
+        List<BlogShare> shares = blogShareRepository.findByUserUserIdAndBlogId(userId, blogId);
+        if (shares.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Blog share not found");
+        }
+
+        blogShareRepository.deleteAll(shares);
+        decrementShareCount(blog, shares.size());
+    }
+
     @Override
     @Transactional(readOnly = true)
     public List<BlogShareResponseDTO> getSharesByBlogId(UUID blogId) {
@@ -107,6 +131,11 @@ public class BlogShareServiceImpl implements BlogShareService {
     private void incrementShareCount(Blog blog) {
         int currentCount = blog.getShareCount() == null ? 0 : blog.getShareCount();
         blog.setShareCount(currentCount + 1);
+    }
+
+    private void decrementShareCount(Blog blog, int amount) {
+        int currentCount = blog.getShareCount() == null ? 0 : blog.getShareCount();
+        blog.setShareCount(Math.max(0, currentCount - amount));
     }
 
     private ShareType resolveShareType(ShareType shareType) {

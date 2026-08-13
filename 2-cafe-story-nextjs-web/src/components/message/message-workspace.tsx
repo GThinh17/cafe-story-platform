@@ -8,6 +8,7 @@ import {
   getMessageUserAvatarImage,
   getMessageUserDisplayName,
   getMessageUserInitials,
+  type MessageUserLike,
 } from "@/components/message/message-user-utils";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { askAssistant, AiChatError } from "@/lib/api/ai-chat";
@@ -19,7 +20,7 @@ import {
 } from "@/lib/api/chat";
 import { uploadChatImageToCloudinary } from "@/lib/api/cloudinary";
 import { ApiError } from "@/lib/api/client";
-import { getFollowingByUser, getUserById } from "@/lib/api/users";
+import { getFollowingTargetsByUserId } from "@/lib/api/users";
 import type {
   ChatMessage,
   ChatMessageResponse,
@@ -29,7 +30,6 @@ import type {
   SendMessageDraft,
 } from "@/types/message";
 import type { AiChatHistoryItem } from "@/types/ai-chat";
-import type { UserResponse } from "@/types/user";
 import type { Client, StompSubscription } from "@stomp/stompjs";
 import { createStompClient } from "@/lib/api/websocket";
 import type { SocketEvent } from "@/types/message";
@@ -97,12 +97,11 @@ function formatTime(value: string | null | undefined) {
   });
 }
 
-function getOtherMemberId(
+function getOtherMember(
   conversation: ConversationResponse,
   currentUserId: string,
 ) {
-  return conversation.members.find((member) => member.userId !== currentUserId)
-    ?.userId;
+  return conversation.members.find((member) => member.userId !== currentUserId);
 }
 
 function getApiErrorMessage(error: unknown, fallback: string) {
@@ -149,7 +148,7 @@ function getPreviewFromMessage(
 
 function mapUserToConversation(
   t: Translate,
-  user: UserResponse,
+  user: MessageUserLike,
   overrides: Partial<Conversation> = {},
 ): Conversation {
   const name = getMessageUserDisplayName(user, t("messages.defaultUserName"));
@@ -171,7 +170,7 @@ function mapUserToConversation(
 function mapConversationResponseToConversation(
   t: Translate,
   conversation: ConversationResponse,
-  participant: UserResponse,
+  participant: MessageUserLike,
 ): Conversation {
   return mapUserToConversation(t, participant, {
     hasMessages: Boolean(
@@ -352,54 +351,44 @@ export function MessageWorkspace() {
     setConversationErrorMessage(null);
 
     try {
+      // Both endpoints already embed the display fields — conversations carry
+      // their members, follow targets carry avatar/username — so there is no
+      // per-user lookup left to do. This used to be N extra `getUserById` calls.
       const [conversationResponse, followingResponse] = await Promise.all([
         getConversations(),
-        getFollowingByUser(currentUser.userId),
+        getFollowingTargetsByUserId(currentUser.userId, "USER"),
       ]);
-      const followingIds = followingResponse
-        .map((follow) => follow.followingUserId)
-        .filter((userId) => userId && userId !== currentUser.userId);
-      const participantIds = conversationResponse
-        .map((conversation) => getOtherMemberId(conversation, currentUser.userId))
-        .filter((userId): userId is string => Boolean(userId));
-      const userIds = Array.from(new Set([...participantIds, ...followingIds]));
-      const userResponses = await Promise.all(
-        userIds.map(async (userId) => {
-          try {
-            return [userId, await getUserById(userId)] as const;
-          } catch {
-            return null;
-          }
-        }),
-      );
-      const userDetails: Record<string, UserResponse> = {};
-
-      userResponses.forEach((entry) => {
-        if (entry) {
-          userDetails[entry[0]] = entry[1];
-        }
-      });
 
       const seenUserIds = new Set<string>();
       const conversationItems: Conversation[] = [];
 
       conversationResponse.forEach((conversation) => {
-        const participantId = getOtherMemberId(conversation, currentUser.userId);
-        const participant = participantId ? userDetails[participantId] : null;
+        const participant = getOtherMember(conversation, currentUser.userId);
 
-        if (!participantId || !participant || seenUserIds.has(participantId)) {
+        if (!participant || seenUserIds.has(participant.userId)) {
           return;
         }
 
-        seenUserIds.add(participantId);
+        seenUserIds.add(participant.userId);
         conversationItems.push(
           mapConversationResponseToConversation(t, conversation, participant),
         );
       });
 
-      const followedItems = followingIds
-        .filter((userId) => !seenUserIds.has(userId) && userDetails[userId])
-        .map((userId) => mapUserToConversation(t, userDetails[userId]));
+      const followedItems = followingResponse
+        .map((target): MessageUserLike | null => {
+          const userId = target.userId ?? target.targetId;
+          if (!userId || userId === currentUser.userId) return null;
+          return {
+            userId,
+            userName: target.username,
+            userFullName: target.userFullName,
+            userAvatar: target.avatar,
+          };
+        })
+        .filter((user): user is MessageUserLike => user !== null)
+        .filter((user) => !seenUserIds.has(user.userId))
+        .map((user) => mapUserToConversation(t, user));
 
       setConversations([
         createAssistantConversation(),

@@ -12,17 +12,20 @@ import {
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { PostActionConfirmDialog } from "@/components/feed/post-action-confirm-dialog";
 import { PostCommentsModal } from "@/components/feed/post-comments-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { cn } from "@/lib/utils";
 import {
+  deleteBlog,
   getBlogLikesByUser,
   likeBlog,
   saveBlog,
   unlikeBlog,
   unsaveBlog,
+  unshareBlog,
 } from "@/lib/api/blogs";
 import type { FeedPost } from "@/types/feed";
 import type { ProfileReview } from "@/types/review";
@@ -96,6 +99,10 @@ export function ProfileReviewGrid({
   const [gridSharedPosts, setGridSharedPosts] = useState(sharedPosts);
   const [gridSavedPosts, setGridSavedPosts] = useState(savedPosts);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [deleteConfirmPost, setDeleteConfirmPost] = useState<FeedPost | null>(null);
+  const [unshareConfirmPost, setUnshareConfirmPost] = useState<FeedPost | null>(null);
+  const [isActionPending, setIsActionPending] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const { user } = useCurrentUser();
   const visiblePosts = useMemo(() => filterPostsByVisibility(posts, isOwnProfile), [posts, isOwnProfile]);
   const visibleSharedPosts = useMemo(() => filterPostsByVisibility(sharedPosts, isOwnProfile), [sharedPosts, isOwnProfile]);
@@ -216,6 +223,56 @@ export function ProfileReviewGrid({
       }
     },
     [updatePost],
+  );
+
+  const removeFromGrids = useCallback((postId: string) => {
+    const drop = (current: FeedPost[]) => current.filter((p) => p.id !== postId);
+    setGridPosts(drop);
+    setGridSharedPosts(drop);
+    setGridSavedPosts(drop);
+  }, []);
+
+  const handleConfirmDelete = useCallback(
+    async (post: FeedPost) => {
+      if (!post.id || isActionPending) return;
+
+      setIsActionPending(true);
+      setActionError(null);
+      try {
+        await deleteBlog(post.id);
+        removeFromGrids(post.id);
+        setSelectedPostId(null);
+        setDeleteConfirmPost(null);
+      } catch {
+        setActionError(t("feed.delete.error"));
+      } finally {
+        setIsActionPending(false);
+      }
+    },
+    [isActionPending, removeFromGrids, t],
+  );
+
+  const handleConfirmUnshare = useCallback(
+    async (post: FeedPost) => {
+      if (!post.id || isActionPending) return;
+
+      setIsActionPending(true);
+      setActionError(null);
+      try {
+        await unshareBlog(post.id);
+        // Only the shared tab loses the tile: the post itself still exists, and it
+        // may also be sitting in the saved tab for a different reason.
+        setGridSharedPosts((current) => current.filter((p) => p.id !== post.id));
+        updatePost(post.id, (currentPost) => ({ ...currentPost, isShared: false }));
+        setSelectedPostId(null);
+        setUnshareConfirmPost(null);
+      } catch {
+        setActionError(t("feed.unshare.error"));
+      } finally {
+        setIsActionPending(false);
+      }
+    },
+    [isActionPending, t, updatePost],
   );
 
   useEffect(() => {
@@ -495,9 +552,43 @@ export function ProfileReviewGrid({
             setSelectedPostId(null);
           }
         }}
+        onPostDeleteClick={setDeleteConfirmPost}
         onPostLikeClick={handleLikeClick}
         onPostSaveClick={handleSaveClick}
+        onPostUnshareClick={isOwnProfile ? setUnshareConfirmPost : undefined}
         post={selectedPost}
+      />
+
+      <PostActionConfirmDialog
+        cancelLabel={t("feed.delete.keep")}
+        confirmLabel={t("feed.delete.confirm")}
+        errorMessage={actionError}
+        isPending={isActionPending}
+        notice={t("feed.delete.notice")}
+        onCancel={() => {
+          setDeleteConfirmPost(null);
+          setActionError(null);
+        }}
+        onConfirm={(post) => void handleConfirmDelete(post)}
+        pendingLabel={t("feed.delete.pending")}
+        post={deleteConfirmPost}
+        title={t("feed.delete.title")}
+      />
+
+      <PostActionConfirmDialog
+        cancelLabel={t("feed.unshare.keep")}
+        confirmLabel={t("feed.unshare.confirm")}
+        errorMessage={actionError}
+        isPending={isActionPending}
+        notice={t("feed.unshare.notice")}
+        onCancel={() => {
+          setUnshareConfirmPost(null);
+          setActionError(null);
+        }}
+        onConfirm={(post) => void handleConfirmUnshare(post)}
+        pendingLabel={t("feed.unshare.pending")}
+        post={unshareConfirmPost}
+        title={t("feed.unshare.title")}
       />
     </>
   );

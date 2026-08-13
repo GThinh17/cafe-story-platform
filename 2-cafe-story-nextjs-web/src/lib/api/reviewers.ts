@@ -1,3 +1,4 @@
+import { apiCacheTtl, cachedApiCall } from "@/lib/api/api-cache";
 import { apiFetch } from "@/lib/api/client";
 import { apiEndpoints } from "@/lib/api/endpoints";
 import type {
@@ -22,10 +23,18 @@ function withQuery(path: string, params: Record<string, string | number | boolea
   return query ? `${path}?${query}` : path;
 }
 
+/**
+ * Discovery reads are cached because /explore re-runs its whole region cascade
+ * whenever the user flips back to the reviewers tab, and the reviewer dashboard
+ * asks for the same reviewer twice per navigation (sidebar plus page body).
+ * Everything under the `reviewers:` prefix is dropped by `invalidateFollowCache`
+ * in `users.ts` when a follow changes, since the discovery DTOs carry the
+ * viewer's own `isFollowing`.
+ */
 export function getTopReviewers(page = 0, size = 20) {
-  return apiFetch<ReviewerDiscoveryResponse[]>(
-    withQuery(apiEndpoints.reviewers.top, { page, size }),
-    { method: "GET" },
+  const path = withQuery(apiEndpoints.reviewers.top, { page, size });
+  return cachedApiCall(`reviewers:top:${path}`, apiCacheTtl.dynamic, () =>
+    apiFetch<ReviewerDiscoveryResponse[]>(path, { method: "GET" }),
   );
 }
 
@@ -35,30 +44,35 @@ export function getReviewersByRegion(params: {
   province?: string;
   size?: number;
 }) {
-  return apiFetch<ReviewerDiscoveryResponse[]>(
-    withQuery(apiEndpoints.reviewers.region, params),
-    { method: "GET" },
+  const path = withQuery(apiEndpoints.reviewers.region, params);
+  return cachedApiCall(`reviewers:region:${path}`, apiCacheTtl.dynamic, () =>
+    apiFetch<ReviewerDiscoveryResponse[]>(path, { method: "GET" }),
   );
 }
 
 export function searchReviewers(query: string) {
-  return apiFetch<ReviewerResponse[]>(
-    withQuery(apiEndpoints.reviewers.list, { query }),
-    { method: "GET" },
+  const path = withQuery(apiEndpoints.reviewers.list, { query });
+  return cachedApiCall(`reviewers:search:${path}`, apiCacheTtl.dynamic, () =>
+    apiFetch<ReviewerResponse[]>(path, { method: "GET" }),
   );
 }
 
 export function getAllActiveReviewers() {
-  return apiFetch<ReviewerResponse[]>(
-    withQuery(apiEndpoints.reviewers.list, { activeOnly: true }),
-    { method: "GET" },
+  const path = withQuery(apiEndpoints.reviewers.list, { activeOnly: true });
+  return cachedApiCall(`reviewers:active:${path}`, apiCacheTtl.dynamic, () =>
+    apiFetch<ReviewerResponse[]>(path, { method: "GET" }),
   );
 }
 
 export function getReviewerByUserId(userId: string) {
-  return apiFetch<ReviewerResponse>(apiEndpoints.reviewers.byUserId(userId), {
-    method: "GET",
-  });
+  return cachedApiCall(
+    `reviewers:by-user:${userId}`,
+    apiCacheTtl.shortUser,
+    () =>
+      apiFetch<ReviewerResponse>(apiEndpoints.reviewers.byUserId(userId), {
+        method: "GET",
+      }),
+  );
 }
 
 export function getReviewerEarnings(reviewerId: string) {

@@ -1,5 +1,6 @@
 package com.cafestory.service.serviceImplement;
 
+import com.cafestory.config.CacheConfig;
 import com.cafestory.dto.responseDTO.CafePageRatingResponseDTO;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.CafePageRating;
@@ -10,6 +11,7 @@ import com.cafestory.repository.CafePageRatingRepository;
 import com.cafestory.service.serviceInterface.CafePageRatingService;
 import com.cafestory.validation.CafePageValidator;
 import com.cafestory.validation.UserValidator;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,8 +39,15 @@ public class CafePageRatingServiceImpl implements CafePageRatingService {
         this.userValidator = userValidator;
     }
 
+    /**
+     * The cafe page detail response carries ratingScore/ratingCount/myRating, so a
+     * new rating must drop the cached detail the same way a like or a follow does.
+     * Without this the viewer's own stars and the average revert on the next reload
+     * until the cache TTL expires.
+     */
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, allEntries = true)
     public CafePageRatingResponseDTO rateCafePage(UUID cafePageId, UUID userId, Integer rating) {
         validateRating(rating);
         CafePage cafePage = validateActiveCafePage(cafePageId);
@@ -55,6 +64,7 @@ public class CafePageRatingServiceImpl implements CafePageRatingService {
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = CacheConfig.CAFE_PAGE_DETAIL_CACHE, allEntries = true)
     public void deleteRating(UUID cafePageId, UUID userId) {
         cafePageValidator.validateCafePageExists(cafePageId);
         User user = userValidator.validateUserExists(userId);

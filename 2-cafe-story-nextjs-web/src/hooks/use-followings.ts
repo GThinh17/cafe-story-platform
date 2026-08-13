@@ -1,17 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  getCafePageById,
-  getFollowedCafePagesByUserId,
-} from "@/lib/api/cafes";
-import { getFollowingByUserId, getUserById } from "@/lib/api/users";
+import { getFollowingTargetsByUserId } from "@/lib/api/users";
 import {
   ensureUniqueSlug,
   slugifyForMention,
 } from "@/lib/mention/parse-mentions";
-import type { CafePageResponse } from "@/types/cafe";
-import type { UserResponse } from "@/types/user";
+import type { FollowTargetResponse } from "@/types/user";
 import { useI18n } from "@/components/providers/locale-provider";
 
 export type MentionItem = {
@@ -29,36 +24,43 @@ type State = {
   error: string | null;
 };
 
-function pickUserAvatar(user: UserResponse): string | null {
-  return user.userAvatar ?? user.avatar ?? user.profileImage ?? user.imageUrl ?? null;
-}
+function mapUserTarget(target: FollowTargetResponse): MentionItem | null {
+  const userId = target.userId ?? target.targetId;
+  const username = target.username?.trim();
+  if (!userId || !username) {
+    return null;
+  }
 
-function mapUser(user: UserResponse): MentionItem {
   return {
     kind: "user",
-    id: user.userId,
-    slug: user.userName,
-    displayName: user.userFullName ?? user.userName,
-    subtitle: `@${user.userName}`,
-    avatarUrl: pickUserAvatar(user),
+    id: userId,
+    slug: username,
+    displayName: target.userFullName?.trim() || username,
+    subtitle: `@${username}`,
+    avatarUrl: target.avatar,
   };
 }
 
-function mapPage(
-  page: CafePageResponse,
+function mapPageTarget(
+  target: FollowTargetResponse,
   taken: Set<string>,
   cafePageLabel: string,
-): MentionItem {
-  const base = slugifyForMention(page.name);
-  const slug = ensureUniqueSlug(base, taken, page.id);
+): MentionItem | null {
+  const cafePageId = target.cafePageId ?? target.targetId;
+  const name = target.pageName?.trim() || target.displayName?.trim();
+  if (!cafePageId || !name) {
+    return null;
+  }
+
+  const slug = ensureUniqueSlug(slugifyForMention(name), taken, cafePageId);
   taken.add(slug);
   return {
     kind: "page",
-    id: page.id,
+    id: cafePageId,
     slug,
-    displayName: page.name,
+    displayName: name,
     subtitle: cafePageLabel,
-    avatarUrl: page.avatarUrl,
+    avatarUrl: target.avatar,
   };
 }
 
@@ -78,33 +80,24 @@ export function useFollowings(userId: string | undefined, enabled: boolean) {
 
     setState((s) => ({ ...s, isLoading: true, error: null }));
 
-    Promise.all([
-      getFollowingByUserId(userId).catch(() => []),
-      getFollowedCafePagesByUserId(userId).catch(() => []),
-    ])
-      .then(async ([userFollows, pageFollows]) => {
-        const [users, pages] = await Promise.all([
-          Promise.all(
-            userFollows.map((f) =>
-              getUserById(f.followingUserId).catch(() => null),
-            ),
-          ),
-          Promise.all(
-            pageFollows.map((f) =>
-              getCafePageById(f.cafePageId).catch(() => null),
-            ),
-          ),
-        ]);
-
+    // One request instead of 2 + N: the follow-targets endpoint already returns
+    // the avatar, username, full name and page name that a mention row needs, so
+    // there is nothing left to look up per followed account. `app/(home)/page.tsx`
+    // builds the story rail off the same endpoint.
+    getFollowingTargetsByUserId(userId, "ALL")
+      .then((targets) => {
         if (!active) return;
 
-        const userItems = users
-          .filter((u): u is UserResponse => u !== null)
-          .map(mapUser);
-        const taken = new Set(userItems.map((u) => u.slug));
-        const pageItems = pages
-          .filter((p): p is CafePageResponse => p !== null)
-          .map((p) => mapPage(p, taken, t("followings.cafePage")));
+        const userItems = targets
+          .filter((target) => target.targetType !== "CAFE_PAGE")
+          .map(mapUserTarget)
+          .filter((item): item is MentionItem => item !== null);
+
+        const taken = new Set(userItems.map((item) => item.slug));
+        const pageItems = targets
+          .filter((target) => target.targetType === "CAFE_PAGE")
+          .map((target) => mapPageTarget(target, taken, t("followings.cafePage")))
+          .filter((item): item is MentionItem => item !== null);
 
         setState({
           items: [...userItems, ...pageItems],

@@ -12,6 +12,8 @@ public interface BlogShareService {
 
     BlogShareResponseDTO shareBlog(UUID blogId, UUID userId, ShareType shareType, ActorContextType actorContextType, UUID actorCafePageId);
 
+    void deleteShare(UUID blogId, UUID userId);
+
     List<BlogShareResponseDTO> getSharesByBlogId(UUID blogId);
 
     List<BlogShareResponseDTO> getSharesByUserId(UUID userId);
