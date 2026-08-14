@@ -1,6 +1,7 @@
 import * as ImagePicker from "expo-image-picker";
+import { Text } from "../../features/i18n/localized-native";
 import { useCallback, useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 

@@ -1,5 +1,6 @@
 import { Bookmark, Grid3X3, Repeat2, UserRound } from "lucide-react-native";
-import { Pressable, StyleSheet, View } from "react-native";
+import { Pressable } from "../../features/i18n/localized-native";
+import { StyleSheet, View } from "react-native";
 import { colors, spacing } from "../../theme";
 import type { ProfileContentTab } from "../../types";
 

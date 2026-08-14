@@ -1,5 +1,7 @@
 import { ChevronLeft, Info, Phone, Video } from "lucide-react-native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable } from "../../features/i18n/localized-native";
+import { Text } from "../../features/i18n/localized-native";
+import { StyleSheet, View } from "react-native";
 import { Avatar } from "../ui/avatar";
 import { colors, spacing, typography } from "../../theme";
 import type { ChatIdentity } from "../../types";

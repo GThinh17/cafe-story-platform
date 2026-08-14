@@ -1,16 +1,11 @@
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import { Text } from "../../features/i18n/localized-native";
+import { Pressable, TextInput } from "../../features/i18n/localized-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { ChevronLeft, Search, Store, UserPlus } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  FlatList,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+  FlatList, RefreshControl, StyleSheet, View } from "react-native";
 import {
   EmptyState,
   ListRowSkeletonList,

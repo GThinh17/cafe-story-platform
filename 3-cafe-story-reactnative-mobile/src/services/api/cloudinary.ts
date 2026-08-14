@@ -1,4 +1,5 @@
 import { getCloudinaryConfig } from "../../config";
+import { localizeApiErrorMessage } from "../../features/i18n";
 
 type CloudinaryUploadResponse = {
   secure_url?: unknown;
@@ -65,22 +66,46 @@ async function uploadImageToCloudinary(
   formData.append("upload_preset", uploadPreset);
   formData.append("folder", folder);
 
-  const response = await fetch(
-    `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-    {
-      body: formData,
-      method: "POST",
-    },
-  );
+  let response: Response;
+
+  try {
+    response = await fetch(
+      `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+      {
+        body: formData,
+        method: "POST",
+      },
+    );
+  } catch (requestError) {
+    const rawMessage =
+      requestError instanceof Error
+        ? requestError.message
+        : `Unable to upload ${errorLabel}.`;
+    throw new Error(
+      localizeApiErrorMessage(0, rawMessage, "upload.error.image"),
+    );
+  }
 
   if (!response.ok) {
-    throw new Error(`Unable to upload ${errorLabel}.`);
+    throw new Error(
+      localizeApiErrorMessage(
+        response.status,
+        `Unable to upload ${errorLabel}.`,
+        "upload.error.image",
+      ),
+    );
   }
 
   const data = (await response.json()) as CloudinaryUploadResponse;
 
   if (typeof data.secure_url !== "string" || !data.secure_url.trim()) {
-    throw new Error("Cloudinary upload response is missing secure_url.");
+    throw new Error(
+      localizeApiErrorMessage(
+        500,
+        "Cloudinary upload response is missing secure_url.",
+        "upload.error.image",
+      ),
+    );
   }
 
   return data.secure_url;

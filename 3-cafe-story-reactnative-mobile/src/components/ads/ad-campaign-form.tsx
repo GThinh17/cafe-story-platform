@@ -1,16 +1,10 @@
 import * as ImagePicker from "expo-image-picker";
+import { Pressable, Switch } from "../../features/i18n/localized-native";
+import { Text } from "../../features/i18n/localized-native";
 import { Check, ChevronDown, ImagePlus, MapPin, X } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  View,
-} from "react-native";
+  Image, Modal, ScrollView, StyleSheet, View } from "react-native";
 
 import {
   createAdCampaign,
@@ -20,6 +14,7 @@ import {
   uploadAdImageToCloudinary,
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
+import { formatCurrentNumber } from "../../features/i18n";
 import type {
   AdTargetRegionRequest,
   CafePageResponse,
@@ -52,7 +47,7 @@ function isHttpUrl(value: string) {
 }
 
 function paymentLabel(payment: PaymentResponse) {
-  const amount = Number(payment.amount ?? 0).toLocaleString("en-US");
+  const amount = formatCurrentNumber(Number(payment.amount ?? 0));
   return `${amount} VND · ${payment.paymentId.slice(0, 8)}`;
 }
 

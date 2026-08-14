@@ -1,14 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Pressable, Text } from "../../features/i18n/localized-native";
 import {
-  FlatList,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+  FlatList, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, View } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RouteProp } from "@react-navigation/native";
@@ -21,6 +14,7 @@ import {
 } from "../../components";
 import { Avatar } from "../../components/ui/avatar";
 import { useAuth } from "../../features/auth";
+import { formatCurrentTime } from "../../features/i18n";
 import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
 import { getConversationMessages, sendChatMessage } from "../../services/api";
@@ -39,7 +33,7 @@ function formatMessageTime(value: string | null) {
     return "";
   }
 
-  return date.toLocaleTimeString([], {
+  return formatCurrentTime(date, {
     hour: "2-digit",
     minute: "2-digit",
   });

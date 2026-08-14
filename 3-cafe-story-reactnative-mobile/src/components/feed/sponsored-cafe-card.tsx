@@ -1,6 +1,7 @@
 import { Megaphone, Store } from "lucide-react-native";
+import { Pressable, Text } from "../../features/i18n/localized-native";
 import { useState } from "react";
-import { Image, Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Linking, StyleSheet, View } from "react-native";
 
 import { Avatar } from "../ui/avatar";
 import { recordAdClick } from "../../services/api";

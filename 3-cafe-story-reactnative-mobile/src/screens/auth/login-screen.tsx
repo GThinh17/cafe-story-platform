@@ -1,9 +1,12 @@
 import { useNavigation } from "@react-navigation/native";
+import { Pressable } from "../../features/i18n/localized-native";
+import { Text } from "../../features/i18n/localized-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { Button, Screen, TextField } from "../../components";
 import { useAuth } from "../../features/auth";
+import { LanguageSelector } from "../../features/i18n";
 import { routes } from "../../navigation";
 import type { AuthStackParamList } from "../../navigation";
 import { colors, spacing, typography } from "../../theme";
@@ -42,6 +45,7 @@ export function LoginScreen() {
 
   return (
     <Screen>
+      <LanguageSelector variant="compact" />
       <View style={styles.header}>
         <Text style={styles.eyebrow}>CafeStory</Text>
         <Text style={styles.title}>Welcome back</Text>

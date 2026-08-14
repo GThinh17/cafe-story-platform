@@ -1,7 +1,10 @@
 import { ChevronRight, Flame, Pin, TrendingUp } from "lucide-react-native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable } from "../../features/i18n/localized-native";
+import { Text } from "../../features/i18n/localized-native";
+import { StyleSheet, View } from "react-native";
 
 import { colors, spacing, typography } from "../../theme";
+import { formatCurrentCompactNumber, formatCurrentNumber } from "../../features/i18n";
 import type { BlogTrendingResponse } from "../../types";
 
 type TrendingPreviewCardProps = {
@@ -15,10 +18,12 @@ function compactScore(value: number | null) {
   }
 
   if (value >= 1000) {
-    return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k`;
+    return formatCurrentCompactNumber(value);
   }
 
-  return value.toFixed(value >= 10 ? 0 : 1);
+  return formatCurrentNumber(value, {
+    maximumFractionDigits: value >= 10 ? 0 : 1,
+  });
 }
 
 function getAuthorLabel(item: BlogTrendingResponse) {

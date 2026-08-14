@@ -1,7 +1,13 @@
 import { Award, Wallet } from "lucide-react-native";
-import { StyleSheet, Text, View } from "react-native";
+import { Text } from "../../features/i18n/localized-native";
+import { StyleSheet, View } from "react-native";
 
 import { colors, spacing, typography } from "../../theme";
+import {
+  formatCurrentCompactNumber,
+  formatCurrentCurrency,
+  formatCurrentDate,
+} from "../../features/i18n";
 import type {
   ReviewerDashboardBadge,
   ReviewerDashboardPayout,
@@ -16,19 +22,11 @@ type PayoutHistoryListProps = {
 };
 
 function formatVnd(value: number) {
-  return `${String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} VND`;
+  return formatCurrentCurrency(value);
 }
 
 function formatCount(value: number) {
-  if (value >= 1000000) {
-    return `${(value / 1000000).toFixed(value >= 10000000 ? 0 : 1)}m`;
-  }
-
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k`;
-  }
-
-  return String(value);
+  return formatCurrentCompactNumber(value);
 }
 
 function formatMonthLabel(value: string) {
@@ -47,7 +45,7 @@ function formatMonthLabel(value: string) {
     return value;
   }
 
-  return date.toLocaleDateString(undefined, {
+  return formatCurrentDate(date, {
     month: "short",
     year: "numeric",
   });

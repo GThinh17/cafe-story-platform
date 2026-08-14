@@ -1,27 +1,15 @@
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { Pressable } from "../../features/i18n/localized-native";
+import { Text } from "../../features/i18n/localized-native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
-  Bell,
-  Bookmark,
-  CheckCheck,
-  Heart,
-  MessageCircle,
-  Tag,
-  Trash2,
-  UserPlus,
-} from "lucide-react-native";
+  Bell, Bookmark, CheckCheck, Heart, MessageCircle, Tag, Trash2, UserPlus, } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
-import {
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 
 import { EmptyState, Screen } from "../../components";
+import { getCurrentLocale } from "../../features/i18n";
 import { routes } from "../../navigation";
 import type { MainTabParamList, RootStackParamList } from "../../navigation";
 import {
@@ -149,29 +137,32 @@ function getEmptyCopy(filter: NotificationFilterKey) {
 }
 
 function formatTime(value: string | null) {
+  const isVietnamese = getCurrentLocale() === "vi";
+
   if (!value) {
-    return "Just now";
+    return isVietnamese ? "Vừa xong" : "Just now";
   }
 
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return "Just now";
+    return isVietnamese ? "Vừa xong" : "Just now";
   }
 
   const diffMinutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
   if (diffMinutes < 1) {
-    return "Just now";
+    return isVietnamese ? "Vừa xong" : "Just now";
   }
   if (diffMinutes < 60) {
-    return `${diffMinutes}m ago`;
+    return isVietnamese ? `${diffMinutes} phút trước` : `${diffMinutes}m ago`;
   }
 
   const diffHours = Math.floor(diffMinutes / 60);
   if (diffHours < 24) {
-    return `${diffHours}h ago`;
+    return isVietnamese ? `${diffHours} giờ trước` : `${diffHours}h ago`;
   }
 
-  return `${Math.floor(diffHours / 24)}d ago`;
+  const days = Math.floor(diffHours / 24);
+  return isVietnamese ? `${days} ngày trước` : `${days}d ago`;
 }
 
 function getNotificationIcon(type: string) {

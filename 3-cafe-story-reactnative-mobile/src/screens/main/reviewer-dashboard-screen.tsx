@@ -1,19 +1,11 @@
 import { useNavigation } from "@react-navigation/native";
+import { Pressable } from "../../features/i18n/localized-native";
+import { Text } from "../../features/i18n/localized-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
-  ArrowLeft,
-  Award,
-  BadgeCheck,
-  BarChart3,
-  Heart,
-  MessageCircle,
-  Share2,
-  Sparkles,
-  Trophy,
-  Wallet,
-} from "lucide-react-native";
+  ArrowLeft, Award, BadgeCheck, BarChart3, Heart, MessageCircle, Share2, Sparkles, Trophy, Wallet, } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import {
   Avatar,
@@ -24,6 +16,11 @@ import {
 } from "../../components";
 import { PayoutHistoryList } from "../../components/reviewer-dashboard/payout-history-list";
 import { useAuth } from "../../features/auth";
+import {
+  formatCurrentCompactNumber,
+  formatCurrentCurrency,
+  formatCurrentDate,
+} from "../../features/i18n";
 import {
   ApiError,
   getReviewerBadges,
@@ -73,19 +70,11 @@ function hasReviewerRole(user: AuthUser | null | undefined) {
 }
 
 function formatCount(value: number) {
-  if (value >= 1000000) {
-    return `${(value / 1000000).toFixed(value >= 10000000 ? 0 : 1)}m`;
-  }
-
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k`;
-  }
-
-  return String(value);
+  return formatCurrentCompactNumber(value);
 }
 
 function formatVnd(value: number) {
-  return `${String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} VND`;
+  return formatCurrentCurrency(value);
 }
 
 function formatDate(value: string | null) {
@@ -99,7 +88,7 @@ function formatDate(value: string | null) {
     return "No expiry date";
   }
 
-  return date.toLocaleDateString(undefined, {
+  return formatCurrentDate(date, {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -159,7 +148,7 @@ function compactMonthLabel(value: string) {
     return value;
   }
 
-  return date.toLocaleDateString(undefined, { month: "short" });
+  return formatCurrentDate(date, { month: "short" });
 }
 
 function buildPerformancePoints(

@@ -1,11 +1,14 @@
 import { ChevronLeft, LogOut, Shield, UserRound } from "lucide-react-native";
+import { Pressable } from "../../features/i18n/localized-native";
+import { Text } from "../../features/i18n/localized-native";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { Screen } from "../../components";
 import { useAuth } from "../../features/auth";
+import { LanguageSelector } from "../../features/i18n";
 import type { RootStackParamList } from "../../navigation";
 import { colors, spacing, typography } from "../../theme";
 
@@ -54,6 +57,8 @@ export function SettingsScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        <LanguageSelector />
+
         <View style={styles.section}>
           <SettingsRow
             Icon={UserRound}

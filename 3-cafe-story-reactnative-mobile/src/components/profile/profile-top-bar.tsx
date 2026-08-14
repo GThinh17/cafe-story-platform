@@ -1,13 +1,6 @@
-import {
-  CreditCard,
-  Ellipsis,
-  LayoutDashboard,
-  Megaphone,
-  Send,
-  Settings,
-  Store,
-} from "lucide-react-native";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { CreditCard, Ellipsis, LayoutDashboard, Megaphone, Send, Settings, Store, } from "lucide-react-native";
+import { Pressable, Text } from "../../features/i18n/localized-native";
+import { Modal, StyleSheet, View } from "react-native";
 import { useState, type ReactNode } from "react";
 
 import { colors, spacing, typography } from "../../theme";

@@ -1,24 +1,9 @@
-import {
-  AtSign,
-  Award,
-  Pencil,
-  Plus,
-  Store,
-  UserPlus,
-} from "lucide-react-native";
+import { AtSign, Award, Pencil, Plus, Store, UserPlus, } from "lucide-react-native";
+import { Alert } from "../../features/i18n/localized-native";
+import { Pressable, Text } from "../../features/i18n/localized-native";
 import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Alert,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { NativeScrollEvent, NativeSyntheticEvent, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
@@ -36,6 +21,7 @@ import {
   UserPostGrid,
 } from "../../components";
 import { useAuth } from "../../features/auth";
+import { formatCurrentCompactNumber } from "../../features/i18n";
 import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
 import {
@@ -102,17 +88,7 @@ function initialsFor(name?: string | null) {
 }
 
 function formatCount(value?: number | null) {
-  const safeValue = value ?? 0;
-
-  if (safeValue >= 1000000) {
-    return `${(safeValue / 1000000).toFixed(safeValue >= 10000000 ? 0 : 1)}m`;
-  }
-
-  if (safeValue >= 1000) {
-    return `${(safeValue / 1000).toFixed(safeValue >= 10000 ? 0 : 1)}k`;
-  }
-
-  return String(safeValue);
+  return formatCurrentCompactNumber(value ?? 0);
 }
 
 function getEmptyCopy(tab: ProfileContentTab) {

@@ -1,17 +1,14 @@
-import {
-  CalendarDays,
-  Heart,
-  MapPin,
-  MessageCircle,
-  Sparkles,
-  Star,
-  Store,
-  Users,
-} from "lucide-react-native";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { CalendarDays, Heart, MapPin, MessageCircle, Sparkles, Star, Store, Users, } from "lucide-react-native";
+import { Pressable, Text } from "../../features/i18n/localized-native";
+import { Image, StyleSheet, View } from "react-native";
 
 import { Avatar } from "../ui/avatar";
 import { colors, spacing, typography } from "../../theme";
+import {
+  formatCurrentCompactNumber,
+  formatCurrentDate,
+  formatCurrentNumber,
+} from "../../features/i18n";
 import type { CafePageResponse } from "../../types";
 
 type CafePageHeaderProps = {
@@ -29,17 +26,7 @@ type CafePageHeaderProps = {
 };
 
 function formatCount(value?: number | null) {
-  const safeValue = value ?? 0;
-
-  if (safeValue >= 1000000) {
-    return `${(safeValue / 1000000).toFixed(safeValue >= 10000000 ? 0 : 1)}m`;
-  }
-
-  if (safeValue >= 1000) {
-    return `${(safeValue / 1000).toFixed(safeValue >= 10000 ? 0 : 1)}k`;
-  }
-
-  return String(safeValue);
+  return formatCurrentCompactNumber(value ?? 0);
 }
 
 function formatDate(value?: string | null) {
@@ -53,7 +40,7 @@ function formatDate(value?: string | null) {
     return null;
   }
 
-  return date.toLocaleDateString(undefined, {
+  return formatCurrentDate(date, {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -121,7 +108,10 @@ export function CafePageHeader({
               <Metric
                 icon={Star}
                 label="rating"
-                value={(cafePage.ratingScore ?? 0).toFixed(1)}
+                value={formatCurrentNumber(cafePage.ratingScore ?? 0, {
+                  minimumFractionDigits: 1,
+                  maximumFractionDigits: 1,
+                })}
               />
             </View>
           </View>

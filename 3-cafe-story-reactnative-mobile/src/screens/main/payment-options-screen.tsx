@@ -1,32 +1,19 @@
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import { Pressable, Text } from "../../features/i18n/localized-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
-  AlertCircle,
-  ArrowLeft,
-  BadgeCheck,
-  CheckCircle2,
-  CreditCard,
-  Landmark,
-  Megaphone,
-  RefreshCw,
-  Store,
-  X,
-} from "lucide-react-native";
+  AlertCircle, ArrowLeft, BadgeCheck, CheckCircle2, CreditCard, Landmark, Megaphone, RefreshCw, Store, X, } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Linking,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+  ActivityIndicator, Linking, Modal, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, EmptyState, LoadingState, Screen } from "../../components";
 import { useAuth } from "../../features/auth";
+import {
+  formatCurrentCurrency,
+  getCurrentLocale,
+} from "../../features/i18n";
 import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
 import {
@@ -130,15 +117,17 @@ const paymentMethods: {
 
 function formatVnd(value: number | string | null | undefined) {
   const safeValue = Number(value ?? 0);
-
-  return `${String(safeValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} VND`;
+  return formatCurrentCurrency(safeValue);
 }
 
 function formatMonths(value: number | null | undefined) {
   if (!value || value <= 0) {
-    return "No expiry";
+    return getCurrentLocale() === "vi" ? "Không hết hạn" : "No expiry";
   }
 
+  if (getCurrentLocale() === "vi") {
+    return `${value} tháng`;
+  }
   return `${value} ${value === 1 ? "month" : "months"}`;
 }
 

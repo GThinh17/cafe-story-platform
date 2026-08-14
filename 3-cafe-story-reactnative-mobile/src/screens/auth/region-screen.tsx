@@ -1,14 +1,10 @@
 import { useNavigation } from "@react-navigation/native";
+import { Pressable } from "../../features/i18n/localized-native";
+import { Text } from "../../features/i18n/localized-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { CheckCircle2, MapPin } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import { Button, LoadingState, Screen, TextField } from "../../components";
 import { useAuth } from "../../features/auth";

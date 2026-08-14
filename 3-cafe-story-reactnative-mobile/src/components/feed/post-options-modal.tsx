@@ -1,14 +1,6 @@
-import {
-  Bookmark,
-  CircleUserRound,
-  Eye,
-  EyeOff,
-  Info,
-  MessageSquareWarning,
-  QrCode,
-  SlidersHorizontal,
-} from "lucide-react-native";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Bookmark, CircleUserRound, Eye, EyeOff, Info, MessageSquareWarning, QrCode, SlidersHorizontal, } from "lucide-react-native";
+import { Pressable, Text } from "../../features/i18n/localized-native";
+import { Modal, StyleSheet, View } from "react-native";
 
 import { colors, spacing, typography } from "../../theme";
 

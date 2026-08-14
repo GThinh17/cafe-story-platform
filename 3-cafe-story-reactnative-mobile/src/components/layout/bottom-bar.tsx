@@ -1,7 +1,9 @@
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { Pressable } from "../../features/i18n/localized-native";
+import { Text } from "../../features/i18n/localized-native";
 import { Bell, House, Search, SquarePlus, User } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { routes } from "../../navigation/routes";

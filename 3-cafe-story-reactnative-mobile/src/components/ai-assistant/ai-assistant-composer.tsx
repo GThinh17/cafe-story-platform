@@ -1,5 +1,7 @@
 import { Send } from "lucide-react-native";
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import { Pressable } from "../../features/i18n/localized-native";
+import { TextInput } from "../../features/i18n/localized-native";
+import { StyleSheet, View } from "react-native";
 import { colors, spacing, typography } from "../../theme";
 
 type AiAssistantComposerProps = {

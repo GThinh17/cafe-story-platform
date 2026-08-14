@@ -1,4 +1,5 @@
-import { StyleSheet, Text, TextInput, TextInputProps, View } from "react-native";
+import { StyleSheet, TextInputProps, View } from "react-native";
+import { Text, TextInput } from "../../features/i18n/localized-native";
 import { colors, spacing, typography } from "../../theme";
 
 type TextFieldProps = TextInputProps & {

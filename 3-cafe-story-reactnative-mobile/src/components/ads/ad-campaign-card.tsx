@@ -1,9 +1,11 @@
 import { BarChart3, CalendarDays, Eye, MousePointerClick } from "lucide-react-native";
+import { Text } from "../../features/i18n/localized-native";
 import { useCallback, useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { activateAdCampaign, getAdCampaignStats, pauseAdCampaign } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
+import { formatCurrentDate, formatCurrentNumber } from "../../features/i18n";
 import type { AdCampaignResponse, AdCampaignStatsResponse } from "../../types";
 import { Button } from "../ui/button";
 
@@ -21,7 +23,7 @@ function statusColor(status: string | null) {
 
 function formatDate(value: string | null) {
   if (!value) return "Not started";
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(value));
+  return formatCurrentDate(value, { dateStyle: "medium" });
 }
 
 export function AdCampaignCard({ campaign, onChanged }: AdCampaignCardProps) {
@@ -78,7 +80,14 @@ export function AdCampaignCard({ campaign, onChanged }: AdCampaignCardProps) {
       <View style={styles.metrics}>
         <Metric Icon={Eye} label="Impressions" value={String(stats?.servedImpressions ?? campaign.servedImpressions ?? 0)} />
         <Metric Icon={MousePointerClick} label="Clicks" value={String(stats?.totalClicks ?? 0)} />
-        <Metric Icon={BarChart3} label="CTR" value={`${(stats?.ctrPercent ?? 0).toFixed(2)}%`} />
+        <Metric
+          Icon={BarChart3}
+          label="CTR"
+          value={`${formatCurrentNumber(stats?.ctrPercent ?? 0, {
+            maximumFractionDigits: 2,
+            minimumFractionDigits: 2,
+          })}%`}
+        />
         <Metric Icon={CalendarDays} label="Days left" value={String(stats?.remainingDays ?? 0)} />
       </View>
 

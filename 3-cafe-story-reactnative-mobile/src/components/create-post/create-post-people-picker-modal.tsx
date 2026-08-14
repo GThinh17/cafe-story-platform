@@ -1,14 +1,8 @@
 import { ArrowLeft, Check } from "lucide-react-native";
+import { Pressable, Text } from "../../features/i18n/localized-native";
 import { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+  ActivityIndicator, Modal, ScrollView, StyleSheet, View } from "react-native";
 
 import { getFollowingByUserId, getUserProfile } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";

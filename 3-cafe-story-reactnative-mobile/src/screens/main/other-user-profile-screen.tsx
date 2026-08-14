@@ -1,22 +1,11 @@
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import { Pressable } from "../../features/i18n/localized-native";
+import { Text } from "../../features/i18n/localized-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
-  ArrowLeft,
-  Award,
-  MessageCircle,
-  MoreVertical,
-  Store,
-  UserPlus,
-} from "lucide-react-native";
+  ArrowLeft, Award, MessageCircle, MoreVertical, Store, UserPlus, } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import {
   Avatar,
   EmptyState,
@@ -27,6 +16,7 @@ import {
   UserPostGrid,
 } from "../../components";
 import { useAuth } from "../../features/auth";
+import { formatCurrentCompactNumber } from "../../features/i18n";
 import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
 import {
@@ -82,17 +72,7 @@ function initialsFor(name?: string | null) {
 }
 
 function formatCount(value?: number | null) {
-  const safeValue = value ?? 0;
-
-  if (safeValue >= 1000000) {
-    return `${(safeValue / 1000000).toFixed(safeValue >= 10000000 ? 0 : 1)}m`;
-  }
-
-  if (safeValue >= 1000) {
-    return `${(safeValue / 1000).toFixed(safeValue >= 10000 ? 0 : 1)}k`;
-  }
-
-  return String(safeValue);
+  return formatCurrentCompactNumber(value ?? 0);
 }
 
 function getEmptyCopy(tab: ProfileContentTab, userName: string) {

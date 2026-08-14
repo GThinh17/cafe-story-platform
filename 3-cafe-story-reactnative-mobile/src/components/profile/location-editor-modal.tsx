@@ -1,16 +1,8 @@
 import { ArrowLeft, CheckCircle2, MapPin } from "lucide-react-native";
+import { Pressable, Text } from "../../features/i18n/localized-native";
 import { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+  ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, View } from "react-native";
 
 import {
   getRegionCities,

@@ -1,15 +1,10 @@
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import { Pressable, Text } from "../../features/i18n/localized-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { ArrowLeft } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  FlatList,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+  FlatList, RefreshControl, StyleSheet, View } from "react-native";
 import {
   BlogFeedCard,
   EmptyState,

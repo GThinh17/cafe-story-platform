@@ -1,8 +1,10 @@
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import { Pressable } from "../../features/i18n/localized-native";
+import { Text } from "../../features/i18n/localized-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { ArrowLeft, Megaphone, RefreshCw } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import { AdCampaignCard, AdCampaignForm, Button, EmptyState, LoadingState, Screen } from "../../components";
 import { useAuth } from "../../features/auth";

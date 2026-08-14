@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { Text } from "../../features/i18n/localized-native";
 import { colors, spacing, typography } from "../../theme";
 import type { ChatMessageListItem } from "../../types";
 

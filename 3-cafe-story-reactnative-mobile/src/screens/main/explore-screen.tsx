@@ -1,18 +1,12 @@
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { Text } from "../../features/i18n/localized-native";
+import { Pressable, TextInput } from "../../features/i18n/localized-native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Search, Send } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+  ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 
 import {
   Avatar,

@@ -1,21 +1,7 @@
-import {
-  Camera,
-  Image as ImageIcon,
-  MapPin,
-  Music,
-  SmilePlus,
-  Store,
-  Tag,
-  Users,
-} from "lucide-react-native";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Camera, Image as ImageIcon, MapPin, Music, SmilePlus, Store, Tag, Users, } from "lucide-react-native";
+import { Pressable } from "../../features/i18n/localized-native";
+import { Text, TextInput } from "../../features/i18n/localized-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import { MobilePostCarousel } from "../feed/mobile-post-carousel";
 import { Avatar } from "../ui/avatar";

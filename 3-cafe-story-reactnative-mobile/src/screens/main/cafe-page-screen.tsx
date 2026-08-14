@@ -1,24 +1,12 @@
 import * as ImagePicker from "expo-image-picker";
+import { Pressable } from "../../features/i18n/localized-native";
+import { Text } from "../../features/i18n/localized-native";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
-  ArrowLeft,
-  Grid3X3,
-  MessageCircle,
-  MessageSquareText,
-  SquarePlus,
-  UserPlus,
-  Users,
-} from "lucide-react-native";
+  ArrowLeft, Grid3X3, MessageCircle, MessageSquareText, SquarePlus, UserPlus, Users, } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 
 import {
   CafePageHeader,

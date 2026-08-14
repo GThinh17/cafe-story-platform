@@ -1,18 +1,9 @@
 import { ArrowLeft, Camera, ChevronDown, MapPin } from "lucide-react-native";
+import { Switch, Text } from "../../features/i18n/localized-native";
+import { Pressable, TextInput } from "../../features/i18n/localized-native";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+  ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, View } from "react-native";
 import { colors, spacing, typography } from "../../theme";
 import type { UserResponse, UserUpdateRequest } from "../../types";
 import { Avatar } from "../ui/avatar";

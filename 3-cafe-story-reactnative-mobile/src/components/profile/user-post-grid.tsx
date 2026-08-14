@@ -1,5 +1,6 @@
 import { Pin } from "lucide-react-native";
-import { Image, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
+import { Pressable, Text } from "../../features/i18n/localized-native";
+import { Image, StyleSheet, View, useWindowDimensions } from "react-native";
 import type { UserPostPreview } from "../../types";
 import { colors, spacing, typography } from "../../theme";
 

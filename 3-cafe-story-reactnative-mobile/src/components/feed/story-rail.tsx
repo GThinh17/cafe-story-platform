@@ -1,5 +1,7 @@
 import { Plus } from "lucide-react-native";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable } from "../../features/i18n/localized-native";
+import { Text } from "../../features/i18n/localized-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import { Avatar } from "../ui/avatar";
 import { colors, spacing, typography } from "../../theme";

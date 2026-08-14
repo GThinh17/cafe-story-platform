@@ -1,5 +1,6 @@
 import { Search } from "lucide-react-native";
-import { StyleSheet, TextInput, View } from "react-native";
+import { TextInput } from "../../features/i18n/localized-native";
+import { StyleSheet, View } from "react-native";
 import { colors, spacing, typography } from "../../theme";
 
 type MessageSearchProps = {

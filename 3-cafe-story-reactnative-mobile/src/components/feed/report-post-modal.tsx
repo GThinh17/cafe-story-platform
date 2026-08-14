@@ -1,17 +1,9 @@
 import { ArrowLeft, ChevronRight, X } from "lucide-react-native";
+import { Text } from "../../features/i18n/localized-native";
+import { Pressable, TextInput } from "../../features/i18n/localized-native";
 import { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+  ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { createContentReport, getReportReasons } from "../../services/api";

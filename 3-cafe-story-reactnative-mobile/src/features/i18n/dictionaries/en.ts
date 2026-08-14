@@ -1,0 +1,32 @@
+export const en = {
+  "ai.error.timeout": "Assistant is taking too long to reply.",
+  "ai.error.unavailable": "Unable to reach assistant. Please try again.",
+  "common.cancel": "Cancel",
+  "common.close": "Close",
+  "common.done": "Done",
+  "common.error.forbidden": "You do not have permission to do that.",
+  "common.error.generic": "Something went wrong. Please try again.",
+  "common.error.network": "Unable to connect. Check your connection and try again.",
+  "common.error.rateLimited": "Too many requests. Please wait and try again.",
+  "common.error.sessionExpired": "Your session has expired. Please sign in again.",
+  "common.error.server": "CafeStory is temporarily unavailable. Please try again later.",
+  "common.loading": "Loading...",
+  "common.retry": "Try again",
+  "language.compact.en": "EN",
+  "language.compact.system": "System",
+  "language.compact.vi": "VI",
+  "language.description": "Choose the language used across CafeStory.",
+  "language.english.description": "Use CafeStory in English.",
+  "language.english.name": "English",
+  "language.saveError": "Unable to save your language preference.",
+  "language.selectorLabel": "Interface language",
+  "language.system.description": "Follow this device's language.",
+  "language.system.name": "System default",
+  "language.title": "Language",
+  "language.vietnamese.description": "Sử dụng CafeStory bằng tiếng Việt.",
+  "language.vietnamese.name": "Tiếng Việt",
+  "upload.error.image": "Unable to upload the image. Please try again.",
+} as const;
+
+export type TranslationKey = keyof typeof en;
+export type Dictionary = Record<TranslationKey, string>;

@@ -1,16 +1,11 @@
 import { useNavigation } from "@react-navigation/native";
+import { Text } from "../../features/i18n/localized-native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Send } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from "react-native";
+  RefreshControl, ScrollView, StyleSheet, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import {
   BlogFeedCard,
   EmptyState,

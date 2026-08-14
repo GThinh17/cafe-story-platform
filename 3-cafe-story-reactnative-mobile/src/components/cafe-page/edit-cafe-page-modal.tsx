@@ -1,18 +1,9 @@
 import { ArrowLeft, Camera, CheckCircle2, Image as ImageIcon, MapPin } from "lucide-react-native";
+import { Text } from "../../features/i18n/localized-native";
+import { Pressable, TextInput } from "../../features/i18n/localized-native";
 import { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+  ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, View } from "react-native";
 
 import {
   createRegion,

@@ -1,21 +1,11 @@
 import { Heart, Send, Store, X } from "lucide-react-native";
+import { Text } from "../../features/i18n/localized-native";
+import { Pressable, TextInput } from "../../features/i18n/localized-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Animated,
-  FlatList,
-  Keyboard,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+  ActivityIndicator, Animated, FlatList, Keyboard, KeyboardAvoidingView, Modal, Platform, StyleSheet, View } from "react-native";
 
 import { Avatar } from "../ui/avatar";
 import { CommentSkeletonList } from "../ui/skeleton";

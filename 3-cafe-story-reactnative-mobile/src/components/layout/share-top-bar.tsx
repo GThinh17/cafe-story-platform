@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
-import { Image, Pressable, StyleSheet, View } from "react-native";
+import { Pressable } from "../../features/i18n/localized-native";
+import { Image, StyleSheet, View } from "react-native";
 
 import { colors, spacing } from "../../theme";
 import { BrandIcon } from "../ui/brand-icon";

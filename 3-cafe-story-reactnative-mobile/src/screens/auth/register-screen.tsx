@@ -1,7 +1,9 @@
 import { useNavigation } from "@react-navigation/native";
+import { Pressable } from "../../features/i18n/localized-native";
+import { Text } from "../../features/i18n/localized-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { Button, Screen, TextField } from "../../components";
 import { useAuth } from "../../features/auth";
 import { routes } from "../../navigation";

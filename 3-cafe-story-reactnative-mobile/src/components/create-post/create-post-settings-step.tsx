@@ -1,5 +1,7 @@
 import { Check, Eye, Lock, MessageCircle, Pin } from "lucide-react-native";
-import { Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Switch } from "../../features/i18n/localized-native";
+import { Pressable, Text } from "../../features/i18n/localized-native";
+import { Image, ScrollView, StyleSheet, View } from "react-native";
 
 import { Avatar } from "../ui/avatar";
 import { colors, spacing, typography } from "../../theme";

@@ -1,15 +1,9 @@
 import { Check, X } from "lucide-react-native";
+import { Text } from "../../features/i18n/localized-native";
+import { Pressable, TextInput } from "../../features/i18n/localized-native";
 import { useEffect, useState } from "react";
 import {
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+  KeyboardAvoidingView, Modal, Platform, StyleSheet, View } from "react-native";
 import { colors, spacing, typography } from "../../theme";
 
 const BIO_MAX_LENGTH = 150;
