@@ -9,6 +9,7 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useUiText } from "@/features/i18n";
 
 type AdminConfirmDialogProps = {
   open: boolean;
@@ -31,23 +32,24 @@ export function AdminConfirmDialog({
   onOpenChange,
   onConfirm,
 }: AdminConfirmDialogProps) {
+  const ui = useUiText();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md p-5">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <DialogTitle>{title}</DialogTitle>
-            <DialogDescription>{description}</DialogDescription>
+            <DialogTitle>{ui(title)}</DialogTitle>
+            <DialogDescription>{ui(description)}</DialogDescription>
           </div>
           {children}
           <div className="flex justify-end gap-2">
             <DialogClose asChild>
               <Button type="button" variant="outline" disabled={isSubmitting}>
-                Cancel
+                {ui("Cancel")}
               </Button>
             </DialogClose>
             <Button type="button" disabled={isSubmitting} onClick={onConfirm}>
-              {isSubmitting ? "Working..." : confirmLabel}
+              {isSubmitting ? ui("Working...") : ui(confirmLabel)}
             </Button>
           </div>
         </div>

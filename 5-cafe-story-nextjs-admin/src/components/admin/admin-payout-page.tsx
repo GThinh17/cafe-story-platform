@@ -36,6 +36,15 @@ import {
   getPayoutIncome,
   updatePayoutStatus,
 } from "@/lib/api/admin";
+import {
+  formatCurrency,
+  formatDate,
+  formatNumber,
+  localizeApiError,
+  useEnumLabel,
+  useI18n,
+  useUiText,
+} from "@/features/i18n";
 import type {
   AdminPayout,
   AdminPayoutStatus,
@@ -98,13 +107,12 @@ function currentMonth() {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
-function fmt(amount: number) {
-  return amount.toLocaleString();
-}
-
 const PAGE_SIZE = 20;
 
 export function AdminPayoutPage() {
+  const { locale, localeTag, t } = useI18n();
+  const ui = useUiText();
+  const enumLabel = useEnumLabel();
   const [viewType, setViewType] = useState<ViewType>("MONTHLY");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   // MONTHLY mặc định tháng trước: payout chỉ tồn tại cho tháng đã kết thúc, để
@@ -155,7 +163,7 @@ export function AdminPayoutPage() {
           })
           .catch((err: unknown) => {
             if (signal?.aborted) return;
-            setError(err instanceof Error ? err.message : "Không tải được dữ liệu.");
+            setError(localizeApiError(err, locale, t));
           })
           .finally(() => {
             if (!signal?.aborted) setIsLoading(false);
@@ -171,14 +179,14 @@ export function AdminPayoutPage() {
           })
           .catch((err: unknown) => {
             if (signal?.aborted) return;
-            setError(err instanceof Error ? err.message : "Không tải được dữ liệu.");
+            setError(localizeApiError(err, locale, t));
           })
           .finally(() => {
             if (!signal?.aborted) setIsLoading(false);
           });
       }
     },
-    [viewType, month, debouncedReviewerId, statusFilter, page, sortDir],
+    [debouncedReviewerId, locale, month, page, sortDir, statusFilter, t, viewType],
   );
 
   useEffect(() => {
@@ -210,7 +218,7 @@ export function AdminPayoutPage() {
       // setMonth không đổi giá trị thì effect không chạy lại — vẫn phải reload tay.
       void load();
     } catch (err) {
-      setIncomeGenerateError(err instanceof Error ? err.message : "Generate thất bại.");
+      setIncomeGenerateError(localizeApiError(err, locale, t, "common.error.action"));
     } finally {
       setIsGeneratingIncome(false);
     }
@@ -225,7 +233,7 @@ export function AdminPayoutPage() {
       setMonth(generateMonth);
       void load();
     } catch (err) {
-      setMonthlyGenerateError(err instanceof Error ? err.message : "Generate thất bại.");
+      setMonthlyGenerateError(localizeApiError(err, locale, t, "common.error.action"));
     } finally {
       setIsGeneratingMonthly(false);
     }
@@ -240,7 +248,7 @@ export function AdminPayoutPage() {
       setSelected(null);
       void load();
     } catch (err) {
-      setUpdateError(err instanceof Error ? err.message : "Cập nhật thất bại.");
+      setUpdateError(localizeApiError(err, locale, t, "common.error.action"));
     } finally {
       setIsUpdating(false);
     }
@@ -248,7 +256,7 @@ export function AdminPayoutPage() {
 
   const incomeColumns = useMemo<AdminTableColumn<ReviewerIncome>[]>(
     () => [
-      { header: "Date", cell: (row) => row.incomeDate },
+      { header: "Date", cell: (row) => formatDate(`${row.incomeDate}T00:00:00`, localeTag) },
       {
         header: "Reviewer",
         cell: (row) => (
@@ -258,13 +266,13 @@ export function AdminPayoutPage() {
       {
         header: "Badge",
         cell: (row) => (
-          <Badge variant={badgeVariant[row.badge]}>{row.badge}</Badge>
+          <Badge variant={badgeVariant[row.badge]}>{enumLabel(row.badge)}</Badge>
         ),
       },
-      { header: "Likes", className: "text-right", cell: (row) => row.likeCount },
-      { header: "Comments", className: "text-right", cell: (row) => row.commentCount },
-      { header: "Shares", className: "text-right", cell: (row) => row.shareCount },
-      { header: "Base", className: "text-right", cell: (row) => fmt(row.baseAmount) },
+      { header: "Likes", className: "text-right", cell: (row) => formatNumber(row.likeCount, localeTag) },
+      { header: "Comments", className: "text-right", cell: (row) => formatNumber(row.commentCount, localeTag) },
+      { header: "Shares", className: "text-right", cell: (row) => formatNumber(row.shareCount, localeTag) },
+      { header: "Base", className: "text-right", cell: (row) => formatCurrency(row.baseAmount, "VND", localeTag) },
       { header: "×", className: "text-right", cell: (row) => row.badgeMultiplier },
       {
         // Số này nhân hệ số badge của TỪNG NGÀY. Payout tháng lại nhân hệ số
@@ -272,10 +280,10 @@ export function AdminPayoutPage() {
         // Final ở tab MONTHLY. Số chốt để chi trả là số ở tab MONTHLY.
         header: "Final (est. daily badge)",
         className: "text-right font-semibold",
-        cell: (row) => fmt(row.finalAmount),
+        cell: (row) => formatCurrency(row.finalAmount, "VND", localeTag),
       },
     ],
-    [],
+    [enumLabel, localeTag],
   );
 
   const monthlyColumns = useMemo<AdminTableColumn<AdminPayout>[]>(
@@ -290,24 +298,24 @@ export function AdminPayoutPage() {
       {
         header: "Badge",
         cell: (row) => (
-          <Badge variant={badgeVariant[row.badge]}>{row.badge}</Badge>
+          <Badge variant={badgeVariant[row.badge]}>{enumLabel(row.badge)}</Badge>
         ),
       },
       {
         header: "Base",
         className: "text-right",
-        cell: (row) => fmt(row.totalBaseAmount),
+        cell: (row) => formatCurrency(row.totalBaseAmount, "VND", localeTag),
       },
       { header: "×", className: "text-right", cell: (row) => row.badgeMultiplier },
       {
         header: "Final",
         className: "text-right font-semibold",
-        cell: (row) => fmt(row.totalFinalAmount),
+        cell: (row) => formatCurrency(row.totalFinalAmount, "VND", localeTag),
       },
       {
         header: "Status",
         cell: (row) => (
-          <Badge variant={statusVariant[row.status]}>{row.status}</Badge>
+          <Badge variant={statusVariant[row.status]}>{enumLabel(row.status)}</Badge>
         ),
       },
       {
@@ -328,13 +336,13 @@ export function AdminPayoutPage() {
                 setUpdateError(null);
               }}
             >
-              Update
+              {ui("Update")}
             </Button>
           );
         },
       },
     ],
-    [],
+    [enumLabel, localeTag, ui],
   );
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -366,17 +374,17 @@ export function AdminPayoutPage() {
             <Button asChild type="button" variant="outline">
               <Link href="/formulas">
                 <ListOrderedIcon data-icon="inline-start" />
-                Formulas
+                {ui("Formulas")}
               </Link>
             </Button>
             <Button type="button" variant="outline" onClick={() => setIsIncomeGenerateOpen(true)}>
               <CalendarIcon data-icon="inline-start" />
-              Generate Income
+              {ui("Generate Income")}
             </Button>
             {viewType === "MONTHLY" && (
               <Button type="button" onClick={() => setIsMonthlyGenerateOpen(true)}>
                 <BanknoteIcon data-icon="inline-start" />
-                Generate Payout
+                {ui("Generate Payout")}
               </Button>
             )}
           </div>
@@ -464,7 +472,7 @@ export function AdminPayoutPage() {
         onConfirm={handleGenerateIncome}
       >
         <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium">Date (yyyy-MM-dd)</span>
+          <span className="text-sm font-medium">{ui("Date (yyyy-MM-dd)")}</span>
           <input
             type="date"
             className="flex h-10 w-full rounded-md border border-input bg-surface px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -494,7 +502,7 @@ export function AdminPayoutPage() {
         onConfirm={handleGenerateMonthly}
       >
         <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium">Month (yyyy-MM)</span>
+          <span className="text-sm font-medium">{ui("Month (yyyy-MM)")}</span>
           <input
             type="month"
             className="flex h-10 w-full rounded-md border border-input bg-surface px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -516,7 +524,11 @@ export function AdminPayoutPage() {
         title="Update payout status"
         description={
           selected
-            ? `Reviewer: ${shortId(selected.reviewerId)} · Month: ${selected.payoutMonth} · Final: ${fmt(selected.totalFinalAmount)}`
+            ? ui("Reviewer: {reviewer} · Month: {month} · Final: {amount}", {
+                reviewer: shortId(selected.reviewerId),
+                month: selected.payoutMonth,
+                amount: formatCurrency(selected.totalFinalAmount, "VND", localeTag),
+              })
             : ""
         }
         confirmLabel="Confirm"
@@ -525,7 +537,7 @@ export function AdminPayoutPage() {
       >
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium">New status</span>
+            <span className="text-sm font-medium">{ui("New status")}</span>
             <Select
               value={newStatus}
               onValueChange={(v) => setNewStatus(v as AdminPayoutStatus)}
@@ -538,7 +550,7 @@ export function AdminPayoutPage() {
                   {selected
                     ? nextStatuses(selected).map((s) => (
                         <SelectItem key={s} value={s}>
-                          {s}
+                          {enumLabel(s)}
                         </SelectItem>
                       ))
                     : null}
@@ -547,10 +559,10 @@ export function AdminPayoutPage() {
             </Select>
           </div>
           <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium">Notes (optional)</span>
+            <span className="text-sm font-medium">{ui("Notes (optional)")}</span>
             <textarea
               className="flex min-h-20 w-full rounded-md border border-input bg-surface px-3 py-2 text-sm ring-offset-background placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
-              placeholder="Enter notes..."
+              placeholder={ui("Enter notes...")}
               value={note}
               onChange={(e) => setNote(e.target.value)}
             />

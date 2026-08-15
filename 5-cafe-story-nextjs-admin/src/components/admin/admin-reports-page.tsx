@@ -56,6 +56,14 @@ import {
   updateReportStatus,
 } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
+import {
+  formatNumber,
+  localizeApiError,
+  type LocaleTag,
+  useEnumLabel,
+  useI18n,
+  useUiText,
+} from "@/features/i18n";
 import type { PageResponse } from "@/types/api";
 import type {
   AdminReportAiAutoApplyJob,
@@ -103,8 +111,14 @@ type AiOperationalError = {
   stage: string;
 };
 
-function reportReason(report: ContentReport) {
-  return report.reasonLabel || report.reason || report.reasonCode || "Report";
+function reportReason(
+  report: ContentReport,
+  enumLabel: (value: unknown) => string,
+  ui: (phrase: string) => string,
+) {
+  return report.reasonCode
+    ? enumLabel(report.reasonCode)
+    : report.reasonLabel || report.reason || ui("Report");
 }
 
 function canRequestAi(report: ContentReport) {
@@ -127,19 +141,21 @@ function severityClassName(severity: number | null | undefined) {
   return "bg-primary/10 text-primary-strong";
 }
 
-function scoreLabel(value: number | null | undefined) {
-  return typeof value === "number" ? value.toFixed(1) : "-";
+function scoreLabel(value: number | null | undefined, localeTag: LocaleTag) {
+  return typeof value === "number"
+    ? formatNumber(value, localeTag, { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+    : "—";
 }
 
 function activeAutoApplyJob(jobs: AdminReportAiAutoApplyJob[]) {
   return jobs.find((job) => job.status === "SCHEDULED" || job.status === "APPLYING") ?? null;
 }
 
-function countdownLabel(scheduledAt: string, nowMs: number) {
+function countdownLabel(scheduledAt: string, nowMs: number, localeTag: LocaleTag, dueNow: string) {
   const remainingMs = new Date(scheduledAt).getTime() - nowMs;
 
   if (remainingMs <= 0) {
-    return "Due now";
+    return dueNow;
   }
 
   const totalSeconds = Math.ceil(remainingMs / 1000);
@@ -148,18 +164,14 @@ function countdownLabel(scheduledAt: string, nowMs: number) {
   const seconds = totalSeconds % 60;
 
   if (hours > 0) {
-    return `${hours}h ${minutes}m`;
+    return `${formatNumber(hours, localeTag)}h ${formatNumber(minutes, localeTag)}m`;
   }
 
   if (minutes > 0) {
-    return `${minutes}m ${seconds}s`;
+    return `${formatNumber(minutes, localeTag)}m ${formatNumber(seconds, localeTag)}s`;
   }
 
-  return `${seconds}s`;
-}
-
-function resolutionSummary(resolution: AdminReportAiResolution) {
-  return `${resolution.reportDecision} / ${resolution.targetAction}`;
+  return `${formatNumber(seconds, localeTag)}s`;
 }
 
 function mergeAiHistory(
@@ -170,6 +182,9 @@ function mergeAiHistory(
 }
 
 export function AdminReportsPage() {
+  const { locale, localeTag, t } = useI18n();
+  const ui = useUiText();
+  const enumLabel = useEnumLabel();
   const [status, setStatus] = useState<ReportStatus | "">("");
   const [targetType, setTargetType] = useState<ReportTargetType | "">("");
   const [pendingAction, setPendingAction] = useState<PendingReportAction | null>(null);
@@ -315,8 +330,8 @@ export function AdminReportsPage() {
       if (!reports.length) {
         setBulkError(
           bulkMode === "filtered"
-            ? "No open or reviewing reports match the current filters."
-            : "Select at least one open or reviewing report.",
+            ? ui("No open or reviewing reports match the current filters.")
+            : ui("Select at least one open or reviewing report."),
         );
         return;
       }
@@ -356,7 +371,13 @@ export function AdminReportsPage() {
           const reason = requestError instanceof Error
             ? requestError.message
             : "AI recommendation failed.";
-          setBulkFailures((current) => [...current, { reportId: report.id, reason }]);
+          setBulkFailures((current) => [
+            ...current,
+            {
+              reportId: report.id,
+              reason: locale === "en" ? reason : t("common.error.action"),
+            },
+          ]);
           setBulkProgress((current) => ({
             ...current,
             done: current.done + 1,
@@ -379,11 +400,7 @@ export function AdminReportsPage() {
 
       resource.refetch();
     } catch (requestError) {
-      setBulkError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Bulk AI recommendation failed.",
-      );
+      setBulkError(localizeApiError(requestError, locale, t, "common.error.action"));
     } finally {
       setBulkRunning(false);
     }
@@ -408,11 +425,7 @@ export function AdminReportsPage() {
 
       setAutoApplyJobs([]);
       setAutoApplyJobsPage(null);
-      setAutoApplyJobsError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to load auto apply jobs.",
-      );
+      setAutoApplyJobsError(localizeApiError(requestError, locale, t));
     } finally {
       if (!signal?.aborted) {
         setAutoApplyJobsLoading(false);
@@ -439,11 +452,7 @@ export function AdminReportsPage() {
 
       setAiHistory([]);
       setAiHistoryPage(null);
-      setAiHistoryError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to load AI recommendations.",
-      );
+      setAiHistoryError(localizeApiError(requestError, locale, t));
     } finally {
       if (!signal?.aborted) {
         setAiHistoryLoading(false);
@@ -489,15 +498,15 @@ export function AdminReportsPage() {
         await loadAutoApplyJobs(report.id);
       }
       if (createdResolution.autoApplyWarning) {
-        setAiActionError(createdResolution.autoApplyWarning);
+        setAiActionError(
+          locale === "en"
+            ? createdResolution.autoApplyWarning
+            : ui("AI recommendation created, but the legacy auto-apply warning could not be localized."),
+        );
       }
       setAskAiDialogOpen(false);
     } catch (requestError) {
-      setAiActionError(
-        requestError instanceof Error
-          ? requestError.message
-          : "AI recommendation failed.",
-      );
+      setAiActionError(localizeApiError(requestError, locale, t, "common.error.action"));
       setAiOperationalError(
         requestError instanceof ApiError &&
           requestError.code &&
@@ -537,11 +546,7 @@ export function AdminReportsPage() {
         await loadAutoApplyJobs(detail.data.id);
       }
     } catch (requestError) {
-      setAiActionError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to cancel auto apply job.",
-      );
+      setAiActionError(localizeApiError(requestError, locale, t, "common.error.action"));
     }
   }
 
@@ -565,9 +570,14 @@ export function AdminReportsPage() {
         cell: (report) => (
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <p className="font-semibold text-espresso">{reportReason(report)}</p>
+              <p className="font-semibold text-espresso">{reportReason(report, enumLabel, ui)}</p>
               <Badge className={severityClassName(report.reasonSeverity)}>
-                Severity {report.reasonSeverity ?? "-"}
+                {ui("Severity {severity}", {
+                  severity:
+                    report.reasonSeverity == null
+                      ? "—"
+                      : formatNumber(report.reasonSeverity, localeTag),
+                })}
               </Badge>
             </div>
             <p className="mt-1 text-sm leading-6 text-muted">
@@ -599,7 +609,7 @@ export function AdminReportsPage() {
         ),
       },
       { header: "Status", cell: (report) => <AdminStatusBadge value={report.status} /> },
-      { header: "Created", cell: (report) => formatDate(report.createdAt) },
+      { header: "Created", cell: (report) => formatDate(report.createdAt, localeTag) },
       {
         header: "",
         className: "w-12 text-right",
@@ -612,7 +622,7 @@ export function AdminReportsPage() {
                 onSelect: () => openReportDetail(report),
               },
               {
-                label: "Ask AI",
+                label: ui("Ask AI"),
                 icon: SparklesIcon,
                 disabled: aiLoadingReportId === report.id || !canRequestAi(report),
                 onSelect: () => openAskAiDialog(report),
@@ -620,7 +630,7 @@ export function AdminReportsPage() {
               ...(report.status !== "RESOLVED"
                 ? [
                     {
-                      label: "Resolve",
+                label: ui("Resolve"),
                       icon: CheckCircle2Icon,
                       onSelect: () =>
                         setPendingAction({ kind: "resolve", report }),
@@ -632,7 +642,7 @@ export function AdminReportsPage() {
         ),
       },
     ],
-    [aiLoadingReportId, detail.data?.id],
+    [aiLoadingReportId, detail.data?.id, enumLabel, localeTag, ui],
   );
 
   async function handleConfirm() {
@@ -653,9 +663,7 @@ export function AdminReportsPage() {
       setPendingAction(null);
       resource.refetch();
     } catch (requestError) {
-      setActionError(
-        requestError instanceof Error ? requestError.message : "Action failed.",
-      );
+      setActionError(localizeApiError(requestError, locale, t, "common.error.action"));
     } finally {
       setIsSubmitting(false);
     }
@@ -667,19 +675,21 @@ export function AdminReportsPage() {
     pendingAction?.kind === "resolve"
       ? "Resolve report"
       : pendingAction
-        ? `${REPORT_STATUS_LABELS[pendingAction.status]} report`
+        ? ui("{action} report", { action: ui(REPORT_STATUS_LABELS[pendingAction.status]) })
         : "Update report";
   const confirmDescription =
     pendingAction?.kind === "resolve"
       ? "This closes the report only. It will not hide, remove, or suspend the target content."
       : pendingAction
-        ? `Change this report's status to "${pendingAction.status.toLowerCase().replace("_", " ")}".`
+        ? ui("Change this report's status to {status}.", {
+            status: enumLabel(pendingAction.status),
+          })
         : "Confirm the report action.";
   const confirmLabel =
     pendingAction?.kind === "resolve"
       ? "Resolve report"
       : pendingAction
-        ? REPORT_STATUS_LABELS[pendingAction.status]
+        ? ui(REPORT_STATUS_LABELS[pendingAction.status])
         : "Confirm";
   const bulkRemaining = Math.max(
     bulkProgress.total - bulkProgress.done,
@@ -705,7 +715,7 @@ export function AdminReportsPage() {
             onClick={openBulkDialog}
           >
             <ListChecksIcon data-icon="inline-start" />
-            Generate AI recommendations
+            {ui("Generate AI recommendations")}
           </Button>
         }
       >
@@ -731,9 +741,9 @@ export function AdminReportsPage() {
       }}>
         <DialogContent className="max-h-[86vh] w-[94vw] max-w-3xl grid-rows-[auto_minmax(0,1fr)_auto] p-0">
           <div className="border-b border-border px-5 py-4">
-            <DialogTitle>Generate AI recommendations</DialogTitle>
+            <DialogTitle>{ui("Generate AI recommendations")}</DialogTitle>
             <DialogDescription className="mt-1">
-              Create AI recommendations in bulk. This does not resolve reports or change target content.
+              {ui("Create AI recommendations in bulk. This does not resolve reports or change target content.")}
             </DialogDescription>
           </div>
           <div className="overflow-y-auto px-5 py-4">
@@ -749,13 +759,16 @@ export function AdminReportsPage() {
                 onClick={() => setBulkMode("filtered")}
               >
                 <span className="text-sm font-bold text-espresso">
-                  All matching filters
+                  {ui("All matching filters")}
                 </span>
                 <span className="mt-2 block text-sm leading-6 text-muted">
-                  Run AI for every report matching status and target filters, across all pages.
+                  {ui("Run AI for every report matching status and target filters, across all pages.")}
                 </span>
                 <span className="mt-3 block text-xs text-muted">
-                  Current filters: {status || "all statuses"} / {targetType || "all targets"}
+                  {ui("Current filters: {status} / {target}", {
+                    status: status ? enumLabel(status) : ui("all statuses"),
+                    target: targetType ? enumLabel(targetType) : ui("all targets"),
+                  })}
                 </span>
               </button>
               <button
@@ -769,32 +782,35 @@ export function AdminReportsPage() {
                 onClick={() => setBulkMode("selected")}
               >
                 <span className="text-sm font-bold text-espresso">
-                  Selected reports
+                  {ui("Selected reports")}
                 </span>
                 <span className="mt-2 block text-sm leading-6 text-muted">
-                  Run AI only for reports selected from the current page.
+                  {ui("Run AI only for reports selected from the current page.")}
                 </span>
                 <span className="mt-3 block text-xs text-muted">
-                  Selected: {selectedBulkReports.length} of {currentPageEligibleReports.length} eligible
+                  {ui("Selected: {selected} of {eligible} eligible", {
+                    selected: formatNumber(selectedBulkReports.length, localeTag),
+                    eligible: formatNumber(currentPageEligibleReports.length, localeTag),
+                  })}
                 </span>
               </button>
             </div>
 
             <div className="mt-5 rounded-md border border-primary/20 bg-primary/5 p-4">
               <p className="text-sm font-bold text-espresso">
-                Recommendation only — automation is disabled
+                {ui("Recommendation only — automation is disabled")}
               </p>
               <p className="mt-1 text-sm leading-6 text-muted">
-                This bulk run creates review records only. It never resolves a report or changes a target.
+                {ui("This bulk run creates review records only. It never resolves a report or changes a target.")}
               </p>
             </div>
 
             <div className="mt-5 rounded-md border border-border bg-background">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
                 <div>
-                  <p className="text-sm font-bold text-espresso">Current page selection</p>
+                  <p className="text-sm font-bold text-espresso">{ui("Current page selection")}</p>
                   <p className="mt-1 text-xs text-muted">
-                    Selection is used when the Selected reports mode is active.
+                    {ui("Selection is used when the Selected reports mode is active.")}
                   </p>
                 </div>
                 <Button
@@ -804,7 +820,7 @@ export function AdminReportsPage() {
                   disabled={bulkRunning || !currentPageEligibleReports.length}
                   onClick={toggleCurrentPageSelection}
                 >
-                  {allCurrentPageSelected ? "Clear page" : "Select page"}
+                  {ui(allCurrentPageSelected ? "Clear page" : "Select page")}
                 </Button>
               </div>
               <div className="max-h-72 overflow-y-auto">
@@ -827,7 +843,7 @@ export function AdminReportsPage() {
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-2">
                         <span className="font-semibold text-espresso">
-                          {reportReason(report)}
+                         {reportReason(report, enumLabel, ui)}
                         </span>
                         <AdminStatusBadge value={report.status} />
                         <AdminStatusBadge value={report.targetType} />
@@ -840,7 +856,7 @@ export function AdminReportsPage() {
                 ))}
                 {!resource.rows.length ? (
                   <div className="p-4 text-sm text-muted">
-                    No reports on this page.
+                    {ui("No reports on this page.")}
                   </div>
                 ) : null}
               </div>
@@ -849,12 +865,12 @@ export function AdminReportsPage() {
             {bulkProgress.total > 0 ? (
               <div className="mt-5 rounded-md border border-border bg-background p-4">
                 <div className="flex flex-wrap gap-4 text-sm text-muted">
-                  <span>Completed: {bulkSuccess}</span>
-                  <span>Recommended: {bulkProgress.recommended}</span>
-                  <span>Needs manual review: {bulkProgress.manualReview}</span>
-                  <span>Failed: {bulkProgress.failed}</span>
-                  <span>Remaining: {bulkRemaining}</span>
-                  <span>Total: {bulkProgress.total}</span>
+                  <span>{ui("Completed: {count}", { count: formatNumber(bulkSuccess, localeTag) })}</span>
+                  <span>{ui("Recommended: {count}", { count: formatNumber(bulkProgress.recommended, localeTag) })}</span>
+                  <span>{ui("Needs manual review: {count}", { count: formatNumber(bulkProgress.manualReview, localeTag) })}</span>
+                  <span>{ui("Failed: {count}", { count: formatNumber(bulkProgress.failed, localeTag) })}</span>
+                  <span>{ui("Remaining: {count}", { count: formatNumber(bulkRemaining, localeTag) })}</span>
+                  <span>{ui("Total: {count}", { count: formatNumber(bulkProgress.total, localeTag) })}</span>
                 </div>
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-muted">
                   <div
@@ -878,7 +894,9 @@ export function AdminReportsPage() {
             {bulkFailures.length ? (
               <div role="alert" className="mt-4 rounded-md border border-accent/30 bg-accent/10 p-3">
                 <p className="text-sm font-semibold text-accent">
-                  {bulkFailures.length} report{bulkFailures.length === 1 ? "" : "s"} failed. Successful recommendations were kept.
+                  {ui("{count} reports failed. Successful recommendations were kept.", {
+                    count: formatNumber(bulkFailures.length, localeTag),
+                  })}
                 </p>
                 <ul className="mt-2 max-h-32 space-y-1 overflow-y-auto text-sm text-foreground">
                   {bulkFailures.map((failure) => (
@@ -898,7 +916,7 @@ export function AdminReportsPage() {
               disabled={bulkRunning}
               onClick={() => setBulkDialogOpen(false)}
             >
-              Close
+              {ui("Close")}
             </Button>
             <Button
               type="button"
@@ -913,7 +931,7 @@ export function AdminReportsPage() {
               ) : (
                 <SparklesIcon data-icon="inline-start" />
               )}
-              {bulkRunning ? "Running..." : "Run AI"}
+              {ui(bulkRunning ? "Running..." : "Run AI")}
             </Button>
           </div>
         </DialogContent>
@@ -928,9 +946,9 @@ export function AdminReportsPage() {
       >
         <DialogContent className="w-[94vw] max-w-xl p-0">
           <div className="border-b border-border px-5 py-4">
-            <DialogTitle>Ask AI for report resolution</DialogTitle>
+            <DialogTitle>{ui("Ask AI for report resolution")}</DialogTitle>
             <DialogDescription className="mt-1">
-              Build an evidence-based recommendation. No report or target action is applied.
+              {ui("Build an evidence-based recommendation. No report or target action is applied.")}
             </DialogDescription>
           </div>
           <div className="px-5 py-4">
@@ -938,7 +956,7 @@ export function AdminReportsPage() {
               <div className="rounded-md border border-border bg-surface p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold text-espresso">
-                    {reportReason(askAiReport)}
+                     {reportReason(askAiReport, enumLabel, ui)}
                   </span>
                   <AdminStatusBadge value={askAiReport.status} />
                   <AdminStatusBadge value={askAiReport.targetType} />
@@ -950,25 +968,25 @@ export function AdminReportsPage() {
             ) : null}
 
             <div className="mt-4 rounded-md border border-primary/20 bg-primary/5 p-4 text-sm leading-6 text-foreground">
-              <p className="font-bold text-espresso">A0 recommendation-only mode</p>
+              <p className="font-bold text-espresso">{ui("A0 recommendation-only mode")}</p>
               <p className="mt-1 text-muted">
-                AI findings support an admin review. Confidence, likelihood, severity, or action risk never authorize an automatic action.
+                {ui("AI findings support an admin review. Confidence, likelihood, severity, or action risk never authorize an automatic action.")}
               </p>
             </div>
             {aiActionError ? (
               <div role="alert" className="mt-4 rounded-md border border-accent/30 bg-accent/10 p-3 text-sm text-accent">
-                <p className="font-semibold">AI recommendation was not created.</p>
+                <p className="font-semibold">{ui("AI recommendation was not created.")}</p>
                 <p className="mt-1 break-words">{aiActionError}</p>
                 {aiOperationalError ? (
                   <div className="mt-2 space-y-1 text-foreground">
-                    <p>Error code: {aiOperationalError.code}</p>
-                    <p>Stage: {aiOperationalError.stage}</p>
-                    <p>Support reference: {aiOperationalError.correlationId}</p>
-                    <p>{aiOperationalError.retryable ? "Retry available" : "Retry unavailable"}</p>
+                    <p>{ui("Error code: {code}", { code: aiOperationalError.code })}</p>
+                    <p>{ui("Stage: {stage}", { stage: aiOperationalError.stage })}</p>
+                    <p>{ui("Support reference: {reference}", { reference: aiOperationalError.correlationId })}</p>
+                    <p>{ui(aiOperationalError.retryable ? "Retry available" : "Retry unavailable")}</p>
                   </div>
                 ) : null}
                 <p className="mt-1 text-foreground">
-                  Check the service status, then select Ask AI to retry this report.
+                  {ui("Check the service status, then select Ask AI to retry this report.")}
                 </p>
               </div>
             ) : null}
@@ -980,7 +998,7 @@ export function AdminReportsPage() {
               disabled={Boolean(aiLoadingReportId)}
               onClick={() => setAskAiDialogOpen(false)}
             >
-              Close
+              {ui("Close")}
             </Button>
             <Button
               type="button"
@@ -992,7 +1010,7 @@ export function AdminReportsPage() {
               ) : (
                 <SparklesIcon data-icon="inline-start" />
               )}
-              {aiLoadingReportId ? "Running..." : "Ask AI"}
+              {ui(aiLoadingReportId ? "Running..." : "Ask AI")}
             </Button>
           </div>
         </DialogContent>
@@ -1017,7 +1035,11 @@ export function AdminReportsPage() {
         open={detail.open}
         onOpenChange={detail.setOpen}
         title="Report detail"
-        description={detailReport ? `Report ${detailReport.id}` : "Latest detail from admin API"}
+        description={
+          detailReport
+            ? ui("Report {id}", { id: detailReport.id })
+            : "Latest detail from admin API"
+        }
         isLoading={detail.isLoading}
         error={detail.error}
         className="max-w-6xl"
@@ -1036,7 +1058,7 @@ export function AdminReportsPage() {
                 ) : (
                   <SparklesIcon data-icon="inline-start" />
                 )}
-                Ask AI
+                {ui("Ask AI")}
               </Button>
               {reportStatuses
                 .filter((nextStatus) => nextStatus !== detailReport.status && nextStatus !== "RESOLVED")
@@ -1054,7 +1076,7 @@ export function AdminReportsPage() {
                       })
                     }
                   >
-                    {REPORT_STATUS_LABELS[nextStatus]}
+                    {ui(REPORT_STATUS_LABELS[nextStatus])}
                   </Button>
                 ))}
               {detailReport.status !== "RESOLVED" ? (
@@ -1064,7 +1086,7 @@ export function AdminReportsPage() {
                   onClick={() => setPendingAction({ kind: "resolve", report: detailReport })}
                 >
                   <CheckCircle2Icon data-icon="inline-start" />
-                  Resolve report
+                  {ui("Resolve report")}
                 </Button>
               ) : null}
             </div>
@@ -1077,9 +1099,14 @@ export function AdminReportsPage() {
               <AdminDetailGrid>
                 <AdminDetailField label="Reason" className="sm:col-span-2">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span>{reportReason(detailReport)}</span>
+                    <span>{reportReason(detailReport, enumLabel, ui)}</span>
                     <Badge className={severityClassName(detailReport.reasonSeverity)}>
-                      Severity {detailReport.reasonSeverity ?? "-"}
+                      {ui("Severity {severity}", {
+                        severity:
+                          detailReport.reasonSeverity == null
+                            ? "—"
+                            : formatNumber(detailReport.reasonSeverity, localeTag),
+                      })}
                     </Badge>
                   </div>
                 </AdminDetailField>
@@ -1114,10 +1141,10 @@ export function AdminReportsPage() {
                   {detailReport.cafePageId || "-"}
                 </AdminDetailField>
                 <AdminDetailField label="Created">
-                  {formatDate(detailReport.createdAt)}
+                  {formatDate(detailReport.createdAt, localeTag)}
                 </AdminDetailField>
                 <AdminDetailField label="Resolved">
-                  {formatDate(detailReport.resolvedAt)}
+                  {formatDate(detailReport.resolvedAt, localeTag)}
                 </AdminDetailField>
                 <AdminDetailField label="Description" className="sm:col-span-2">
                   <p className="whitespace-pre-wrap leading-6">
@@ -1130,10 +1157,10 @@ export function AdminReportsPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">
-                      Latest AI recommendation
+                       {ui("Latest AI recommendation")}
                     </p>
                     <p className="mt-1 text-sm text-muted">
-                      Recommendation only. Admin still applies the final action.
+                       {ui("Recommendation only. Admin still applies the final action.")}
                     </p>
                   </div>
                   <BotIcon className="size-5 shrink-0 text-primary" />
@@ -1141,7 +1168,7 @@ export function AdminReportsPage() {
                 {aiHistoryLoading ? (
                   <div className="mt-5 flex items-center gap-2 text-sm text-muted">
                     <LoaderCircleIcon className="size-4 animate-spin" />
-                    Loading AI history...
+                     {ui("Loading AI history...")}
                   </div>
                 ) : aiHistoryError ? (
                   <p className="mt-5 rounded-md border border-accent/30 bg-accent/10 p-3 text-sm text-accent">
@@ -1158,16 +1185,16 @@ export function AdminReportsPage() {
                     </div>
                     <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm leading-6">
                       <p className="font-bold text-espresso">
-                        AI recommendation only — no action has been applied
+                         {ui("AI recommendation only — no action has been applied")}
                       </p>
                       <p className="mt-1 text-muted">
-                        An admin must make and execute the final moderation decision.
+                         {ui("An admin must make and execute the final moderation decision.")}
                       </p>
                     </div>
                     {latestAiResolution.blockedReasons?.length ? (
                       <div className="rounded-md border border-rating/30 bg-rating/10 p-3">
                         <p className="text-xs font-black uppercase text-espresso">
-                          Why manual review is required
+                           {ui("Why manual review is required")}
                         </p>
                         <ul className="mt-2 space-y-1 text-sm text-foreground">
                           {latestAiResolution.blockedReasons.map((reason) => (
@@ -1179,33 +1206,42 @@ export function AdminReportsPage() {
                     {latestAiResolution.contractVersion === "2.0" ? (
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div className="rounded-md bg-surface p-3">
-                          <p className="text-xs font-black uppercase text-muted">Evidence</p>
+                           <p className="text-xs font-black uppercase text-muted">{ui("Evidence")}</p>
                           <p className="mt-1 font-semibold text-espresso">
-                            {latestAiResolution.evidenceSufficiency || "UNKNOWN"}
+                             {enumLabel(latestAiResolution.evidenceSufficiency || "UNKNOWN")}
                           </p>
                           <p className="mt-1 text-xs text-muted">
-                            Quality {latestAiResolution.evidenceQuality || "UNKNOWN"}
+                             {ui("Quality {quality}", {
+                               quality: enumLabel(latestAiResolution.evidenceQuality || "UNKNOWN"),
+                             })}
                           </p>
                         </div>
                         <div className="rounded-md bg-surface p-3">
-                          <p className="text-xs font-black uppercase text-muted">Assessment</p>
+                           <p className="text-xs font-black uppercase text-muted">{ui("Assessment")}</p>
                           <p className="mt-1 font-semibold text-espresso">
-                            Likelihood {latestAiResolution.violationLikelihood || "UNKNOWN"}
+                             {ui("Likelihood {likelihood}", {
+                               likelihood: enumLabel(latestAiResolution.violationLikelihood || "UNKNOWN"),
+                             })}
                           </p>
                           <p className="mt-1 text-xs text-muted">
-                            Harm {latestAiResolution.harmSeverity || "UNKNOWN"} · Action risk {latestAiResolution.actionRisk || "UNKNOWN"}
+                             {ui("Harm {harm} · Action risk {risk}", {
+                               harm: enumLabel(latestAiResolution.harmSeverity || "UNKNOWN"),
+                               risk: enumLabel(latestAiResolution.actionRisk || "UNKNOWN"),
+                             })}
                           </p>
                         </div>
                       </div>
                     ) : (
                       <div className="rounded-md border border-dashed border-border p-3 text-sm text-muted">
-                        Legacy confidence {scoreLabel(latestAiResolution.confidenceScore)} · risk {scoreLabel(latestAiResolution.riskScore)}.
-                        These uncalibrated values are not action authority.
+                         {ui("Legacy confidence {confidence} · risk {risk}. These uncalibrated values are not action authority.", {
+                           confidence: scoreLabel(latestAiResolution.confidenceScore, localeTag),
+                           risk: scoreLabel(latestAiResolution.riskScore, localeTag),
+                         })}
                       </div>
                     )}
                     {latestAiResolution.findings?.length ? (
                       <div>
-                        <p className="text-xs font-black uppercase text-muted">Policy findings</p>
+                         <p className="text-xs font-black uppercase text-muted">{ui("Policy findings")}</p>
                         <div className="mt-2 space-y-2">
                           {latestAiResolution.findings.map((finding) => (
                             <div className="rounded-md border border-border p-3" key={`${finding.ruleId}-${finding.ruleVersion}`}>
@@ -1216,11 +1252,11 @@ export function AdminReportsPage() {
                               </div>
                               <p className="mt-2 text-sm text-foreground">{finding.rationale}</p>
                               <p className="mt-2 text-xs text-muted">
-                                Evidence: {finding.evidenceIds.join(", ") || "none"}
+                                 {ui("Evidence: {ids}", { ids: finding.evidenceIds.join(", ") || ui("none") })}
                               </p>
                               {finding.missingEvidenceIds.length ? (
                                 <p className="mt-1 text-xs text-rating">
-                                  Missing: {finding.missingEvidenceIds.join(", ")}
+                                   {ui("Missing: {ids}", { ids: finding.missingEvidenceIds.join(", ") })}
                                 </p>
                               ) : null}
                             </div>
@@ -1230,27 +1266,27 @@ export function AdminReportsPage() {
                     ) : null}
                     <div className="grid grid-cols-3 gap-2 text-sm">
                       <div className="rounded-md bg-surface p-3">
-                        <p className="text-xs font-black uppercase text-muted">Used evidence</p>
+                         <p className="text-xs font-black uppercase text-muted">{ui("Used evidence")}</p>
                         <p className="mt-1 font-semibold text-espresso">
-                          {latestAiResolution.evidenceSummary?.usedEvidenceIds?.length ?? 0}
+                           {formatNumber(latestAiResolution.evidenceSummary?.usedEvidenceIds?.length ?? 0, localeTag)}
                         </p>
                       </div>
                       <div className="rounded-md bg-surface p-3">
-                        <p className="text-xs font-black uppercase text-muted">Counter</p>
+                         <p className="text-xs font-black uppercase text-muted">{ui("Counter")}</p>
                         <p className="mt-1 font-semibold text-espresso">
-                          {latestAiResolution.evidenceSummary?.counterEvidenceIds?.length ?? 0}
+                           {formatNumber(latestAiResolution.evidenceSummary?.counterEvidenceIds?.length ?? 0, localeTag)}
                         </p>
                       </div>
                       <div className="rounded-md bg-surface p-3">
-                        <p className="text-xs font-black uppercase text-muted">Missing</p>
+                         <p className="text-xs font-black uppercase text-muted">{ui("Missing")}</p>
                         <p className="mt-1 font-semibold text-espresso">
-                          {latestAiResolution.evidenceSummary?.missingEvidenceIds?.length ?? 0}
+                           {formatNumber(latestAiResolution.evidenceSummary?.missingEvidenceIds?.length ?? 0, localeTag)}
                         </p>
                       </div>
                     </div>
                     <div>
                       <p className="text-xs font-black uppercase text-muted">
-                        AI rationale — not evidence
+                         {ui("AI rationale — not evidence")}
                       </p>
                       <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-foreground">
                         {latestAiResolution.explanation || "-"}
@@ -1264,37 +1300,36 @@ export function AdminReportsPage() {
                           </Badge>
                         ))
                       ) : (
-                        <span className="text-sm text-muted">No labels</span>
+                         <span className="text-sm text-muted">{ui("No labels")}</span>
                       )}
                     </div>
                     <p className="text-xs text-muted">
-                      {latestAiResolution.modelName || "Unknown model"} -{" "}
-                      {formatDate(latestAiResolution.createdAt)}
+                       {latestAiResolution.modelName || ui("Unknown model")} -{" "}
+                       {formatDate(latestAiResolution.createdAt, localeTag)}
                     </p>
                     {latestAiResolution.contractVersion === "2.0" ? (
                       <div className="rounded-md bg-surface p-3 font-mono text-[11px] leading-5 text-muted">
-                        <p>Policy {latestAiResolution.policyVersion || "-"}</p>
-                        <p>Rules {latestAiResolution.ruleCatalogVersion || "-"}</p>
-                        <p>Prompt {latestAiResolution.promptVersion || "-"}</p>
-                        <p>Workflow {latestAiResolution.workflowVersion || "-"}</p>
-                        <p>Correlation {latestAiResolution.correlationId || "-"}</p>
+                         <p>{ui("Policy {value}", { value: latestAiResolution.policyVersion || "—" })}</p>
+                         <p>{ui("Rules {value}", { value: latestAiResolution.ruleCatalogVersion || "—" })}</p>
+                         <p>{ui("Prompt {value}", { value: latestAiResolution.promptVersion || "—" })}</p>
+                         <p>{ui("Workflow {value}", { value: latestAiResolution.workflowVersion || "—" })}</p>
+                         <p>{ui("Correlation {value}", { value: latestAiResolution.correlationId || "—" })}</p>
                       </div>
                     ) : null}
                   </div>
                 ) : (
                   <div className="mt-5 rounded-md border border-dashed border-border p-4 text-sm text-muted">
-                    No AI recommendation yet. Use Ask AI to request one from the admin
-                    resolution workflow.
+                     {ui("No AI recommendation yet. Use Ask AI to request one from the admin resolution workflow.")}
                   </div>
                 )}
                 <div className="mt-5 rounded-md border border-border bg-surface p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">
-                        Legacy auto-apply history
+                         {ui("Legacy auto-apply history")}
                       </p>
                       <p className="mt-1 text-sm text-muted">
-                        New jobs are disabled in A0. Existing scheduled jobs remain visible so an admin can cancel them.
+                         {ui("New jobs are disabled in A0. Existing scheduled jobs remain visible so an admin can cancel them.")}
                       </p>
                     </div>
                     <ClockIcon className="size-5 shrink-0 text-primary" />
@@ -1302,7 +1337,7 @@ export function AdminReportsPage() {
                   {autoApplyJobsLoading ? (
                     <div className="mt-4 flex items-center gap-2 text-sm text-muted">
                       <LoaderCircleIcon className="size-4 animate-spin" />
-                      Loading auto apply jobs...
+                       {ui("Loading auto apply jobs...")}
                     </div>
                   ) : autoApplyJobsError ? (
                     <p className="mt-4 rounded-md border border-accent/30 bg-accent/10 p-3 text-sm text-accent">
@@ -1317,11 +1352,18 @@ export function AdminReportsPage() {
                       </div>
                       <p className="mt-3 text-lg font-bold text-espresso">
                         {currentAutoApplyJob.status === "SCHEDULED"
-                          ? countdownLabel(currentAutoApplyJob.scheduledAt, nowMs)
-                          : "Applying now"}
+                           ? countdownLabel(
+                               currentAutoApplyJob.scheduledAt,
+                               nowMs,
+                               localeTag,
+                               ui("Due now"),
+                             )
+                           : ui("Applying now")}
                       </p>
                       <p className="mt-1 text-xs text-muted">
-                        Scheduled at {formatDate(currentAutoApplyJob.scheduledAt)}
+                         {ui("Scheduled at {date}", {
+                           date: formatDate(currentAutoApplyJob.scheduledAt, localeTag),
+                         })}
                       </p>
                       {currentAutoApplyJob.status === "SCHEDULED" ? (
                         <Button
@@ -1332,7 +1374,7 @@ export function AdminReportsPage() {
                           onClick={() => void handleCancelAutoApply(currentAutoApplyJob)}
                         >
                           <XCircleIcon data-icon="inline-start" />
-                          Cancel auto apply
+                           {ui("Cancel auto apply")}
                         </Button>
                       ) : null}
                     </div>
@@ -1343,7 +1385,9 @@ export function AdminReportsPage() {
                         <AdminStatusBadge value={autoApplyJobs[0].targetAction} />
                       </div>
                       <p className="mt-2 text-sm text-muted">
-                        Latest job: {formatDate(autoApplyJobs[0].createdAt)}
+                         {ui("Latest job: {date}", {
+                           date: formatDate(autoApplyJobs[0].createdAt, localeTag),
+                         })}
                       </p>
                       {autoApplyJobs[0].lastError ? (
                         <p className="mt-2 text-sm text-accent">{autoApplyJobs[0].lastError}</p>
@@ -1351,7 +1395,7 @@ export function AdminReportsPage() {
                     </div>
                   ) : (
                     <div className="mt-4 rounded-md border border-dashed border-border p-3 text-sm text-muted">
-                      No legacy auto-apply job exists for this report.
+                       {ui("No legacy auto-apply job exists for this report.")}
                     </div>
                   )}
                 </div>
@@ -1369,11 +1413,16 @@ export function AdminReportsPage() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">
-                    AI recommendation history
+                     {ui("AI recommendation history")}
                   </p>
                   <p className="mt-1 text-sm text-muted">
-                    Showing {aiHistory.length} of {aiHistoryPage?.totalElements ?? aiHistory.length}
-                    {" "}saved recommendations.
+                     {ui("Showing {shown} of {total} saved recommendations.", {
+                       shown: formatNumber(aiHistory.length, localeTag),
+                       total: formatNumber(
+                         aiHistoryPage?.totalElements ?? aiHistory.length,
+                         localeTag,
+                       ),
+                     })}
                   </p>
                 </div>
                 <Button
@@ -1385,7 +1434,7 @@ export function AdminReportsPage() {
                     void loadAutoApplyJobs(detailReport.id);
                   }}
                 >
-                  Refresh history
+                   {ui("Refresh history")}
                 </Button>
               </div>
               <div className="mt-3 grid gap-3">
@@ -1406,10 +1455,10 @@ export function AdminReportsPage() {
                             <Badge variant="outline">{resolution.ruleCode}</Badge>
                           ) : null}
                         </div>
-                        <span className="text-xs text-muted">{formatDate(resolution.createdAt)}</span>
+                         <span className="text-xs text-muted">{formatDate(resolution.createdAt, localeTag)}</span>
                       </div>
                       <p className="mt-3 text-sm font-semibold text-espresso">
-                        {resolutionSummary(resolution)}
+                         {enumLabel(resolution.reportDecision)} / {enumLabel(resolution.targetAction)}
                       </p>
                       <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted">
                         {resolution.explanation || "-"}
@@ -1417,22 +1466,25 @@ export function AdminReportsPage() {
                       <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted">
                         {resolution.contractVersion === "2.0" ? (
                           <>
-                            <span>Evidence {resolution.evidenceSufficiency || "UNKNOWN"}</span>
-                            <span>Likelihood {resolution.violationLikelihood || "UNKNOWN"}</span>
-                            <span>Action risk {resolution.actionRisk || "UNKNOWN"}</span>
+                             <span>{ui("Evidence {value}", { value: enumLabel(resolution.evidenceSufficiency || "UNKNOWN") })}</span>
+                             <span>{ui("Likelihood {value}", { value: enumLabel(resolution.violationLikelihood || "UNKNOWN") })}</span>
+                             <span>{ui("Action risk {value}", { value: enumLabel(resolution.actionRisk || "UNKNOWN") })}</span>
                           </>
                         ) : (
                           <span>
-                            Confidence {scoreLabel(resolution.confidenceScore)} · risk {scoreLabel(resolution.riskScore)} — uncalibrated legacy values
+                             {ui("Confidence {confidence} · risk {risk} — uncalibrated legacy values", {
+                               confidence: scoreLabel(resolution.confidenceScore, localeTag),
+                               risk: scoreLabel(resolution.riskScore, localeTag),
+                             })}
                           </span>
                         )}
-                        <span>{resolution.modelName || "Unknown model"}</span>
+                         <span>{resolution.modelName || ui("Unknown model")}</span>
                       </div>
                     </div>
                   ))
                 ) : (
                   <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted">
-                    No saved AI recommendations for this report.
+                     {ui("No saved AI recommendations for this report.")}
                   </div>
                 )}
               </div>

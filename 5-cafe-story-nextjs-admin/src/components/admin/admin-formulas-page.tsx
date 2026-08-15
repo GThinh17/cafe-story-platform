@@ -23,6 +23,14 @@ import {
   getFormulas,
   getFormulaThresholds,
 } from "@/lib/api/admin";
+import {
+  formatCurrency,
+  formatNumber,
+  localizeApiError,
+  useEnumLabel,
+  useI18n,
+  useUiText,
+} from "@/features/i18n";
 import type { ReviewerBadgeThreshold, ReviewerFormula } from "@/types/admin";
 
 function LabeledInput({
@@ -69,6 +77,9 @@ const DEFAULT_FORM = {
 };
 
 export function AdminFormulasPage() {
+  const { locale, localeTag, t } = useI18n();
+  const ui = useUiText();
+  const enumLabel = useEnumLabel();
   const [rows, setRows] = useState<ReviewerFormula[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,12 +104,12 @@ export function AdminFormulasPage() {
       .then(setRows)
       .catch((err: unknown) => {
         if (signal?.aborted) return;
-        setError(err instanceof Error ? err.message : "Không tải được formulas.");
+        setError(localizeApiError(err, locale, t));
       })
       .finally(() => {
         if (!signal?.aborted) setIsLoading(false);
       });
-  }, []);
+  }, [locale, t]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -117,7 +128,7 @@ export function AdminFormulasPage() {
       .then(setThresholds)
       .catch((err: unknown) => {
         if (controller.signal.aborted) return;
-        setDetailError(err instanceof Error ? err.message : "Không tải được thresholds.");
+        setDetailError(localizeApiError(err, locale, t));
       })
       .finally(() => {
         if (!controller.signal.aborted) setDetailLoading(false);
@@ -146,7 +157,7 @@ export function AdminFormulasPage() {
       setForm(DEFAULT_FORM);
       void load();
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : "Tạo formula thất bại.");
+      setCreateError(localizeApiError(err, locale, t, "common.error.action"));
     } finally {
       setIsCreating(false);
     }
@@ -182,7 +193,7 @@ export function AdminFormulasPage() {
         className: "w-24",
         cell: (row) => (
           <Badge variant={row.active ? "default" : "outline"}>
-            {row.active ? "Active" : "Inactive"}
+            {enumLabel(row.active)}
           </Badge>
         ),
       },
@@ -193,14 +204,14 @@ export function AdminFormulasPage() {
       {
         header: "Payout (like/comment/share)",
         cell: (row) =>
-          `${row.likePayoutAmount.toLocaleString()} / ${row.commentPayoutAmount.toLocaleString()} / ${row.sharePayoutAmount.toLocaleString()}`,
+          `${formatCurrency(row.likePayoutAmount, "VND", localeTag)} / ${formatCurrency(row.commentPayoutAmount, "VND", localeTag)} / ${formatCurrency(row.sharePayoutAmount, "VND", localeTag)}`,
       },
       {
         header: "Multipliers (Iron→Diamond)",
         cell: (row) =>
           `×${row.ironMultiplier} / ×${row.bronzeMultiplier} / ×${row.silverMultiplier} / ×${row.goldMultiplier} / ×${row.diamondMultiplier}`,
       },
-      { header: "Created", cell: (row) => formatDate(row.createdAt) },
+      { header: "Created", cell: (row) => formatDate(row.createdAt, localeTag) },
       {
         header: "",
         className: "w-12 text-right",
@@ -225,7 +236,7 @@ export function AdminFormulasPage() {
         ),
       },
     ],
-    [activatingId],
+    [activatingId, enumLabel, localeTag],
   );
 
   return (
@@ -236,7 +247,7 @@ export function AdminFormulasPage() {
         actions={
           <Button type="button" onClick={() => setIsCreateOpen(true)}>
             <PlusIcon data-icon="inline-start" />
-            Tạo Formula
+            {ui("Create formula")}
           </Button>
         }
       />
@@ -271,37 +282,37 @@ export function AdminFormulasPage() {
       >
         <div className="flex flex-col gap-4">
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Scoring Weights</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">{ui("Scoring Weights")}</p>
             <div className="grid grid-cols-3 gap-3">
-              <LabeledInput label="Like weight" value={form.likeWeight} onChange={setField("likeWeight")} min="0" />
-              <LabeledInput label="Comment weight" value={form.commentWeight} onChange={setField("commentWeight")} min="0" />
-              <LabeledInput label="Share weight" value={form.shareWeight} onChange={setField("shareWeight")} min="0" />
+              <LabeledInput label={ui("Like weight")} value={form.likeWeight} onChange={setField("likeWeight")} min="0" />
+              <LabeledInput label={ui("Comment weight")} value={form.commentWeight} onChange={setField("commentWeight")} min="0" />
+              <LabeledInput label={ui("Share weight")} value={form.shareWeight} onChange={setField("shareWeight")} min="0" />
             </div>
           </div>
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Payout Amounts</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">{ui("Payout Amounts")}</p>
             <div className="grid grid-cols-3 gap-3">
-              <LabeledInput label="Like payout" value={form.likePayoutAmount} onChange={setField("likePayoutAmount")} min="0" />
-              <LabeledInput label="Comment payout" value={form.commentPayoutAmount} onChange={setField("commentPayoutAmount")} min="0" />
-              <LabeledInput label="Share payout" value={form.sharePayoutAmount} onChange={setField("sharePayoutAmount")} min="0" />
+              <LabeledInput label={ui("Like payout")} value={form.likePayoutAmount} onChange={setField("likePayoutAmount")} min="0" />
+              <LabeledInput label={ui("Comment payout")} value={form.commentPayoutAmount} onChange={setField("commentPayoutAmount")} min="0" />
+              <LabeledInput label={ui("Share payout")} value={form.sharePayoutAmount} onChange={setField("sharePayoutAmount")} min="0" />
             </div>
           </div>
           <div>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Badge Multipliers</p>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">{ui("Badge Multipliers")}</p>
             <div className="grid grid-cols-5 gap-3">
-              <LabeledInput label="×Iron" value={form.ironMultiplier} onChange={setField("ironMultiplier")} step="0.01" min="1" />
-              <LabeledInput label="×Bronze" value={form.bronzeMultiplier} onChange={setField("bronzeMultiplier")} step="0.01" min="1" />
-              <LabeledInput label="×Silver" value={form.silverMultiplier} onChange={setField("silverMultiplier")} step="0.01" min="1" />
-              <LabeledInput label="×Gold" value={form.goldMultiplier} onChange={setField("goldMultiplier")} step="0.01" min="1" />
-              <LabeledInput label="×Diamond" value={form.diamondMultiplier} onChange={setField("diamondMultiplier")} step="0.01" min="1" />
+              <LabeledInput label={ui("×Iron")} value={form.ironMultiplier} onChange={setField("ironMultiplier")} step="0.01" min="1" />
+              <LabeledInput label={ui("×Bronze")} value={form.bronzeMultiplier} onChange={setField("bronzeMultiplier")} step="0.01" min="1" />
+              <LabeledInput label={ui("×Silver")} value={form.silverMultiplier} onChange={setField("silverMultiplier")} step="0.01" min="1" />
+              <LabeledInput label={ui("×Gold")} value={form.goldMultiplier} onChange={setField("goldMultiplier")} step="0.01" min="1" />
+              <LabeledInput label={ui("×Diamond")} value={form.diamondMultiplier} onChange={setField("diamondMultiplier")} step="0.01" min="1" />
             </div>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-semibold text-muted">Description (optional)</span>
+            <span className="text-xs font-semibold text-muted">{ui("Description (optional)")}</span>
             <input
               type="text"
               className="flex h-9 w-full rounded-md border border-input bg-surface px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              placeholder="Notes about this formula..."
+              placeholder={ui("Notes about this formula...")}
               value={form.description}
               onChange={(e) => setField("description")(e.target.value)}
             />
@@ -314,20 +325,24 @@ export function AdminFormulasPage() {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         title="Badge thresholds"
-        description={detailFormula ? `Formula ${shortId(detailFormula.id)}` : undefined}
+        description={
+          detailFormula
+            ? ui("Formula {id}", { id: shortId(detailFormula.id) })
+            : undefined
+        }
         isLoading={detailLoading}
         error={detailError}
       >
         {thresholds.length ? (
           <AdminDetailGrid>
             {thresholds.map((threshold) => (
-              <AdminDetailField label={threshold.badge} key={threshold.id}>
-                Min score: {threshold.minScore}
+              <AdminDetailField label={enumLabel(threshold.badge)} key={threshold.id}>
+                {ui("Min score: {score}", { score: formatNumber(threshold.minScore, localeTag) })}
               </AdminDetailField>
             ))}
           </AdminDetailGrid>
         ) : (
-          <p className="text-sm text-muted">Formula này chưa có threshold nào.</p>
+          <p className="text-sm text-muted">{ui("This formula does not have any thresholds yet.")}</p>
         )}
       </AdminDetailDialog>
     </div>

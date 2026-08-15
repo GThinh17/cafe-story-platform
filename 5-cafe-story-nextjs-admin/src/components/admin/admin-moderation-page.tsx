@@ -34,6 +34,12 @@ import {
   getModerationResults,
   resolveModerationResult,
 } from "@/lib/api/admin";
+import {
+  localizeApiError,
+  useEnumLabel,
+  useI18n,
+  useUiText,
+} from "@/features/i18n";
 import type {
   AdminModerationResult,
   AiStatus,
@@ -46,18 +52,15 @@ const resolveActions: ModerationResolveAction[] = ["APPROVE", "REMOVE"];
 const aiStatusOptions: AiStatus[] = ["SEND_ADMIN", "APPROVE", "DENY"];
 const decisionOptions: ModerationDecision[] = ["SAFE", "NEEDS_REVIEW", "VIOLATION"];
 
-const ACTION_LABELS: Record<ModerationResolveAction, string> = {
-  APPROVE: "Approve",
-  HIDE: "Hide",
-  REMOVE: "Remove",
-};
-
 type PendingModerationAction = {
   result: AdminModerationResult;
   action: ModerationResolveAction;
 };
 
 export function AdminModerationPage() {
+  const { locale, localeTag, t } = useI18n();
+  const ui = useUiText();
+  const enumLabel = useEnumLabel();
   const [filterAiStatus, setFilterAiStatus] = useState<AiStatus | "">("");
   const [filterDecision, setFilterDecision] = useState<ModerationDecision | "">("");
   const [filterResolved, setFilterResolved] = useState<boolean | null>(null);
@@ -102,11 +105,7 @@ export function AdminModerationPage() {
     if (moderationRes.status === "fulfilled") {
       setDetailResult(moderationRes.value);
     } else {
-      setDetailError(
-        moderationRes.reason instanceof Error
-          ? moderationRes.reason.message
-          : "Unable to load moderation detail.",
-      );
+      setDetailError(localizeApiError(moderationRes.reason, locale, t));
     }
 
     if (blogRes.status === "fulfilled") {
@@ -143,7 +142,7 @@ export function AdminModerationPage() {
       { header: "AI status", cell: (result) => <AdminStatusBadge value={result.aiStatus} /> },
       { header: "Decision", cell: (result) => <AdminStatusBadge value={result.decision} /> },
       { header: "Resolved", cell: (result) => <AdminStatusBadge value={result.resolved} /> },
-      { header: "Created", cell: (result) => formatDate(result.createdAt) },
+      { header: "Created", cell: (result) => formatDate(result.createdAt, localeTag) },
       {
         header: "",
         className: "w-12 text-right",
@@ -156,7 +155,7 @@ export function AdminModerationPage() {
                 onSelect: () => openDetail(result),
               },
               ...resolveActions.map((action) => ({
-                label: ACTION_LABELS[action],
+                label: enumLabel(action),
                 destructive: action === "REMOVE",
                 onSelect: () => setPendingAction({ result, action }),
               })),
@@ -165,7 +164,7 @@ export function AdminModerationPage() {
         ),
       },
     ],
-    [],
+    [enumLabel, localeTag],
   );
 
   async function handleConfirm() {
@@ -207,9 +206,7 @@ export function AdminModerationPage() {
         setDetailResult(updatedResult);
       }
     } catch (requestError) {
-      setActionError(
-        requestError instanceof Error ? requestError.message : "Action failed.",
-      );
+      setActionError(localizeApiError(requestError, locale, t, "common.error.action"));
       resource.refetch();
     } finally {
       setIsSubmitting(false);
@@ -259,7 +256,11 @@ export function AdminModerationPage() {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         title="Moderation detail"
-        description={detailResult ? `Result ${detailResult.id}` : "Latest detail from admin API"}
+        description={
+          detailResult
+            ? ui("Result {id}", { id: detailResult.id })
+            : "Latest detail from admin API"
+        }
         isLoading={detailLoading}
         error={detailError}
         footer={
@@ -273,7 +274,7 @@ export function AdminModerationPage() {
                   key={action}
                   onClick={() => setPendingAction({ result: detailResult, action })}
                 >
-                  {ACTION_LABELS[action]}
+                  {enumLabel(action)}
                 </Button>
               ))}
             </div>
@@ -285,7 +286,7 @@ export function AdminModerationPage() {
             {detailBlog && (
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">
-                  Blog Images
+                  {ui("Blog Images")}
                 </p>
                 {detailBlog.imageUrls.length > 0 ? (
                   <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -299,7 +300,7 @@ export function AdminModerationPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-2 text-sm text-muted">No images</p>
+                  <p className="mt-2 text-sm text-muted">{ui("No images")}</p>
                 )}
                 {detailBlog.content && (
                   <p className="mt-3 max-h-40 overflow-y-auto whitespace-pre-wrap text-sm leading-6 text-foreground">
@@ -310,14 +311,14 @@ export function AdminModerationPage() {
             )}
             <Separator />
             <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">
-              AI Evaluation
+              {ui("AI Evaluation")}
             </p>
             <div>
               <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">
-                Caption
+                {ui("Caption")}
               </p>
               <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">
-                {detailResult.caption || "No caption"}
+                {detailResult.caption || ui("No caption")}
               </p>
             </div>
             <AdminDetailGrid>
@@ -361,13 +362,15 @@ export function AdminModerationPage() {
                 <AdminStatusBadge value={detailResult.resolved} />
               </AdminDetailField>
               <AdminDetailField label="Resolved action">
-                {detailResult.resolvedAction || "-"}
+                {detailResult.resolvedAction
+                  ? enumLabel(detailResult.resolvedAction)
+                  : "—"}
               </AdminDetailField>
               <AdminDetailField label="Resolved at">
-                {formatDate(detailResult.resolvedAt)}
+                {formatDate(detailResult.resolvedAt, localeTag)}
               </AdminDetailField>
-              <AdminDetailField label="Created">{formatDate(detailResult.createdAt)}</AdminDetailField>
-              <AdminDetailField label="Updated">{formatDate(detailResult.updatedAt)}</AdminDetailField>
+              <AdminDetailField label="Created">{formatDate(detailResult.createdAt, localeTag)}</AdminDetailField>
+              <AdminDetailField label="Updated">{formatDate(detailResult.updatedAt, localeTag)}</AdminDetailField>
             </AdminDetailGrid>
           </div>
         ) : null}
@@ -381,13 +384,24 @@ export function AdminModerationPage() {
             setActionError(null);
           }
         }}
-        title={pendingAction ? `${ACTION_LABELS[pendingAction.action]} content` : "Confirm action"}
+        title={
+          pendingAction
+            ? ui("{action} content", { action: enumLabel(pendingAction.action) })
+            : "Confirm action"
+        }
         description={
           pendingAction
-            ? `This will ${ACTION_LABELS[pendingAction.action].toLowerCase()} the flagged content${pendingAction.result.authorUserName ? ` by ${pendingAction.result.authorUserName}` : ""}. This action cannot be undone.`
+            ? pendingAction.result.authorUserName
+              ? ui("Apply {action} to flagged content by {name}. This action cannot be undone.", {
+                  action: enumLabel(pendingAction.action),
+                  name: pendingAction.result.authorUserName,
+                })
+              : ui("Apply {action} to flagged content. This action cannot be undone.", {
+                  action: enumLabel(pendingAction.action),
+                })
             : "Confirm the selected moderation action."
         }
-        confirmLabel={pendingAction ? ACTION_LABELS[pendingAction.action] : "Confirm"}
+        confirmLabel={pendingAction ? enumLabel(pendingAction.action) : "Confirm"}
         isSubmitting={isSubmitting}
         onConfirm={handleConfirm}
       >

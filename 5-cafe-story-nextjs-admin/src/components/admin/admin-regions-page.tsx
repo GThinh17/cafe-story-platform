@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/chart";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getRegionAnalytics } from "@/lib/api/admin";
+import { formatNumber, localizeApiError, useI18n, useUiText } from "@/features/i18n";
 import { cn } from "@/lib/utils";
 import type { AdminRegionAnalytics } from "@/types/admin";
 
@@ -24,15 +25,20 @@ type RegionMetric = "users" | "cafes" | "reviewers";
 
 const METRIC_CONFIG: Record<
   RegionMetric,
-  { label: string; field: keyof AdminRegionAnalytics; color: string }
+  { field: keyof AdminRegionAnalytics; color: string }
 > = {
-  users: { label: "Users", field: "userCount", color: "var(--chart-1)" },
-  cafes: { label: "Cafes", field: "cafePageCount", color: "var(--chart-3)" },
+  users: { field: "userCount", color: "var(--chart-1)" },
+  cafes: { field: "cafePageCount", color: "var(--chart-3)" },
   reviewers: {
-    label: "Reviewers",
     field: "reviewerCount",
     color: "var(--chart-2)",
   },
+};
+
+const METRIC_LABELS: Record<RegionMetric, string> = {
+  users: "Users",
+  cafes: "Cafes",
+  reviewers: "Reviewers",
 };
 
 function metricValue(region: AdminRegionAnalytics, metric: RegionMetric) {
@@ -40,6 +46,8 @@ function metricValue(region: AdminRegionAnalytics, metric: RegionMetric) {
 }
 
 export function AdminRegionsPage() {
+  const { locale, localeTag, t } = useI18n();
+  const ui = useUiText();
   const searchParams = useSearchParams();
   const [regions, setRegions] = useState<AdminRegionAnalytics[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -69,11 +77,7 @@ export function AdminRegionsPage() {
           if (controller.signal.aborted || requestIdRef.current !== requestId) {
             return;
           }
-          setError(
-            requestError instanceof Error
-              ? requestError.message
-              : "Unable to load region analytics.",
-          );
+          setError(localizeApiError(requestError, locale, t));
         })
         .finally(() => {
           if (!controller.signal.aborted && requestIdRef.current === requestId) {
@@ -83,7 +87,7 @@ export function AdminRegionsPage() {
 
       return controller;
     },
-    [],
+    [locale, t],
   );
 
   useEffect(() => {
@@ -128,7 +132,7 @@ export function AdminRegionsPage() {
   );
 
   const chartConfig: ChartConfig = {
-    value: { label: METRIC_CONFIG[metric].label, color: METRIC_CONFIG[metric].color },
+    value: { label: ui(METRIC_LABELS[metric]), color: METRIC_CONFIG[metric].color },
   };
 
   const columns: AdminTableColumn<AdminRegionAnalytics>[] = [
@@ -155,7 +159,7 @@ export function AdminRegionsPage() {
       header: "Users",
       className: "w-28 text-right",
       cell: (row) => (
-        <span className="tabular-nums">{row.userCount.toLocaleString("vi-VN")}</span>
+        <span className="tabular-nums">{formatNumber(row.userCount, localeTag)}</span>
       ),
     },
     {
@@ -163,7 +167,7 @@ export function AdminRegionsPage() {
       className: "w-28 text-right",
       cell: (row) => (
         <span className="tabular-nums">
-          {row.cafePageCount.toLocaleString("vi-VN")}
+          {formatNumber(row.cafePageCount, localeTag)}
         </span>
       ),
     },
@@ -172,7 +176,7 @@ export function AdminRegionsPage() {
       className: "w-28 text-right",
       cell: (row) => (
         <span className="tabular-nums">
-          {row.reviewerCount.toLocaleString("vi-VN")}
+          {formatNumber(row.reviewerCount, localeTag)}
         </span>
       ),
     },
@@ -198,7 +202,7 @@ export function AdminRegionsPage() {
           <TabsList>
             {(Object.keys(METRIC_CONFIG) as RegionMetric[]).map((key) => (
               <TabsTrigger key={key} value={key}>
-                {METRIC_CONFIG[key].label}
+                {ui(METRIC_LABELS[key])}
               </TabsTrigger>
             ))}
           </TabsList>
@@ -209,7 +213,7 @@ export function AdminRegionsPage() {
         <Card>
           <CardHeader className="p-4 pb-2">
             <CardTitle className="text-sm font-semibold text-espresso">
-              {METRIC_CONFIG[metric].label} by province
+              {ui("{metric} by province", { metric: ui(METRIC_LABELS[metric]) })}
             </CardTitle>
           </CardHeader>
           <div className="p-4 pt-0">
@@ -220,7 +224,7 @@ export function AdminRegionsPage() {
                 provinceName: region.provinceName,
                 value: metricValue(region, metric),
               }))}
-              valueLabel={METRIC_CONFIG[metric].label.toLowerCase()}
+              valueLabel={ui(METRIC_LABELS[metric]).toLocaleLowerCase(localeTag)}
               selectedProvince={selectedProvince}
               onProvinceClick={(code) =>
                 setSelectedProvince((current) =>

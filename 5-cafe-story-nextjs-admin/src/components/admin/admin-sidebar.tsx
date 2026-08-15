@@ -29,41 +29,52 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import {
+  LanguageSelector,
+  useTranslate,
+  type TranslationKey,
+} from "@/features/i18n";
 import { cn } from "@/lib/utils";
 import type { AuthUser } from "@/types/auth";
 
 const NAV_GROUPS: Array<{
-  label?: string;
-  items: Array<{ href: string; icon: React.ElementType; label: string }>;
+  labelKey?: TranslationKey;
+  items: Array<{
+    href: string;
+    icon: React.ElementType;
+    labelKey: TranslationKey;
+  }>;
 }> = [
   {
-    items: [{ href: "/", icon: LayoutDashboardIcon, label: "Overview" }],
-  },
-  {
-    label: "Content",
     items: [
-      { href: "/blogs", icon: FileTextIcon, label: "Blogs" },
-      { href: "/cafes", icon: CoffeeIcon, label: "Cafes" },
-      { href: "/comments", icon: MessageSquareIcon, label: "Comments" },
+      { href: "/", icon: LayoutDashboardIcon, labelKey: "navigation.overview" },
     ],
   },
   {
-    label: "Operations",
+    labelKey: "navigation.content",
     items: [
-      { href: "/moderation", icon: ShieldCheckIcon, label: "Moderation" },
-      { href: "/reports", icon: FlagIcon, label: "Reports" },
-      { href: "/ranking", icon: TrophyIcon, label: "Ranking" },
-      { href: "/users", icon: UsersIcon, label: "Users" },
-      { href: "/regions", icon: MapIcon, label: "Regions" },
+      { href: "/blogs", icon: FileTextIcon, labelKey: "navigation.blogs" },
+      { href: "/cafes", icon: CoffeeIcon, labelKey: "navigation.cafes" },
+      { href: "/comments", icon: MessageSquareIcon, labelKey: "navigation.comments" },
     ],
   },
   {
-    label: "Finance",
+    labelKey: "navigation.operations",
     items: [
-      { href: "/payments", icon: CreditCardIcon, label: "Payments" },
-      { href: "/extra-fees", icon: BadgeDollarSignIcon, label: "Extra Fees" },
-      { href: "/payout", icon: WalletIcon, label: "Payouts" },
-      { href: "/formulas", icon: FlaskConicalIcon, label: "Formulas" },
+      { href: "/moderation", icon: ShieldCheckIcon, labelKey: "navigation.moderation" },
+      { href: "/reports", icon: FlagIcon, labelKey: "navigation.reports" },
+      { href: "/ranking", icon: TrophyIcon, labelKey: "navigation.ranking" },
+      { href: "/users", icon: UsersIcon, labelKey: "navigation.users" },
+      { href: "/regions", icon: MapIcon, labelKey: "navigation.regions" },
+    ],
+  },
+  {
+    labelKey: "navigation.finance",
+    items: [
+      { href: "/payments", icon: CreditCardIcon, labelKey: "navigation.payments" },
+      { href: "/extra-fees", icon: BadgeDollarSignIcon, labelKey: "navigation.extraFees" },
+      { href: "/payout", icon: WalletIcon, labelKey: "navigation.payouts" },
+      { href: "/formulas", icon: FlaskConicalIcon, labelKey: "navigation.formulas" },
     ],
   },
 ];
@@ -82,16 +93,17 @@ function NavContent({
   pathname: string;
   onNavigate?: () => void;
 }) {
+  const t = useTranslate();
   return (
     <nav className="flex flex-col gap-4">
       {NAV_GROUPS.map((group, index) => (
         <div key={index} className="flex flex-col gap-0.5">
-          {group.label ? (
+          {group.labelKey ? (
             <p className="px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted/60">
-              {group.label}
+              {t(group.labelKey)}
             </p>
           ) : null}
-          {group.items.map(({ href, icon: Icon, label }) => {
+          {group.items.map(({ href, icon: Icon, labelKey }) => {
             const isActive = isActivePath(pathname, href);
             return (
               <Link
@@ -103,11 +115,11 @@ function NavContent({
                     : "text-sidebar-foreground hover:bg-surface-muted hover:text-foreground",
                 )}
                 href={href}
-                key={label}
+                key={labelKey}
                 onClick={onNavigate}
               >
                 <Icon className="size-4 shrink-0" />
-                {label}
+                {t(labelKey)}
               </Link>
             );
           })}
@@ -134,6 +146,7 @@ function BrandBlock({ user }: { user: AuthUser }) {
 }
 
 function SignOutButton({ onSignOut }: { onSignOut: () => void }) {
+  const t = useTranslate();
   return (
     <button
       type="button"
@@ -141,7 +154,7 @@ function SignOutButton({ onSignOut }: { onSignOut: () => void }) {
       onClick={onSignOut}
     >
       <LogOutIcon className="size-4 shrink-0" />
-      Sign out
+      {t("navigation.signOut")}
     </button>
   );
 }
@@ -151,6 +164,7 @@ export function AdminSidebar({ user }: { user: AuthUser }) {
   const router = useRouter();
   const { setUser } = useCurrentUser();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const t = useTranslate();
 
   function handleSignOut() {
     setUser?.(null);
@@ -165,7 +179,7 @@ export function AdminSidebar({ user }: { user: AuthUser }) {
           type="button"
           variant="ghost"
           size="icon-sm"
-          aria-label="Open navigation"
+          aria-label={t("navigation.open")}
           onClick={() => setMobileOpen(true)}
         >
           <MenuIcon />
@@ -179,11 +193,12 @@ export function AdminSidebar({ user }: { user: AuthUser }) {
         <SheetContent side="left" className="w-72 p-0" showCloseButton={false}>
           <div className="flex h-full flex-col gap-5 overflow-y-auto px-4 py-5">
             <SheetHeader className="p-0 gap-4">
-              <SheetTitle className="sr-only">Navigation</SheetTitle>
+              <SheetTitle className="sr-only">{t("navigation.label")}</SheetTitle>
               <BrandBlock user={user} />
             </SheetHeader>
             <NavContent pathname={pathname} onNavigate={() => setMobileOpen(false)} />
             <div className="mt-auto border-t border-border pt-3">
+              <LanguageSelector className="mb-3" />
               <SignOutButton onSignOut={handleSignOut} />
             </div>
           </div>
@@ -196,6 +211,7 @@ export function AdminSidebar({ user }: { user: AuthUser }) {
           <BrandBlock user={user} />
           <NavContent pathname={pathname} />
           <div className="mt-auto border-t border-border pt-3">
+            <LanguageSelector className="mb-3" />
             <SignOutButton onSignOut={handleSignOut} />
           </div>
         </div>

@@ -1,8 +1,11 @@
+"use client";
+
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ChevronRightIcon, type LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useUiText } from "@/features/i18n";
 
 type AdminStatCardProps = {
   label: string;
@@ -21,14 +24,15 @@ export function AdminStatCard({
   icon: Icon,
   iconClassName,
 }: AdminStatCardProps) {
+  const ui = useUiText();
   const content = (
     <CardContent className="flex items-start justify-between gap-3 p-4">
       <div className="min-w-0">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-          {label}
+          {ui(label)}
         </p>
         <div className="mt-2 text-2xl font-semibold text-espresso">{value}</div>
-        {meta ? <p className="mt-1 text-xs text-muted">{meta}</p> : null}
+        {meta ? <p className="mt-1 text-xs text-muted">{ui(meta)}</p> : null}
       </div>
       {Icon ? (
         <span

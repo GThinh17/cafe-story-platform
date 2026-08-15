@@ -1,24 +1,34 @@
 import type { Metadata } from "next";
 import { AppProviders } from "@/components/providers/app-providers";
+import { LOCALE_TAGS } from "@/features/i18n";
+import {
+  getServerLocaleState,
+  getServerTranslator,
+} from "@/features/i18n/server";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "CafeStory Admin",
-  description: "CafeStory administration workspace.",
-  icons: {
-    icon: "/icons/cafestory-brand-icon.svg",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getServerTranslator();
+  return {
+    title: t("meta.app.title"),
+    description: t("meta.app.description"),
+    icons: {
+      icon: "/icons/cafestory-brand-icon.svg",
+    },
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const localeState = await getServerLocaleState();
+
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="min-h-full">
-        <AppProviders>{children}</AppProviders>
+    <html lang={LOCALE_TAGS[localeState.locale]} className="h-full antialiased">
+      <body className="min-h-full" suppressHydrationWarning>
+        <AppProviders initialLocaleState={localeState}>{children}</AppProviders>
       </body>
     </html>
   );

@@ -1,38 +1,10 @@
+"use client";
+
 import { Badge } from "@/components/ui/badge";
+import { useEnumLabel } from "@/features/i18n";
 
 type AdminStatusBadgeProps = {
   value: string | boolean | null | undefined;
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  ACTIVE: "Active",
-  PAID: "Paid",
-  PUBLISHED: "Published",
-  SAFE: "Safe",
-  RESOLVED: "Resolved",
-  APPROVE: "Approved",
-  APPROVED: "Approved",
-  APPLIED: "Applied",
-  PENDING: "Pending",
-  SCHEDULED: "Scheduled",
-  OPEN: "Open",
-  REVIEWING: "Reviewing",
-  NEEDS_REVIEW: "Needs review",
-  DRAFT: "Draft",
-  PROCESSING: "Processing",
-  APPLYING: "Applying",
-  HIDE: "Hidden",
-  FAILED: "Failed",
-  HIDDEN: "Hidden",
-  REMOVED: "Removed",
-  REMOVE: "Removed",
-  VIOLATION: "Violation",
-  REJECTED: "Rejected",
-  CANCELLED: "Cancelled",
-  EXPIRED: "Expired",
-  INACTIVE: "Inactive",
-  SUSPENDED: "Suspended",
-  SKIPPED: "Skipped",
 };
 
 function getStatusClassName(normalized: string) {
@@ -71,11 +43,12 @@ function getStatusClassName(normalized: string) {
 }
 
 export function AdminStatusBadge({ value }: AdminStatusBadgeProps) {
+  const enumLabel = useEnumLabel();
   const raw =
     typeof value === "boolean" ? (value ? "ACTIVE" : "INACTIVE") : value || "UNKNOWN";
 
   const normalized = String(raw).toUpperCase();
-  const label = STATUS_LABELS[normalized] ?? String(raw);
+  const label = enumLabel(raw);
 
   return <Badge className={getStatusClassName(normalized)}>{label}</Badge>;
 }
