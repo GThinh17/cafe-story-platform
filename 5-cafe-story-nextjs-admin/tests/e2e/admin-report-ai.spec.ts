@@ -143,6 +143,26 @@ type AiResolution = {
   targetSnapshotHash: string | null;
 };
 
+type AiPolicy = {
+  reportId: string;
+  targetType: ReportTargetType;
+  reasonCode: string | null;
+  contextSchemaVersion: string;
+  policyVersion: string;
+  policyStatus: string;
+  ruleCatalogVersion: string;
+  ruleCatalogStatus: string;
+  evaluationMode: string;
+  recommendationOnly: true;
+  candidateRules: Array<{
+    ruleId: string;
+    ruleVersion: string;
+    ruleStatus: string;
+    requiredEvidenceKinds: string[];
+    allowedCandidateActions: string[];
+  }>;
+};
+
 type AdminReportAiOperationalError = {
   statusCode: number;
   status: "Fail";
@@ -842,6 +862,23 @@ function createRemediationEvidenceDir(envName: "DOD_FIX05_EVIDENCE_DIR" | "DOD_F
         "report-admin",
         "resolve-report-ai-v2",
         "09-sprints",
+        "evidence",
+        new Date().toISOString().replace(/[:.]/g, "-"),
+      );
+  fs.mkdirSync(path.join(evidenceDir, "screenshots"), { recursive: true });
+  fs.mkdirSync(path.join(evidenceDir, "raw"), { recursive: true });
+  return evidenceDir;
+}
+
+function createAdminActionsEvidenceDir() {
+  const configured = process.env.ADMIN_REPORT_ACTIONS_EVIDENCE_DIR;
+  const evidenceDir = configured
+    ? path.resolve(configured)
+    : path.resolve(
+        process.cwd(),
+        "..",
+        "documents",
+        "ai-report-resolution-admin-actions",
         "evidence",
         new Date().toISOString().replace(/[:.]/g, "-"),
       );
@@ -2317,5 +2354,164 @@ test.describe("admin report AI E2E evidence", () => {
 
     const failed = records.filter((record) => record.status === "FAILED");
     expect(failed, `Failed scenarios: ${failed.map((record) => record.id).join(", ")}`).toEqual([]);
+  });
+
+  test("E2E-REPORT-ACTIONS BLOG and COMMENT require admin confirmation and expose policy", async ({ page }) => {
+    test.setTimeout(8 * 60_000);
+    loadLocalEnv();
+    const adminEmail = requireEnv("ADMIN_TEST_EMAIL");
+    const adminPassword = requireEnv("ADMIN_TEST_PASSWORD");
+    const evidenceDir = createAdminActionsEvidenceDir();
+    const createdReports: ContentReport[] = [];
+    const initialTargetStatuses = new Map<string, PostStatus>();
+
+    await page.addInitScript(() => {
+      window.localStorage.setItem("cafestory-admin-locale-preference", "en");
+    });
+
+    try {
+      await loginAsAdmin(page, adminEmail, adminPassword);
+      const auth = await apiFetch<AuthResponse>(page, "/api/auth/me");
+      const adminUserId = auth.data?.user.userId ?? "";
+      if (!adminUserId) throw new Error("Unable to resolve current admin user id.");
+      const targets = await collectTargets(page, adminUserId);
+      const blogSeed = targets.BLOG;
+      const commentSeed = targets.COMMENT;
+      if (!blogSeed || !commentSeed) {
+        throw new Error("BLOG and COMMENT PUBLISHED fixtures are required for report action E2E.");
+      }
+
+      for (const seed of [blogSeed, commentSeed]) {
+        initialTargetStatuses.set(seed.targetId, (seed.source as Blog | Comment).status);
+        const created = await createReportWithSelfHeal(
+          page,
+          seed,
+          `${TEST_MARKER} ACTIONS ${seed.targetType} ${Date.now()} ${randomUUID()}`,
+          adminUserId,
+        );
+        createdReports.push(created.report);
+      }
+
+      const blogReport = createdReports.find((report) => report.targetType === "BLOG")!;
+      const targetBeforeAi = await fetchTargetSnapshot(page, "BLOG", blogReport.targetId);
+      const reportBeforeAi = await apiFetch<ContentReport>(
+        page,
+        `/api/admin/reports/${encodeURIComponent(blogReport.id)}`,
+      );
+      const aiResult = await askAiViaUi(page, blogReport);
+      expect(aiResult.response.ok(), JSON.stringify(aiResult.raw).slice(0, 500)).toBe(true);
+      const targetAfterAi = await fetchTargetSnapshot(page, "BLOG", blogReport.targetId);
+      const reportAfterAi = await apiFetch<ContentReport>(
+        page,
+        `/api/admin/reports/${encodeURIComponent(blogReport.id)}`,
+      );
+      expect(targetWasNotMutated(targetBeforeAi, targetAfterAi)).toBe(true);
+      expect(reportWasNotMutated(reportBeforeAi.data!, reportAfterAi.data!)).toBe(true);
+
+      for (const report of createdReports) {
+        await openReportDetail(page, report);
+        const detailDialog = page.getByRole("dialog").filter({ hasText: "Report detail" });
+        await expect(detailDialog.getByText(report.targetId).first()).toBeVisible({ timeout: 30_000 });
+        const policyResponsePromise = page.waitForResponse(
+          (response) =>
+            response.url().includes(`/api/admin/reports/${report.id}/ai-policy`) &&
+            response.request().method() === "GET",
+        );
+        const viewPolicyButton = detailDialog.getByRole("button", { name: "View policy" });
+        await viewPolicyButton.focus();
+        await expect(viewPolicyButton).toBeFocused();
+        await viewPolicyButton.press("Enter");
+        const policyResponse = await policyResponsePromise;
+        expect(policyResponse.ok()).toBe(true);
+        const policyPayload = await parseResponse<AiPolicy>(policyResponse);
+        const policy = policyPayload.data;
+        expect(policy).not.toBeNull();
+        if (!policy) throw new Error("Policy API did not return a data payload.");
+        expect(policy.recommendationOnly).toBe(true);
+        expect(policy.candidateRules.length).toBeGreaterThan(0);
+        const policySheet = page.getByRole("dialog").filter({ hasText: "AI policy" });
+        await expect(policySheet.getByText(policy.candidateRules[0].ruleId).first()).toBeVisible();
+        const technicalDetailsTab = policySheet.getByRole("tab", { name: "Technical details" });
+        await technicalDetailsTab.focus();
+        await expect(technicalDetailsTab).toBeFocused();
+        await technicalDetailsTab.press("Enter");
+        await expect(policySheet.getByText(policy.contextSchemaVersion).first()).toBeVisible();
+        await expect(policySheet.getByText(policy.ruleCatalogVersion).first()).toBeVisible();
+        await screenshot(page, evidenceDir, `POLICY-${report.targetType}`, "desktop-light");
+        await page.evaluate(() => document.documentElement.classList.add("dark"));
+        await screenshot(page, evidenceDir, `POLICY-${report.targetType}`, "desktop-dark");
+        await page.evaluate(() => document.documentElement.classList.remove("dark"));
+        await policySheet.getByRole("button", { name: "Close" }).click();
+
+        const patchResponsePromise = page.waitForResponse(
+          (response) =>
+            response.url().includes(`/api/admin/${report.targetType === "BLOG" ? "blogs" : "comments"}/${report.targetId}/status`) &&
+            response.request().method() === "PATCH",
+        );
+        await detailDialog.getByRole("button", { name: "Hide content" }).click();
+        const confirmDialog = page.getByRole("dialog").filter({ hasText: "does not close the report" });
+        await expect(confirmDialog.getByText(report.targetId)).toBeVisible();
+        await confirmDialog.getByRole("button", { name: "Confirm Hidden" }).click();
+        expect((await patchResponsePromise).ok()).toBe(true);
+        const targetHidden = await fetchTargetSnapshot(page, report.targetType, report.targetId);
+        const reportUnchanged = await apiFetch<ContentReport>(
+          page,
+          `/api/admin/reports/${encodeURIComponent(report.id)}`,
+        );
+        expect(targetHidden.state.status).toBe("HIDDEN");
+        expect(reportUnchanged.data?.status).toBe(report.status);
+        await expect(detailDialog.getByText(/Target status changed from/)).toBeVisible();
+        if (report.targetType === "BLOG") {
+          await expect(detailDialog.getByText("AI recommendation may be stale")).toBeVisible();
+        }
+
+        await page.setViewportSize({ width: 390, height: 844 });
+        await detailDialog.getByText("Moderate content").scrollIntoViewIfNeeded();
+        await screenshot(page, evidenceDir, `ACTION-${report.targetType}`, "mobile");
+        const noHorizontalOverflow = await page.evaluate(
+          () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+        );
+        expect(noHorizontalOverflow).toBe(true);
+        await page.setViewportSize({ width: 1440, height: 1000 });
+
+        const restoreResponsePromise = page.waitForResponse(
+          (response) =>
+            response.url().includes(`/api/admin/${report.targetType === "BLOG" ? "blogs" : "comments"}/${report.targetId}/status`) &&
+            response.request().method() === "PATCH",
+        );
+        await detailDialog.getByRole("button", { name: "Publish content" }).click();
+        const restoreDialog = page.getByRole("dialog").filter({ hasText: "does not close the report" });
+        await restoreDialog.getByRole("button", { name: "Confirm Published" }).click();
+        expect((await restoreResponsePromise).ok()).toBe(true);
+        const restoredTarget = await fetchTargetSnapshot(page, report.targetType, report.targetId);
+        expect(restoredTarget.state.status).toBe(initialTargetStatuses.get(report.targetId));
+        await detailDialog.getByRole("button", { name: "Close" }).click();
+      }
+
+      writeJson(path.join(evidenceDir, "raw", "report-actions-policy-summary.json"), {
+        createdReports: createdReports.map((report) => ({
+          id: report.id,
+          targetType: report.targetType,
+          targetId: report.targetId,
+          originalReportStatus: report.status,
+        })),
+        aiDidNotMutateBlogTarget: true,
+        aiDidNotMutateBlogReport: true,
+        policyRecommendationOnly: true,
+        targetStatesRestored: true,
+      });
+    } finally {
+      for (const report of createdReports) {
+        const originalStatus = initialTargetStatuses.get(report.targetId);
+        if (originalStatus) {
+          await apiFetch(
+            page,
+            `/api/admin/${report.targetType === "BLOG" ? "blogs" : "comments"}/${encodeURIComponent(report.targetId)}/status`,
+            { method: "PATCH", body: { status: originalStatus }, failOnStatusCode: false },
+          ).catch(() => undefined);
+        }
+        await closeReport(page, report.id, "REJECTED").catch(() => undefined);
+      }
+    }
   });
 });

@@ -1,0 +1,20 @@
+{
+  "createdReports": [
+    {
+      "id": "a7add0d1-6024-4797-a4bf-0721364ec48d",
+      "targetType": "BLOG",
+      "targetId": "fff874c2-2f67-4dc1-8123-a943841ca58f",
+      "originalReportStatus": "OPEN"
+    },
+    {
+      "id": "2c63df46-fd9a-4764-8d4a-ee929ede07a8",
+      "targetType": "COMMENT",
+      "targetId": "2d0b3698-1f90-4a11-9946-cc7a47970dc8",
+      "originalReportStatus": "OPEN"
+    }
+  ],
+  "aiDidNotMutateBlogTarget": true,
+  "aiDidNotMutateBlogReport": true,
+  "policyRecommendationOnly": true,
+  "targetStatesRestored": true
+}

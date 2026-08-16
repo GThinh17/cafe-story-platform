@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   BotIcon,
+  BookOpenIcon,
   CheckCircle2Icon,
   ClockIcon,
   EyeIcon,
@@ -12,6 +13,8 @@ import {
   XCircleIcon,
 } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
+import { AdminReportAiPolicySheet } from "@/components/admin/admin-report-ai-policy-sheet";
+import { AdminReportTargetActions } from "@/components/admin/admin-report-target-actions";
 import { UserCell } from "@/components/admin/user-cell";
 import {
   AdminDataTable,
@@ -48,11 +51,15 @@ import { Separator } from "@/components/ui/separator";
 import {
   cancelReportAiAutoResolution,
   createReportAiResolution,
+  getAdminBlog,
+  getAdminComment,
   getAdminReport,
   getReportAiAutoResolutions,
   getReportAiResolutions,
   getReports,
   resolveReport,
+  updateBlogStatus,
+  updateCommentStatus,
   updateReportStatus,
 } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
@@ -68,7 +75,10 @@ import type { PageResponse } from "@/types/api";
 import type {
   AdminReportAiAutoApplyJob,
   AdminReportAiResolution,
+  Blog,
+  Comment,
   ContentReport,
+  PostStatus,
   ReportStatus,
   ReportTargetType,
 } from "@/types/admin";
@@ -88,6 +98,12 @@ const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
 type PendingReportAction =
   | { kind: "resolve"; report: ContentReport }
   | { kind: "status"; report: ContentReport; status: ReportStatus };
+
+type PendingTargetAction = {
+  report: ContentReport;
+  target: Blog | Comment;
+  status: PostStatus;
+};
 
 type BulkAiMode = "filtered" | "selected";
 
@@ -188,11 +204,19 @@ export function AdminReportsPage() {
   const [status, setStatus] = useState<ReportStatus | "">("");
   const [targetType, setTargetType] = useState<ReportTargetType | "">("");
   const [pendingAction, setPendingAction] = useState<PendingReportAction | null>(null);
+  const [pendingTargetAction, setPendingTargetAction] = useState<PendingTargetAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [aiActionError, setAiActionError] = useState<string | null>(null);
   const [aiOperationalError, setAiOperationalError] =
     useState<AiOperationalError | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isTargetSubmitting, setIsTargetSubmitting] = useState(false);
+  const [targetContent, setTargetContent] = useState<Blog | Comment | null>(null);
+  const [targetContentLoading, setTargetContentLoading] = useState(false);
+  const [targetContentError, setTargetContentError] = useState<string | null>(null);
+  const [targetActionSuccess, setTargetActionSuccess] = useState<string | null>(null);
+  const [recommendationStale, setRecommendationStale] = useState(false);
+  const [policySheetOpen, setPolicySheetOpen] = useState(false);
   const [aiLoadingReportId, setAiLoadingReportId] = useState<string | null>(null);
   const [aiHistory, setAiHistory] = useState<AdminReportAiResolution[]>([]);
   const [aiHistoryPage, setAiHistoryPage] =
@@ -460,15 +484,47 @@ export function AdminReportsPage() {
     }
   }
 
+  async function loadTargetContent(report: ContentReport, signal?: AbortSignal) {
+    if (report.targetType !== "BLOG" && report.targetType !== "COMMENT") {
+      setTargetContent(null);
+      setTargetContentError(null);
+      return;
+    }
+    setTargetContentLoading(true);
+    setTargetContentError(null);
+    try {
+      const targetId = report.targetType === "BLOG"
+        ? report.blogId || report.targetId
+        : report.commentId || report.targetId;
+      const target = report.targetType === "BLOG"
+        ? await getAdminBlog(targetId, signal)
+        : await getAdminComment(targetId, signal);
+      setTargetContent(target);
+    } catch (requestError) {
+      if (!signal?.aborted) {
+        setTargetContent(null);
+        setTargetContentError(localizeApiError(requestError, locale, t, "common.error.loadDetail"));
+      }
+    } finally {
+      if (!signal?.aborted) setTargetContentLoading(false);
+    }
+  }
+
   function openReportDetail(report: ContentReport) {
     setAiActionError(null);
     setAiHistory([]);
     setAiHistoryPage(null);
     setAutoApplyJobs([]);
     setAutoApplyJobsPage(null);
+    setTargetContent(null);
+    setTargetContentError(null);
+    setTargetActionSuccess(null);
+    setRecommendationStale(false);
+    setPolicySheetOpen(false);
     void detail.load((signal) => getAdminReport(report.id, signal));
     void loadAiHistory(report.id);
     void loadAutoApplyJobs(report.id);
+    void loadTargetContent(report);
   }
 
   function openAskAiDialog(report: ContentReport) {
@@ -487,6 +543,7 @@ export function AdminReportsPage() {
       const createdResolution = await createReportAiResolution(report.id);
 
       if (detail.data?.id === report.id) {
+        setRecommendationStale(false);
         setAiHistory((current) => mergeAiHistory(current, createdResolution));
         if (createdResolution.autoApplyJob) {
           setAutoApplyJobs((current) => [
@@ -669,8 +726,39 @@ export function AdminReportsPage() {
     }
   }
 
+  async function handleTargetConfirm() {
+    if (!pendingTargetAction) return;
+    setIsTargetSubmitting(true);
+    setTargetContentError(null);
+    setTargetActionSuccess(null);
+    try {
+      const updatedTarget = pendingTargetAction.report.targetType === "BLOG"
+        ? await updateBlogStatus(pendingTargetAction.target.id, pendingTargetAction.status)
+        : await updateCommentStatus(pendingTargetAction.target.id, pendingTargetAction.status);
+      setTargetContent(updatedTarget);
+      setRecommendationStale(Boolean(latestAiResolution));
+      setTargetActionSuccess(
+        ui("Target status changed from {oldStatus} to {newStatus}. The report remains {reportStatus}.", {
+          oldStatus: enumLabel(pendingTargetAction.target.status),
+          newStatus: enumLabel(updatedTarget.status),
+          reportStatus: enumLabel(pendingTargetAction.report.status),
+        }),
+      );
+      setPendingTargetAction(null);
+    } catch (requestError) {
+      setTargetContentError(localizeApiError(requestError, locale, t, "common.error.action"));
+    } finally {
+      setIsTargetSubmitting(false);
+    }
+  }
+
   const latestAiResolution = aiHistory[0] ?? null;
   const detailReport = detail.data;
+  const suggestedTargetStatus: PostStatus | null = latestAiResolution
+    ? ({ KEEP_VISIBLE: "PUBLISHED", HIDE: "HIDDEN", REMOVE: "REMOVED" } as const)[
+        latestAiResolution.targetAction as "KEEP_VISIBLE" | "HIDE" | "REMOVE"
+      ] ?? null
+    : null;
   const confirmTitle =
     pendingAction?.kind === "resolve"
       ? "Resolve report"
@@ -1050,6 +1138,15 @@ export function AdminReportsPage() {
                 type="button"
                 variant="outline"
                 size="sm"
+                onClick={() => setPolicySheetOpen(true)}
+              >
+                <BookOpenIcon data-icon="inline-start" />
+                {ui("View policy")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
                 disabled={aiLoadingReportId === detailReport.id || !canRequestAi(detailReport)}
                 onClick={() => openAskAiDialog(detailReport)}
               >
@@ -1096,7 +1193,8 @@ export function AdminReportsPage() {
         {detailReport ? (
           <div className="flex flex-col gap-5">
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-              <AdminDetailGrid>
+              <div className="flex min-w-0 flex-col gap-4">
+                <AdminDetailGrid>
                 <AdminDetailField label="Reason" className="sm:col-span-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <span>{reportReason(detailReport, enumLabel, ui)}</span>
@@ -1151,7 +1249,34 @@ export function AdminReportsPage() {
                     {detailReport.description || "-"}
                   </p>
                 </AdminDetailField>
-              </AdminDetailGrid>
+                </AdminDetailGrid>
+
+                {detailReport.targetType === "BLOG" || detailReport.targetType === "COMMENT" ? (
+                  <AdminReportTargetActions
+                    report={detailReport}
+                    target={targetContent}
+                    isLoading={targetContentLoading}
+                    error={targetContentError}
+                    isMutating={
+                      isTargetSubmitting || aiLoadingReportId === detailReport.id
+                    }
+                    suggestedStatus={suggestedTargetStatus}
+                    recommendationStale={recommendationStale}
+                    successMessage={targetActionSuccess}
+                    onRetry={() => void loadTargetContent(detailReport)}
+                    onRequestStatus={(status) => {
+                      if (targetContent) {
+                        setTargetActionSuccess(null);
+                        setPendingTargetAction({
+                          report: detailReport,
+                          target: targetContent,
+                          status,
+                        });
+                      }
+                    }}
+                  />
+                ) : null}
+              </div>
 
               <section className="rounded-md border border-border bg-background p-4">
                 <div className="flex items-start justify-between gap-3">
@@ -1492,6 +1617,47 @@ export function AdminReportsPage() {
           </div>
         ) : null}
       </AdminDetailDialog>
+      <AdminReportAiPolicySheet
+        open={policySheetOpen}
+        report={detailReport}
+        latestResolution={latestAiResolution}
+        onOpenChange={setPolicySheetOpen}
+      />
+      <AdminConfirmDialog
+        open={Boolean(pendingTargetAction)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingTargetAction(null);
+          }
+        }}
+        title={ui("Change {targetType} content status?", {
+          targetType: pendingTargetAction
+            ? enumLabel(pendingTargetAction.report.targetType)
+            : ui("target"),
+        })}
+        description={ui("Confirm the target and status transition. This action does not close the report.")}
+        confirmLabel={pendingTargetAction
+          ? ui("Confirm {status}", { status: enumLabel(pendingTargetAction.status) })
+          : ui("Confirm")}
+        isSubmitting={isTargetSubmitting}
+        onConfirm={handleTargetConfirm}
+      >
+        {pendingTargetAction ? (
+          <div className="rounded-md border border-border bg-surface p-3 text-sm">
+            <p className="font-mono text-xs text-muted">{pendingTargetAction.target.id}</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <AdminStatusBadge value={pendingTargetAction.target.status} />
+              <span aria-hidden="true">→</span>
+              <AdminStatusBadge value={pendingTargetAction.status} />
+            </div>
+            <p className="mt-3 font-semibold text-espresso">
+              {ui("The report remains {status}.", {
+                status: enumLabel(pendingTargetAction.report.status),
+              })}
+            </p>
+          </div>
+        ) : null}
+      </AdminConfirmDialog>
       <AdminConfirmDialog
         open={Boolean(pendingAction)}
         onOpenChange={(open) => {

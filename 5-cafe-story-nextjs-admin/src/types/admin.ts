@@ -337,6 +337,47 @@ export type AdminReportAiEvidenceSummary = {
   [key: string]: unknown;
 };
 
+export type AdminReportAiPolicyRuleRequirement = {
+  requirementCode: string;
+  evidenceKind: string;
+  requirementType: string;
+  trigger: string;
+  missingBehavior: string;
+};
+
+export type AdminReportAiPolicyRule = {
+  ruleId: string;
+  ruleVersion: string;
+  ruleStatus: string;
+  ruleFamily: string;
+  ruleType: string;
+  material: boolean;
+  applicableTargetTypes: ReportTargetType[];
+  requirementProfileIds: string[];
+  requiredEvidenceKinds: string[];
+  conditionalRequirements: AdminReportAiPolicyRuleRequirement[];
+  semanticRequirementCodes: string[];
+  counterEvidenceRequired: boolean;
+  exceptionCodes: string[];
+  evaluationCeiling: string;
+  allowedOutcomes: string[];
+  allowedCandidateActions: string[];
+};
+
+export type AdminReportAiPolicy = {
+  reportId: UUID;
+  targetType: ReportTargetType;
+  reasonCode: string | null;
+  contextSchemaVersion: string;
+  policyVersion: string;
+  policyStatus: string;
+  ruleCatalogVersion: string;
+  ruleCatalogStatus: string;
+  evaluationMode: string;
+  recommendationOnly: true;
+  candidateRules: AdminReportAiPolicyRule[];
+};
+
 export type AdminReportAiAutoApplyRequest = {
   autoApplyEnabled: boolean;
   autoApplyDelayMinutes?: number | null;
