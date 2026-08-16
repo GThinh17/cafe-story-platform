@@ -4,11 +4,13 @@ import com.cafestory.dto.requestDTO.AdminPostStatusUpdateRequestDTO;
 import com.cafestory.dto.responseDTO.BlogResponseDTO;
 import com.cafestory.dto.responseDTO.BlogTaggedUserResponseDTO;
 import com.cafestory.entity.Blog;
+import com.cafestory.entity.User;
 import com.cafestory.entity.enums.PostStatus;
 import com.cafestory.mapper.BlogMapper;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.service.serviceImplement.AdminBlogServiceImpl;
 import com.cafestory.service.serviceInterface.BlogTagService;
+import com.cafestory.service.serviceInterface.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,18 +49,25 @@ class AdminBlogServiceImplTest {
     private BlogMapper blogMapper;
     @Mock
     private BlogTagService blogTagService;
+    @Mock
+    private NotificationService notificationService;
 
     private AdminBlogServiceImpl adminBlogService;
 
     private Blog blog;
+    private User author;
 
     @BeforeEach
     void setUp() {
-        adminBlogService = new AdminBlogServiceImpl(blogRepository, blogMapper, blogTagService);
+        adminBlogService = new AdminBlogServiceImpl(
+                blogRepository, blogMapper, blogTagService, notificationService);
+        author = new User();
+        author.setUserId(UUID.randomUUID());
         blog = new Blog();
         blog.setId(UUID.randomUUID());
         blog.setContent("Quan yen tinh");
         blog.setStatus(PostStatus.PUBLISHED);
+        blog.setAuthor(author);
     }
 
     @Test
@@ -125,6 +134,58 @@ class AdminBlogServiceImplTest {
 
         assertThat(blog.getStatus()).isEqualTo(PostStatus.HIDDEN);
         verify(blogRepository).save(blog);
+    }
+
+    /**
+     * Admin duyệt tay cũng phải báo cho tác giả. Trước đây chỉ đường AI gửi
+     * thông báo kiểm duyệt, nên bài AI đẩy sang admin rồi admin xử tay là tác
+     * giả không nhận được gì.
+     */
+    @Test
+    void updateBlogStatus_success_notifiesAuthorWhenHidden_TC010() {
+        AdminPostStatusUpdateRequestDTO request = new AdminPostStatusUpdateRequestDTO();
+        request.setStatus(PostStatus.HIDDEN);
+        request.setReason("  Anh vi pham  ");
+        when(blogRepository.findById(blog.getId())).thenReturn(Optional.of(blog));
+        when(blogRepository.save(blog)).thenReturn(blog);
+        when(blogMapper.toBlogResponseDTO(blog)).thenReturn(new BlogResponseDTO());
+        when(blogTagService.getTaggedUsers(blog.getId())).thenReturn(List.of());
+
+        adminBlogService.updateBlogStatus(blog.getId(), request);
+
+        verify(notificationService).createModerationNotification(
+                author.getUserId(), blog.getId(), "DENIED", "Anh vi pham");
+    }
+
+    @Test
+    void updateBlogStatus_success_notifiesApprovedWhenPublished_TC011() {
+        blog.setStatus(PostStatus.HIDDEN);
+        AdminPostStatusUpdateRequestDTO request = new AdminPostStatusUpdateRequestDTO();
+        request.setStatus(PostStatus.PUBLISHED);
+        when(blogRepository.findById(blog.getId())).thenReturn(Optional.of(blog));
+        when(blogRepository.save(blog)).thenReturn(blog);
+        when(blogMapper.toBlogResponseDTO(blog)).thenReturn(new BlogResponseDTO());
+        when(blogTagService.getTaggedUsers(blog.getId())).thenReturn(List.of());
+
+        adminBlogService.updateBlogStatus(blog.getId(), request);
+
+        verify(notificationService).createModerationNotification(
+                author.getUserId(), blog.getId(), "APPROVED", null);
+    }
+
+    /** Lưu lại đúng trạng thái cũ không phải quyết định mới — không được spam tác giả. */
+    @Test
+    void updateBlogStatus_success_skipsNotificationWhenStatusUnchanged_TC012() {
+        AdminPostStatusUpdateRequestDTO request = new AdminPostStatusUpdateRequestDTO();
+        request.setStatus(PostStatus.PUBLISHED);
+        when(blogRepository.findById(blog.getId())).thenReturn(Optional.of(blog));
+        when(blogRepository.save(blog)).thenReturn(blog);
+        when(blogMapper.toBlogResponseDTO(blog)).thenReturn(new BlogResponseDTO());
+        when(blogTagService.getTaggedUsers(blog.getId())).thenReturn(List.of());
+
+        adminBlogService.updateBlogStatus(blog.getId(), request);
+
+        verify(notificationService, never()).createModerationNotification(any(), any(), any(), any());
     }
 
     @Test

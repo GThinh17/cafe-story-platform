@@ -12,6 +12,10 @@ import { mapBlogTrendingToFeedPosts } from "@/features/blogs/blog-feed-adapter";
 import { getTrendingBlogs } from "@/lib/api/blogs";
 import { getAllCafePages, getTopCafePages } from "@/lib/api/cafes";
 import {
+  getCafePageRecommendations,
+  getReviewerRecommendations,
+} from "@/lib/api/recommendations";
+import {
   getAllActiveReviewers,
   getReviewersByRegion,
   getTopReviewers,
@@ -23,6 +27,7 @@ import type { CafePageRankingResponse, CafePageResponse } from "@/types/cafe";
 import type { FeedPost } from "@/types/feed";
 import type { ReviewerBadge, ReviewerDiscoveryResponse, ReviewerResponse } from "@/types/reviewer";
 import type { AuthUser } from "@/types/auth";
+import type { RecommendationCardResponse } from "@/types/recommendation";
 import type { ExploreTab } from "@/components/explore/explore-tabs";
 
 type ExploreCafeItem = {
@@ -95,6 +100,32 @@ function buildRegionCascade(user: AuthUser | null) {
   return params;
 }
 
+function recommendationToReviewerItem(
+  card: RecommendationCardResponse,
+): ExploreReviewerItem {
+  return {
+    reviewerId: card.targetId,
+    userId: card.userId ?? card.targetId,
+    username: card.username ?? null,
+    fullName: card.fullName ?? null,
+    avatar: card.avatar ?? null,
+    badge: card.badge ?? null,
+    isFollowing: card.isFollowing,
+  };
+}
+
+function recommendationToCafeItem(
+  card: RecommendationCardResponse,
+): ExploreCafeItem {
+  return {
+    id: card.targetId,
+    name: card.fullName ?? card.username ?? "",
+    avatar: card.avatar ?? null,
+    city: card.city ?? null,
+    isFollowing: card.isFollowing,
+  };
+}
+
 async function loadCafeData(
   searchQuery: string,
   user: AuthUser | null,
@@ -108,6 +139,20 @@ async function loadCafeData(
     }
   }
 
+  // Người đã đăng nhập: một request duy nhất. Backend xếp hạng theo vùng ngay
+  // trong SQL nên chuỗi fallback bên dưới không còn cần thiết.
+  if (user?.userId) {
+    try {
+      const cards = await getCafePageRecommendations(0, 20);
+      if (cards.length > 0) {
+        return cards.map(recommendationToCafeItem);
+      }
+    } catch {
+      /* rơi xuống nhánh cũ */
+    }
+  }
+
+  // Khách vãng lai: /api/recommendations/* đòi đăng nhập nên vẫn phải đi đường cũ.
   for (const regionParam of buildRegionCascade(user)) {
     try {
       const cafes = await getTopCafePages({ ...regionParam, size: 20 });
@@ -142,6 +187,17 @@ async function loadReviewerData(
       return results.map(reviewerResponseToItem);
     } catch {
       return [];
+    }
+  }
+
+  if (user?.userId) {
+    try {
+      const cards = await getReviewerRecommendations(0, 20);
+      if (cards.length > 0) {
+        return cards.map(recommendationToReviewerItem);
+      }
+    } catch {
+      /* rơi xuống nhánh cũ */
     }
   }
 

@@ -82,6 +82,44 @@ class AiBlogModerationServiceImplTest {
         assertThat(savedResult.getResolved()).isFalse();
     }
 
+    /**
+     * Message của RestClient khi service AI chết mang URL và cổng nội bộ
+     * ("http://localhost:8036/api/ai/blogs/evaluate", "getsockopt"). Trước đây
+     * nó bị gán vào imageReason rồi chảy thẳng vào notification hiển thị cho tác
+     * giả. Chi tiết đó thuộc về log server, không thuộc về người viết bài.
+     */
+    @Test
+    void moderateBlog_aiFailure_doesNotLeakInternalErrorToAuthor_TC009() {
+        Blog blog = blog();
+        String leakingMessage = "I/O error on POST request for "
+                + "\"http://localhost:8036/api/ai/blogs/evaluate\": Connection refused: getsockopt";
+        AiBlogModerationServiceImpl service = new AiBlogModerationServiceImpl(
+                moderationResultRepository,
+                blogRepository,
+                notificationService,
+                new ObjectMapper(),
+                "http://localhost:8036",
+                1000) {
+            @Override
+            protected AiBlogModerationResponseDTO callAiService(Blog target) {
+                throw new IllegalStateException(leakingMessage);
+            }
+        };
+        when(blogRepository.save(blog)).thenReturn(blog);
+
+        service.moderateBlog(blog);
+
+        ArgumentCaptor<String> reasonCaptor = ArgumentCaptor.forClass(String.class);
+        verify(notificationService).createModerationNotification(
+                org.mockito.ArgumentMatchers.eq(blog.getAuthor().getUserId()),
+                org.mockito.ArgumentMatchers.eq(blog.getId()),
+                org.mockito.ArgumentMatchers.eq("SEND_ADMIN"),
+                reasonCaptor.capture());
+        assertThat(reasonCaptor.getValue())
+                .isEqualTo("AI moderation service unavailable. Blog requires admin review.")
+                .doesNotContain("8036", "getsockopt", "/api/ai/", "I/O error");
+    }
+
     @Test
     void moderateBlog_success_deniedBlogIsRemovedAndAuthorNotified_TC003() {
         Blog blog = blog();

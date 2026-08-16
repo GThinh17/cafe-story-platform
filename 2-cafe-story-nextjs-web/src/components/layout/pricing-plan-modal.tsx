@@ -280,7 +280,7 @@ export function PricingPlanModal({
                   <span className="w-fit rounded-full bg-coffee/12 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-coffee">
                     {t(presentation.audienceKey)}
                   </span>
-                  <CardTitle className="mt-2 font-serif text-2xl leading-tight">
+                  <CardTitle className="mt-2 text-2xl font-bold leading-tight">
                     {fee.name || t(presentation.nameKey)}
                   </CardTitle>
                   <CardDescription>
@@ -289,7 +289,7 @@ export function PricingPlanModal({
                 </CardHeader>
                 <CardContent className="flex flex-1 flex-col">
                   <p className="flex items-end gap-1">
-                    <span className="font-serif text-3xl font-bold leading-none">
+                    <span className="text-3xl font-black leading-none">
                       {formatVnd(fee.price)}
                     </span>
                     <span className="text-sm text-muted">

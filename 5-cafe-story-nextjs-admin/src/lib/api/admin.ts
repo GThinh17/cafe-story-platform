@@ -255,10 +255,12 @@ export function getAdminBlog(blogId: string, signal?: AbortSignal) {
   });
 }
 
-export function updateBlogStatus(blogId: string, status: PostStatus) {
+// `reason` đi kèm thông báo kiểm duyệt gửi cho tác giả (backend:
+// AdminBlogServiceImpl.notifyAuthorOfModeration). Không bắt buộc.
+export function updateBlogStatus(blogId: string, status: PostStatus, reason?: string) {
   return apiFetch<Blog>(apiEndpoints.admin.blogStatus(blogId), {
     method: "PATCH",
-    body: { status },
+    body: { status, reason },
   });
 }
 

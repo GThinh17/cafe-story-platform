@@ -452,7 +452,7 @@ export function CreatePostLocationPicker({
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="flex max-h-[70vh] flex-col gap-0 p-0">
         <header className="flex items-center justify-between border-b border-line-soft px-6 py-4">
-          <DialogTitle className="font-serif text-lg font-semibold text-espresso">
+          <DialogTitle className="text-lg font-bold text-espresso">
             {t("createPost.locationPicker.title")}
           </DialogTitle>
           <Button

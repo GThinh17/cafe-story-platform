@@ -5,12 +5,17 @@ import com.cafestory.dto.responseDTO.RecommendationCardResponseDTO;
 import com.cafestory.entity.CafePage;
 import com.cafestory.entity.Region;
 import com.cafestory.entity.Reviewer;
+import com.cafestory.entity.ReviewerBadgeHistory;
 import com.cafestory.entity.User;
 import com.cafestory.entity.enums.RecommendationTargetType;
 import com.cafestory.entity.enums.ReportStatus;
+import com.cafestory.entity.enums.ReviewerBadge;
 import com.cafestory.repository.CafePageRepository;
 import com.cafestory.repository.ContentReportRepository;
+import com.cafestory.repository.PageFollowRepository;
+import com.cafestory.repository.ReviewerBadgeHistoryRepository;
 import com.cafestory.repository.ReviewerRepository;
+import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceInterface.RecommendationService;
 import com.cafestory.validation.UserValidator;
@@ -22,8 +27,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.UUID;
@@ -39,6 +47,9 @@ public class RecommendationServiceImpl implements RecommendationService {
     private final ReviewerRepository reviewerRepository;
     private final CafePageRepository cafePageRepository;
     private final ContentReportRepository contentReportRepository;
+    private final ReviewerBadgeHistoryRepository reviewerBadgeHistoryRepository;
+    private final UserFollowRepository userFollowRepository;
+    private final PageFollowRepository pageFollowRepository;
     private final UserValidator userValidator;
 
     public RecommendationServiceImpl(
@@ -46,12 +57,83 @@ public class RecommendationServiceImpl implements RecommendationService {
             ReviewerRepository reviewerRepository,
             CafePageRepository cafePageRepository,
             ContentReportRepository contentReportRepository,
+            ReviewerBadgeHistoryRepository reviewerBadgeHistoryRepository,
+            UserFollowRepository userFollowRepository,
+            PageFollowRepository pageFollowRepository,
             UserValidator userValidator) {
         this.userRepository = userRepository;
         this.reviewerRepository = reviewerRepository;
         this.cafePageRepository = cafePageRepository;
         this.contentReportRepository = contentReportRepository;
+        this.reviewerBadgeHistoryRepository = reviewerBadgeHistoryRepository;
+        this.userFollowRepository = userFollowRepository;
+        this.pageFollowRepository = pageFollowRepository;
         this.userValidator = userValidator;
+    }
+
+    /**
+     * Gắn badge và trạng thái follow cho một trang thẻ gợi ý.
+     *
+     * <p>Chạy SAU khi đã cắt trang nên danh sách id truyền vào chỉ cỡ page size,
+     * và tốn tối đa 3 query cho cả trang thay vì 2–3 query cho mỗi thẻ — đúng
+     * kiểu N+1 khiến các endpoint explore cũ chậm.
+     */
+    private List<RecommendationCardResponseDTO> enrichCards(
+            UUID currentUserId, List<RecommendationCardResponseDTO> cards) {
+        if (cards.isEmpty()) {
+            return cards;
+        }
+
+        List<UUID> reviewerIds = cards.stream()
+                .filter(card -> card.getTargetType() == RecommendationTargetType.REVIEWER)
+                .map(RecommendationCardResponseDTO::getTargetId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<UUID, ReviewerBadge> badgeByReviewerId = new HashMap<>();
+        if (!reviewerIds.isEmpty()) {
+            // Kết quả đã sắp theo (reviewerId, month desc) nên bản ghi đầu của mỗi
+            // reviewer là tháng mới nhất.
+            for (ReviewerBadgeHistory history : reviewerBadgeHistoryRepository
+                    .findByReviewerReviewerIdInOrderByReviewerReviewerIdAscMonthDesc(reviewerIds)) {
+                if (history.getReviewer() != null) {
+                    badgeByReviewerId.putIfAbsent(
+                            history.getReviewer().getReviewerId(), history.getBadge());
+                }
+            }
+        }
+
+        List<UUID> followableUserIds = cards.stream()
+                .filter(card -> card.getTargetType() != RecommendationTargetType.CAFE_PAGE)
+                .map(RecommendationCardResponseDTO::getUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Set<UUID> followedUserIds = followableUserIds.isEmpty()
+                ? Set.of()
+                : Set.copyOf(userFollowRepository.findFollowedUserIds(currentUserId, followableUserIds));
+
+        List<UUID> cafePageIds = cards.stream()
+                .filter(card -> card.getTargetType() == RecommendationTargetType.CAFE_PAGE)
+                .map(RecommendationCardResponseDTO::getTargetId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Set<UUID> followedCafePageIds = cafePageIds.isEmpty()
+                ? Set.of()
+                : Set.copyOf(pageFollowRepository.findFollowedCafePageIds(currentUserId, cafePageIds));
+
+        for (RecommendationCardResponseDTO card : cards) {
+            if (card.getTargetType() == RecommendationTargetType.CAFE_PAGE) {
+                card.setFollowing(followedCafePageIds.contains(card.getTargetId()));
+            } else {
+                card.setFollowing(card.getUserId() != null && followedUserIds.contains(card.getUserId()));
+                if (card.getTargetType() == RecommendationTargetType.REVIEWER) {
+                    card.setBadge(badgeByReviewerId.get(card.getTargetId()));
+                }
+            }
+        }
+        return cards;
     }
 
     @Override
@@ -72,9 +154,9 @@ public class RecommendationServiceImpl implements RecommendationService {
                 .map(user -> scoreUser(currentUser, user, activeReportCounts.getOrDefault(user.getUserId(), 0L)))
                 .sorted(Comparator.comparing(ScoredRecommendation::score).reversed())
                 .toList();
-        return paginate(scored, page, size).stream()
+        return enrichCards(currentUserId, paginate(scored, page, size).stream()
                 .map(ScoredRecommendation::response)
-                .toList();
+                .toList());
     }
 
     @Override
@@ -99,9 +181,9 @@ public class RecommendationServiceImpl implements RecommendationService {
                         activeReportCounts.getOrDefault(reviewer.getUser().getUserId(), 0L)))
                 .sorted(Comparator.comparing(ScoredRecommendation::score).reversed())
                 .toList();
-        return paginate(scored, page, size).stream()
+        return enrichCards(currentUserId, paginate(scored, page, size).stream()
                 .map(ScoredRecommendation::response)
-                .toList();
+                .toList());
     }
 
     @Override
@@ -125,9 +207,9 @@ public class RecommendationServiceImpl implements RecommendationService {
                         activeReportCounts.getOrDefault(cafePage.getId(), 0L)))
                 .sorted(Comparator.comparing(ScoredRecommendation::score).reversed())
                 .toList();
-        return paginate(scored, page, size).stream()
+        return enrichCards(currentUserId, paginate(scored, page, size).stream()
                 .map(ScoredRecommendation::response)
-                .toList();
+                .toList());
     }
 
     @Override

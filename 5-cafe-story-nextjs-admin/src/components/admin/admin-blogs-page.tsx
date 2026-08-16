@@ -122,6 +122,7 @@ export function AdminBlogsPage() {
   const [pageId, setPageId] = useState("");
   const [pendingAction, setPendingAction] = useState<PendingBlogAction | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionReason, setActionReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [detailBlog, setDetailBlog] = useState<Blog | null>(null);
@@ -239,7 +240,11 @@ export function AdminBlogsPage() {
 
     try {
       if (pendingAction.type === "status") {
-        const updatedBlog = await updateBlogStatus(pendingAction.blog.id, pendingAction.status);
+        const updatedBlog = await updateBlogStatus(
+          pendingAction.blog.id,
+          pendingAction.status,
+          actionReason.trim() || undefined,
+        );
         if (detailBlog?.id === updatedBlog.id) {
           setDetailBlog(updatedBlog);
         }
@@ -256,6 +261,9 @@ export function AdminBlogsPage() {
       }
 
       setPendingAction(null);
+      // Đóng bằng cách set state không chạy onOpenChange, nên phải tự xoá ở đây —
+      // nếu không lý do của bài trước còn sót sang bài sau.
+      setActionReason("");
       resource.refetch();
     } catch (requestError) {
       setActionError(
@@ -382,6 +390,7 @@ export function AdminBlogsPage() {
           if (!open) {
             setPendingAction(null);
             setActionError(null);
+            setActionReason("");
           }
         }}
         title="Confirm blog action"
@@ -390,6 +399,17 @@ export function AdminBlogsPage() {
         isSubmitting={isSubmitting}
         onConfirm={handleConfirm}
       >
+        {pendingAction?.type === "status" ? (
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-medium">Reason (optional)</span>
+            <textarea
+              className="flex min-h-20 w-full rounded-md border border-input bg-surface px-3 py-2 text-sm ring-offset-background placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
+              onChange={(event) => setActionReason(event.target.value)}
+              placeholder="Sent to the author with the moderation notification..."
+              value={actionReason}
+            />
+          </div>
+        ) : null}
         {actionError ? <p className="text-sm text-accent">{actionError}</p> : null}
       </AdminConfirmDialog>
     </div>

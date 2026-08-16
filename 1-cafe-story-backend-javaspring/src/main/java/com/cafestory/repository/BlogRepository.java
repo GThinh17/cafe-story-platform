@@ -104,6 +104,44 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
     @EntityGraph(attributePaths = {"author"})
     List<Blog> findByStatus(PostStatus status);
 
+    /**
+     * Ứng viên "mới nhất" cho feed. Dùng thay {@link #findByStatus} ở đường chấm
+     * điểm feed: nạp cả bảng blog vào RAM mỗi lần cache miss là không co giãn
+     * được, trong khi điểm freshness suy giảm theo hàm mũ nên bài quá cũ gần như
+     * không bao giờ lọt trang đầu vì độ mới.
+     */
+    @EntityGraph(attributePaths = {"author"})
+    @Query("""
+            select b
+            from Blog b
+            where b.status = :status
+            order by b.createdAt desc
+            """)
+    List<Blog> findRecentCandidatesByStatus(
+            @Param("status") PostStatus status,
+            Pageable pageable);
+
+    /**
+     * Ứng viên "tương tác cao" cho feed, xếp theo đúng phần engagement của công
+     * thức chấm điểm organic (like×2 + comment×4 + share×5).
+     *
+     * <p>Cần query thứ hai này vì chỉ lấy theo độ mới sẽ đánh rơi bài cũ nhưng
+     * vẫn nhiều tương tác — thành phần engagement của điểm không hề suy giảm
+     * theo thời gian.
+     */
+    @EntityGraph(attributePaths = {"author"})
+    @Query("""
+            select b
+            from Blog b
+            where b.status = :status
+            order by (coalesce(b.likeCount, 0) * 2
+                    + coalesce(b.commentCount, 0) * 4
+                    + coalesce(b.shareCount, 0) * 5) desc
+            """)
+    List<Blog> findTopEngagedCandidatesByStatus(
+            @Param("status") PostStatus status,
+            Pageable pageable);
+
     @EntityGraph(attributePaths = {"author"})
     List<Blog> findByIdIn(List<UUID> ids);
 

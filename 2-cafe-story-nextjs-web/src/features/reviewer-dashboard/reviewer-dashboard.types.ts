@@ -45,6 +45,9 @@ export type ReviewerStats = {
 export type ReviewerRankingItem = {
   rank: number;
   reviewerId: string;
+  userId: string;
+  userName: string | null;
+  userAvatar: string | null;
   score: number;
   likeCount: number;
   shareCount: number;

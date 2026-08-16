@@ -47,8 +47,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,6 +68,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -112,6 +115,8 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
     private final BlogRecommendationScoreBatchWriter recommendationScoreBatchWriter;
     private final TaskExecutor taskExecutor;
     private final TransactionTemplate transactionTemplate;
+    /** Trần số ứng viên nạp cho mỗi lần chấm điểm feed, theo từng chiến lược. */
+    private final int candidateLimit;
 
     public BlogFeedRankingServiceImpl(
             BlogRepository blogRepository,
@@ -135,7 +140,9 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             BlogModerationTagService blogModerationTagService,
             BlogRecommendationScoreBatchWriter recommendationScoreBatchWriter,
             @Qualifier(FeedRebuildExecutorConfig.FEED_REBUILD_EXECUTOR) TaskExecutor taskExecutor,
-            PlatformTransactionManager transactionManager) {
+            PlatformTransactionManager transactionManager,
+            @Value("${feed.candidate-limit:500}") int candidateLimit) {
+        this.candidateLimit = Math.max(1, candidateLimit);
         this.blogRepository = blogRepository;
         this.blogRecommendationScoreRepository = blogRecommendationScoreRepository;
         this.cafePageRepository = cafePageRepository;
@@ -184,11 +191,36 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
         return toFeedResponse(response);
     }
 
+    /**
+     * Tập ứng viên có trần cho việc chấm điểm feed.
+     *
+     * <p>Trước đây hai đường chấm điểm đều gọi {@code findByStatus(PUBLISHED)} —
+     * nạp TOÀN BỘ blog đã đăng (cả entity, kèm content) vào RAM mỗi lần cache
+     * miss, rồi mới sắp xếp và cắt trang trong bộ nhớ. Chi phí tăng tuyến tính
+     * theo tổng số bài, không theo kích thước trang.
+     *
+     * <p>Gộp hai chiến lược vì điểm organic có hai thành phần độc lập: freshness
+     * suy giảm theo hàm mũ (bài mới thắng) và engagement không suy giảm (bài cũ
+     * nhiều tương tác vẫn thắng). Lấy mỗi chiều một tập rồi hợp lại nên không
+     * đánh rơi nhóm nào.
+     */
+    private List<Blog> loadFeedCandidates() {
+        Pageable limit = PageRequest.of(0, candidateLimit);
+        Map<UUID, Blog> merged = new LinkedHashMap<>();
+        for (Blog blog : blogRepository.findRecentCandidatesByStatus(PostStatus.PUBLISHED, limit)) {
+            merged.putIfAbsent(blog.getId(), blog);
+        }
+        for (Blog blog : blogRepository.findTopEngagedCandidatesByStatus(PostStatus.PUBLISHED, limit)) {
+            merged.putIfAbsent(blog.getId(), blog);
+        }
+        return List.copyOf(merged.values());
+    }
+
     private OrganicFeedRankingPage buildOrganicRankingPage(
             OrganicFeedCursor organicCursor,
             int safeSize,
             LocalDateTime scoredAt) {
-        List<Blog> publishedBlogs = blogRepository.findByStatus(PostStatus.PUBLISHED);
+        List<Blog> publishedBlogs = loadFeedCandidates();
         List<UUID> blogIds = publishedBlogs.stream()
                 .map(Blog::getId)
                 .filter(blogId -> blogId != null)
@@ -427,7 +459,7 @@ public class BlogFeedRankingServiceImpl implements BlogFeedRankingService {
             TrendWindowType windowType,
             UUID contextRegionId) {
         LocalDateTime now = LocalDateTime.now();
-        List<Blog> publishedBlogs = blogRepository.findByStatus(PostStatus.PUBLISHED);
+        List<Blog> publishedBlogs = loadFeedCandidates();
         FeedScoringContext scoringContext = buildFeedScoringContext(user, contextRegionId, windowType, now, publishedBlogs);
 
         List<BlogRecommendationScore> candidates = publishedBlogs

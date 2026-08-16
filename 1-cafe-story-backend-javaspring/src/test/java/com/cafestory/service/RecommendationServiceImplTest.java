@@ -9,7 +9,12 @@ import com.cafestory.entity.enums.PageStatus;
 import com.cafestory.entity.enums.RecommendationTargetType;
 import com.cafestory.entity.enums.ReportStatus;
 import com.cafestory.repository.CafePageRepository;
+import com.cafestory.entity.ReviewerBadgeHistory;
+import com.cafestory.entity.enums.ReviewerBadge;
 import com.cafestory.repository.ContentReportRepository;
+import com.cafestory.repository.PageFollowRepository;
+import com.cafestory.repository.ReviewerBadgeHistoryRepository;
+import com.cafestory.repository.UserFollowRepository;
 import com.cafestory.repository.ReviewerRepository;
 import com.cafestory.repository.UserRepository;
 import com.cafestory.service.serviceImplement.RecommendationServiceImpl;
@@ -47,6 +52,15 @@ class RecommendationServiceImplTest {
     private ContentReportRepository contentReportRepository;
 
     @Mock
+    private ReviewerBadgeHistoryRepository reviewerBadgeHistoryRepository;
+
+    @Mock
+    private UserFollowRepository userFollowRepository;
+
+    @Mock
+    private PageFollowRepository pageFollowRepository;
+
+    @Mock
     private UserValidator userValidator;
 
     private RecommendationServiceImpl recommendationService;
@@ -58,6 +72,9 @@ class RecommendationServiceImplTest {
                 reviewerRepository,
                 cafePageRepository,
                 contentReportRepository,
+                reviewerBadgeHistoryRepository,
+                userFollowRepository,
+                pageFollowRepository,
                 userValidator);
     }
 
@@ -111,6 +128,70 @@ class RecommendationServiceImplTest {
         assertThat(result.get(0).getUsername()).isEqualTo("coffeehunter");
         assertThat(result.get(0).getFullName()).isEqualTo("Coffee Hunter");
         assertThat(result.get(0).getReason()).isEqualTo("Reviewer near you");
+    }
+
+    /**
+     * Badge và trạng thái follow được gắn bằng query batch trên đúng trang kết
+     * quả. Trước đây DTO không mang hai trường này nên client phải tự đi hỏi
+     * thêm; còn các endpoint explore cũ thì hỏi một lần cho MỖI bản ghi.
+     */
+    @Test
+    void getReviewerRecommendations_success_attachesBadgeAndFollowState_TC015() {
+        UUID currentUserId = UUID.randomUUID();
+        User currentUser = user(currentUserId, "current", "Current User", "Ho Chi Minh");
+        User reviewerUser = user(UUID.randomUUID(), "coffeehunter", "Coffee Hunter", "Ho Chi Minh");
+        Reviewer reviewer = reviewer(UUID.randomUUID(), reviewerUser);
+
+        ReviewerBadgeHistory latest = new ReviewerBadgeHistory();
+        latest.setReviewer(reviewer);
+        latest.setMonth("2026-08");
+        latest.setBadge(ReviewerBadge.GOLD);
+        ReviewerBadgeHistory older = new ReviewerBadgeHistory();
+        older.setReviewer(reviewer);
+        older.setMonth("2026-07");
+        older.setBadge(ReviewerBadge.IRON);
+
+        when(userValidator.validateUserExists(currentUserId)).thenReturn(currentUser);
+        when(reviewerRepository.findRecommendationCandidates(eq(currentUserId), any(UUID.class), eq("ho chi minh"), any(Pageable.class)))
+                .thenReturn(List.of(reviewer));
+        when(contentReportRepository.countByReportedUserIdsAndStatusIn(any(), eq(activeStatuses())))
+                .thenReturn(List.of());
+        // Repository trả theo (reviewerId, month desc) nên bản ghi đầu là mới nhất.
+        when(reviewerBadgeHistoryRepository
+                .findByReviewerReviewerIdInOrderByReviewerReviewerIdAscMonthDesc(List.of(reviewer.getReviewerId())))
+                .thenReturn(List.of(latest, older));
+        when(userFollowRepository.findFollowedUserIds(currentUserId, List.of(reviewerUser.getUserId())))
+                .thenReturn(List.of(reviewerUser.getUserId()));
+
+        List<RecommendationCardResponseDTO> result =
+                recommendationService.getReviewerRecommendations(currentUserId, 0, 10);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getBadge()).isEqualTo(ReviewerBadge.GOLD);
+        assertThat(result.get(0).isFollowing()).isTrue();
+    }
+
+    @Test
+    void getCafePageRecommendations_success_attachesFollowStateWithoutBadge_TC016() {
+        UUID currentUserId = UUID.randomUUID();
+        User currentUser = user(currentUserId, "current", "Current User", "Ho Chi Minh");
+        CafePage cafePage = cafePage(UUID.randomUUID(), "Cafe Story Nguyen Hue", "Ho Chi Minh");
+
+        when(userValidator.validateUserExists(currentUserId)).thenReturn(currentUser);
+        when(cafePageRepository.findRecommendationCandidates(eq(currentUserId), any(UUID.class), eq("ho chi minh"), any(Pageable.class)))
+                .thenReturn(List.of(cafePage));
+        when(contentReportRepository.countByCafePageIdsAndStatusIn(any(), eq(activeStatuses())))
+                .thenReturn(List.of());
+        when(pageFollowRepository.findFollowedCafePageIds(currentUserId, List.of(cafePage.getId())))
+                .thenReturn(List.of());
+
+        List<RecommendationCardResponseDTO> result =
+                recommendationService.getCafePageRecommendations(currentUserId, 0, 10);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).isFollowing()).isFalse();
+        // Cafe page không có badge — trường này chỉ dành cho REVIEWER.
+        assertThat(result.get(0).getBadge()).isNull();
     }
 
     @Test

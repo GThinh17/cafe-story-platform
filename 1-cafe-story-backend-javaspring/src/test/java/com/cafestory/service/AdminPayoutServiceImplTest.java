@@ -69,6 +69,8 @@ import static org.mockito.Mockito.when;
 class AdminPayoutServiceImplTest {
 
     private static final String STRIPE_SECRET_KEY = "sk_test_dummy";
+    private static final String PAYOUT_CURRENCY = "usd";
+    private static final BigDecimal VND_PER_UNIT = new BigDecimal("25000");
 
     @Mock
     private AdminPayoutRepository payoutRepository;
@@ -101,6 +103,8 @@ class AdminPayoutServiceImplTest {
     void setUp() {
         payoutService = new AdminPayoutServiceImpl(
                 STRIPE_SECRET_KEY,
+                PAYOUT_CURRENCY,
+                VND_PER_UNIT,
                 payoutRepository,
                 incomeRepository,
                 snapshotRepository,
@@ -391,7 +395,132 @@ class AdminPayoutServiceImplTest {
         }
 
         assertThat(approved.getPaidAt()).isNotNull();
-        assertThat(approved.getStripeIdempotencyKey()).isEqualTo("payout-" + approved.getId());
+        // Khoá gắn thêm vân tay tham số nên không còn cố định theo payout id;
+        // xem TC024 cho lý do.
+        assertThat(approved.getStripeIdempotencyKey())
+                .startsWith("payout-" + approved.getId() + "-")
+                .hasSize(("payout-" + approved.getId() + "-").length() + 16);
+    }
+
+    /**
+     * DB lưu VND nhưng lệnh gửi Stripe phải theo loại tiền platform giữ được số
+     * dư, nếu không Stripe trả balance_insufficient. 500.000đ / 25.000 = 20 USD,
+     * mà USD tính theo cent nên số gửi đi phải là 2000.
+     */
+    @Test
+    void updatePayoutStatus_success_convertsVndToPayoutCurrency_TC022() {
+        AdminPayout approved = payout(AdminPayoutStatus.APPROVED);
+        approved.setTotalFinalAmount(500_000L);
+        User admin = admin();
+        AdminPayoutStatusRequest request = statusRequest(AdminPayoutStatus.PAID, null);
+        when(payoutRepository.findById(approved.getId())).thenReturn(Optional.of(approved));
+        when(userRepository.findById(admin.getUserId())).thenReturn(Optional.of(admin));
+        when(stripeAccountRepository.findByReviewerReviewerId(reviewer.getReviewerId()))
+                .thenReturn(Optional.of(stripeAccount(true)));
+        when(payoutRepository.save(approved)).thenReturn(approved);
+
+        Transfer transfer = new Transfer();
+        transfer.setId("tr_conv");
+        ArgumentCaptor<TransferCreateParams> captor =
+                ArgumentCaptor.forClass(TransferCreateParams.class);
+        try (MockedStatic<Transfer> stripeTransfer = mockStatic(Transfer.class)) {
+            stripeTransfer.when(() -> Transfer.create(
+                            any(TransferCreateParams.class), any(RequestOptions.class)))
+                    .thenReturn(transfer);
+
+            payoutService.updatePayoutStatus(approved.getId(), admin.getUserId(), request);
+
+            stripeTransfer.verify(() -> Transfer.create(
+                    captor.capture(), any(RequestOptions.class)));
+        }
+
+        assertThat(captor.getValue().getCurrency()).isEqualTo("usd");
+        assertThat(captor.getValue().getAmount()).isEqualTo(2_000L);
+        // Số lưu trong DB vẫn là VND, quy đổi chỉ áp cho lệnh gửi đi.
+        assertThat(approved.getTotalFinalAmount()).isEqualTo(500_000L);
+    }
+
+    /**
+     * Khoản quá nhỏ làm tròn về 0 cent: phải báo lỗi rõ ràng thay vì gửi lệnh
+     * amount=0 cho Stripe rồi nhận lỗi khó hiểu.
+     */
+    @Test
+    void updatePayoutStatus_fail_amountTooSmallAfterConversion_TC023() {
+        AdminPayout approved = payout(AdminPayoutStatus.APPROVED);
+        approved.setTotalFinalAmount(100L); // 100đ -> 0.4 cent -> làm tròn 0
+        User admin = admin();
+        AdminPayoutStatusRequest request = statusRequest(AdminPayoutStatus.PAID, null);
+        when(payoutRepository.findById(approved.getId())).thenReturn(Optional.of(approved));
+        when(userRepository.findById(admin.getUserId())).thenReturn(Optional.of(admin));
+        when(stripeAccountRepository.findByReviewerReviewerId(reviewer.getReviewerId()))
+                .thenReturn(Optional.of(stripeAccount(true)));
+
+        assertThatThrownBy(() ->
+                payoutService.updatePayoutStatus(approved.getId(), admin.getUserId(), request))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("nhỏ hơn đơn vị nhỏ nhất");
+
+        verify(payoutRepository, never()).save(any(AdminPayout.class));
+    }
+
+    /**
+     * Khoá idempotency phải đổi khi tham số chuyển tiền đổi. Trước đây khoá là
+     * "payout-{id}" cố định: sau một lần thử hỏng, đổi số tiền hoặc loại tiền rồi
+     * bấm lại là Stripe chặn thẳng với "Keys for idempotent requests can only be
+     * used with the same parameters they were first used with" — payout đó coi
+     * như chết 24h.
+     */
+    @Test
+    void updatePayoutStatus_success_idempotencyKeyTracksTransferParams_TC024() {
+        AdminPayout first = payout(AdminPayoutStatus.APPROVED);
+        first.setTotalFinalAmount(500_000L);
+
+        AdminPayout retryWithNewAmount = payout(AdminPayoutStatus.APPROVED);
+        retryWithNewAmount.setId(first.getId());
+        retryWithNewAmount.setUpdatedAt(first.getUpdatedAt());
+        retryWithNewAmount.setTotalFinalAmount(250_000L);
+
+        String firstKey = payAndReadIdempotencyKey(first);
+        String retryKey = payAndReadIdempotencyKey(retryWithNewAmount);
+
+        assertThat(firstKey).isNotEqualTo(retryKey);
+        assertThat(firstKey).startsWith("payout-" + first.getId() + "-");
+        assertThat(retryKey).startsWith("payout-" + first.getId() + "-");
+    }
+
+    /** Cùng bản ghi, cùng tham số thì khoá phải ổn định — đó là thứ chặn double-send. */
+    @Test
+    void updatePayoutStatus_success_idempotencyKeyStableForSameRequest_TC025() {
+        AdminPayout attempt = payout(AdminPayoutStatus.APPROVED);
+        attempt.setTotalFinalAmount(500_000L);
+
+        AdminPayout sameRowReloaded = payout(AdminPayoutStatus.APPROVED);
+        sameRowReloaded.setId(attempt.getId());
+        sameRowReloaded.setUpdatedAt(attempt.getUpdatedAt());
+        sameRowReloaded.setTotalFinalAmount(500_000L);
+
+        assertThat(payAndReadIdempotencyKey(attempt))
+                .isEqualTo(payAndReadIdempotencyKey(sameRowReloaded));
+    }
+
+    private String payAndReadIdempotencyKey(AdminPayout row) {
+        User admin = admin();
+        AdminPayoutStatusRequest request = statusRequest(AdminPayoutStatus.PAID, null);
+        when(payoutRepository.findById(row.getId())).thenReturn(Optional.of(row));
+        when(userRepository.findById(admin.getUserId())).thenReturn(Optional.of(admin));
+        when(stripeAccountRepository.findByReviewerReviewerId(reviewer.getReviewerId()))
+                .thenReturn(Optional.of(stripeAccount(true)));
+        when(payoutRepository.save(row)).thenReturn(row);
+
+        Transfer transfer = new Transfer();
+        transfer.setId("tr_key");
+        try (MockedStatic<Transfer> stripeTransfer = mockStatic(Transfer.class)) {
+            stripeTransfer.when(() -> Transfer.create(
+                            any(TransferCreateParams.class), any(RequestOptions.class)))
+                    .thenReturn(transfer);
+            payoutService.updatePayoutStatus(row.getId(), admin.getUserId(), request);
+        }
+        return row.getStripeIdempotencyKey();
     }
 
     @Test

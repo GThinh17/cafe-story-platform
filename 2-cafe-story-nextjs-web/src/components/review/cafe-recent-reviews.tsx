@@ -148,7 +148,7 @@ export function CafeRecentReviews({
   return (
     <section className="flex flex-col gap-6">
       <div className="flex items-end justify-between gap-4">
-        <h2 className="font-serif text-2xl font-medium text-espresso">
+        <h2 className="text-2xl font-black text-espresso">
           Recent Posts
         </h2>
         <div className="flex items-center gap-5 text-xs font-medium text-coffee-muted">
@@ -232,7 +232,7 @@ export function CafeRecentReviews({
                     </Link>
                     <div className="min-w-0">
                       <Link
-                        className="block cursor-pointer truncate font-serif text-base font-medium text-espresso hover:text-primary"
+                        className="block cursor-pointer truncate text-base font-bold text-espresso hover:text-primary"
                         href={identity.primaryHref}
                       >
                         {identity.primaryName}

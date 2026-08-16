@@ -435,7 +435,7 @@ class ReviewerServiceImplTest {
     void getReviewerRanking_success_breaksTiesByCommentShareLikeThenId_TC017() {
         // Cùng điểm 15: reviewer đầu hơn ở số bình luận nên phải đứng trước.
         when(formulaService.getActiveFormula()).thenReturn(formula());
-        when(reviewerRepository.findAllWithUser()).thenReturn(List.of(firstReviewer, secondReviewer));
+        when(reviewerRepository.findAllWithUserAndRegion()).thenReturn(List.of(firstReviewer, secondReviewer));
         when(blogLikeRepository.countByBlogAuthorBetween(any(), any())).thenReturn(List.of(
                 interaction(firstUser.getUserId(), 0L),
                 interaction(secondUser.getUserId(), 15L)));
@@ -869,7 +869,7 @@ class ReviewerServiceImplTest {
 
     private void mockEngagement() {
         when(formulaService.getActiveFormula()).thenReturn(formula());
-        when(reviewerRepository.findAllWithUser()).thenReturn(List.of(firstReviewer, secondReviewer));
+        when(reviewerRepository.findAllWithUserAndRegion()).thenReturn(List.of(firstReviewer, secondReviewer));
         when(blogLikeRepository.countByBlogAuthorBetween(any(), any())).thenReturn(List.of(
                 interaction(firstUser.getUserId(), 10L),
                 interaction(secondUser.getUserId(), 2L),

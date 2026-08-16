@@ -465,7 +465,10 @@ public class ReviewerServiceImpl implements ReviewerService {
         int commentWeight = formula.getCommentWeight();
         Map<UUID, Reviewer> reviewersByUserId = new HashMap<>();
         Map<UUID, EngagementAccumulator> engagement = new HashMap<>();
-        for (Reviewer reviewer : reviewerRepository.findAllWithUser()) {
+        // Fetch luôn region: mọi bên tiêu thụ map này (ranking, segment, geo) đều
+        // đọc user.region, dùng findAllWithUser() thì mỗi reviewer sinh thêm một
+        // query lazy cho region — đúng N+1.
+        for (Reviewer reviewer : reviewerRepository.findAllWithUserAndRegion()) {
             reviewersByUserId.put(reviewer.getUser().getUserId(), reviewer);
             engagement.putIfAbsent(reviewer.getReviewerId(), new EngagementAccumulator(reviewer, likeWeight, shareWeight, commentWeight));
         }
@@ -507,6 +510,12 @@ public class ReviewerServiceImpl implements ReviewerService {
     private ReviewerRankingResponseDTO toRankingResponse(EngagementAccumulator accumulator) {
         ReviewerRankingResponseDTO response = new ReviewerRankingResponseDTO();
         response.setReviewerId(accumulator.reviewer().getReviewerId());
+        // User đã được fetch join sẵn ở aggregateEngagementForAllUsers nên ba
+        // trường này không tốn thêm query nào.
+        User user = accumulator.reviewer().getUser();
+        response.setUserId(user.getUserId());
+        response.setUserName(user.getUserName());
+        response.setUserAvatar(user.getUserAvatar());
         response.setLikeCount(accumulator.likeCount());
         response.setShareCount(accumulator.shareCount());
         response.setCommentCount(accumulator.commentCount());

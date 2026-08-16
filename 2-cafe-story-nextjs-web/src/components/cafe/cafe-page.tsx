@@ -95,7 +95,7 @@ export function CafePage({
             />
             <div className="min-w-0 space-y-3">
               <div className="flex min-w-0 items-center gap-2">
-                <h1 className="truncate font-serif text-4xl font-medium leading-tight text-espresso">
+                <h1 className="truncate text-4xl font-black leading-tight text-espresso">
                   {cafe.name}
                 </h1>
                 {isCurrentOwner ? (

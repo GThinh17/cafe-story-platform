@@ -10,6 +10,12 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
+    private final StompPrincipalHandshakeHandler handshakeHandler;
+
+    public WebSocketConfig(StompPrincipalHandshakeHandler handshakeHandler) {
+        this.handshakeHandler = handshakeHandler;
+    }
+
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
         registry.enableSimpleBroker("/topic", "/queue");
@@ -18,6 +24,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        registry.addEndpoint("/ws/chat").setAllowedOriginPatterns("*");
+        // setHandshakeHandler là thứ làm convertAndSendToUser(userId, ...) hoạt
+        // động: nó gắn Principal có tên = userId cho phiên. Thiếu nó thì mọi
+        // message gửi tới user destination đều bị loại bỏ im lặng.
+        registry.addEndpoint("/ws/chat")
+                .setAllowedOriginPatterns("*")
+                .setHandshakeHandler(handshakeHandler);
     }
 }

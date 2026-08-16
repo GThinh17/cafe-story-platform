@@ -9,6 +9,9 @@ import com.cafestory.mapper.BlogMapper;
 import com.cafestory.repository.BlogRepository;
 import com.cafestory.service.serviceInterface.AdminBlogService;
 import com.cafestory.service.serviceInterface.BlogTagService;
+import com.cafestory.service.serviceInterface.NotificationService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -23,14 +26,22 @@ import java.util.UUID;
 @Service
 public class AdminBlogServiceImpl implements AdminBlogService {
 
+    private static final Logger log = LoggerFactory.getLogger(AdminBlogServiceImpl.class);
+
     private final BlogRepository blogRepository;
     private final BlogMapper blogMapper;
     private final BlogTagService blogTagService;
+    private final NotificationService notificationService;
 
-    public AdminBlogServiceImpl(BlogRepository blogRepository, BlogMapper blogMapper, BlogTagService blogTagService) {
+    public AdminBlogServiceImpl(
+            BlogRepository blogRepository,
+            BlogMapper blogMapper,
+            BlogTagService blogTagService,
+            NotificationService notificationService) {
         this.blogRepository = blogRepository;
         this.blogMapper = blogMapper;
         this.blogTagService = blogTagService;
+        this.notificationService = notificationService;
     }
 
     @Override
@@ -56,8 +67,45 @@ public class AdminBlogServiceImpl implements AdminBlogService {
     @Transactional
     public BlogResponseDTO updateBlogStatus(UUID blogId, AdminPostStatusUpdateRequestDTO request) {
         Blog blog = findBlog(blogId);
+        PostStatus previousStatus = blog.getStatus();
         blog.setStatus(request.getStatus());
-        return toBlogResponseDTO(blogRepository.save(blog));
+        Blog savedBlog = blogRepository.save(blog);
+        // Chỉ báo khi trạng thái thực sự đổi — admin lưu lại cùng trạng thái
+        // không phải một quyết định kiểm duyệt mới.
+        if (previousStatus != request.getStatus()) {
+            notifyAuthorOfModeration(savedBlog, request.getStatus(), request.getReason());
+        }
+        return toBlogResponseDTO(savedBlog);
+    }
+
+    /**
+     * Báo cho tác giả khi admin duyệt tay.
+     *
+     * <p>Trước đây chỉ {@code AiBlogModerationServiceImpl} gửi thông báo kiểm
+     * duyệt, nên bài bị AI đẩy sang admin rồi admin xử tay thì tác giả không nhận
+     * được gì — kể cả khi reload.
+     *
+     * <p>Nuốt lỗi giống đường AI: thông báo hỏng không được phép làm rollback
+     * quyết định kiểm duyệt của admin.
+     */
+    private void notifyAuthorOfModeration(Blog blog, PostStatus status, String reason) {
+        String moderationStatus = switch (status) {
+            case PUBLISHED -> "APPROVED";
+            case HIDDEN, REMOVED -> "DENIED";
+            case DRAFT -> null;
+        };
+        if (moderationStatus == null || blog.getAuthor() == null) {
+            return;
+        }
+        try {
+            notificationService.createModerationNotification(
+                    blog.getAuthor().getUserId(),
+                    blog.getId(),
+                    moderationStatus,
+                    reason == null || reason.isBlank() ? null : reason.trim());
+        } catch (Exception exception) {
+            log.error("Không gửi được thông báo kiểm duyệt cho blogId={}", blog.getId(), exception);
+        }
     }
 
     @Override

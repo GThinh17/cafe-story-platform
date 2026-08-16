@@ -43,6 +43,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.core.task.TaskExecutor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
@@ -70,6 +71,9 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class BlogFeedRankingServiceImplTest {
+
+    /** Trần ứng viên dùng trong test — khớp default feed.candidate-limit. */
+    private static final int TEST_CANDIDATE_LIMIT = 500;
 
     @Mock
     private BlogRepository blogRepository;
@@ -149,7 +153,10 @@ class BlogFeedRankingServiceImplTest {
                 LocalDateTime.now().minusHours(12));
         BlogFeedRankingServiceImpl service = service();
 
-        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(lowScoreBlog, highScorePageBlog));
+        when(blogRepository.findRecentCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(lowScoreBlog, highScorePageBlog));
+        when(blogRepository.findTopEngagedCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(lowScoreBlog, highScorePageBlog));
 
         FeedResponseDTO result = service.getOrganicFeed(null, 20);
 
@@ -183,7 +190,10 @@ class BlogFeedRankingServiceImplTest {
                 createdAt.minusHours(1));
         BlogFeedRankingServiceImpl service = service();
 
-        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(secondBlog, firstBlog));
+        when(blogRepository.findRecentCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(secondBlog, firstBlog));
+        when(blogRepository.findTopEngagedCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(secondBlog, firstBlog));
 
         FeedResponseDTO firstPage = service.getOrganicFeed(null, 1);
         FeedResponseDTO secondPage =
@@ -217,7 +227,10 @@ class BlogFeedRankingServiceImplTest {
                 sameCreatedAt);
         BlogFeedRankingServiceImpl service = service();
 
-        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(lowerIdBlog, higherIdBlog));
+        when(blogRepository.findRecentCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(lowerIdBlog, higherIdBlog));
+        when(blogRepository.findTopEngagedCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(lowerIdBlog, higherIdBlog));
 
         FeedResponseDTO result = service.getOrganicFeed(null, 20);
 
@@ -256,7 +269,10 @@ class BlogFeedRankingServiceImplTest {
         List<UUID> pageIds = List.of(blog.getPageId());
         List<UUID> authorIds = List.of(blog.getAuthor().getUserId());
 
-        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(blog));
+        when(blogRepository.findRecentCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(blog));
+        when(blogRepository.findTopEngagedCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(blog));
         when(userFollowRepository.findFollowedUserIds(firstViewerId, authorIds)).thenReturn(authorIds);
         when(pageFollowRepository.findFollowedCafePageIds(firstViewerId, pageIds)).thenReturn(pageIds);
         when(blogLikeRepository.findLikedBlogIdsByUserIdAndBlogIds(firstViewerId, blogIds)).thenReturn(blogIds);
@@ -492,7 +508,10 @@ class BlogFeedRankingServiceImplTest {
                 user.getUserId(),
                 TrendWindowType.HOUR_24,
                 user.getRegion().getRegionId())).thenReturn(null);
-        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(blog));
+        when(blogRepository.findRecentCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(blog));
+        when(blogRepository.findTopEngagedCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(blog));
         when(userFollowRepository.findFollowedUserIds(user.getUserId(), authorIds)).thenReturn(authorIds);
         when(pageFollowRepository.findFollowedCafePageIds(user.getUserId(), pageIds)).thenReturn(pageIds);
         when(blogLikeRepository.findLikedBlogIdsByUserIdAndBlogIds(user.getUserId(), blogIds))
@@ -534,7 +553,10 @@ class BlogFeedRankingServiceImplTest {
         BlogFeedRankingServiceImpl service = service();
 
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
-        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(blog));
+        when(blogRepository.findRecentCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(blog));
+        when(blogRepository.findTopEngagedCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(blog));
         when(regionRepository.findById(regionId)).thenReturn(java.util.Optional.of(user.getRegion()));
         when(pageFollowRepository.findFollowedCafePageIds(user.getUserId(), List.of(blog.getPageId())))
                 .thenReturn(List.of(blog.getPageId()));
@@ -576,7 +598,10 @@ class BlogFeedRankingServiceImplTest {
         BlogFeedRankingServiceImpl service = service();
 
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
-        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(otherBlog, ownBlog));
+        when(blogRepository.findRecentCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(otherBlog, ownBlog));
+        when(blogRepository.findTopEngagedCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(otherBlog, ownBlog));
 
         service.rebuildRecommendationCache(
                 user.getUserId(),
@@ -639,7 +664,10 @@ class BlogFeedRankingServiceImplTest {
         when(blogRepository.findFirstByAuthorUserIdAndStatusOrderByCreatedAtDescIdDesc(
                 user.getUserId(),
                 PostStatus.PUBLISHED)).thenReturn(Optional.of(ownBlog));
-        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(ownBlog));
+        when(blogRepository.findRecentCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(ownBlog));
+        when(blogRepository.findTopEngagedCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(ownBlog));
         when(blogRecommendationScoreRepository.findLatestPage(
                 eq(user.getUserId()),
                 eq(TrendWindowType.HOUR_24),
@@ -695,7 +723,10 @@ class BlogFeedRankingServiceImplTest {
         BlogFeedRankingServiceImpl service = service();
 
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
-        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(blog));
+        when(blogRepository.findRecentCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(blog));
+        when(blogRepository.findTopEngagedCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(blog));
         when(contentReportRepository.countByBlogIdsAndStatusIn(any(), any()))
                 .thenReturn(List.of(contentReportCountRow(blog.getId(), 4L)));
 
@@ -747,7 +778,10 @@ class BlogFeedRankingServiceImplTest {
         Blog violation = blog(user.getRegion().getRegionId());
         BlogFeedRankingServiceImpl service = service();
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
-        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(violation, allowed));
+        when(blogRepository.findRecentCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(violation, allowed));
+        when(blogRepository.findTopEngagedCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(violation, allowed));
         when(aiModerationResultRepository.findBlogIdsByBlogIdInAndDecision(any(), any()))
                 .thenReturn(List.of(violation.getId()));
 
@@ -770,7 +804,10 @@ class BlogFeedRankingServiceImplTest {
         AiModerationResult teaTags = moderationTags(teaBlog, List.of("Tea"));
         BlogFeedRankingServiceImpl service = service();
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
-        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(teaBlog, coffeeBlog));
+        when(blogRepository.findRecentCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(teaBlog, coffeeBlog));
+        when(blogRepository.findTopEngagedCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(teaBlog, coffeeBlog));
         when(blogLikeRepository.findRecentlyLikedBlogIds(eq(user.getUserId()), any(), any(), any()))
                 .thenReturn(List.of(coffeeBlog.getId()));
         when(aiModerationResultRepository.findWithTagsByBlogIds(any()))
@@ -799,7 +836,10 @@ class BlogFeedRankingServiceImplTest {
         when(blogRecommendationScoreRepository.findFormulaVersionsAtComputedAt(
                 user.getUserId(), TrendWindowType.DAY_7, user.getRegion().getRegionId(), computedAt))
                 .thenReturn(List.of("LEGACY_V1"));
-        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(blog));
+        when(blogRepository.findRecentCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(blog));
+        when(blogRepository.findTopEngagedCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(blog));
         when(blogRecommendationScoreRepository.findLatestPage(
                 eq(user.getUserId()),
                 eq(TrendWindowType.DAY_7),
@@ -867,7 +907,10 @@ class BlogFeedRankingServiceImplTest {
         aHigh.setCreatedAt(createdAt);
         BlogFeedRankingServiceImpl service = service();
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
-        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of(aLow, bMiddle, aHigh));
+        when(blogRepository.findRecentCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(aLow, bMiddle, aHigh));
+        when(blogRepository.findTopEngagedCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of(aLow, bMiddle, aHigh));
 
         service.rebuildRecommendationCache(user.getUserId(), TrendWindowType.HOUR_24, null);
 
@@ -949,14 +992,18 @@ class BlogFeedRankingServiceImplTest {
         when(userRepository.findByAccountStatusTrue()).thenReturn(List.of(withRegion, withoutRegion));
         when(userValidator.validateUserExists(withRegion.getUserId())).thenReturn(withRegion);
         when(userValidator.validateUserExists(withoutRegion.getUserId())).thenReturn(withoutRegion);
-        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of());
+        when(blogRepository.findRecentCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of());
+        when(blogRepository.findTopEngagedCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of());
 
         service.rebuildRecommendationCacheForAllActiveUsers();
 
         // 2 người dùng × 3 khung thời gian.
         verify(userValidator, times(3)).validateUserExists(withRegion.getUserId());
         verify(userValidator, times(3)).validateUserExists(withoutRegion.getUserId());
-        verify(blogRepository, times(6)).findByStatus(PostStatus.PUBLISHED);
+        verify(blogRepository, times(6))
+                .findRecentCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class));
     }
 
     @Test
@@ -964,7 +1011,10 @@ class BlogFeedRankingServiceImplTest {
         User user = user();
         BlogFeedRankingServiceImpl service = service();
         when(userValidator.validateUserExists(user.getUserId())).thenReturn(user);
-        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of());
+        when(blogRepository.findRecentCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of());
+        when(blogRepository.findTopEngagedCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of());
 
         assertThat(service.rebuildRecommendationCache(
                 user.getUserId(), TrendWindowType.HOUR_24, user.getRegion().getRegionId())).isEmpty();
@@ -979,7 +1029,10 @@ class BlogFeedRankingServiceImplTest {
     @Test
     void getOrganicFeed_success_noPublishedBlogReturnsEmptyPage_TC021() {
         BlogFeedRankingServiceImpl service = service();
-        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of());
+        when(blogRepository.findRecentCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of());
+        when(blogRepository.findTopEngagedCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of());
 
         FeedResponseDTO response = service.getOrganicFeed(null, null, 10);
 
@@ -992,7 +1045,10 @@ class BlogFeedRankingServiceImplTest {
     @Test
     void getOrganicFeed_success_sizeIsNormalized_TC022() {
         BlogFeedRankingServiceImpl service = service();
-        when(blogRepository.findByStatus(PostStatus.PUBLISHED)).thenReturn(List.of());
+        when(blogRepository.findRecentCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of());
+        when(blogRepository.findTopEngagedCandidatesByStatus(eq(PostStatus.PUBLISHED), any(Pageable.class)))
+                .thenReturn(List.of());
 
         assertThat(service.getOrganicFeed(null, null, 0).getItems()).isEmpty();
         assertThat(service.getOrganicFeed(null, null, 10_000).getItems()).isEmpty();
@@ -1150,7 +1206,8 @@ class BlogFeedRankingServiceImplTest {
         lenient().when(blogSaveRepository.findSavedBlogIdsByUserIdAndBlogIds(any(UUID.class), any())).thenReturn(List.of());
         lenient().when(blogRepository.findByIdIn(any())).thenAnswer(invocation -> {
             List<UUID> blogIds = invocation.getArgument(0);
-            List<Blog> publishedBlogs = blogRepository.findByStatus(PostStatus.PUBLISHED);
+            List<Blog> publishedBlogs = blogRepository.findRecentCandidatesByStatus(
+                    PostStatus.PUBLISHED, PageRequest.of(0, TEST_CANDIDATE_LIMIT));
             if (publishedBlogs == null) {
                 return List.of();
             }
@@ -1216,7 +1273,8 @@ class BlogFeedRankingServiceImplTest {
                 new BlogModerationTagServiceImpl(aiModerationResultRepository),
                 recommendationScoreBatchWriter,
                 taskExecutor,
-                transactionManager);
+                transactionManager,
+                TEST_CANDIDATE_LIMIT);
     }
 
     private BlogEventRepository.BlogEventCountRow blogEventCountRow(UUID blogId, Long eventCount) {

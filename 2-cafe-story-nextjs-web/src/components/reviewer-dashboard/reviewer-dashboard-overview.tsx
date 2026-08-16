@@ -85,6 +85,9 @@ function toRankingItems(ranking: ReviewerRankingResponse[]): ReviewerRankingItem
   return ranking.map((r) => ({
     rank: r.rank,
     reviewerId: r.reviewerId,
+    userId: r.userId,
+    userName: r.userName,
+    userAvatar: r.userAvatar,
     score: r.score,
     likeCount: r.likeCount,
     shareCount: r.shareCount,
@@ -399,15 +402,11 @@ export function ReviewerDashboardOverview() {
       ) : null}
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        {performance.length > 0 ? (
+        {/* Chart tự lo empty state (đã qua i18n) nên chỉ cần chặn lúc đang tải,
+            tránh nháy "chưa có dữ liệu" trong khi request còn chạy. */}
+        {!badgesLoading || performance.length > 0 ? (
           <ReviewerPerformanceChart data={performance} />
-        ) : (
-          !badgesLoading && (
-            <Card className="flex items-center justify-center p-10 text-sm text-muted-foreground">
-              No performance data yet
-            </Card>
-          )
-        )}
+        ) : null}
         <ReviewerRecentActivityPanel activities={activities} />
       </section>
 

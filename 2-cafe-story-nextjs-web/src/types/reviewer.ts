@@ -106,6 +106,9 @@ export type ReviewerBadgeResponse = {
 export type ReviewerRankingResponse = {
   rank: number;
   reviewerId: string;
+  userId: string;
+  userName: string | null;
+  userAvatar: string | null;
   score: number;
   likeCount: number;
   shareCount: number;

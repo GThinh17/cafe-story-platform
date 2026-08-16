@@ -36,12 +36,17 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -52,7 +57,16 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
 
     private static final Logger log = LoggerFactory.getLogger(AdminPayoutServiceImpl.class);
 
+    /**
+     * Loại tiền không có đơn vị lẻ: Stripe nhận số nguyên đúng bằng mệnh giá.
+     * Các loại còn lại tính theo đơn vị nhỏ nhất (USD -> cent).
+     */
+    private static final Set<String> ZERO_DECIMAL_CURRENCIES =
+            Set.of("vnd", "jpy", "krw", "clp", "isk", "ugx");
+
     private final String stripeSecretKey;
+    private final String payoutCurrency;
+    private final BigDecimal vndPerPayoutUnit;
     private final AdminPayoutRepository payoutRepository;
     private final ReviewerIncomeRepository incomeRepository;
     private final ReviewerRankingSnapshotRepository snapshotRepository;
@@ -65,6 +79,8 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
 
     public AdminPayoutServiceImpl(
             @Value("${stripe.secret-key:}") String stripeSecretKey,
+            @Value("${stripe.payout.currency:usd}") String payoutCurrency,
+            @Value("${stripe.payout.vnd-per-unit:25000}") BigDecimal vndPerPayoutUnit,
             AdminPayoutRepository payoutRepository,
             ReviewerIncomeRepository incomeRepository,
             ReviewerRankingSnapshotRepository snapshotRepository,
@@ -75,6 +91,14 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
             ReviewerBadgeThresholdService badgeThresholdService,
             ReviewerRepository reviewerRepository) {
         this.stripeSecretKey = stripeSecretKey;
+        this.payoutCurrency = payoutCurrency.trim().toLowerCase();
+        // Sai tỉ giá thì mọi lệnh chuyển tiền đều sai — chặn ngay lúc khởi động
+        // thay vì để phát hiện sau khi đã chuyển nhầm.
+        if (vndPerPayoutUnit.signum() <= 0) {
+            throw new IllegalArgumentException(
+                    "stripe.payout.vnd-per-unit phải lớn hơn 0, đang là " + vndPerPayoutUnit);
+        }
+        this.vndPerPayoutUnit = vndPerPayoutUnit;
         this.payoutRepository = payoutRepository;
         this.incomeRepository = incomeRepository;
         this.snapshotRepository = snapshotRepository;
@@ -254,11 +278,13 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
                     "Reviewer's Stripe account is not fully verified. Cannot send payout.");
         }
 
-        String idempotencyKey = "payout-" + payout.getId().toString();
+        long stripeAmount = toStripeAmount(payout.getTotalFinalAmount());
+        String idempotencyKey = buildIdempotencyKey(
+                payout, stripeAmount, stripeAccount.getStripeAccountId());
         try {
             TransferCreateParams params = TransferCreateParams.builder()
-                    .setAmount(payout.getTotalFinalAmount())
-                    .setCurrency("vnd")
+                    .setAmount(stripeAmount)
+                    .setCurrency(payoutCurrency)
                     .setDestination(stripeAccount.getStripeAccountId())
                     .build();
             // API key truyền theo lời gọi thay vì gán Stripe.apiKey static —
@@ -272,12 +298,85 @@ public class AdminPayoutServiceImpl implements AdminPayoutService {
             );
             payout.setStripeTransferId(transfer.getId());
             payout.setStripeIdempotencyKey(idempotencyKey);
-            log.info("Stripe transfer {} created for payout {}", transfer.getId(), payout.getId());
+            log.info("Stripe transfer {} created for payout {}: {} VND -> {} {}",
+                    transfer.getId(), payout.getId(), payout.getTotalFinalAmount(),
+                    stripeAmount, payoutCurrency);
         } catch (StripeException e) {
             log.error("Stripe transfer failed for payout {}: {}", payout.getId(), e.getMessage());
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                     "Stripe transfer failed: " + e.getMessage());
         }
+    }
+
+    /**
+     * Khoá idempotency phải mô tả ĐÚNG lệnh chuyển sắp gửi, không phải chỉ định
+     * danh payout.
+     *
+     * <p>Stripe lưu khoá kèm tham số trong 24h và từ chối khi cùng khoá được
+     * dùng lại với tham số khác ("Keys for idempotent requests can only be used
+     * with the same parameters they were first used with"). Khoá cố định
+     * {@code payout-<id>} vì thế khoá chết luôn payout sau lần thử đầu nếu số
+     * tiền, loại tiền hoặc tài khoản đích thay đổi.
+     *
+     * <p>Gộp thêm {@code updatedAt} để mỗi lần admin bấm lại sau khi webhook
+     * {@code transfer.failed} kéo trạng thái về APPROVED là một khoá mới. Không
+     * có nó, Stripe trả lại bản ghi transfer hỏng cũ trong 24h và hệ thống đánh
+     * dấu PAID mà tiền không hề đi.
+     *
+     * <p>Hai request bấm trùng cùng lúc đọc cùng một bản ghi nên {@code updatedAt}
+     * giống nhau, ra cùng khoá — vẫn chặn được double-send.
+     */
+    private String buildIdempotencyKey(AdminPayout payout, long stripeAmount, String destination) {
+        String fingerprint = String.join("|",
+                payout.getId().toString(),
+                String.valueOf(payout.getUpdatedAt()),
+                String.valueOf(stripeAmount),
+                payoutCurrency,
+                destination);
+        return "payout-" + payout.getId() + "-" + shortHash(fingerprint);
+    }
+
+    private static String shortHash(String raw) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(raw.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest).substring(0, 16);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 không khả dụng", e);
+        }
+    }
+
+    /**
+     * Quy đổi số tiền payout (luôn lưu bằng VND) sang đơn vị Stripe của
+     * {@code stripe.payout.currency}.
+     *
+     * <p>Transfer chỉ rút được từ số dư CÙNG loại tiền, mà Stripe không hỗ trợ
+     * Việt Nam làm quốc gia của platform: tài khoản không giữ được số dư VND nên
+     * chuyển thẳng {@code "vnd"} luôn trả về {@code balance_insufficient}. Vì vậy
+     * loại tiền gửi Stripe tách khỏi loại tiền lưu trong DB — DB vẫn là VND, chỉ
+     * lệnh chuyển đi được quy đổi.
+     *
+     * <p>Đơn vị phụ thuộc loại tiền đích: VND không có đơn vị lẻ (1 = 1 đồng),
+     * USD tính theo cent (1 = 0.01 USD).
+     */
+    private long toStripeAmount(long amountVnd) {
+        if ("vnd".equals(payoutCurrency)) {
+            return amountVnd;
+        }
+        BigDecimal converted = BigDecimal.valueOf(amountVnd)
+                .divide(vndPerPayoutUnit, 10, RoundingMode.HALF_UP);
+        if (!ZERO_DECIMAL_CURRENCIES.contains(payoutCurrency)) {
+            converted = converted.multiply(BigDecimal.valueOf(100));
+        }
+        long stripeAmount = converted.setScale(0, RoundingMode.HALF_UP).longValue();
+        // Làm tròn xuống 0 nghĩa là khoản này nhỏ hơn đơn vị nhỏ nhất Stripe nhận.
+        // Báo rõ thay vì để Stripe trả lỗi khó hiểu về amount không hợp lệ.
+        if (stripeAmount <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Payout " + amountVnd + " VND quy đổi ra " + payoutCurrency.toUpperCase()
+                            + " nhỏ hơn đơn vị nhỏ nhất Stripe chấp nhận. Không thể chuyển.");
+        }
+        return stripeAmount;
     }
 
     /**

@@ -2,6 +2,7 @@
 
 import { TrophyIcon } from "lucide-react";
 import { useI18n } from "@/components/providers/locale-provider";
+import { ReviewerRankingName } from "@/components/reviewer-dashboard/reviewer-ranking-name";
 import { Card } from "@/components/ui/card";
 import type {
   ReviewerProfile,
@@ -17,6 +18,13 @@ const numberFormatter = new Intl.NumberFormat("en", {
   notation: "compact",
   maximumFractionDigits: 1,
 });
+
+/**
+ * Panel này là cột phụ cạnh nội dung chính: render hết 20 dòng thì cột dài gấp
+ * đôi phần bên cạnh và vỡ bố cục. Thứ hạng của chính người dùng vẫn tính trên
+ * TOÀN BỘ danh sách, chỉ phần liệt kê mới cắt bớt.
+ */
+const MAX_VISIBLE_ENTRIES = 10;
 
 export function ReviewerLeaderboardPanel({
   profile,
@@ -46,7 +54,7 @@ export function ReviewerLeaderboardPanel({
       </div>
 
       <div className="mt-5 flex flex-col gap-3">
-        {ranking.map((item) => {
+        {ranking.slice(0, MAX_VISIBLE_ENTRIES).map((item) => {
           const isCurrent = item.reviewerId === profile.reviewerId;
 
           return (
@@ -59,12 +67,13 @@ export function ReviewerLeaderboardPanel({
               key={item.reviewerId}
             >
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-black text-espresso">
+                <div className="flex min-w-0 items-center gap-2">
+                  <p className="shrink-0 text-sm font-black text-espresso">
                     #{item.rank}
                   </p>
+                  <ReviewerRankingName className="text-sm" item={item} />
                   {isCurrent ? (
-                    <span className="rounded-md bg-primary px-2 py-0.5 text-xs font-black text-primary-foreground">
+                    <span className="shrink-0 rounded-md bg-primary px-2 py-0.5 text-xs font-black text-primary-foreground">
                       {t("reviewer.leaderboard.you")}
                     </span>
                   ) : null}

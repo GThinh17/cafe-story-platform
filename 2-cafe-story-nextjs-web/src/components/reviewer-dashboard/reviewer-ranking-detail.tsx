@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { ReviewerLeaderboardPanel } from "@/components/reviewer-dashboard/reviewer-leaderboard-panel";
+import { ReviewerRankingName } from "@/components/reviewer-dashboard/reviewer-ranking-name";
 import type {
   ReviewerBadge,
   ReviewerProfile,
@@ -40,6 +41,9 @@ function toRankingItems(ranking: ReviewerRankingResponse[]): ReviewerRankingItem
   return ranking.map((r) => ({
     rank: r.rank,
     reviewerId: r.reviewerId,
+    userId: r.userId,
+    userName: r.userName,
+    userAvatar: r.userAvatar,
     score: r.score,
     likeCount: r.likeCount,
     shareCount: r.shareCount,
@@ -126,9 +130,13 @@ export function ReviewerRankingDetail() {
             <div className="mt-6 flex flex-col gap-3">
               {rankingItems.map((item) => (
                 <div className="flex items-center gap-3" key={item.reviewerId}>
-                  <span className="w-10 text-sm font-black text-espresso">
+                  <span className="w-10 shrink-0 text-sm font-black text-espresso">
                     #{item.rank}
                   </span>
+                  <ReviewerRankingName
+                    className="w-32 shrink-0 text-sm sm:w-40"
+                    item={item}
+                  />
                   <span className="h-3 flex-1 overflow-hidden rounded-full bg-surface-muted">
                     <span
                       className="block h-full rounded-full bg-primary"
@@ -159,6 +167,7 @@ export function ReviewerRankingDetail() {
               <thead className="text-xs uppercase text-muted">
                 <tr>
                   <th className="py-2 pr-3">{t("reviewer.table.rank")}</th>
+                  <th className="py-2 pr-3">{t("reviewer.table.reviewer")}</th>
                   <th className="py-2 pr-3">{t("reviewer.table.location")}</th>
                   <th className="py-2 pr-3">{t("reviewer.table.score")}</th>
                   <th className="py-2 pr-3">{t("reviewer.table.likes")}</th>
@@ -175,6 +184,9 @@ export function ReviewerRankingDetail() {
                       key={item.reviewerId}
                     >
                       <td className="py-3 pr-3 font-black text-espresso">#{item.rank}</td>
+                      <td className="max-w-56 py-3 pr-3">
+                        <ReviewerRankingName item={item} />
+                      </td>
                       <td className="py-3 pr-3 text-muted">{item.location}</td>
                       <td className="py-3 pr-3 font-black text-primary">{item.score}</td>
                       <td className="py-3 pr-3 text-muted">{item.likeCount}</td>

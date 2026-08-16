@@ -102,9 +102,16 @@ public class AiBlogModerationServiceImpl implements AiBlogModerationService {
                 case VIOLATION -> "DENIED";
                 default -> "SEND_ADMIN";
             };
-            String reason = decision == ModerationDecision.SAFE
-                    ? null
-                    : nullToBlank(response.getCaptionReason()) + " " + nullToBlank(response.getImageReason());
+            String reason;
+            if (decision == ModerationDecision.SAFE) {
+                reason = null;
+            } else if (response.isFallback()) {
+                // Chỉ câu giải thích chung. imageReason lúc này là message của
+                // RestClient, mang URL và cổng nội bộ của service AI.
+                reason = FALLBACK_REASON;
+            } else {
+                reason = nullToBlank(response.getCaptionReason()) + " " + nullToBlank(response.getImageReason());
+            }
             notificationService.createModerationNotification(
                     blog.getAuthor().getUserId(),
                     blog.getId(),
@@ -175,14 +182,25 @@ public class AiBlogModerationServiceImpl implements AiBlogModerationService {
     }
 
     private AiBlogModerationResponseDTO fallbackResponse(Blog blog, RuntimeException exception) {
+        // Chi tiết lỗi chỉ được ghi log phía server. Trước đây message của
+        // RestClient bị gán thẳng vào imageReason, mà chuỗi đó chảy tiếp vào
+        // notification hiển thị cho tác giả — lộ URL và cổng nội bộ của service
+        // AI ("http://localhost:8036/api/ai/blogs/evaluate", "getsockopt"...).
+        // Tác giả không làm gì được với thông tin đó; chỗ cần nó là log.
+        LOGGER.error("Gọi service AI moderation thất bại, chuyển bài sang admin duyệt. blogId={}",
+                blog.getId(), exception);
+
         AiBlogModerationResponseDTO response = new AiBlogModerationResponseDTO();
         response.setBlogId(blog.getId());
         response.setCaptionScore(0);
         response.setCaptionReason(FALLBACK_REASON);
         response.setImageScore(0);
+        // Giữ chi tiết cho bản ghi ai_moderation_result — admin cần nó để chẩn
+        // đoán. Chặn nó lọt ra notification ở pushModerationNotification.
         response.setImageReason(exception.getMessage());
         response.setTags(List.of());
         response.setStatus("send Admin");
+        response.setFallback(true);
         return response;
     }
 

@@ -11,6 +11,14 @@ public class ReviewerRankingResponseDTO {
 
     private UUID reviewerId;
 
+    /** Định danh chủ tài khoản — client dùng để nhận diện, không dùng để điều hướng. */
+    private UUID userId;
+
+    /** Slug của trang cá nhân: web điều hướng tới /{userName}. */
+    private String userName;
+
+    private String userAvatar;
+
     private long score;
 
     private long likeCount;
