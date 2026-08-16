@@ -2412,6 +2412,29 @@ test.describe("admin report AI E2E evidence", () => {
         await openReportDetail(page, report);
         const detailDialog = page.getByRole("dialog").filter({ hasText: "Report detail" });
         await expect(detailDialog.getByText(report.targetId).first()).toBeVisible({ timeout: 30_000 });
+        const desktopLayout = await detailDialog.evaluate((dialog) => {
+          const rect = (testId: string) => {
+            const element = dialog.querySelector<HTMLElement>(`[data-testid="${testId}"]`);
+            if (!element) throw new Error(`Missing ${testId}`);
+            const box = element.getBoundingClientRect();
+            return {
+              left: box.left,
+              right: box.right,
+              top: box.top,
+              bottom: box.bottom,
+            };
+          };
+          return {
+            main: rect("report-detail-main-column"),
+            history: rect("report-ai-history"),
+            evidence: rect("report-ai-evidence-column"),
+          };
+        });
+        expect(desktopLayout.history.left).toBeGreaterThanOrEqual(desktopLayout.main.left - 1);
+        expect(desktopLayout.history.right).toBeLessThanOrEqual(desktopLayout.main.right + 1);
+        expect(desktopLayout.history.top).toBeGreaterThan(desktopLayout.main.top);
+        expect(desktopLayout.evidence.left).toBeGreaterThan(desktopLayout.main.right);
+        expect(desktopLayout.history.top).toBeLessThan(desktopLayout.evidence.bottom);
         const policyResponsePromise = page.waitForResponse(
           (response) =>
             response.url().includes(`/api/admin/reports/${report.id}/ai-policy`) &&
@@ -2442,6 +2465,8 @@ test.describe("admin report AI E2E evidence", () => {
         await screenshot(page, evidenceDir, `POLICY-${report.targetType}`, "desktop-dark");
         await page.evaluate(() => document.documentElement.classList.remove("dark"));
         await policySheet.getByRole("button", { name: "Close" }).click();
+        await detailDialog.getByTestId("report-ai-history").scrollIntoViewIfNeeded();
+        await screenshot(page, evidenceDir, `LAYOUT-${report.targetType}`, "desktop-light");
 
         const patchResponsePromise = page.waitForResponse(
           (response) =>
@@ -2466,6 +2491,23 @@ test.describe("admin report AI E2E evidence", () => {
         }
 
         await page.setViewportSize({ width: 390, height: 844 });
+        await detailDialog.getByText("Moderate content").scrollIntoViewIfNeeded();
+        const mobileLayout = await detailDialog.evaluate((dialog) => {
+          const history = dialog
+            .querySelector<HTMLElement>('[data-testid="report-ai-history"]')
+            ?.getBoundingClientRect();
+          const evidence = dialog
+            .querySelector<HTMLElement>('[data-testid="report-ai-evidence-column"]')
+            ?.getBoundingClientRect();
+          if (!history || !evidence) throw new Error("Missing responsive report layout regions");
+          return {
+            historyBottom: history.bottom,
+            evidenceTop: evidence.top,
+          };
+        });
+        expect(mobileLayout.evidenceTop).toBeGreaterThanOrEqual(mobileLayout.historyBottom);
+        await detailDialog.getByTestId("report-ai-history").scrollIntoViewIfNeeded();
+        await screenshot(page, evidenceDir, `LAYOUT-${report.targetType}`, "mobile");
         await detailDialog.getByText("Moderate content").scrollIntoViewIfNeeded();
         await screenshot(page, evidenceDir, `ACTION-${report.targetType}`, "mobile");
         const noHorizontalOverflow = await page.evaluate(

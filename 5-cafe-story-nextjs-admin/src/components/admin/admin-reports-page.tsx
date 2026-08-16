@@ -1193,7 +1193,10 @@ export function AdminReportsPage() {
         {detailReport ? (
           <div className="flex flex-col gap-5">
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-              <div className="flex min-w-0 flex-col gap-4">
+              <div
+                className="flex min-w-0 flex-col gap-4"
+                data-testid="report-detail-main-column"
+              >
                 <AdminDetailGrid>
                 <AdminDetailField label="Reason" className="sm:col-span-2">
                   <div className="flex flex-wrap items-center gap-2">
@@ -1276,9 +1279,95 @@ export function AdminReportsPage() {
                     }}
                   />
                 ) : null}
+
+                <Separator />
+
+                <section data-testid="report-ai-history">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">
+                         {ui("AI recommendation history")}
+                      </p>
+                      <p className="mt-1 text-sm text-muted">
+                         {ui("Showing {shown} of {total} saved recommendations.", {
+                           shown: formatNumber(aiHistory.length, localeTag),
+                           total: formatNumber(
+                             aiHistoryPage?.totalElements ?? aiHistory.length,
+                             localeTag,
+                           ),
+                         })}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        void loadAiHistory(detailReport.id);
+                        void loadAutoApplyJobs(detailReport.id);
+                      }}
+                    >
+                       {ui("Refresh history")}
+                    </Button>
+                  </div>
+                  <div className="mt-3 grid gap-3">
+                    {aiHistory.length ? (
+                      aiHistory.map((resolution) => (
+                        <div
+                          className="rounded-md border border-border bg-background p-4"
+                          key={resolution.id}
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex flex-wrap gap-2">
+                              <AdminStatusBadge value={resolution.reportDecision} />
+                              <AdminStatusBadge value={resolution.targetAction} />
+                              <Badge variant="outline">
+                                {resolution.contractVersion === "2.0" ? "CONTRACT V2" : "LEGACY V1"}
+                              </Badge>
+                              {resolution.contractVersion !== "2.0" && resolution.ruleCode ? (
+                                <Badge variant="outline">{resolution.ruleCode}</Badge>
+                              ) : null}
+                            </div>
+                             <span className="text-xs text-muted">{formatDate(resolution.createdAt, localeTag)}</span>
+                          </div>
+                          <p className="mt-3 text-sm font-semibold text-espresso">
+                             {enumLabel(resolution.reportDecision)} / {enumLabel(resolution.targetAction)}
+                          </p>
+                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted">
+                            {resolution.explanation || "-"}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted">
+                            {resolution.contractVersion === "2.0" ? (
+                              <>
+                                 <span>{ui("Evidence {value}", { value: enumLabel(resolution.evidenceSufficiency || "UNKNOWN") })}</span>
+                                 <span>{ui("Likelihood {value}", { value: enumLabel(resolution.violationLikelihood || "UNKNOWN") })}</span>
+                                 <span>{ui("Action risk {value}", { value: enumLabel(resolution.actionRisk || "UNKNOWN") })}</span>
+                              </>
+                            ) : (
+                              <span>
+                                 {ui("Confidence {confidence} · risk {risk} — uncalibrated legacy values", {
+                                   confidence: scoreLabel(resolution.confidenceScore, localeTag),
+                                   risk: scoreLabel(resolution.riskScore, localeTag),
+                                 })}
+                              </span>
+                            )}
+                             <span>{resolution.modelName || ui("Unknown model")}</span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted">
+                         {ui("No saved AI recommendations for this report.")}
+                      </div>
+                    )}
+                  </div>
+                </section>
               </div>
 
-              <section className="rounded-md border border-border bg-background p-4">
+              <section
+                className="rounded-md border border-border bg-background p-4"
+                data-testid="report-ai-evidence-column"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">
@@ -1532,88 +1621,6 @@ export function AdminReportsPage() {
               </section>
             </div>
 
-            <Separator />
-
-            <section>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">
-                     {ui("AI recommendation history")}
-                  </p>
-                  <p className="mt-1 text-sm text-muted">
-                     {ui("Showing {shown} of {total} saved recommendations.", {
-                       shown: formatNumber(aiHistory.length, localeTag),
-                       total: formatNumber(
-                         aiHistoryPage?.totalElements ?? aiHistory.length,
-                         localeTag,
-                       ),
-                     })}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    void loadAiHistory(detailReport.id);
-                    void loadAutoApplyJobs(detailReport.id);
-                  }}
-                >
-                   {ui("Refresh history")}
-                </Button>
-              </div>
-              <div className="mt-3 grid gap-3">
-                {aiHistory.length ? (
-                  aiHistory.map((resolution) => (
-                    <div
-                      className="rounded-md border border-border bg-background p-4"
-                      key={resolution.id}
-                    >
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex flex-wrap gap-2">
-                          <AdminStatusBadge value={resolution.reportDecision} />
-                          <AdminStatusBadge value={resolution.targetAction} />
-                          <Badge variant="outline">
-                            {resolution.contractVersion === "2.0" ? "CONTRACT V2" : "LEGACY V1"}
-                          </Badge>
-                          {resolution.contractVersion !== "2.0" && resolution.ruleCode ? (
-                            <Badge variant="outline">{resolution.ruleCode}</Badge>
-                          ) : null}
-                        </div>
-                         <span className="text-xs text-muted">{formatDate(resolution.createdAt, localeTag)}</span>
-                      </div>
-                      <p className="mt-3 text-sm font-semibold text-espresso">
-                         {enumLabel(resolution.reportDecision)} / {enumLabel(resolution.targetAction)}
-                      </p>
-                      <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted">
-                        {resolution.explanation || "-"}
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted">
-                        {resolution.contractVersion === "2.0" ? (
-                          <>
-                             <span>{ui("Evidence {value}", { value: enumLabel(resolution.evidenceSufficiency || "UNKNOWN") })}</span>
-                             <span>{ui("Likelihood {value}", { value: enumLabel(resolution.violationLikelihood || "UNKNOWN") })}</span>
-                             <span>{ui("Action risk {value}", { value: enumLabel(resolution.actionRisk || "UNKNOWN") })}</span>
-                          </>
-                        ) : (
-                          <span>
-                             {ui("Confidence {confidence} · risk {risk} — uncalibrated legacy values", {
-                               confidence: scoreLabel(resolution.confidenceScore, localeTag),
-                               risk: scoreLabel(resolution.riskScore, localeTag),
-                             })}
-                          </span>
-                        )}
-                         <span>{resolution.modelName || ui("Unknown model")}</span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted">
-                     {ui("No saved AI recommendations for this report.")}
-                  </div>
-                )}
-              </div>
-            </section>
           </div>
         ) : null}
       </AdminDetailDialog>
