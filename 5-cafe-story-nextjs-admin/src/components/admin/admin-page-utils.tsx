@@ -15,18 +15,22 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { PageResponse } from "@/types/api";
+import {
+  formatDateTime,
+  localizeApiError,
+  useEnumLabel,
+  useI18n,
+  useUiText,
+  type LocaleTag,
+} from "@/features/i18n";
 
 export const PAGE_SIZE = 12;
 
-export function formatDate(value: string | null | undefined) {
-  if (!value) {
-    return "—";
-  }
-
-  return new Intl.DateTimeFormat("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+export function formatDate(
+  value: string | null | undefined,
+  localeTag: LocaleTag,
+) {
+  return formatDateTime(value, localeTag);
 }
 
 export function shortId(value: string | null | undefined) {
@@ -58,6 +62,7 @@ export function usePagedAdminResource<T>(
   loader: (page: number, signal: AbortSignal) => Promise<PageResponse<T>>,
   deps: readonly unknown[],
 ) {
+  const { locale, t } = useI18n();
   const [pageNumber, setPageNumber] = useState(0);
   const [data, setData] = useState<PageResponse<T> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,18 +87,14 @@ export function usePagedAdminResource<T>(
           return;
         }
 
-        setError(
-          requestError instanceof Error
-            ? requestError.message
-            : "Unable to load records.",
-        );
+        setError(localizeApiError(requestError, locale, t, "common.error.loadRecords"));
       } finally {
         if (!signal.aborted && requestIdRef.current === requestId) {
           setIsLoading(false);
         }
       }
     },
-    deps,
+    [...deps, locale, t],
   );
 
   useEffect(() => {
@@ -156,6 +157,7 @@ export function usePagedAdminResource<T>(
 }
 
 export function useAdminDetailResource<T>() {
+  const { locale, t } = useI18n();
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<T | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -183,16 +185,14 @@ export function useAdminDetailResource<T>() {
           return;
         }
 
-        setError(
-          requestError instanceof Error ? requestError.message : "Unable to load detail.",
-        );
+        setError(localizeApiError(requestError, locale, t, "common.error.loadDetail"));
       } finally {
         if (!controller.signal.aborted && requestIdRef.current === requestId) {
           setIsLoading(false);
         }
       }
     },
-    [],
+    [locale, t],
   );
 
   return {
@@ -219,20 +219,22 @@ export function FilterSelect<T extends string>({
   label?: string;
   onChange: (value: T | "") => void;
 }) {
+  const ui = useUiText();
+  const enumLabel = useEnumLabel();
   const select = (
     <Select
       value={value || "all"}
       onValueChange={(nextValue) => onChange(nextValue === "all" ? "" : (nextValue as T))}
     >
       <SelectTrigger className="rounded-md w-full bg-surface sm:w-40">
-        <SelectValue placeholder={placeholder} />
+        <SelectValue placeholder={ui(placeholder)} />
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
-          <SelectItem value="all">All</SelectItem>
+          <SelectItem value="all">{ui("All")}</SelectItem>
           {options.map((option) => (
             <SelectItem value={option} key={option}>
-              {option}
+              {enumLabel(option)}
             </SelectItem>
           ))}
         </SelectGroup>
@@ -244,7 +246,7 @@ export function FilterSelect<T extends string>({
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-xs font-medium text-muted">{label}</span>
+      <span className="text-xs font-medium text-muted">{ui(label)}</span>
       {select}
     </div>
   );
@@ -263,6 +265,7 @@ export function BooleanFilterSelect({
   trueLabel?: string;
   falseLabel?: string;
 }) {
+  const ui = useUiText();
   const select = (
     <Select
       value={value === null ? "all" : String(value)}
@@ -271,13 +274,13 @@ export function BooleanFilterSelect({
       }
     >
       <SelectTrigger className="rounded-md w-full bg-surface sm:w-40">
-        <SelectValue placeholder="Status" />
+        <SelectValue placeholder={ui("Status")} />
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
-          <SelectItem value="all">All</SelectItem>
-          <SelectItem value="true">{trueLabel}</SelectItem>
-          <SelectItem value="false">{falseLabel}</SelectItem>
+          <SelectItem value="all">{ui("All")}</SelectItem>
+          <SelectItem value="true">{ui(trueLabel)}</SelectItem>
+          <SelectItem value="false">{ui(falseLabel)}</SelectItem>
         </SelectGroup>
       </SelectContent>
     </Select>
@@ -287,7 +290,7 @@ export function BooleanFilterSelect({
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-xs font-medium text-muted">{label}</span>
+      <span className="text-xs font-medium text-muted">{ui(label)}</span>
       {select}
     </div>
   );
@@ -304,11 +307,12 @@ export function FilterInput({
   label?: string;
   onChange: (value: string) => void;
 }) {
+  const ui = useUiText();
   const input = (
     <Input
       className="bg-surface sm:w-40"
       value={value}
-      placeholder={placeholder}
+      placeholder={ui(placeholder)}
       onChange={(event) => onChange(event.target.value)}
     />
   );
@@ -317,7 +321,7 @@ export function FilterInput({
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-xs font-medium text-muted">{label}</span>
+      <span className="text-xs font-medium text-muted">{ui(label)}</span>
       {input}
     </div>
   );
@@ -332,6 +336,7 @@ export function Toolbar({
   actions?: React.ReactNode;
   onRefresh: () => void;
 }) {
+  const ui = useUiText();
   return (
     <div className="flex flex-col gap-2 rounded-md border border-border bg-surface p-2.5 sm:flex-row sm:flex-wrap sm:items-end">
       {children}
@@ -344,18 +349,19 @@ export function Toolbar({
         onClick={onRefresh}
       >
         <RefreshCwIcon data-icon="inline-start" />
-        Refresh
+        {ui("Refresh")}
       </Button>
     </div>
   );
 }
 
 export function DetailLink({ href }: { href: string }) {
+  const ui = useUiText();
   return (
     <Button asChild type="button" variant="outline" size="sm">
       <Link href={href}>
         <EyeIcon data-icon="inline-start" />
-        View
+        {ui("View")}
       </Link>
     </Button>
   );
@@ -370,10 +376,11 @@ export function FormTextarea({
   placeholder: string;
   onChange: (value: string) => void;
 }) {
+  const ui = useUiText();
   return (
     <Textarea
       value={value}
-      placeholder={placeholder}
+      placeholder={ui(placeholder)}
       onChange={(event) => onChange(event.target.value)}
     />
   );

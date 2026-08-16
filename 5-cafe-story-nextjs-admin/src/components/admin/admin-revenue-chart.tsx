@@ -8,28 +8,21 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart";
 import type { AdminRevenueAnalytics, AdminRevenuePoint } from "@/types/admin";
+import {
+  formatCompactNumber,
+  formatCurrency,
+  formatDate,
+  useI18n,
+  useUiText,
+  type LocaleTag,
+} from "@/features/i18n";
 
-const vndFormatter = new Intl.NumberFormat("vi-VN", {
-  style: "currency",
-  currency: "VND",
-  maximumFractionDigits: 0,
-});
-
-export function formatVnd(value: number) {
-  return vndFormatter.format(value);
+export function formatVnd(value: number, localeTag: LocaleTag) {
+  return formatCurrency(value, "VND", localeTag);
 }
 
-export function formatVndCompact(value: number) {
-  if (Math.abs(value) >= 1_000_000_000) {
-    return `${(value / 1_000_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tỷ`;
-  }
-  if (Math.abs(value) >= 1_000_000) {
-    return `${(value / 1_000_000).toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tr`;
-  }
-  if (Math.abs(value) >= 1_000) {
-    return `${(value / 1_000).toLocaleString("vi-VN", { maximumFractionDigits: 0 })} k`;
-  }
-  return value.toLocaleString("vi-VN");
+export function formatVndCompact(value: number, localeTag: LocaleTag) {
+  return formatCompactNumber(value, localeTag);
 }
 
 const REVENUE_SERIES = [
@@ -50,18 +43,6 @@ const REVENUE_SERIES = [
   },
 ] as const;
 
-const chartConfig: ChartConfig = Object.fromEntries(
-  REVENUE_SERIES.map((series) => [
-    series.key,
-    { label: series.label, color: series.color },
-  ]),
-);
-
-const dateLabel = new Intl.DateTimeFormat("vi-VN", {
-  day: "2-digit",
-  month: "2-digit",
-});
-
 type TooltipPayloadItem = {
   dataKey?: string | number;
   payload?: AdminRevenuePoint;
@@ -74,6 +55,8 @@ function RevenueTooltip({
   active?: boolean;
   payload?: TooltipPayloadItem[];
 }) {
+  const { localeTag } = useI18n();
+  const ui = useUiText();
   const point = payload?.[0]?.payload;
   if (!active || !point) {
     return null;
@@ -85,9 +68,9 @@ function RevenueTooltip({
     <div className="min-w-48 rounded-md border border-border bg-surface px-3 py-2 text-xs shadow-md">
       <div className="flex items-center justify-between gap-4">
         <span className="font-semibold text-espresso">
-          {dateLabel.format(new Date(point.date))}
+          {formatDate(point.date, localeTag)}
         </span>
-        <span className="font-semibold text-espresso">{formatVnd(total)}</span>
+        <span className="font-semibold text-espresso">{formatVnd(total, localeTag)}</span>
       </div>
       <div className="mt-2 flex flex-col gap-1">
         {REVENUE_SERIES.map((series) => {
@@ -99,9 +82,9 @@ function RevenueTooltip({
                 className="size-2 shrink-0 rounded-[2px]"
                 style={{ backgroundColor: series.color }}
               />
-              <span className="text-muted">{series.label}</span>
+              <span className="text-muted">{ui(series.label)}</span>
               <span className="ml-auto font-medium text-foreground">
-                {formatVnd(value)} · {percent}%
+                {formatVnd(value, localeTag)} · {percent}%
               </span>
             </div>
           );
@@ -118,13 +101,25 @@ export function AdminRevenueChart({
   analytics: AdminRevenueAnalytics;
   className?: string;
 }) {
+  const { localeTag } = useI18n();
+  const ui = useUiText();
+  const chartConfig: ChartConfig = useMemo(
+    () =>
+      Object.fromEntries(
+        REVENUE_SERIES.map((series) => [
+          series.key,
+          { label: ui(series.label), color: series.color },
+        ]),
+      ),
+    [ui],
+  );
   const data = useMemo(
     () =>
       analytics.daily.map((point) => ({
         ...point,
-        label: dateLabel.format(new Date(point.date)),
+        label: formatDate(point.date, localeTag),
       })),
-    [analytics.daily],
+    [analytics.daily, localeTag],
   );
 
   return (
@@ -144,7 +139,7 @@ export function AdminRevenueChart({
           axisLine={false}
           width={44}
           tick={{ fontSize: 11 }}
-          tickFormatter={(value: number) => formatVndCompact(value)}
+          tickFormatter={(value: number) => formatVndCompact(value, localeTag)}
         />
         <ChartTooltip cursor={{ fill: "var(--surface-muted)" }} content={<RevenueTooltip />} />
         {REVENUE_SERIES.map((series, index) => (
@@ -165,6 +160,7 @@ export function AdminRevenueChart({
 }
 
 export function RevenueLegend() {
+  const ui = useUiText();
   return (
     <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
       {REVENUE_SERIES.map((series) => (
@@ -173,7 +169,7 @@ export function RevenueLegend() {
             className="size-2 rounded-[2px]"
             style={{ backgroundColor: series.color }}
           />
-          {series.label}
+          {ui(series.label)}
         </span>
       ))}
     </div>

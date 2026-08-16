@@ -1,0 +1,52 @@
+{
+  "status": "DONE",
+  "timestampUtc": "2026-08-15T08:05:18.465Z",
+  "workflow": {
+    "id": "cafestory-admin-report-ai-resolution-v2",
+    "published": true,
+    "active": true,
+    "health": "PASS",
+    "duplicateWorkflowsDeleted": false
+  },
+  "backend": {
+    "policyEndpoint": "GET /api/admin/reports/{reportId}/ai-policy",
+    "recommendationOnly": true,
+    "focusedTests": { "run": 41, "failures": 0, "errors": 0 },
+    "fullTests": { "run": 1369, "failures": 0, "errors": 0, "skipped": 1 },
+    "changedLineCoverage": { "covered": 44, "total": 44, "percent": 100 },
+    "changedBranchCoverage": { "covered": 2, "total": 2, "percent": 100 }
+  },
+  "admin": {
+    "blogActionVerified": true,
+    "commentActionVerified": true,
+    "confirmationVerified": true,
+    "reportStatusUnchanged": true,
+    "targetStatesRestored": true,
+    "policySheetRuntimeVerified": true,
+    "keyboardFocusVerified": true,
+    "desktopLightVerified": true,
+    "desktopDarkVerified": true,
+    "mobileVerified": true,
+    "horizontalOverflowAbsent": true,
+    "i18nCheck": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS",
+    "e2e": "1/1 PASS",
+    "coverage": "FRONTEND_COVERAGE_TOOLING_MISSING"
+  },
+  "aiRuntime": {
+    "realN8n": true,
+    "realOpenAi": true,
+    "languageCases": "3/3 PASS",
+    "schemaValid": true,
+    "signedResponseValid": true,
+    "evidenceIdsBounded": true,
+    "concreteTextRationale": true,
+    "scoreFieldsAbsent": true,
+    "executionFieldsAbsent": true,
+    "mutationClaimAbsent": true
+  },
+  "secretsInEvidence": false,
+  "commitCreated": false,
+  "headCommit": "4874057"
+}

@@ -30,6 +30,13 @@ import {
   getCafePages,
   updateCafePageStatus,
 } from "@/lib/api/admin";
+import {
+  formatNumber,
+  localizeApiError,
+  useEnumLabel,
+  useI18n,
+  useUiText,
+} from "@/features/i18n";
 import type { CafePage, PageStatus } from "@/types/admin";
 
 const pageStatuses: PageStatus[] = ["DRAFT", "ACTIVE", "SUSPENDED"];
@@ -37,6 +44,9 @@ const pageStatuses: PageStatus[] = ["DRAFT", "ACTIVE", "SUSPENDED"];
 type PendingCafeAction = { type: "status"; cafe: CafePage; status: PageStatus };
 
 export function AdminCafePagesPage() {
+  const { locale, localeTag, t } = useI18n();
+  const ui = useUiText();
+  const enumLabel = useEnumLabel();
   const [status, setStatus] = useState<PageStatus | "">("");
   const [ownerUserId, setOwnerUserId] = useState("");
   const [pendingAction, setPendingAction] = useState<PendingCafeAction | null>(null);
@@ -67,12 +77,15 @@ export function AdminCafePagesPage() {
         header: "Audience",
         cell: (cafe) => (
           <span className="text-muted">
-            {cafe.likeCount ?? 0} likes · {cafe.followerCount ?? 0} followers
+            {ui("{likes} likes · {followers} followers", {
+              likes: formatNumber(cafe.likeCount ?? 0, localeTag),
+              followers: formatNumber(cafe.followerCount ?? 0, localeTag),
+            })}
           </span>
         ),
       },
       { header: "Rating", cell: (cafe) => cafe.ratingScore ?? "—" },
-      { header: "Created", cell: (cafe) => formatDate(cafe.createdAt) },
+      { header: "Created", cell: (cafe) => formatDate(cafe.createdAt, localeTag) },
       {
         header: "",
         className: "w-12 text-right",
@@ -88,7 +101,9 @@ export function AdminCafePagesPage() {
               ...pageStatuses
                 .filter((nextStatus) => nextStatus !== cafe.status)
                 .map((nextStatus) => ({
-                  label: `Set status: ${nextStatus}`,
+                  label: ui("Set status: {status}", {
+                    status: enumLabel(nextStatus),
+                  }),
                   icon: nextStatus === "SUSPENDED" ? ShieldOffIcon : undefined,
                   destructive: nextStatus === "SUSPENDED",
                   onSelect: () =>
@@ -99,7 +114,7 @@ export function AdminCafePagesPage() {
         ),
       },
     ],
-    [detail],
+    [detail, enumLabel, localeTag, ui],
   );
 
   async function handleConfirm() {
@@ -122,9 +137,7 @@ export function AdminCafePagesPage() {
       setPendingAction(null);
       resource.refetch();
     } catch (requestError) {
-      setActionError(
-        requestError instanceof Error ? requestError.message : "Action failed.",
-      );
+      setActionError(localizeApiError(requestError, locale, t, "common.error.action"));
     } finally {
       setIsSubmitting(false);
     }
@@ -186,15 +199,21 @@ export function AdminCafePagesPage() {
               {detail.data.description || "-"}
             </AdminDetailField>
             <AdminDetailField label="Audience">
-              {detail.data.likeCount ?? 0} likes / {detail.data.followerCount ?? 0} followers
+              {ui("{likes} likes / {followers} followers", {
+                likes: formatNumber(detail.data.likeCount ?? 0, localeTag),
+                followers: formatNumber(detail.data.followerCount ?? 0, localeTag),
+              })}
             </AdminDetailField>
             <AdminDetailField label="Rating">
-              {detail.data.ratingScore ?? "-"} ({detail.data.ratingCount ?? 0} ratings)
+              {ui("{rating} ({count} ratings)", {
+                rating: detail.data.ratingScore ?? "—",
+                count: formatNumber(detail.data.ratingCount ?? 0, localeTag),
+              })}
             </AdminDetailField>
             <AdminDetailField label="Max members">{detail.data.maxMembers ?? "-"}</AdminDetailField>
-            <AdminDetailField label="Expires">{formatDate(detail.data.pageExpiresAt)}</AdminDetailField>
-            <AdminDetailField label="Created">{formatDate(detail.data.createdAt)}</AdminDetailField>
-            <AdminDetailField label="Updated">{formatDate(detail.data.updatedAt)}</AdminDetailField>
+            <AdminDetailField label="Expires">{formatDate(detail.data.pageExpiresAt, localeTag)}</AdminDetailField>
+            <AdminDetailField label="Created">{formatDate(detail.data.createdAt, localeTag)}</AdminDetailField>
+            <AdminDetailField label="Updated">{formatDate(detail.data.updatedAt, localeTag)}</AdminDetailField>
           </AdminDetailGrid>
         ) : null}
       </AdminDetailDialog>

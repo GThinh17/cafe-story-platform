@@ -5,10 +5,12 @@
   "scripts": {
     "dev": "next dev -p 3636",
     "build": "next build",
+    "i18n:check": "node ./scripts/check-i18n.mjs",
     "typecheck": "tsc --noEmit",
     "start": "next start",
     "test:e2e:admin-assistant": "playwright test tests/e2e/admin-assistant.spec.ts --project=chromium",
-    "test:e2e:admin-report-ai": "playwright test tests/e2e/admin-report-ai.spec.ts --project=chromium"
+    "test:e2e:admin-report-ai": "playwright test tests/e2e/admin-report-ai.spec.ts --project=chromium",
+    "test:e2e:i18n": "playwright test tests/e2e/admin-i18n.spec.ts --project=chromium"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

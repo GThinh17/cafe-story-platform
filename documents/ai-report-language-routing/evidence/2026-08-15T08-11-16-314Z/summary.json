@@ -1,0 +1,42 @@
+{
+  "status": "PASS",
+  "timestampUtc": "2026-08-15T08:11:16.314Z",
+  "workflowId": "cafestory-admin-report-ai-resolution-v2",
+  "endpoint": "http://127.0.0.1:5678/webhook/cafestory-admin-report-ai-resolution",
+  "exactContractV2": true,
+  "realN8n": true,
+  "realOpenAi": true,
+  "cases": [
+    {
+      "name": "english-description-english-reason",
+      "expectedLanguage": "en",
+      "actualLanguage": "en",
+      "ruleId": "CSR.INT.003",
+      "evidenceIds": ["EV-TARGET-CONTENT"],
+      "concreteTextIndicatorsPresent": true
+    },
+    {
+      "name": "vietnamese-comment-scam",
+      "expectedLanguage": "vi",
+      "actualLanguage": "vi",
+      "ruleId": "CSR.INT.003",
+      "evidenceIds": ["EV-TARGET-CONTENT"],
+      "concreteTextIndicatorsPresent": true
+    },
+    {
+      "name": "english-description-vietnamese-reason",
+      "expectedLanguage": "en",
+      "actualLanguage": "en",
+      "ruleId": "CSR.INT.003",
+      "evidenceIds": ["EV-TARGET-CONTENT"],
+      "concreteTextIndicatorsPresent": true
+    }
+  ],
+  "responseSignatureVerified": true,
+  "providerSchemaValid": true,
+  "evidenceReferencesBounded": true,
+  "scoreFieldsAbsent": true,
+  "executionFieldsAbsent": true,
+  "mutationClaimAbsent": true,
+  "secretValuesPrinted": false
+}

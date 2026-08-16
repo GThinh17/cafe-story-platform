@@ -27,6 +27,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { generateReviewerRanking, getReviewerRanking } from "@/lib/api/admin";
+import {
+  formatNumber,
+  localizeApiError,
+  useEnumLabel,
+  useI18n,
+  useUiText,
+} from "@/features/i18n";
 import { cn } from "@/lib/utils";
 import type {
   RankingPeriodType,
@@ -82,6 +89,9 @@ function defaultPeriod(periodType: RankingPeriodType) {
 }
 
 export function AdminRankingPage() {
+  const { locale, localeTag, t } = useI18n();
+  const ui = useUiText();
+  const enumLabel = useEnumLabel();
   const [periodType, setPeriodType] = useState<RankingPeriodType>("DAILY");
   const [period, setPeriod] = useState(() => defaultPeriod("DAILY"));
   const [page, setPage] = useState(0);
@@ -110,11 +120,7 @@ export function AdminRankingPage() {
             return;
           }
 
-          setError(
-            requestError instanceof Error
-              ? requestError.message
-              : "Unable to load ranking.",
-          );
+          setError(localizeApiError(requestError, locale, t));
         })
         .finally(() => {
           if (!signal?.aborted) {
@@ -122,7 +128,7 @@ export function AdminRankingPage() {
           }
         });
     },
-    [period, periodType, page],
+    [locale, page, period, periodType, t],
   );
 
   useEffect(() => {
@@ -153,7 +159,7 @@ export function AdminRankingPage() {
           header: "Badge",
           cell: (row) =>
             row.badge ? (
-              <Badge variant={badgeVariant[row.badge]}>{row.badge}</Badge>
+              <Badge variant={badgeVariant[row.badge]}>{enumLabel(row.badge)}</Badge>
             ) : (
               <span className="text-muted-foreground">—</span>
             ),
@@ -161,15 +167,15 @@ export function AdminRankingPage() {
       }
 
       baseColumns.push(
-        { header: "Score", cell: (row) => row.score },
-        { header: "Likes", cell: (row) => row.likeCount },
-        { header: "Shares", cell: (row) => row.shareCount },
-        { header: "Comments", cell: (row) => row.commentCount },
+        { header: "Score", cell: (row) => formatNumber(row.score, localeTag) },
+        { header: "Likes", cell: (row) => formatNumber(row.likeCount, localeTag) },
+        { header: "Shares", cell: (row) => formatNumber(row.shareCount, localeTag) },
+        { header: "Comments", cell: (row) => formatNumber(row.commentCount, localeTag) },
       );
 
       return baseColumns;
     },
-    [periodType],
+    [enumLabel, localeTag, periodType],
   );
 
   async function handleGenerate() {
@@ -188,9 +194,7 @@ export function AdminRankingPage() {
       setIsGenerateOpen(false);
       void load();
     } catch (requestError) {
-      setGenerateError(
-        requestError instanceof Error ? requestError.message : "Generate failed.",
-      );
+      setGenerateError(localizeApiError(requestError, locale, t, "common.error.action"));
     } finally {
       setIsSubmitting(false);
     }
@@ -206,19 +210,19 @@ export function AdminRankingPage() {
             <Button asChild type="button" variant="outline">
               <Link href="/formulas">
                 <ListOrderedIcon data-icon="inline-start" />
-                Scoring formulas
+                {ui("Scoring formulas")}
               </Link>
             </Button>
             <Button type="button" onClick={() => setIsGenerateOpen(true)}>
               <TrophyIcon data-icon="inline-start" />
-              Generate snapshot
+              {ui("Generate snapshot")}
             </Button>
           </div>
         }
       />
       <Toolbar onRefresh={() => load()}>
         <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-muted">Period type</span>
+          <span className="text-xs font-medium text-muted">{ui("Period type")}</span>
           <Select
             value={periodType}
             onValueChange={(value) => {
@@ -233,7 +237,7 @@ export function AdminRankingPage() {
             <SelectContent>
               <SelectGroup>
                 {periodTypes.map((type) => (
-                  <SelectItem value={type} key={type}>{type}</SelectItem>
+                  <SelectItem value={type} key={type}>{enumLabel(type)}</SelectItem>
                 ))}
               </SelectGroup>
             </SelectContent>
@@ -269,7 +273,7 @@ export function AdminRankingPage() {
         onConfirm={handleGenerate}
       >
         <div className="flex flex-col gap-2">
-          <span className="text-sm font-medium">Period type</span>
+          <span className="text-sm font-medium">{ui("Period type")}</span>
           <div className="flex rounded-md border border-border overflow-hidden">
             {periodTypes.map((type) => (
               <button
@@ -283,7 +287,7 @@ export function AdminRankingPage() {
                 )}
                 onClick={() => setGeneratePeriodType(type)}
               >
-                {type.charAt(0) + type.slice(1).toLowerCase()}
+                {enumLabel(type)}
               </button>
             ))}
           </div>
@@ -291,7 +295,7 @@ export function AdminRankingPage() {
         {generatePeriodType === "DAILY" ? (
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium" htmlFor="generate-daily-date">
-              Ngày
+              {ui("Date")}
             </label>
             <input
               id="generate-daily-date"
@@ -306,7 +310,7 @@ export function AdminRankingPage() {
         {generatePeriodType === "MONTHLY" ? (
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium" htmlFor="generate-monthly-month">
-              Tháng
+              {ui("Month")}
             </label>
             <input
               id="generate-monthly-month"

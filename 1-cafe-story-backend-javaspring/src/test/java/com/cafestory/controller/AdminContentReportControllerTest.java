@@ -3,6 +3,7 @@ package com.cafestory.controller;
 import com.cafestory.dto.requestDTO.AdminContentReportStatusUpdateRequestDTO;
 import com.cafestory.dto.requestDTO.AdminReportAiResolutionCreateRequestDTO;
 import com.cafestory.dto.responseDTO.AdminReportAiAutoApplyJobResponseDTO;
+import com.cafestory.dto.responseDTO.AdminReportAiPolicyResponseDTO;
 import com.cafestory.dto.responseDTO.AdminReportAiResolutionResponseDTO;
 import com.cafestory.dto.responseDTO.ContentReportResponseDTO;
 import com.cafestory.entity.enums.AdminReportAiAutoApplyJobStatus;
@@ -159,6 +160,33 @@ class AdminContentReportControllerTest {
 
         assertThat(result).isEqualTo(response);
         verify(autoApplyJobService).cancelJob(jobId, adminUserId);
+    }
+
+    @Test
+    void getAiPolicy_successDelegatesAndPreservesResponseShape_TC008() {
+        UUID reportId = UUID.randomUUID();
+        AdminReportAiPolicyResponseDTO response = AdminReportAiPolicyResponseDTO.builder()
+                .reportId(reportId)
+                .targetType(ReportTargetType.COMMENT)
+                .reasonCode("SCAM_OR_FRAUD")
+                .contextSchemaVersion("RRC-1.0.0-rc.1")
+                .policyVersion("PF-2.0.0-proposed.1")
+                .policyStatus("ACTIVE")
+                .ruleCatalogVersion("RC-2.0.0-proposed.2")
+                .ruleCatalogStatus("ACTIVE")
+                .evaluationMode("ACTIVE_RUNTIME")
+                .recommendationOnly(true)
+                .candidateRules(List.of())
+                .build();
+        when(adminReportAiResolutionService.getPolicy(reportId)).thenReturn(response);
+
+        AdminReportAiPolicyResponseDTO result = adminContentReportController.getAiPolicy(reportId);
+
+        assertThat(result).isSameAs(response);
+        assertThat(result.getReportId()).isEqualTo(reportId);
+        assertThat(result.getRecommendationOnly()).isTrue();
+        assertThat(result.getEvaluationMode()).isEqualTo("ACTIVE_RUNTIME");
+        verify(adminReportAiResolutionService).getPolicy(reportId);
     }
 
     private ContentReportResponseDTO response() {

@@ -12,11 +12,13 @@ import {
 } from "react";
 import { ApiError } from "@/lib/api/client";
 import { getMe } from "@/lib/api/auth";
+import { localizeApiError, useI18n } from "@/features/i18n";
 import type { AuthState, AuthUser } from "@/types/auth";
 
 const AuthContext = createContext<AuthState | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { locale, t } = useI18n();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasResolvedInitialAuth, setHasResolvedInitialAuth] = useState(false);
@@ -80,9 +82,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setError(null);
         } else {
           setError(
-            requestError instanceof ApiError
-              ? requestError.message
-              : "Unable to load current user.",
+            localizeApiError(
+              requestError,
+              locale,
+              t,
+              "common.error.loadDetail",
+            ),
           );
         }
       } finally {
@@ -93,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
     },
-    [applyUser],
+    [applyUser, locale, t],
   );
 
   const refetch = useCallback(() => refreshAuth(), [refreshAuth]);

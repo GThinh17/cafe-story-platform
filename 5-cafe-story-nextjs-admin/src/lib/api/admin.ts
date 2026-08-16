@@ -15,6 +15,7 @@ import type {
   AdminPayoutStatus,
   AdminReportAiAutoApplyJob,
   AdminReportAiAutoApplyRequest,
+  AdminReportAiPolicy,
   AdminReportAiResolution,
   AdminUser,
   Blog,
@@ -459,6 +460,13 @@ export function getReportAiResolutions(
     withQuery(apiEndpoints.admin.reportAiResolutions(reportId), params),
     { method: "GET", signal },
   );
+}
+
+export function getReportAiPolicy(reportId: string, signal?: AbortSignal) {
+  return apiFetch<AdminReportAiPolicy>(apiEndpoints.admin.reportAiPolicy(reportId), {
+    method: "GET",
+    signal,
+  });
 }
 
 export function getReportAiAutoResolutions(

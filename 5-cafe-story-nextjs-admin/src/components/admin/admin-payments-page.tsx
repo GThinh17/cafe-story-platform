@@ -32,6 +32,13 @@ import {
   markBankTransferPaid,
   refundPayment,
 } from "@/lib/api/admin";
+import {
+  formatCurrency,
+  localizeApiError,
+  useEnumLabel,
+  useI18n,
+  useUiText,
+} from "@/features/i18n";
 import type { Payment, PaymentStatus } from "@/types/admin";
 
 const paymentStatuses: PaymentStatus[] = [
@@ -48,6 +55,9 @@ type PendingPaymentAction =
   | { type: "refund"; payment: Payment };
 
 export function AdminPaymentsPage() {
+  const { locale, localeTag, t } = useI18n();
+  const ui = useUiText();
+  const enumLabel = useEnumLabel();
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus | "">("");
   const [buyerId, setBuyerId] = useState("");
   const [pendingAction, setPendingAction] = useState<PendingPaymentAction | null>(null);
@@ -71,13 +81,13 @@ export function AdminPaymentsPage() {
         ),
       },
       { header: "Product", cell: (payment) => payment.productName ?? "—" },
-      { header: "Method", cell: (payment) => payment.paymentMethod },
+      { header: "Method", cell: (payment) => enumLabel(payment.paymentMethod) },
       {
         header: "Amount",
-        cell: (payment) => `${payment.amount.toLocaleString()} ${payment.currency}`,
+        cell: (payment) => formatCurrency(payment.amount, payment.currency, localeTag),
       },
       { header: "Status", cell: (payment) => <AdminStatusBadge value={payment.paymentStatus} /> },
-      { header: "Created", cell: (payment) => formatDate(payment.createdAt) },
+      { header: "Created", cell: (payment) => formatDate(payment.createdAt, localeTag) },
       {
         header: "",
         className: "w-12 text-right",
@@ -111,7 +121,7 @@ export function AdminPaymentsPage() {
         ),
       },
     ],
-    [detail],
+    [detail, enumLabel, localeTag],
   );
 
   async function handleConfirm() {
@@ -138,9 +148,7 @@ export function AdminPaymentsPage() {
       setPendingAction(null);
       resource.refetch();
     } catch (requestError) {
-      setActionError(
-        requestError instanceof Error ? requestError.message : "Action failed.",
-      );
+      setActionError(localizeApiError(requestError, locale, t, "common.error.action"));
     } finally {
       setIsSubmitting(false);
     }
@@ -194,13 +202,13 @@ export function AdminPaymentsPage() {
             <AdminDetailField label="Status">
               <AdminStatusBadge value={detail.data.paymentStatus} />
             </AdminDetailField>
-            <AdminDetailField label="Method">{detail.data.paymentMethod}</AdminDetailField>
+            <AdminDetailField label="Method">{enumLabel(detail.data.paymentMethod)}</AdminDetailField>
             <AdminDetailField label="Amount">
-              {detail.data.amount.toLocaleString()} {detail.data.currency}
+              {formatCurrency(detail.data.amount, detail.data.currency, localeTag)}
             </AdminDetailField>
             <AdminDetailField label="Product name">{detail.data.productName || "-"}</AdminDetailField>
             {detail.data.extraFeeType ? (
-              <AdminDetailField label="Extra fee type">{detail.data.extraFeeType}</AdminDetailField>
+              <AdminDetailField label="Extra fee type">{enumLabel(detail.data.extraFeeType)}</AdminDetailField>
             ) : null}
             <AdminDetailField label="Transfer content">
               {detail.data.transferContent || "-"}
@@ -211,7 +219,7 @@ export function AdminPaymentsPage() {
             <AdminDetailField label="QR code" className="sm:col-span-2">
               {detail.data.qrCodeUrl ? (
                 <img
-                  alt="Payment QR code"
+                  alt={ui("Payment QR code")}
                   className="max-h-72 rounded-md border border-border object-contain"
                   src={detail.data.qrCodeUrl}
                 />
@@ -219,9 +227,9 @@ export function AdminPaymentsPage() {
                 "-"
               )}
             </AdminDetailField>
-            <AdminDetailField label="Created">{formatDate(detail.data.createdAt)}</AdminDetailField>
-            <AdminDetailField label="Paid">{formatDate(detail.data.paidAt)}</AdminDetailField>
-            <AdminDetailField label="Expired">{formatDate(detail.data.expiredAt)}</AdminDetailField>
+            <AdminDetailField label="Created">{formatDate(detail.data.createdAt, localeTag)}</AdminDetailField>
+            <AdminDetailField label="Paid">{formatDate(detail.data.paidAt, localeTag)}</AdminDetailField>
+            <AdminDetailField label="Expired">{formatDate(detail.data.expiredAt, localeTag)}</AdminDetailField>
           </AdminDetailGrid>
         ) : null}
       </AdminDetailDialog>

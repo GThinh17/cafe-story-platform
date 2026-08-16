@@ -1,11 +1,15 @@
 package com.cafestory.service.serviceImplement;
 
 import com.cafestory.dto.requestDTO.AdminReportAiResolutionCreateRequestDTO;
+import com.cafestory.dto.requestDTO.AdminReportAiCandidateRuleRequestDTO;
 import com.cafestory.dto.requestDTO.AdminReportAiEvidenceItemRequestDTO;
 import com.cafestory.dto.requestDTO.AdminReportAiPolicyContextRequestDTO;
+import com.cafestory.dto.requestDTO.AdminReportAiRuleRequirementRequestDTO;
 import com.cafestory.dto.requestDTO.AdminReportAiResolutionRequestDTO;
 import com.cafestory.dto.responseDTO.AdminReportAiResolutionResponseDTO;
 import com.cafestory.dto.responseDTO.AdminReportAiResolutionWebhookResponseDTO;
+import com.cafestory.dto.responseDTO.AdminReportAiPolicyResponseDTO;
+import com.cafestory.dto.responseDTO.AdminReportAiPolicyRuleResponseDTO;
 import com.cafestory.entity.AdminReportAiResolution;
 import com.cafestory.entity.AiModerationResult;
 import com.cafestory.entity.Blog;
@@ -131,6 +135,87 @@ class AdminReportAiResolutionServiceImplTest {
                 .contains("EV-TARGET-IDENTITY", "EV-TARGET-CONTENT", "EV-TARGET-STATE")
                 .doesNotContain("EV-REASON-ROUTE", "EV-DERIVED-MODERATION");
         verify(contentReportRepository, never()).save(any(ContentReport.class));
+    }
+
+    @Test
+    void getPolicy_mapsReasonToCatalogAndExposesRecommendationOnlyMetadata_S2POLICY_TC001() {
+        ContentReport report = blogReport("Policy target text");
+        report.getReason().setCode("SCAM_OR_FRAUD");
+        when(contentReportRepository.findById(report.getId())).thenReturn(Optional.of(report));
+
+        AdminReportAiPolicyResponseDTO result = serviceReturning(request -> null).getPolicy(report.getId());
+
+        assertThat(result.getReportId()).isEqualTo(report.getId());
+        assertThat(result.getTargetType()).isEqualTo(ReportTargetType.BLOG);
+        assertThat(result.getReasonCode()).isEqualTo("SCAM_OR_FRAUD");
+        assertThat(result.getContextSchemaVersion()).isEqualTo(AdminReportAiPolicyCatalog.CONTEXT_SCHEMA_VERSION);
+        assertThat(result.getPolicyVersion()).isEqualTo(AdminReportAiPolicyCatalog.POLICY_VERSION);
+        assertThat(result.getPolicyStatus()).isEqualTo("ACTIVE");
+        assertThat(result.getRuleCatalogVersion()).isEqualTo(AdminReportAiPolicyCatalog.RULE_CATALOG_VERSION);
+        assertThat(result.getRuleCatalogStatus()).isEqualTo("ACTIVE");
+        assertThat(result.getEvaluationMode()).isEqualTo("ACTIVE_RUNTIME");
+        assertThat(result.getRecommendationOnly()).isTrue();
+        assertThat(result.getCandidateRules()).singleElement().satisfies(rule -> {
+            assertThat(rule.getRuleId()).isEqualTo("CSR.INT.003");
+            assertThat(rule.getRuleVersion()).isEqualTo(AdminReportAiPolicyCatalog.RULE_VERSION);
+            assertThat(rule.getApplicableTargetTypes()).containsExactly(ReportTargetType.BLOG, ReportTargetType.COMMENT);
+            assertThat(rule.getRequiredEvidenceKinds()).contains("TARGET_TEXT_CONTENT");
+            assertThat(rule.getSemanticRequirementCodes()).contains("SEM-TRANSACTION-INTENT");
+            assertThat(rule.getCounterEvidenceRequired()).isTrue();
+            assertThat(rule.getAllowedOutcomes()).contains("SUBSTANTIATED", "UNASSESSABLE");
+            assertThat(rule.getAllowedCandidateActions()).containsExactly(
+                    "KEEP_VISIBLE", "HIDE", "REMOVE", "NO_ACTION");
+        });
+        verify(contentReportRepository, never()).save(any(ContentReport.class));
+    }
+
+    @Test
+    void getPolicy_unknownReportReturnsNotFound_S2POLICY_TC002() {
+        UUID reportId = UUID.randomUUID();
+        when(contentReportRepository.findById(reportId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> serviceReturning(request -> null).getPolicy(reportId))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception -> {
+                    assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+                    assertThat(exception.getReason()).isEqualTo("Report not found");
+                });
+    }
+
+    @Test
+    void getPolicy_missingReasonUsesFallbackAndMapsConditionalRequirement_S2POLICY_TC003() {
+        ContentReport report = blogReport("Policy fallback target text");
+        report.setReason(null);
+        when(contentReportRepository.findById(report.getId())).thenReturn(Optional.of(report));
+        AdminReportAiResolutionServiceImpl service = serviceReturning(request -> null);
+
+        AdminReportAiPolicyResponseDTO result = service.getPolicy(report.getId());
+
+        assertThat(result.getReasonCode()).isNull();
+        assertThat(result.getCandidateRules()).singleElement()
+                .extracting(rule -> rule.getRuleId())
+                .isEqualTo("CSR.ROUTE.002");
+
+        AdminReportAiCandidateRuleRequestDTO syntheticRule =
+                AdminReportAiPolicyCatalog.candidateRules("SPAM").getFirst();
+        syntheticRule.setConditionalRequirements(List.of(
+                AdminReportAiRuleRequirementRequestDTO.builder()
+                        .requirementCode("REQ-TEST")
+                        .evidenceKind("TARGET_MEDIA_REFERENCE")
+                        .requirementType("CONDITIONAL")
+                        .trigger("MEDIA_PRESENT")
+                        .missingBehavior("UNASSESSABLE")
+                        .build()));
+
+        AdminReportAiPolicyRuleResponseDTO mapped =
+                ReflectionTestUtils.invokeMethod(service, "toPolicyRuleResponse", syntheticRule);
+
+        assertThat(mapped.getConditionalRequirements()).singleElement().satisfies(requirement -> {
+            assertThat(requirement.getRequirementCode()).isEqualTo("REQ-TEST");
+            assertThat(requirement.getEvidenceKind()).isEqualTo("TARGET_MEDIA_REFERENCE");
+            assertThat(requirement.getRequirementType()).isEqualTo("CONDITIONAL");
+            assertThat(requirement.getTrigger()).isEqualTo("MEDIA_PRESENT");
+            assertThat(requirement.getMissingBehavior()).isEqualTo("UNASSESSABLE");
+        });
     }
 
     @Test
