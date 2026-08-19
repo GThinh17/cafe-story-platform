@@ -444,6 +444,7 @@ export const viUiPhrases = {
   "Share cafe page": "Chia sẻ trang quán",
   "Share Page": "Chia sẻ trang quán",
   "Share post": "Chia sẻ bài viết",
+  "shares": "lượt chia sẻ",
   "Share profile": "Chia sẻ trang cá nhân",
   "Share Profile": "Chia sẻ trang cá nhân",
   "Shares": "Lượt chia sẻ",

@@ -848,11 +848,6 @@ export function ProfileScreen() {
         <View style={styles.identity}>
           <View style={styles.avatarColumn}>
             <Avatar initials={initialsFor(displayName)} size={88} uri={avatarUri} />
-            {regionLabel ? (
-              <Text numberOfLines={2} style={styles.regionText}>
-                {regionLabel}
-              </Text>
-            ) : null}
           </View>
 
           <View style={styles.identityContent}>
@@ -878,12 +873,25 @@ export function ProfileScreen() {
                   ]}
                 >
                   <Text style={styles.statValue}>{stat.value}</Text>
-                  <Text numberOfLines={2} style={styles.statLabel}>{stat.displayLabel}</Text>
+                  <Text
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.82}
+                    numberOfLines={1}
+                    style={styles.statLabel}
+                  >
+                    {stat.displayLabel}
+                  </Text>
                 </Pressable>
               ))}
             </View>
           </View>
         </View>
+
+        {regionLabel ? (
+          <Text numberOfLines={2} style={styles.location}>
+            {regionLabel}
+          </Text>
+        ) : null}
 
         {userDescription ? (
           <Pressable
@@ -981,7 +989,14 @@ export function ProfileScreen() {
               pressed && styles.actionPressed,
             ]}
           >
-            <Text style={styles.profileActionText}>{t("Edit Profile")}</Text>
+            <Text
+              adjustsFontSizeToFit
+              minimumFontScale={0.84}
+              numberOfLines={1}
+              style={styles.profileActionText}
+            >
+              {t("Edit Profile")}
+            </Text>
           </Pressable>
 
           <Pressable
@@ -992,7 +1007,14 @@ export function ProfileScreen() {
               pressed && styles.actionPressed,
             ]}
           >
-            <Text style={styles.profileActionText}>{t("Share Profile")}</Text>
+            <Text
+              adjustsFontSizeToFit
+              minimumFontScale={0.84}
+              numberOfLines={1}
+              style={styles.profileActionText}
+            >
+              {t("Share Profile")}
+            </Text>
           </Pressable>
 
           <Pressable
@@ -1117,9 +1139,8 @@ const styles = StyleSheet.create({
   },
 
   avatarColumn: {
-    alignItems: "center",
-    gap: spacing.xs,
-    width: 104,
+    alignItems: "flex-start",
+    width: 88,
   },
 
   cafePageTag: {
@@ -1183,7 +1204,7 @@ const styles = StyleSheet.create({
   },
 
   identity: {
-    alignItems: "center",
+    alignItems: "flex-start",
     flexDirection: "row",
     gap: spacing.lg,
     paddingHorizontal: spacing.lg,
@@ -1193,14 +1214,15 @@ const styles = StyleSheet.create({
   identityContent: {
     flex: 1,
     gap: spacing.md,
+    minWidth: 0,
   },
 
-  regionText: {
+  location: {
     color: colors.muted,
-    fontSize: typography.caption,
+    fontSize: typography.label,
     fontWeight: "700",
-    lineHeight: 16,
-    textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: spacing.lg,
   },
 
   title: {
@@ -1214,6 +1236,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     justifyContent: "space-between",
+    width: "100%",
   },
 
   statItem: {
@@ -1236,7 +1259,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     flexShrink: 1,
     lineHeight: 14,
-    maxWidth: 64,
     textAlign: "center",
     width: "100%",
   },
@@ -1262,8 +1284,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     flex: 1,
-    height: 36,
+    height: 44,
     justifyContent: "center",
+    minWidth: 0,
   },
 
   profileActionText: {
@@ -1278,7 +1301,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 10,
     borderWidth: 1,
-    height: 36,
+    height: 44,
     justifyContent: "center",
     width: 42,
   },
@@ -1289,6 +1312,7 @@ const styles = StyleSheet.create({
 
   profileChips: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
   },
@@ -1302,6 +1326,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.xs,
     minHeight: 36,
+    maxWidth: "100%",
     paddingHorizontal: spacing.md,
   },
 
@@ -1313,6 +1338,7 @@ const styles = StyleSheet.create({
 
   profileChipText: {
     color: colors.foreground,
+    flexShrink: 1,
     fontSize: typography.label,
     fontWeight: "900",
   },

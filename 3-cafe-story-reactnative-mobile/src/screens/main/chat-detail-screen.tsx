@@ -6,6 +6,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RouteProp } from "@react-navigation/native";
 import {
+  CHAT_COMPOSER_INPUT_HEIGHT,
   ChatComposer,
   ChatDetailHeader,
   ChatMessageBubble,
@@ -206,7 +207,10 @@ export function ChatDetailScreen() {
   return (
     <Screen padded={false}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={
+          Platform.OS === "android" ? CHAT_COMPOSER_INPUT_HEIGHT : 0
+        }
         style={styles.keyboardAvoidingView}
       >
         <ChatDetailHeader

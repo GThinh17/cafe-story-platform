@@ -12,6 +12,8 @@ type ChatComposerProps = {
   value: string;
 };
 
+export const CHAT_COMPOSER_INPUT_HEIGHT = 44;
+
 export function ChatComposer({
   disabled = false,
   onChangeText,
@@ -80,7 +82,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     gap: spacing.sm,
-    minHeight: 44,
+    minHeight: CHAT_COMPOSER_INPUT_HEIGHT,
     paddingHorizontal: spacing.md,
   },
   pressed: {

@@ -1,9 +1,10 @@
 import { Bookmark, Heart, MessageSquare, MoreHorizontal, Send, Store, } from "lucide-react-native";
-import { Pressable } from "react-native";
+import { ActivityIndicator, Pressable } from "react-native";
 import { Text } from "react-native";
+import type { NativeSyntheticEvent, TextLayoutEventData } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { Avatar } from "../ui/avatar";
@@ -19,8 +20,8 @@ import {
 import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
 import {
-  followCafePage,
   followUser,
+  getBlogById,
   likeBlog,
   saveBlog,
   shareBlog,
@@ -36,6 +37,8 @@ type BlogFeedCardProps = {
   onFirstMediaLoad?: () => void;
   showFollowButton?: boolean;
 };
+
+const COLLAPSED_CAPTION_LINES = 2;
 
 function compactCount(value: number | null) {
   return formatCurrentCompactNumber(value ?? 0);
@@ -126,7 +129,13 @@ export function BlogFeedCard({
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
+  const captionBlogIdRef = useRef(blog.blogId);
   const [isCommentModalVisible, setIsCommentModalVisible] = useState(false);
+  const [isCaptionExpanded, setIsCaptionExpanded] = useState(false);
+  const [isCaptionTruncated, setIsCaptionTruncated] = useState(false);
+  const [isCaptionLoading, setIsCaptionLoading] = useState(false);
+  const [captionLoadFailed, setCaptionLoadFailed] = useState(false);
+  const [fullCaption, setFullCaption] = useState<string | null>(null);
   const [isOptionsModalVisible, setIsOptionsModalVisible] = useState(false);
   const [isReportModalVisible, setIsReportModalVisible] = useState(false);
   const [isFollowPending, setIsFollowPending] = useState(false);
@@ -140,11 +149,14 @@ export function BlogFeedCard({
   const [commentCount, setCommentCount] = useState(blog.commentCount ?? 0);
   const [shareCount, setShareCount] = useState(blog.shareCount ?? 0);
   const displayName = getDisplayName(blog);
+  const captionText = fullCaption ?? blog.contentPreview ?? "";
   const images = (
     blog.imageUrls?.length ? blog.imageUrls : [blog.pageCoverUrl]
   ).filter((uri): uri is string => Boolean(uri));
   const isOwnPost = user?.userId === blog.authorUserId;
-  const canFollowAuthor = Boolean(blog.authorUserId) && !isOwnPost;
+  const isCafePagePost = blog.displayAuthorType === "CAFE_PAGE";
+  const canFollowAuthor =
+    !isCafePagePost && Boolean(blog.authorUserId) && !isOwnPost;
   const shouldShowFollowButton = showFollowButton && canFollowAuthor && !isFollowed;
   const isFollowDisabled = !shouldShowFollowButton || isFollowPending;
   const canOpenAuthorProfile =
@@ -175,6 +187,58 @@ export function BlogFeedCard({
   useEffect(() => {
     setShareCount(blog.shareCount ?? 0);
   }, [blog.blogId, blog.shareCount]);
+
+  useEffect(() => {
+    captionBlogIdRef.current = blog.blogId;
+    setIsCaptionExpanded(false);
+    setIsCaptionTruncated(false);
+    setIsCaptionLoading(false);
+    setCaptionLoadFailed(false);
+    setFullCaption(null);
+  }, [blog.blogId, blog.contentPreview]);
+
+  function handleCaptionTextLayout(
+    event: NativeSyntheticEvent<TextLayoutEventData>,
+  ) {
+    const isTruncated =
+      event.nativeEvent.lines.length > COLLAPSED_CAPTION_LINES;
+    setIsCaptionTruncated((currentValue) =>
+      currentValue === isTruncated ? currentValue : isTruncated,
+    );
+  }
+
+  async function handleExpandCaption() {
+    if (isCaptionLoading) {
+      return;
+    }
+
+    const preview = blog.contentPreview ?? "";
+    if (fullCaption !== null) {
+      setIsCaptionExpanded(true);
+      return;
+    }
+
+    const requestedBlogId = blog.blogId;
+    setIsCaptionLoading(true);
+    setCaptionLoadFailed(false);
+
+    try {
+      const blogDetail = await getBlogById(requestedBlogId);
+      if (captionBlogIdRef.current !== requestedBlogId) {
+        return;
+      }
+      setFullCaption(blogDetail.content || preview);
+      setIsCaptionExpanded(true);
+    } catch {
+      if (captionBlogIdRef.current === requestedBlogId) {
+        setCaptionLoadFailed(true);
+      }
+    } finally {
+      if (captionBlogIdRef.current === requestedBlogId) {
+        setIsCaptionLoading(false);
+      }
+    }
+  }
 
   async function handleToggleLike() {
     if (isLikePending) {
@@ -253,11 +317,7 @@ export function BlogFeedCard({
     setIsFollowed(nextIsFollowed);
 
     try {
-      if (blog.displayAuthorType === "CAFE_PAGE" && blog.pageId) {
-        await followCafePage(blog.pageId);
-      } else {
-        await followUser(blog.authorUserId);
-      }
+      await followUser(blog.authorUserId);
     } catch {
       setIsFollowed(!nextIsFollowed);
     } finally {
@@ -413,21 +473,66 @@ export function BlogFeedCard({
           </Pressable>
         </View>
 
-        <Text style={styles.likes}>{compactCount(likeCount)}{t("likes")}</Text>
-        <Text numberOfLines={2} style={styles.caption}>
-          <Text style={styles.captionAuthor}>{displayName} </Text>
-          {blog.contentPreview ?? ""}
+        <Text numberOfLines={1} style={styles.likes}>
+          {compactCount(likeCount)} {t("likes")}
         </Text>
+        <View style={styles.captionBlock}>
+          <Text
+            ellipsizeMode="tail"
+            numberOfLines={
+              isCaptionExpanded ? undefined : COLLAPSED_CAPTION_LINES
+            }
+            style={styles.caption}
+          >
+            <Text style={styles.captionAuthor}>{displayName} </Text>
+            {captionText}
+          </Text>
+          <Text
+            accessible={false}
+            onTextLayout={handleCaptionTextLayout}
+            pointerEvents="none"
+            style={[styles.caption, styles.captionMeasurement]}
+          >
+            <Text style={styles.captionAuthor}>{displayName} </Text>
+            {captionText}
+          </Text>
+          {isCaptionTruncated && !isCaptionExpanded ? (
+            <Pressable
+              accessibilityLabel={t(captionLoadFailed ? "Retry" : "More")}
+              accessibilityRole="button"
+              accessibilityState={{
+                busy: isCaptionLoading,
+                disabled: isCaptionLoading,
+              }}
+              disabled={isCaptionLoading}
+              hitSlop={8}
+              onPress={handleExpandCaption}
+              style={({ pressed }) => [
+                styles.captionMoreButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              {isCaptionLoading ? (
+                <ActivityIndicator color={colors.primary} size="small" />
+              ) : null}
+              <Text style={styles.captionMoreText}>
+                {t(captionLoadFailed ? "Retry" : "More")}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
         <Pressable
           accessibilityLabel={t("View post comments")}
           accessibilityRole="button"
           onPress={() => setIsCommentModalVisible(true)}
         >
-          <Text style={styles.comments}>{t("View all")}{compactCount(commentCount)}{t("comments")}</Text>
+          <Text numberOfLines={1} style={styles.comments}>
+            {t("View all")} {compactCount(commentCount)} {t("comments")}
+          </Text>
         </Pressable>
         <Text style={styles.meta}>
           {formatTimeAgo(blog.createdAt)}
-          {shareCount ? ` - ${compactCount(shareCount)} SHARES` : ""}
+          {shareCount ? ` · ${compactCount(shareCount)} ${t("shares")}` : ""}
         </Text>
       </View>
       <CommentModal
@@ -486,10 +591,34 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     lineHeight: 20,
   },
+  captionBlock: {
+    position: "relative",
+  },
   captionAuthor: {
     color: colors.foreground,
     fontStyle: "normal",
     fontWeight: "800",
+  },
+  captionMeasurement: {
+    left: 0,
+    opacity: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  captionMoreButton: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    gap: spacing.xs,
+    justifyContent: "center",
+    minHeight: 28,
+  },
+  captionMoreText: {
+    color: colors.primary,
+    fontSize: typography.caption,
+    fontWeight: "900",
+    lineHeight: 16,
   },
   card: {
     backgroundColor: colors.background,

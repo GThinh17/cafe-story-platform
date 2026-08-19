@@ -457,14 +457,9 @@ export function OtherUserProfileScreen() {
           <View style={styles.avatarColumn}>
             <Avatar
               initials={initialsFor(displayName)}
-              size={96}
+              size={88}
               uri={profile?.userAvatar}
             />
-            {reviewer && regionLabel ? (
-              <Text numberOfLines={2} style={styles.regionUnderBadge}>
-                {regionLabel}
-              </Text>
-            ) : null}
           </View>
 
           <View style={styles.identityContent}>
@@ -497,12 +492,25 @@ export function OtherUserProfileScreen() {
                   ]}
                 >
                   <Text style={styles.statValue}>{stat.value}</Text>
-                  <Text numberOfLines={2} style={styles.statLabel}>{stat.displayLabel}</Text>
+                  <Text
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.82}
+                    numberOfLines={1}
+                    style={styles.statLabel}
+                  >
+                    {stat.displayLabel}
+                  </Text>
                 </Pressable>
               ))}
             </View>
           </View>
         </View>
+
+        {regionLabel ? (
+          <Text numberOfLines={2} style={styles.location}>
+            {regionLabel}
+          </Text>
+        ) : null}
 
         {userDescription ? (
           <Text style={styles.description}>{userDescription}</Text>
@@ -525,10 +533,6 @@ export function OtherUserProfileScreen() {
           </Pressable>
         ) : null}
 
-        {!reviewer && regionLabel ? (
-          <Text style={styles.location}>{regionLabel}</Text>
-        ) : null}
-
         <View style={styles.actions}>
           <Pressable
             accessibilityLabel={isFollowing ? t("Unfollow user") : t("Follow user")}
@@ -542,12 +546,19 @@ export function OtherUserProfileScreen() {
             ]}
           >
             <Text
+              adjustsFontSizeToFit
+              minimumFontScale={0.84}
+              numberOfLines={1}
               style={[
                 styles.primaryActionText,
                 (isFollowing || isOwnProfile) && styles.followingActionText,
               ]}
             >
-              {isOwnProfile ? t("Your Profile") : isFollowing ? "Following" : "Follow"}
+              {isOwnProfile
+                ? t("Your Profile")
+                : isFollowing
+                  ? t("Following")
+                  : t("Follow")}
             </Text>
           </Pressable>
 
@@ -561,7 +572,14 @@ export function OtherUserProfileScreen() {
               pressed && !isMessagePending && styles.pressed,
             ]}
           >
-            <Text style={styles.secondaryActionText}>{t("Message")}</Text>
+            <Text
+              adjustsFontSizeToFit
+              minimumFontScale={0.84}
+              numberOfLines={1}
+              style={styles.secondaryActionText}
+            >
+              {t("Message")}
+            </Text>
           </Pressable>
 
           <Pressable
@@ -613,8 +631,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   avatarColumn: {
-    alignItems: "center",
-    gap: spacing.sm,
+    alignItems: "flex-start",
+    width: 88,
   },
   content: {
     gap: spacing.md,
@@ -683,7 +701,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: 10,
     borderWidth: 1,
-    height: 38,
+    height: 44,
     justifyContent: "center",
     width: 44,
   },
@@ -694,7 +712,7 @@ const styles = StyleSheet.create({
     width: 48,
   },
   identity: {
-    alignItems: "center",
+    alignItems: "flex-start",
     flexDirection: "row",
     gap: spacing.xl,
     paddingHorizontal: spacing.lg,
@@ -703,6 +721,7 @@ const styles = StyleSheet.create({
   identityContent: {
     flex: 1,
     gap: spacing.md,
+    minWidth: 0,
   },
   location: {
     color: colors.muted,
@@ -723,8 +742,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: 10,
     flex: 1,
-    height: 38,
+    height: 44,
     justifyContent: "center",
+    minWidth: 0,
   },
   primaryActionText: {
     color: colors.white,
@@ -749,14 +769,6 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     textTransform: "uppercase",
   },
-  regionUnderBadge: {
-    color: colors.muted,
-    fontSize: typography.caption,
-    fontWeight: "700",
-    lineHeight: 16,
-    maxWidth: 112,
-    textAlign: "center",
-  },
   secondaryAction: {
     alignItems: "center",
     backgroundColor: colors.surface,
@@ -764,8 +776,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     flex: 1,
-    height: 38,
+    height: 44,
     justifyContent: "center",
+    minWidth: 0,
   },
   secondaryActionText: {
     color: colors.foreground,
@@ -785,7 +798,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     flexShrink: 1,
     lineHeight: 14,
-    maxWidth: 64,
     textAlign: "center",
     width: "100%",
   },
@@ -798,6 +810,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     flexDirection: "row",
     justifyContent: "space-between",
+    width: "100%",
   },
   topActions: {
     alignItems: "center",
