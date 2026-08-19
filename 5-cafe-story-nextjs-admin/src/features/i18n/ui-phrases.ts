@@ -303,6 +303,8 @@ export const viUiPhrases = {
   "No score": "Chưa có điểm",
   "Confirm blog action": "Xác nhận thao tác bài viết",
   "This action updates live blog data.": "Thao tác này cập nhật dữ liệu bài viết đang hoạt động.",
+  "Reason (optional)": "Lý do (không bắt buộc)",
+  "Sent to the author with the moderation notification...": "Được gửi đến tác giả cùng với thông báo kiểm duyệt...",
   "Caption score": "Điểm nội dung",
   "Image score": "Điểm hình ảnh",
   "AI status": "Trạng thái AI",
