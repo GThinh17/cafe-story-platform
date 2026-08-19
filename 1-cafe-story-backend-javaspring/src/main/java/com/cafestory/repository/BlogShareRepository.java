@@ -38,6 +38,21 @@ public interface BlogShareRepository extends JpaRepository<BlogShare, UUID> {
 
     long countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(UUID userId, LocalDateTime startDate, LocalDateTime endDate);
 
+    @Query("""
+            select count(share)
+            from BlogShare share
+            join share.blog b
+            where b.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
+            and b.author.userId = :authorUserId
+            and share.user.userId <> b.author.userId
+            and share.createdAt >= :startAt
+            and share.createdAt < :endAt
+            """)
+    long countByBlogAuthorUserIdBetween(
+            @Param("authorUserId") UUID authorUserId,
+            @Param("startAt") LocalDateTime startAt,
+            @Param("endAt") LocalDateTime endAt);
+
     List<BlogShare> findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(LocalDateTime startDate, LocalDateTime endDate);
 
     long countByBlogIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(UUID blogId, LocalDateTime startDate, LocalDateTime endDate);

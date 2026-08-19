@@ -77,6 +77,21 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
 
     long countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(UUID userId, LocalDateTime startDate, LocalDateTime endDate);
 
+    @Query("""
+            select count(c)
+            from Comment c
+            join c.blog b
+            where b.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
+            and b.author.userId = :authorUserId
+            and c.user.userId <> b.author.userId
+            and c.createdAt >= :startAt
+            and c.createdAt < :endAt
+            """)
+    long countByBlogAuthorUserIdBetween(
+            @Param("authorUserId") UUID authorUserId,
+            @Param("startAt") LocalDateTime startAt,
+            @Param("endAt") LocalDateTime endAt);
+
     List<Comment> findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(LocalDateTime startDate, LocalDateTime endDate);
 
     long countByBlogIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(UUID blogId, LocalDateTime startDate, LocalDateTime endDate);

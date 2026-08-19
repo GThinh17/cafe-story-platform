@@ -192,9 +192,12 @@ public class ReviewerServiceImpl implements ReviewerService {
     public ReviewerStatsResponseDTO countReviewerStatsByDateRange(UUID reviewerId, LocalDateTime startDate, LocalDateTime endDate) {
         Reviewer reviewer = validateReviewerExists(reviewerId);
         UUID userId = reviewer.getUser().getUserId();
-        long likeCount = blogLikeRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(userId, startDate, endDate);
-        long shareCount = blogShareRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(userId, startDate, endDate);
-        long commentCount = commentRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(userId, startDate, endDate);
+        // Badge, ranking và stats phải cùng đo engagement mà blog của reviewer
+        // nhận được. Đếm theo actor sẽ biến hoạt động reviewer làm cho người khác
+        // thành điểm của chính họ và khiến stats lệch khỏi lịch sử huy hiệu.
+        long likeCount = blogLikeRepository.countByBlogAuthorUserIdBetween(userId, startDate, endDate);
+        long shareCount = blogShareRepository.countByBlogAuthorUserIdBetween(userId, startDate, endDate);
+        long commentCount = commentRepository.countByBlogAuthorUserIdBetween(userId, startDate, endDate);
         long score = calculateScore(likeCount, shareCount, commentCount);
         return new ReviewerStatsResponseDTO(reviewerId, "custom", likeCount, shareCount, commentCount, score);
     }

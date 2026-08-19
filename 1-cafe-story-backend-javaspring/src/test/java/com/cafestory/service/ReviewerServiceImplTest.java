@@ -300,11 +300,11 @@ class ReviewerServiceImplTest {
     void countReviewerStats_success_coversEveryPeriod_TC009() {
         when(userValidator.validateUserExists(firstUser.getUserId())).thenReturn(firstUser);
         when(reviewerRepository.findById(firstReviewer.getReviewerId())).thenReturn(Optional.of(firstReviewer));
-        when(blogLikeRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+        when(blogLikeRepository.countByBlogAuthorUserIdBetween(
                 eq(firstUser.getUserId()), any(), any())).thenReturn(10L);
-        when(blogShareRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+        when(blogShareRepository.countByBlogAuthorUserIdBetween(
                 eq(firstUser.getUserId()), any(), any())).thenReturn(2L);
-        when(commentRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+        when(commentRepository.countByBlogAuthorUserIdBetween(
                 eq(firstUser.getUserId()), any(), any())).thenReturn(3L);
         when(formulaService.calculateScore(10L, 2L, 3L)).thenReturn(31L);
 
@@ -316,6 +316,29 @@ class ReviewerServiceImplTest {
             assertThat(stats.getScore()).isEqualTo(31L);
             assertThat(stats.getLikeCount()).isEqualTo(10L);
         }
+    }
+
+    @Test
+    void countReviewerStats_success_noReceivedEngagementReturnsZero_TC009A() {
+        when(userValidator.validateUserExists(firstUser.getUserId())).thenReturn(firstUser);
+        when(reviewerRepository.findById(firstReviewer.getReviewerId())).thenReturn(Optional.of(firstReviewer));
+        when(formulaService.calculateScore(0L, 0L, 0L)).thenReturn(0L);
+
+        ReviewerStatsResponseDTO stats = reviewerService.countReviewerStats(
+                firstUser.getUserId(), firstReviewer.getReviewerId(), "month");
+
+        assertThat(stats.getLikeCount()).isZero();
+        assertThat(stats.getShareCount()).isZero();
+        assertThat(stats.getCommentCount()).isZero();
+        assertThat(stats.getScore()).isZero();
+        verify(blogLikeRepository).countByBlogAuthorUserIdBetween(
+                eq(firstUser.getUserId()), any(), any());
+        verify(blogShareRepository).countByBlogAuthorUserIdBetween(
+                eq(firstUser.getUserId()), any(), any());
+        verify(commentRepository).countByBlogAuthorUserIdBetween(
+                eq(firstUser.getUserId()), any(), any());
+        verify(blogLikeRepository, never())
+                .countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(any(), any(), any());
     }
 
     @Test
@@ -354,11 +377,11 @@ class ReviewerServiceImplTest {
     @Test
     void countReviewerStatsByDateRange_success_marksPeriodCustom_TC013() {
         when(reviewerRepository.findById(firstReviewer.getReviewerId())).thenReturn(Optional.of(firstReviewer));
-        when(blogLikeRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+        when(blogLikeRepository.countByBlogAuthorUserIdBetween(
                 eq(firstUser.getUserId()), any(), any())).thenReturn(1L);
-        when(blogShareRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+        when(blogShareRepository.countByBlogAuthorUserIdBetween(
                 eq(firstUser.getUserId()), any(), any())).thenReturn(0L);
-        when(commentRepository.countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+        when(commentRepository.countByBlogAuthorUserIdBetween(
                 eq(firstUser.getUserId()), any(), any())).thenReturn(0L);
         when(formulaService.calculateScore(1L, 0L, 0L)).thenReturn(1L);
 

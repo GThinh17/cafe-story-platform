@@ -52,7 +52,7 @@ import type {
 
 const REVIEWER_FALLBACK_NAME = "Reviewer";
 
-const periods: ReviewerPeriod[] = ["day", "week", "month", "3months"];
+const periods: ReviewerPeriod[] = ["day", "week", "month"];
 
 const periodLabelKeys: Record<ReviewerPeriod, TranslationKey> = {
   day: "reviewer.period.day",

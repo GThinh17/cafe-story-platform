@@ -37,13 +37,19 @@ export function ReviewerBadgeProgress({
   currentScore,
 }: ReviewerBadgeProgressProps) {
   const { t } = useI18n();
-  const score = currentScore ?? profile.score;
+  // Badge history belongs to completed monthly snapshots. If live stats for the
+  // current period are unavailable, showing profile.score leaks the previous
+  // month's score into the current month.
+  const score = currentScore ?? 0;
   const nextBadge = getNextBadge(profile.badge);
   const nextMin = nextBadge ? badgeThresholds[nextBadge].min : score;
   const currentMin = badgeThresholds[profile.badge].min;
   const progress =
     nextBadge && nextMin > currentMin
-      ? Math.min(100, ((score - currentMin) / (nextMin - currentMin)) * 100)
+      ? Math.max(
+          0,
+          Math.min(100, ((score - currentMin) / (nextMin - currentMin)) * 100),
+        )
       : 100;
 
   return (

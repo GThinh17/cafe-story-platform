@@ -85,6 +85,21 @@ public interface BlogLikeRepository extends JpaRepository<BlogLike, UUID> {
 
     long countByUserUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(UUID userId, LocalDateTime startDate, LocalDateTime endDate);
 
+    @Query("""
+            select count(like)
+            from BlogLike like
+            join like.blog b
+            where b.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
+            and b.author.userId = :authorUserId
+            and like.user.userId <> b.author.userId
+            and like.createdAt >= :startAt
+            and like.createdAt < :endAt
+            """)
+    long countByBlogAuthorUserIdBetween(
+            @Param("authorUserId") UUID authorUserId,
+            @Param("startAt") LocalDateTime startAt,
+            @Param("endAt") LocalDateTime endAt);
+
     List<BlogLike> findByCreatedAtGreaterThanEqualAndCreatedAtLessThan(LocalDateTime startDate, LocalDateTime endDate);
 
     long countByBlogIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(UUID blogId, LocalDateTime startDate, LocalDateTime endDate);

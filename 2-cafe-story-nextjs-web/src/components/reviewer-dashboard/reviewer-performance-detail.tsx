@@ -18,7 +18,7 @@ import { useI18n } from "@/components/providers/locale-provider";
 import { LOCALE_HTML_LANG, type Locale } from "@/lib/i18n";
 
 
-const periods: ReviewerPeriod[] = ["day", "week", "month", "3months"];
+const periods: ReviewerPeriod[] = ["day", "week", "month"];
 
 function toStats(s: ReviewerStatsResponse): ReviewerStats {
   return {

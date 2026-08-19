@@ -1,6 +1,6 @@
 import { cache, Suspense } from "react";
 import { cookies } from "next/headers";
-import { CafeFeedSkeleton } from "@/components/feed/cafe-feed-skeleton";
+import { FeedColumnSkeleton } from "@/components/feed/cafe-feed-skeleton";
 import { HomeAccountPanel } from "@/components/feed/home-account-panel";
 import { FeedPostList } from "@/components/feed/feed-post-list";
 import { StoryRail } from "@/components/feed/story-rail";
@@ -25,7 +25,16 @@ import type { MessageContact, MessageDockData } from "@/types/message";
 
 export const dynamic = "force-dynamic";
 
-const FEED_PAGE_SIZE = 20;
+/**
+ * Số item mỗi lần nạp feed, dùng cho cả lần render đầu trên server lẫn các lần
+ * cuộn tiếp.
+ *
+ * <p>Backend chèn quảng cáo theo kích thước trang
+ * ({@code FeedServiceImpl.maxAdsForSize}) — từ 12 trở lên 2 slot, từ 6 được 1
+ * slot, dưới 6 thì KHÔNG có slot nào. Ở mốc 12 này mỗi lượt nạp gồm 10 bài
+ * organic + 2 quán tài trợ.
+ */
+const FEED_PAGE_SIZE = 12;
 
 type HomeFeedState = {
   errorMessage?: string;
@@ -393,7 +402,7 @@ export default async function Home() {
       <main className="grid w-full max-w-[1120px] touch-pan-y grid-cols-1 gap-14 overflow-x-clip px-4 py-8 sm:px-8 xl:ml-12 xl:max-w-none xl:grid-cols-[680px_1fr_320px] xl:gap-0 xl:px-0 xl:pr-16 2xl:ml-20 2xl:pr-24">
 
         <section className="w-full max-w-[630px] space-y-8">
-          <Suspense fallback={<CafeFeedSkeleton />}>
+          <Suspense fallback={<FeedColumnSkeleton />}>
             <FeedSection cookieHeader={cookieHeader} hasSession={hasSession} />
           </Suspense>
         </section>
