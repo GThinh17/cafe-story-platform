@@ -1,5 +1,5 @@
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
-import { Pressable, Text } from "../../features/i18n/localized-native";
+import { Pressable, Text } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { ArrowLeft } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -24,6 +24,7 @@ import { colors, spacing, typography } from "../../theme";
 import type { BlogFeedResponse, BlogResponse, ProfileContentTab } from "../../types";
 import type { RootStackParamList } from "../../navigation";
 import { routes } from "../../navigation";
+import { t } from "../../features/i18n";
 
 type UserPostsRouteProp = RouteProp<RootStackParamList, typeof routes.userPosts>;
 
@@ -165,7 +166,7 @@ export function UserPostsScreen() {
     <Screen padded={false}>
       <View style={styles.header}>
         <Pressable
-          accessibilityLabel="Back to profile"
+          accessibilityLabel={t("Back to profile")}
           accessibilityRole="button"
           hitSlop={10}
           onPress={() => navigation.goBack()}
@@ -178,7 +179,7 @@ export function UserPostsScreen() {
         </Pressable>
         <View style={styles.headerCopy}>
           <Text style={styles.headerTitle}>
-            {pageId ? "Cafe Posts" : getTabTitle(contentTab)}
+            {pageId ? t("Cafe Posts") : getTabTitle(contentTab)}
           </Text>
           {pageName || userName ? (
             <Text numberOfLines={1} style={styles.headerSubtitle}>
@@ -202,7 +203,7 @@ export function UserPostsScreen() {
             <EmptyState
               description={
                 pageId
-                  ? "Posts from this cafe page will appear here."
+                  ? t("Posts from this cafe page will appear here.")
                   : getEmptyDescription(contentTab)
               }
               title={error ?? (pageId ? "No cafe posts yet" : getEmptyTitle(contentTab))}

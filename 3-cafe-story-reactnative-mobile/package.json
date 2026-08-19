@@ -8,6 +8,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "i18n:check": "node ./scripts/check-i18n.mjs",
+    "test:report-comment": "node ./scripts/validate-mobile-i18n-report-comment.mjs",
     "typecheck": "node --stack_size=8192 ./node_modules/typescript/lib/tsc.js --noEmit"
   },
   "dependencies": {

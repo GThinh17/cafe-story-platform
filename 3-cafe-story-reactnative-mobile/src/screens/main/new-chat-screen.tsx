@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Text, TextInput } from "../../features/i18n/localized-native";
+import { Text, TextInput } from "react-native";
 import { FlatList, StyleSheet, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -22,6 +22,7 @@ import {
 import { colors, spacing, typography } from "../../theme";
 import type { RecommendationCardResponse } from "../../types";
 import type { NewChatSuggestionUser } from "../../components";
+import { t } from "../../features/i18n";
 
 function isMatchingSuggestion(item: NewChatSuggestionUser, query: string) {
   return (
@@ -168,31 +169,31 @@ export function NewChatScreen() {
     <Screen padded={false}>
       <ConversationTopBar
         onBackPress={() => navigation.goBack()}
-        title="New message"
+        title={t("New message")}
       />
 
       <FlatList
         ListHeaderComponent={
           <View style={styles.headerContent}>
             <View style={styles.searchRow}>
-              <Text style={styles.toLabel}>To:</Text>
+              <Text style={styles.toLabel}>{t("To:")}</Text>
               <TextInput
                 autoCapitalize="none"
                 onChangeText={setQuery}
-                placeholder="Search"
+                placeholder={t("Search")}
                 placeholderTextColor={colors.muted}
                 style={styles.searchInput}
                 value={query}
               />
             </View>
-            <Text style={styles.sectionTitle}>Suggestions</Text>
+            <Text style={styles.sectionTitle}>{t("Suggestions")}</Text>
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
           </View>
         }
         ListFooterComponent={
           filteredDiscoverSuggestions.length > 0 ? (
             <View style={styles.discoverSection}>
-              <Text style={styles.sectionTitle}>Discover people</Text>
+              <Text style={styles.sectionTitle}>{t("Discover people")}</Text>
               {filteredDiscoverSuggestions.map((item) => (
                 <NewChatSuggestionRow
                   disabled={Boolean(pendingUserId)}
@@ -219,13 +220,13 @@ export function NewChatScreen() {
             <ListRowSkeletonList padded={false} />
           ) : error || filteredDiscoverSuggestions.length > 0 ? null : query.trim() ? (
             <EmptyState
-              description="Try another name or username."
-              title="No people found"
+              description={t("Try another name or username.")}
+              title={t("No people found")}
             />
           ) : (
             <EmptyState
-              description="Follow people first to start a direct chat."
-              title="No suggestions yet"
+              description={t("Follow people first to start a direct chat.")}
+              title={t("No suggestions yet")}
             />
           )
         }

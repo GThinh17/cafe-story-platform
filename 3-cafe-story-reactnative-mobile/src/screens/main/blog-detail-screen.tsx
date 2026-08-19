@@ -1,6 +1,6 @@
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
-import { Pressable } from "../../features/i18n/localized-native";
-import { Text } from "../../features/i18n/localized-native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { ArrowLeft } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
@@ -12,6 +12,7 @@ import type { RootStackParamList } from "../../navigation";
 import { blogResponseToFeedBlog, getBlogById } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type { BlogFeedResponse } from "../../types";
+import { t } from "../../features/i18n";
 
 type BlogDetailRouteProp = RouteProp<RootStackParamList, typeof routes.blogDetail>;
 
@@ -36,7 +37,7 @@ export function BlogDetailScreen() {
       setBlog(blogResponseToFeedBlog(response));
       setError("");
     } catch {
-      setError("Unable to load this post.");
+      setError(t("Unable to load this post."));
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -51,7 +52,7 @@ export function BlogDetailScreen() {
     <Screen padded={false}>
       <View style={styles.topBar}>
         <Pressable
-          accessibilityLabel="Back"
+          accessibilityLabel={t("Back")}
           accessibilityRole="button"
           hitSlop={10}
           onPress={() => navigation.goBack()}
@@ -59,9 +60,7 @@ export function BlogDetailScreen() {
         >
           <ArrowLeft color={colors.foreground} size={30} strokeWidth={2.5} />
         </Pressable>
-        <Text numberOfLines={1} style={styles.title}>
-          Post
-        </Text>
+        <Text numberOfLines={1} style={styles.title}>{t("Post")}</Text>
         <View style={styles.iconButton} />
       </View>
 
@@ -78,13 +77,13 @@ export function BlogDetailScreen() {
         {isLoading && !blog ? (
           <FeedCardSkeletonList count={1} />
         ) : error ? (
-          <EmptyState description="Pull down to retry." title={error} />
+          <EmptyState description={t("Pull down to retry.")} title={error} />
         ) : blog ? (
           <BlogFeedCard blog={blog} showFollowButton={false} />
         ) : (
           <EmptyState
-            description="This post may have been removed."
-            title="Post unavailable"
+            description={t("This post may have been removed.")}
+            title={t("Post unavailable")}
           />
         )}
       </ScrollView>

@@ -1,0 +1,23 @@
+{
+  "status": "PARTIAL",
+  "issue": "REV-MOB-001",
+  "classification": "CODE_BUG",
+  "rootCause": "Mobile payout fields diverged from ReviewerEarningsResponseDTO; rendering called replace on an undefined payout status.",
+  "changedScope": [
+    "mobile reviewer payout type",
+    "reviewer dashboard payout presentation",
+    "payout history component",
+    "reviewer dashboard payout mocks"
+  ],
+  "verification": {
+    "typecheck": "PASS",
+    "i18nCheck": "PASS",
+    "staleFieldScan": "PASS",
+    "metroBundle": "PASS",
+    "postFixAuthenticatedUi": "NOT_VERIFIED_BROWSER_POLICY",
+    "changedFileCoverage": "FRONTEND_COVERAGE_TOOLING_MISSING",
+    "ports8080And8081": "STOPPED"
+  },
+  "commitCreated": false,
+  "containsCredentialsOrTokens": false
+}

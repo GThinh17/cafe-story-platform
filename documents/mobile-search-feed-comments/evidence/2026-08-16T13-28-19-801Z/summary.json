@@ -1,0 +1,33 @@
+{
+  "status": "PARTIAL",
+  "scope": "CafeStory mobile Explore Search with Feed and Comments regression checks",
+  "implementation": {
+    "aggregateSearchEndpoint": "GET /api/search",
+    "boundedResultsPerGroup": true,
+    "mobileFullListFilteringRemoved": true
+  },
+  "verification": {
+    "focusedBackendTests": "4 passed",
+    "fullBackendTests": "1373 passed, 1 skipped",
+    "backendChangedLineCoverage": "100%",
+    "backendServiceBranchCoverage": "100%",
+    "mobileI18nCheck": "PASS",
+    "mobileTypecheck": "PASS",
+    "expoWebFeed": "PASS",
+    "expoWebComments": "PASS",
+    "expoWebSearch": "PASS",
+    "nativeAndroid": "NOT_VERIFIED",
+    "mobileCoverage": "FRONTEND_COVERAGE_TOOLING_MISSING"
+  },
+  "runtime": {
+    "searchBefore": ">31 seconds and still searching",
+    "searchAfterCafeQueryMs": 1379,
+    "finalCleanBuildSearchMs": 1567
+  },
+  "knownIssues": [
+    "A temporary local test account remains because the self-delete endpoint returned HTTP 500",
+    "Android SDK/adb is unavailable in this environment"
+  ],
+  "secretsStored": false,
+  "committed": false
+}

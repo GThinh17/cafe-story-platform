@@ -1,6 +1,6 @@
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
-import { Pressable } from "../../features/i18n/localized-native";
-import { Text } from "../../features/i18n/localized-native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
@@ -21,6 +21,7 @@ import {
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type { NotificationResponse } from "../../types";
+import { t } from "../../features/i18n";
 
 const NOTIFICATION_PAGE_SIZE = 30;
 type NotificationFilterKey = "ALL" | "MESSAGES" | "TAGS" | "POSTS" | "FOLLOWS";
@@ -265,7 +266,7 @@ export function NotificationsScreen() {
       setNotifications(filterNotifications(nextNotifications, activeFilter));
       setUnreadCount(nextUnread.unreadCount ?? 0);
     } catch {
-      setError("Unable to load notifications. Pull down to try again.");
+      setError(t("Unable to load notifications. Pull down to try again."));
     } finally {
       setIsInitialLoading(false);
       setIsRefreshing(false);
@@ -335,7 +336,7 @@ export function NotificationsScreen() {
       );
       setUnreadCount(0);
     } catch {
-      setError("Unable to mark notifications as read.");
+      setError(t("Unable to mark notifications as read."));
     } finally {
       setIsMutating(false);
     }
@@ -353,7 +354,7 @@ export function NotificationsScreen() {
     try {
       await deleteNotification(notificationId);
     } catch {
-      setError("Unable to delete notification.");
+      setError(t("Unable to delete notification."));
       void loadNotifications(true);
     }
   }, [loadNotifications, notifications]);
@@ -463,7 +464,7 @@ function NotificationFilterBar({
 function NotificationSkeletonList() {
   return (
     <View
-      accessibilityLabel="Loading notifications"
+      accessibilityLabel={t("Loading notifications")}
       accessibilityRole="progressbar"
       style={styles.skeletonContent}
     >
@@ -493,12 +494,12 @@ function Header({
   return (
     <View style={styles.header}>
       <View style={styles.headerCopy}>
-        <Text style={styles.title}>Notifications</Text>
+        <Text style={styles.title}>{t("Notifications")}</Text>
         <Text style={styles.subtitle}>{unreadLabel}</Text>
       </View>
       {showMarkAll ? (
         <Pressable
-          accessibilityLabel="Mark all notifications as read"
+          accessibilityLabel={t("Mark all notifications as read")}
           accessibilityRole="button"
           onPress={onMarkAllRead}
           style={({ pressed }) => [styles.markAllButton, pressed && styles.pressed]}
@@ -559,7 +560,7 @@ function NotificationRow({
         </Text>
       </View>
       <Pressable
-        accessibilityLabel="Delete notification"
+        accessibilityLabel={t("Delete notification")}
         accessibilityRole="button"
         hitSlop={8}
         onPress={() => onDelete(notification.id)}

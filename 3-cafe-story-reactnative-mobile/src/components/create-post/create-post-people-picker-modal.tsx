@@ -1,5 +1,5 @@
 import { ArrowLeft, Check } from "lucide-react-native";
-import { Pressable, Text } from "../../features/i18n/localized-native";
+import { Pressable, Text } from "react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator, Modal, ScrollView, StyleSheet, View } from "react-native";
@@ -10,6 +10,7 @@ import type { UserResponse } from "../../types";
 import { Avatar } from "../ui/avatar";
 import { EmptyState } from "../ui/empty-state";
 import { LoadingState } from "../ui/loading-state";
+import { t } from "../../features/i18n";
 
 type CreatePostPeoplePickerModalProps = {
   currentUserId?: string | null;
@@ -106,7 +107,7 @@ export function CreatePostPeoplePickerModal({
       <View style={styles.modal}>
         <View style={styles.header}>
           <Pressable
-            accessibilityLabel="Close people picker"
+            accessibilityLabel={t("Close people picker")}
             accessibilityRole="button"
             onPress={onClose}
             style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
@@ -114,28 +115,26 @@ export function CreatePostPeoplePickerModal({
             <ArrowLeft color={colors.foreground} size={30} strokeWidth={2.5} />
           </Pressable>
 
-          <Text numberOfLines={1} style={styles.headerTitle}>
-            Tag people
-          </Text>
+          <Text numberOfLines={1} style={styles.headerTitle}>{t("Tag people")}</Text>
 
           <Pressable
-            accessibilityLabel="Apply tagged people"
+            accessibilityLabel={t("Apply tagged people")}
             accessibilityRole="button"
             onPress={handleApply}
             style={({ pressed }) => [styles.doneButton, pressed && styles.pressed]}
           >
-            <Text style={styles.doneText}>Done</Text>
+            <Text style={styles.doneText}>{t("Done")}</Text>
           </Pressable>
         </View>
 
         {isLoading ? (
-          <LoadingState label="Loading following..." />
+          <LoadingState label={t("Loading following...")} />
         ) : error ? (
-          <EmptyState description="Try closing this screen and opening it again." title={error} />
+          <EmptyState description={t("Try closing this screen and opening it again.")} title={error} />
         ) : !currentUserId ? (
-          <EmptyState description="Sign in again to tag people." title="Unable to find your account" />
+          <EmptyState description={t("Sign in again to tag people.")} title={t("Unable to find your account")} />
         ) : followingUsers.length === 0 ? (
-          <EmptyState description="Follow people first, then tag them in posts." title="No following users yet" />
+          <EmptyState description={t("Follow people first, then tag them in posts.")} title={t("No following users yet")} />
         ) : (
           <ScrollView
             contentContainerStyle={styles.content}

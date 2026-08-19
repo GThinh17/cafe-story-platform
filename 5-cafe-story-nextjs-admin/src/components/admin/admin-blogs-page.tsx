@@ -8,6 +8,7 @@ import {
   PinIcon,
 } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
+import { AdminTranslatableContent } from "@/components/admin/admin-translatable-content";
 import { UserCell } from "@/components/admin/user-cell";
 import {
   AdminDataTable,
@@ -193,7 +194,11 @@ export function AdminBlogsPage() {
         lines: 2,
         maxWidth: 420,
         cell: (blog) => (
-          <p className="text-sm leading-6 text-muted">{blog.content ?? "—"}</p>
+          <AdminTranslatableContent
+            contentKind="BLOG_CONTENT"
+            text={blog.content}
+            textClassName="text-sm leading-6 text-muted"
+          />
         ),
       },
       { header: "Status", cell: (blog) => <AdminStatusBadge value={blog.status} /> },
@@ -346,9 +351,12 @@ export function AdminBlogsPage() {
                 <p className="text-[11px] font-medium uppercase tracking-wide text-muted">
                   {ui("Caption")}
                 </p>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">
-                  {detailBlog.content || ui("No caption")}
-                </p>
+                <AdminTranslatableContent
+                  className="mt-2"
+                  contentKind="BLOG_CONTENT"
+                  text={detailBlog.content || ui("No caption")}
+                  textClassName="text-sm leading-6 text-foreground"
+                />
               </div>
               <AdminDetailGrid>
                 <AdminDetailField label="Author">

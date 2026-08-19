@@ -4,7 +4,7 @@ export type Locale = (typeof LOCALES)[number];
 export type LocalePreference = "system" | Locale;
 export type LocaleTag = "en-US" | "vi-VN";
 
-export const DEFAULT_LOCALE: Locale = "en";
+export const DEFAULT_LOCALE: Locale = "vi";
 export const LOCALE_STORAGE_KEY = "cafestory-locale-preference";
 
 export const LOCALE_TAGS: Record<Locale, LocaleTag> = {

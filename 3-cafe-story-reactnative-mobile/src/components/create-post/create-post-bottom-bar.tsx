@@ -1,9 +1,10 @@
 import { ImagePlus } from "lucide-react-native";
-import { Pressable, Text } from "../../features/i18n/localized-native";
+import { Pressable, Text } from "react-native";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors, spacing, typography } from "../../theme";
+import { t } from "../../features/i18n";
 
 type CreatePostBottomBarProps = {
   actionDisabled?: boolean;
@@ -30,7 +31,7 @@ export function CreatePostBottomBar({
       <View style={styles.container}>
         {showMediaAction ? (
           <Pressable
-            accessibilityLabel="Add photos"
+            accessibilityLabel={t("Add photos")}
             accessibilityRole="button"
             onPress={onAddMedia}
             style={({ pressed }) => [
@@ -57,7 +58,7 @@ export function CreatePostBottomBar({
             <ActivityIndicator color={colors.white} size="small" />
           ) : null}
           <Text style={styles.primaryText}>
-            {isSubmitting ? "Posting" : actionLabel}
+            {isSubmitting ? t("Posting") : actionLabel}
           </Text>
         </Pressable>
       </View>

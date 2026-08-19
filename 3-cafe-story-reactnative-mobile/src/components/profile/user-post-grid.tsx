@@ -1,8 +1,9 @@
 import { Pin } from "lucide-react-native";
-import { Pressable, Text } from "../../features/i18n/localized-native";
+import { Pressable, Text } from "react-native";
 import { Image, StyleSheet, View, useWindowDimensions } from "react-native";
 import type { UserPostPreview } from "../../types";
 import { colors, spacing, typography } from "../../theme";
+import { t } from "../../features/i18n";
 
 const GRID_GAP = 2;
 const COLUMN_COUNT = 3;

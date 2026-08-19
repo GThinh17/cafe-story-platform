@@ -37,6 +37,22 @@ public interface UserRepository extends JpaRepository<User, UUID> {
             from User u
             left join fetch u.region r
             where u.accountStatus = true
+            and (
+                lower(u.userName) like lower(concat('%', :query, '%'))
+                or lower(coalesce(u.userFullName, '')) like lower(concat('%', :query, '%'))
+                or lower(coalesce(u.userDescription, '')) like lower(concat('%', :query, '%'))
+                or lower(coalesce(r.city, '')) like lower(concat('%', :query, '%'))
+                or lower(coalesce(r.province, '')) like lower(concat('%', :query, '%'))
+            )
+            order by coalesce(u.userFollower, 0) desc, u.userName asc
+            """)
+    List<User> searchActiveUsers(@Param("query") String query, Pageable pageable);
+
+    @Query("""
+            select u
+            from User u
+            left join fetch u.region r
+            where u.accountStatus = true
             and u.userId <> :currentUserId
             order by
                 case

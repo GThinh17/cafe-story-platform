@@ -1,12 +1,13 @@
 import { ArrowLeft, Camera, ChevronDown, MapPin } from "lucide-react-native";
-import { Switch, Text } from "../../features/i18n/localized-native";
-import { Pressable, TextInput } from "../../features/i18n/localized-native";
+import { Switch, Text } from "react-native";
+import { Pressable, TextInput } from "react-native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, View } from "react-native";
 import { colors, spacing, typography } from "../../theme";
 import type { UserResponse, UserUpdateRequest } from "../../types";
 import { Avatar } from "../ui/avatar";
+import { t } from "../../features/i18n";
 
 const BIO_MAX_LENGTH = 150;
 
@@ -67,7 +68,7 @@ export function EditProfileModal({
       >
         <View style={styles.header}>
           <Pressable
-            accessibilityLabel="Close edit profile"
+            accessibilityLabel={t("Close edit profile")}
             accessibilityRole="button"
             disabled={isSaving}
             onPress={onClose}
@@ -80,12 +81,10 @@ export function EditProfileModal({
             <ArrowLeft color={colors.foreground} size={32} strokeWidth={2.5} />
           </Pressable>
 
-          <Text numberOfLines={1} style={styles.headerTitle}>
-            Edit profile
-          </Text>
+          <Text numberOfLines={1} style={styles.headerTitle}>{t("Edit profile")}</Text>
 
           <Pressable
-            accessibilityLabel="Save profile"
+            accessibilityLabel={t("Save profile")}
             accessibilityRole="button"
             disabled={isSaving}
             onPress={handleSave}
@@ -98,7 +97,7 @@ export function EditProfileModal({
             {isSaving ? (
               <ActivityIndicator color={colors.link} />
             ) : (
-              <Text style={styles.saveText}>Save</Text>
+              <Text style={styles.saveText}>{t("Save")}</Text>
             )}
           </Pressable>
         </View>
@@ -111,7 +110,7 @@ export function EditProfileModal({
           <View style={styles.avatarSection}>
             <View style={styles.avatarActions}>
               <Pressable
-                accessibilityLabel="Choose a new profile photo"
+                accessibilityLabel={t("Choose a new profile photo")}
                 accessibilityRole="button"
                 disabled={isSaving || isUploadingAvatar}
                 onPress={onAvatarPress}
@@ -133,7 +132,7 @@ export function EditProfileModal({
             </View>
 
             <Pressable
-              accessibilityLabel="Edit photo or avatar"
+              accessibilityLabel={t("Edit photo or avatar")}
               accessibilityRole="button"
               disabled={isSaving || isUploadingAvatar}
               onPress={onAvatarPress}
@@ -142,20 +141,20 @@ export function EditProfileModal({
               {isUploadingAvatar ? (
                 <ActivityIndicator color={colors.link} />
               ) : (
-                <Text style={styles.photoLinkText}>Edit photo or avatar</Text>
+                <Text style={styles.photoLinkText}>{t("Edit photo or avatar")}</Text>
               )}
             </Pressable>
           </View>
 
           <View style={styles.fields}>
             <ProfileField
-              label="Name"
+              label={t("Name")}
               onChangeText={setFullName}
               value={fullName}
             />
             <ProfileField
               autoCapitalize="none"
-              label="Username"
+              label={t("Username")}
               onChangeText={setUserName}
               value={userName}
             />
@@ -165,58 +164,55 @@ export function EditProfileModal({
               profile={profile}
             />
             <ProfileField
-              label="Bio"
+              label={t("Bio")}
               maxLength={BIO_MAX_LENGTH}
               onChangeText={setBio}
-              placeholder="Add a bio"
+              placeholder={t("Add a bio")}
               value={bio}
             />
           </View>
 
           <Pressable
-            accessibilityLabel="Add link"
+            accessibilityLabel={t("Add link")}
             accessibilityRole="button"
             style={({ pressed }) => [styles.sectionAction, pressed && styles.pressed]}
           >
-            <Text style={styles.sectionActionText}>Add link</Text>
+            <Text style={styles.sectionActionText}>{t("Add link")}</Text>
           </Pressable>
 
           <View style={styles.musicRow}>
             <View style={styles.musicCopy}>
-              <Text style={styles.sectionTitle}>Music</Text>
-              <Text style={styles.sectionDescription}>
-                Add songs, profiles, and more.
-              </Text>
+              <Text style={styles.sectionTitle}>{t("Music")}</Text>
+              <Text style={styles.sectionDescription}>{t("Add songs, profiles, and more.")}</Text>
             </View>
             <Text style={styles.musicCount}>1</Text>
           </View>
 
           <Pressable
-            accessibilityLabel="Select gender"
+            accessibilityLabel={t("Select gender")}
             accessibilityRole="button"
             style={({ pressed }) => [styles.selectField, pressed && styles.pressed]}
           >
             <View>
-              <Text style={styles.fieldLabel}>Gender</Text>
+              <Text style={styles.fieldLabel}>{t("Gender")}</Text>
               <Text style={styles.fieldValue}>{gender}</Text>
             </View>
             <ChevronDown color={colors.muted} size={28} strokeWidth={2.4} />
           </Pressable>
 
           <Pressable
-            accessibilityLabel="Reorder grid"
+            accessibilityLabel={t("Reorder grid")}
             accessibilityRole="button"
             style={({ pressed }) => [styles.sectionAction, pressed && styles.pressed]}
           >
-            <Text style={styles.sectionActionText}>Reorder grid</Text>
+            <Text style={styles.sectionActionText}>{t("Reorder grid")}</Text>
           </Pressable>
 
           <View style={styles.aiRow}>
             <View style={styles.aiCopy}>
-              <Text style={styles.sectionTitle}>AI creator</Text>
-              <Text style={styles.sectionDescription}>
-                Add this label to your profile if your content frequently uses AI.{" "}
-                <Text style={styles.inlineLink}>Learn more</Text>
+              <Text style={styles.sectionTitle}>{t("AI creator")}</Text>
+              <Text style={styles.sectionDescription}>{t("Add this label to your profile if your content frequently uses AI.")}{" "}
+                <Text style={styles.inlineLink}>{t("Learn more")}</Text>
               </Text>
             </View>
             <Switch
@@ -233,9 +229,9 @@ export function EditProfileModal({
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
           <View style={styles.linkRows}>
-            <SettingsLink label="Switch to professional account" />
-            <SettingsLink label="Personal information settings" />
-            <SettingsLink label="Show verified profile badge" />
+            <SettingsLink label={t("Switch to professional account")} />
+            <SettingsLink label={t("Personal information settings")} />
+            <SettingsLink label={t("Show verified profile badge")} />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -262,7 +258,7 @@ function LocationField({ disabled = false, onPress, profile }: LocationFieldProp
 
   return (
     <Pressable
-      accessibilityLabel="Update profile location"
+      accessibilityLabel={t("Update profile location")}
       accessibilityRole="button"
       disabled={disabled || !onPress}
       onPress={onPress}
@@ -273,7 +269,7 @@ function LocationField({ disabled = false, onPress, profile }: LocationFieldProp
       ]}
     >
       <View style={styles.locationCopy}>
-        <Text style={styles.fieldLabel}>Location</Text>
+        <Text style={styles.fieldLabel}>{t("Location")}</Text>
         <View style={styles.locationValueRow}>
           <MapPin color={colors.muted} size={18} strokeWidth={2.4} />
           <Text numberOfLines={1} style={styles.fieldValue}>

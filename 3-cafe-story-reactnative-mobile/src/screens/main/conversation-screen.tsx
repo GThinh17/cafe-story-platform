@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { Text } from "../../features/i18n/localized-native";
+import { Text } from "react-native";
 import { FlatList, StyleSheet, View } from "react-native";
 import { useFocusEffect, useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -20,6 +20,7 @@ import type { RootStackParamList } from "../../navigation";
 import { getCafePageConversations, getConversations } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type { ChatTargetType, ConversationListItem, ConversationResponse } from "../../types";
+import { t } from "../../features/i18n";
 
 const ASSISTANT_CONVERSATION_ID = "__cafestory_assistant__";
 
@@ -237,7 +238,7 @@ export function ConversationScreen() {
       <ConversationTopBar
         onBackPress={() => navigation.goBack()}
         onEditPress={cafePageId ? undefined : () => navigation.navigate(routes.newChat)}
-        title={cafePageId ? `${cafePageName || "Cafe Page"} messages` : "Messages"}
+        title={cafePageId ? `${cafePageName || "Cafe Page"} messages` : t("Messages")}
       />
 
       <FlatList
@@ -246,7 +247,7 @@ export function ConversationScreen() {
             <MessageSearch onChangeText={setQuery} value={query} />
             {cafePageId ? null : <OnlineUserRail users={mockOnlineUsers} />}
             <Text style={styles.sectionTitle}>
-              {cafePageId ? "Cafe page conversations" : "Conversations"}
+              {cafePageId ? t("Cafe page conversations") : t("Conversations")}
             </Text>
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
           </View>
@@ -271,21 +272,19 @@ export function ConversationScreen() {
           isLoading ? (
             <ListRowSkeletonList padded={false} />
           ) : error ? (
-            <EmptyState description={error} title="Conversations unavailable" />
+            <EmptyState description={error} title={t("Conversations unavailable")} />
           ) : query.trim() ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>No conversations found</Text>
-              <Text style={styles.emptyDescription}>
-                Try another name or message.
-              </Text>
+              <Text style={styles.emptyTitle}>{t("No conversations found")}</Text>
+              <Text style={styles.emptyDescription}>{t("Try another name or message.")}</Text>
             </View>
           ) : (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyTitle}>No conversations yet</Text>
+              <Text style={styles.emptyTitle}>{t("No conversations yet")}</Text>
               <Text style={styles.emptyDescription}>
                 {cafePageId
-                  ? "Customer conversations for this cafe page will appear here."
-                  : "Start a new chat from the message button above."}
+                  ? t("Customer conversations for this cafe page will appear here.")
+                  : t("Start a new chat from the message button above.")}
               </Text>
             </View>
           )

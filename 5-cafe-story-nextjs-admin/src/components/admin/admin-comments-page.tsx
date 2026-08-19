@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { EyeIcon } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
+import { AdminTranslatableContent } from "@/components/admin/admin-translatable-content";
 import { UserCell } from "@/components/admin/user-cell";
 import {
   AdminDataTable,
@@ -74,7 +75,11 @@ export function AdminCommentsPage() {
         lines: 2,
         maxWidth: 420,
         cell: (comment) => (
-          <p className="text-sm leading-6 text-muted">{comment.content ?? "—"}</p>
+          <AdminTranslatableContent
+            contentKind="COMMENT_CONTENT"
+            text={comment.content}
+            textClassName="text-sm leading-6 text-muted"
+          />
         ),
       },
       { header: "Blog", cell: (comment) => comment.blogId.slice(0, 8) },
@@ -185,7 +190,11 @@ export function AdminCommentsPage() {
               <AdminDetailField label="Created">{formatDate(detail.data.createdAt, localeTag)}</AdminDetailField>
               <AdminDetailField label="Updated">{formatDate(detail.data.updatedAt, localeTag)}</AdminDetailField>
               <AdminDetailField label="Content" className="sm:col-span-2">
-                <p className="whitespace-pre-wrap leading-6">{detail.data.content || "-"}</p>
+                <AdminTranslatableContent
+                  contentKind="COMMENT_CONTENT"
+                  text={detail.data.content}
+                  textClassName="leading-6"
+                />
               </AdminDetailField>
             </AdminDetailGrid>
             {detail.data.imageUrls?.length ? (

@@ -1,7 +1,8 @@
 import { Search } from "lucide-react-native";
-import { TextInput } from "../../features/i18n/localized-native";
+import { TextInput } from "react-native";
 import { StyleSheet, View } from "react-native";
 import { colors, spacing, typography } from "../../theme";
+import { t } from "../../features/i18n";
 
 type MessageSearchProps = {
   onChangeText: (value: string) => void;
@@ -15,7 +16,7 @@ export function MessageSearch({ onChangeText, value }: MessageSearchProps) {
       <TextInput
         autoCapitalize="none"
         onChangeText={onChangeText}
-        placeholder="Search"
+        placeholder={t("Search")}
         placeholderTextColor={colors.muted}
         style={styles.input}
         value={value}

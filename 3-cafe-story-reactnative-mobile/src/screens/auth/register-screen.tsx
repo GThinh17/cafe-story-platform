@@ -1,6 +1,6 @@
 import { useNavigation } from "@react-navigation/native";
-import { Pressable } from "../../features/i18n/localized-native";
-import { Text } from "../../features/i18n/localized-native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
@@ -10,6 +10,7 @@ import { routes } from "../../navigation";
 import { getUsernameSuggestions } from "../../services/api";
 import type { AuthStackParamList } from "../../navigation";
 import { colors, spacing, typography } from "../../theme";
+import { t } from "../../features/i18n";
 
 function localUsernameFallback(value: string) {
   const base = value
@@ -100,7 +101,7 @@ export function RegisterScreen() {
     setError("");
 
     if (!userEmail.trim() || !userName.trim() || !password) {
-      setError("Email, username, and password are required.");
+      setError(t("Email, username, and password are required."));
       return;
     }
 
@@ -129,15 +130,13 @@ export function RegisterScreen() {
     <Screen>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>CafeStory</Text>
-        <Text style={styles.title}>Create account</Text>
-        <Text style={styles.description}>
-          Start saving cafe notes, reviews, and places worth returning to.
-        </Text>
+        <Text style={styles.title}>{t("Create account")}</Text>
+        <Text style={styles.description}>{t("Start saving cafe notes, reviews, and places worth returning to.")}</Text>
       </View>
 
       <View style={styles.form}>
         <TextField
-          label="Full name"
+          label={t("Full name")}
           onChangeText={setUserFullName}
           placeholder="Gia Thinh"
           value={userFullName}
@@ -145,14 +144,14 @@ export function RegisterScreen() {
         <TextField
           autoCapitalize="none"
           keyboardType="email-address"
-          label="Email"
+          label={t("Email")}
           onChangeText={setUserEmail}
           placeholder="hello@cafestory.com"
           value={userEmail}
         />
         <TextField
           autoCapitalize="none"
-          label="Username"
+          label={t("Username")}
           onChangeText={(nextUserName) => {
             setDidEditUsername(true);
             setUserName(nextUserName);
@@ -190,9 +189,9 @@ export function RegisterScreen() {
           </View>
         ) : null}
         <TextField
-          label="Password"
+          label={t("Password")}
           onChangeText={setPassword}
-          placeholder="Create a password"
+          placeholder={t("Create a password")}
           secureTextEntry
           value={password}
         />
@@ -202,7 +201,7 @@ export function RegisterScreen() {
             isSubmitting || !userEmail.trim() || !userName.trim() || !password
           }
           isLoading={isSubmitting}
-          label="Create account"
+          label={t("Create account")}
           onPress={handleRegister}
         />
         <Pressable
@@ -210,7 +209,7 @@ export function RegisterScreen() {
           onPress={() => navigation.navigate(routes.login)}
           style={styles.switch}
         >
-          <Text style={styles.switchText}>I already have an account</Text>
+          <Text style={styles.switchText}>{t("I already have an account")}</Text>
         </Pressable>
       </View>
     </Screen>

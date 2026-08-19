@@ -1,5 +1,5 @@
 import { Megaphone, Store } from "lucide-react-native";
-import { Pressable, Text } from "../../features/i18n/localized-native";
+import { Pressable, Text } from "react-native";
 import { useState } from "react";
 import { Image, Linking, StyleSheet, View } from "react-native";
 
@@ -7,6 +7,7 @@ import { Avatar } from "../ui/avatar";
 import { recordAdClick } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type { SponsoredCafeResponse } from "../../types";
+import { t } from "../../features/i18n";
 
 type SponsoredCafeCardProps = {
   ad: SponsoredCafeResponse;
@@ -68,7 +69,7 @@ export function SponsoredCafeCard({ ad, onOpenCafePage }: SponsoredCafeCardProps
             </View>
             <View style={styles.sponsoredRow}>
               <Megaphone color={colors.primary} size={13} strokeWidth={2.5} />
-              <Text style={styles.sponsoredText}>Sponsored</Text>
+              <Text style={styles.sponsoredText}>{t("Sponsored")}</Text>
             </View>
           </View>
         </View>
@@ -104,7 +105,7 @@ export function SponsoredCafeCard({ ad, onOpenCafePage }: SponsoredCafeCardProps
           onPress={() => void handlePress()}
           style={({ pressed }) => [styles.cta, pressed && styles.pressed]}
         >
-          <Text style={styles.ctaText}>{isClickPending ? "Opening..." : ctaLabel}</Text>
+          <Text style={styles.ctaText}>{isClickPending ? t("Opening...") : ctaLabel}</Text>
         </Pressable>
       </View>
     </View>

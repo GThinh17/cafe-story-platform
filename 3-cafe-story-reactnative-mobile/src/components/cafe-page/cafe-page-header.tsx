@@ -1,5 +1,5 @@
 import { CalendarDays, Heart, MapPin, MessageCircle, Sparkles, Star, Store, Users, } from "lucide-react-native";
-import { Pressable, Text } from "../../features/i18n/localized-native";
+import { Pressable, Text } from "react-native";
 import { Image, StyleSheet, View } from "react-native";
 
 import { Avatar } from "../ui/avatar";
@@ -10,6 +10,7 @@ import {
   formatCurrentNumber,
 } from "../../features/i18n";
 import type { CafePageResponse } from "../../types";
+import { t } from "../../features/i18n";
 
 type CafePageHeaderProps = {
   cafePage: CafePageResponse;
@@ -103,11 +104,11 @@ export function CafePageHeader({
             </View>
 
             <View style={styles.stats}>
-              <Metric icon={Heart} label="likes" value={formatCount(cafePage.likeCount)} />
-              <Metric icon={Users} label="followers" value={formatCount(cafePage.followerCount)} />
+              <Metric icon={Heart} label={t("likes")} value={formatCount(cafePage.likeCount)} />
+              <Metric icon={Users} label={t("followers")} value={formatCount(cafePage.followerCount)} />
               <Metric
                 icon={Star}
-                label="rating"
+                label={t("rating")}
                 value={formatCurrentNumber(cafePage.ratingScore ?? 0, {
                   minimumFractionDigits: 1,
                   maximumFractionDigits: 1,
@@ -122,7 +123,7 @@ export function CafePageHeader({
         {cafePage.description ? (
           <Text style={styles.description}>{cafePage.description}</Text>
         ) : (
-          <Text style={styles.mutedDescription}>No description yet.</Text>
+          <Text style={styles.mutedDescription}>{t("No description yet.")}</Text>
         )}
 
         <View style={styles.metaList}>
@@ -136,7 +137,7 @@ export function CafePageHeader({
         {canManage ? (
           <>
             <Pressable
-              accessibilityLabel="Edit cafe page"
+              accessibilityLabel={t("Edit cafe page")}
               accessibilityRole="button"
               onPress={onEditPress}
               style={({ pressed }) => [
@@ -144,11 +145,11 @@ export function CafePageHeader({
                 pressed && styles.pressed,
               ]}
             >
-              <Text style={styles.profileActionText}>Edit Page</Text>
+              <Text style={styles.profileActionText}>{t("Edit Page")}</Text>
             </Pressable>
 
             <Pressable
-              accessibilityLabel="Share cafe page"
+              accessibilityLabel={t("Share cafe page")}
               accessibilityRole="button"
               onPress={onSharePress}
               style={({ pressed }) => [
@@ -156,11 +157,11 @@ export function CafePageHeader({
                 pressed && styles.pressed,
               ]}
             >
-              <Text style={styles.profileActionText}>Share Page</Text>
+              <Text style={styles.profileActionText}>{t("Share Page")}</Text>
             </Pressable>
 
             <Pressable
-              accessibilityLabel="Open cafe page suggestions"
+              accessibilityLabel={t("Open cafe page suggestions")}
               accessibilityRole="button"
               onPress={onSuggestPress}
               style={({ pressed }) => [
@@ -174,7 +175,7 @@ export function CafePageHeader({
         ) : (
           <>
             <Pressable
-              accessibilityLabel={isFollowing ? "Unfollow cafe page" : "Follow cafe page"}
+              accessibilityLabel={isFollowing ? t("Unfollow cafe page") : t("Follow cafe page")}
               accessibilityRole="button"
               disabled={isFollowPending}
               onPress={onFollowPress}
@@ -191,12 +192,12 @@ export function CafePageHeader({
                   isFollowing && styles.secondaryActionText,
                 ]}
               >
-                {isFollowing ? "Following" : "Follow"}
+                {isFollowing ? t("Following") : t("Follow")}
               </Text>
             </Pressable>
 
             <Pressable
-              accessibilityLabel="Message cafe page"
+              accessibilityLabel={t("Message cafe page")}
               accessibilityRole="button"
               onPress={onMessagePress}
               style={({ pressed }) => [
@@ -208,7 +209,7 @@ export function CafePageHeader({
             </Pressable>
 
             <Pressable
-              accessibilityLabel={isLiked ? "Unlike cafe page" : "Like cafe page"}
+              accessibilityLabel={isLiked ? t("Unlike cafe page") : t("Like cafe page")}
               accessibilityRole="button"
               disabled={isLikePending}
               onPress={onLikePress}

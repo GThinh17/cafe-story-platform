@@ -1,15 +1,27 @@
-import { Heart, Send, Store, X } from "lucide-react-native";
-import { Text } from "../../features/i18n/localized-native";
-import { Pressable, TextInput } from "../../features/i18n/localized-native";
+import { Heart, MoreHorizontal, Send, Store, X } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator, Animated, FlatList, Keyboard, KeyboardAvoidingView, Modal, Platform, StyleSheet, View } from "react-native";
+  ActivityIndicator,
+  Animated,
+  FlatList,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import { Avatar } from "../ui/avatar";
 import { CommentSkeletonList } from "../ui/skeleton";
+import { ReportContentModal } from "./report-post-modal";
 import { useAuth } from "../../features/auth";
+import { useI18n, type Translate } from "../../features/i18n";
 import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
 import { createComment, getCommentsByBlog } from "../../services/api";
@@ -30,8 +42,11 @@ type CommentItemProps = {
   likeCount: number;
   level?: number;
   onOpenProfile: (comment: CommentResponse) => void;
+  onReport: (comment: CommentListItem) => void;
   onReply: (comment: CommentListItem) => void;
   onToggleLike: (commentId: string) => void;
+  t: Translate;
+  viewerUserId?: string;
 };
 
 type CommentListItem = CommentResponse & {
@@ -112,14 +127,18 @@ function CommentItem({
   likeCount,
   level = 0,
   onOpenProfile,
+  onReport,
   onReply,
   onToggleLike,
+  t,
+  viewerUserId,
 }: CommentItemProps) {
   const authorName = getCommentAuthor(comment);
   const isReply = level > 0;
   const isPending = Boolean(comment.isPending);
   const isCafePageComment = comment.actorContextType === "CAFE_PAGE";
   const isLongComment = comment.content.length > LONG_COMMENT_THRESHOLD;
+  const canReport = !isPending && Boolean(viewerUserId) && comment.userId !== viewerUserId;
   const [isExpanded, setIsExpanded] = useState(!isLongComment);
 
   return (
@@ -131,7 +150,7 @@ function CommentItem({
       ]}
     >
       <Pressable
-        accessibilityLabel={`Open ${authorName} profile`}
+        accessibilityLabel={t("comment.a11y.openProfile", { name: authorName })}
         accessibilityRole="button"
         disabled={isPending}
         onPress={() => onOpenProfile(comment)}
@@ -164,7 +183,9 @@ function CommentItem({
             </Text>
             {isLongComment ? (
               <Pressable
-                accessibilityLabel={isExpanded ? "Collapse comment" : "Expand comment"}
+                accessibilityLabel={t(
+                  isExpanded ? "comment.a11y.collapse" : "comment.a11y.expand",
+                )}
                 accessibilityRole="button"
                 disabled={isPending}
                 onPress={() => setIsExpanded((currentValue) => !currentValue)}
@@ -173,7 +194,9 @@ function CommentItem({
                   pressed && styles.pressed,
                 ]}
               >
-                <Text style={styles.moreText}>{isExpanded ? "Less" : "More"}</Text>
+                <Text style={styles.moreText}>
+                  {t(isExpanded ? "comment.action.collapse" : "comment.action.expand")}
+                </Text>
               </Pressable>
             ) : null}
             <View style={styles.commentMetaRow}>
@@ -181,38 +204,56 @@ function CommentItem({
               {isPending ? (
                 <View style={styles.pendingStatus}>
                   <ActivityIndicator color={colors.primary} size="small" />
-                  <Text style={styles.pendingText}>Sending</Text>
+                  <Text style={styles.pendingText}>{t("comment.sending")}</Text>
                 </View>
               ) : (
                 <Pressable
-                  accessibilityLabel={`Reply to ${authorName}`}
+                  accessibilityLabel={t("comment.a11y.reply", { name: authorName })}
                   accessibilityRole="button"
                   onPress={() => onReply(comment)}
                 >
-                  <Text style={styles.commentMeta}>Reply</Text>
+                  <Text style={styles.commentMeta}>{t("comment.action.reply")}</Text>
                 </Pressable>
               )}
             </View>
           </View>
-          <Pressable
-            accessibilityLabel={isLiked ? "Unlike comment" : "Like comment"}
-            accessibilityRole="button"
-            disabled={isPending}
-            onPress={() => onToggleLike(comment.id)}
-            style={({ pressed }) => [
-              styles.commentHeartButton,
-              isPending && styles.disabledAction,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Heart
-              color={isLiked ? colors.danger : colors.muted}
-              fill={isLiked ? colors.danger : "none"}
-              size={20}
-              strokeWidth={2.2}
-            />
-            {likeCount ? <Text style={styles.commentLikeCount}>{likeCount}</Text> : null}
-          </Pressable>
+          <View style={styles.commentActions}>
+            {canReport ? (
+              <Pressable
+                accessibilityLabel={t("report.comment.options.open")}
+                accessibilityRole="button"
+                onPress={() => onReport(comment)}
+                style={({ pressed }) => [
+                  styles.commentOverflowButton,
+                  pressed && styles.pressed,
+                ]}
+                testID={`comment-options-${comment.id}`}
+              >
+                <MoreHorizontal color={colors.muted} size={20} strokeWidth={2.2} />
+              </Pressable>
+            ) : null}
+            <Pressable
+              accessibilityLabel={t(
+                isLiked ? "comment.action.unlike" : "comment.action.like",
+              )}
+              accessibilityRole="button"
+              disabled={isPending}
+              onPress={() => onToggleLike(comment.id)}
+              style={({ pressed }) => [
+                styles.commentHeartButton,
+                isPending && styles.disabledAction,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Heart
+                color={isLiked ? colors.danger : colors.muted}
+                fill={isLiked ? colors.danger : "none"}
+                size={20}
+                strokeWidth={2.2}
+              />
+              {likeCount ? <Text style={styles.commentLikeCount}>{likeCount}</Text> : null}
+            </Pressable>
+          </View>
         </View>
       </View>
     </View>
@@ -229,6 +270,7 @@ export function CommentModal({
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
+  const { t } = useI18n();
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const isClosingRef = useRef(false);
   const isMountedRef = useRef(visible);
@@ -244,6 +286,8 @@ export function CommentModal({
   const [isMounted, setIsMounted] = useState(visible);
   const [isLoading, setIsLoading] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
+  const [optionsComment, setOptionsComment] = useState<CommentListItem | null>(null);
+  const [reportComment, setReportComment] = useState<CommentListItem | null>(null);
 
   const closeModal = useCallback((notifyParent = true, afterClose?: () => void) => {
     if (isClosingRef.current) {
@@ -316,6 +360,8 @@ export function CommentModal({
       setDraft("");
       setError("");
       setReplyTarget(null);
+      setOptionsComment(null);
+      setReportComment(null);
       return;
     }
 
@@ -331,7 +377,7 @@ export function CommentModal({
       .catch(() => {
         if (isActive) {
           setComments([]);
-          setError("Unable to load comments. Please try again.");
+          setError(t("comment.error.load"));
         }
       })
       .finally(() => {
@@ -343,7 +389,7 @@ export function CommentModal({
     return () => {
       isActive = false;
     };
-  }, [blogId, visible]);
+  }, [blogId, t, visible]);
 
   const parentComments = useMemo(
     () => comments.filter((comment) => !comment.parentCommentId),
@@ -368,8 +414,8 @@ export function CommentModal({
   }, [comments]);
 
   const placeholder = replyTarget
-    ? `Reply to ${getCommentAuthor(replyTarget)}...`
-    : `Comment for ${postAuthorName}...`;
+    ? t("comment.placeholder.reply", { name: getCommentAuthor(replyTarget) })
+    : t("comment.placeholder.new", { name: postAuthorName });
 
   function handleToggleCommentLike(commentId: string) {
     setLikedCommentIds((currentIds) => {
@@ -475,7 +521,7 @@ export function CommentModal({
       );
       setDraft(content);
       setReplyTarget(currentReplyTarget);
-      setError("Unable to post comment. Please try again.");
+      setError(t("comment.error.post"));
     } finally {
       setIsPosting(false);
     }
@@ -496,6 +542,21 @@ export function CommentModal({
     });
   }
 
+  function openReportComment(comment: CommentListItem) {
+    if (comment.isPending || !user?.userId || comment.userId === user.userId) {
+      return;
+    }
+    setOptionsComment(comment);
+  }
+
+  function selectReportComment() {
+    if (!optionsComment) {
+      return;
+    }
+    setReportComment(optionsComment);
+    setOptionsComment(null);
+  }
+
   return (
     <Modal
       animationType="none"
@@ -512,7 +573,7 @@ export function CommentModal({
           style={[styles.backdrop, { opacity: backdropOpacity }]}
         />
         <Pressable
-          accessibilityLabel="Close comments"
+          accessibilityLabel={t("comment.a11y.close")}
           onPress={() => closeModal()}
           style={styles.backdropPressable}
         />
@@ -534,10 +595,10 @@ export function CommentModal({
           <View style={styles.handle} />
           <View style={styles.header}>
             <Text numberOfLines={1} style={styles.title}>
-              Comments
+              {t("comment.title")}
             </Text>
             <Pressable
-              accessibilityLabel="Close comments"
+              accessibilityLabel={t("comment.a11y.close")}
               accessibilityRole="button"
               onPress={() => closeModal()}
               style={({ pressed }) => [
@@ -554,7 +615,7 @@ export function CommentModal({
               <CommentSkeletonList />
             ) : error ? (
               <View style={styles.emptyBlock}>
-                <Text style={styles.emptyTitle}>Comments unavailable</Text>
+                <Text style={styles.emptyTitle}>{t("comment.unavailable")}</Text>
                 <Text style={styles.emptyDescription}>{error}</Text>
               </View>
             ) : comments.length ? (
@@ -575,8 +636,11 @@ export function CommentModal({
                         isLiked={likedCommentIds.has(item.id)}
                         likeCount={localLikeCounts[item.id] ?? 0}
                         onOpenProfile={handleOpenProfile}
+                        onReport={openReportComment}
                         onReply={setReplyTarget}
                         onToggleLike={handleToggleCommentLike}
+                        t={t}
+                        viewerUserId={user?.userId}
                       />
                       {visibleReplies.map((reply) => (
                         <CommentItem
@@ -586,14 +650,25 @@ export function CommentModal({
                           level={1}
                           likeCount={localLikeCounts[reply.id] ?? 0}
                           onOpenProfile={handleOpenProfile}
+                          onReport={openReportComment}
                           onReply={setReplyTarget}
                           onToggleLike={handleToggleCommentLike}
+                          t={t}
+                          viewerUserId={user?.userId}
                         />
                       ))}
                       {replies.length ? (
                         <Pressable
                           accessibilityLabel={
-                            isExpanded ? "Hide replies" : `View ${replies.length} replies`
+                            isExpanded
+                              ? t("comment.action.hideReplies")
+                              : t("comment.action.viewReplies", {
+                                  count: replies.length,
+                                  unit:
+                                    replies.length === 1
+                                      ? t("comment.reply.one")
+                                      : t("comment.reply.many"),
+                                })
                           }
                           accessibilityRole="button"
                           onPress={() => handleToggleReplies(item.id)}
@@ -605,10 +680,14 @@ export function CommentModal({
                           <View style={styles.replyLine} />
                           <Text style={styles.viewRepliesText}>
                             {isExpanded
-                              ? "Hide replies"
-                              : `View ${replies.length} ${
-                                  replies.length === 1 ? "reply" : "replies"
-                                }`}
+                              ? t("comment.action.hideReplies")
+                              : t("comment.action.viewReplies", {
+                                  count: replies.length,
+                                  unit:
+                                    replies.length === 1
+                                      ? t("comment.reply.one")
+                                      : t("comment.reply.many"),
+                                })}
                           </Text>
                         </Pressable>
                       ) : null}
@@ -619,9 +698,9 @@ export function CommentModal({
               />
             ) : (
               <View style={styles.emptyBlock}>
-                <Text style={styles.emptyTitle}>No comments yet</Text>
+                <Text style={styles.emptyTitle}>{t("comment.empty.title")}</Text>
                 <Text style={styles.emptyDescription}>
-                  Be the first to start the conversation.
+                  {t("comment.empty.description")}
                 </Text>
               </View>
             )}
@@ -631,7 +710,7 @@ export function CommentModal({
             <View style={styles.reactionRail}>
               {reactions.map((reaction) => (
                 <Pressable
-                  accessibilityLabel={`Add ${reaction} reaction`}
+                  accessibilityLabel={t("comment.a11y.addReaction", { reaction })}
                   accessibilityRole="button"
                   key={reaction}
                   onPress={() => setDraft((currentDraft) => `${currentDraft}${reaction}`)}
@@ -648,14 +727,16 @@ export function CommentModal({
             {replyTarget ? (
               <View style={styles.replyTargetRow}>
                 <Text numberOfLines={1} style={styles.replyTargetText}>
-                  Replying to {getCommentAuthor(replyTarget)}
+                  {t("comment.replyingTo", { name: getCommentAuthor(replyTarget) })}
                 </Text>
                 <Pressable
-                  accessibilityLabel="Cancel reply"
+                  accessibilityLabel={t("comment.action.cancelReply")}
                   accessibilityRole="button"
                   onPress={() => setReplyTarget(null)}
                 >
-                  <Text style={styles.cancelReplyText}>Cancel</Text>
+                  <Text style={styles.cancelReplyText}>
+                    {t("comment.action.cancelReply")}
+                  </Text>
                 </Pressable>
               </View>
             ) : null}
@@ -677,7 +758,7 @@ export function CommentModal({
                 />
               </View>
               <Pressable
-                accessibilityLabel="Post comment"
+                accessibilityLabel={t("comment.action.post")}
                 accessibilityRole="button"
                 disabled={!draft.trim() || isPosting}
                 onPress={handlePostComment}
@@ -692,6 +773,45 @@ export function CommentModal({
             </View>
           </View>
         </Animated.View>
+
+        <Modal
+          animationType="fade"
+          onRequestClose={() => setOptionsComment(null)}
+          transparent
+          visible={Boolean(optionsComment)}
+        >
+          <View style={styles.optionsOverlay}>
+            <Pressable
+              accessibilityLabel={t("report.comment.options.close")}
+              onPress={() => setOptionsComment(null)}
+              style={styles.optionsBackdrop}
+            />
+            <View style={styles.optionsSheet}>
+              <Pressable
+                accessibilityLabel={t("report.comment.action")}
+                accessibilityRole="button"
+                onPress={selectReportComment}
+                style={({ pressed }) => [
+                  styles.reportCommentAction,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={styles.reportCommentActionText}>
+                  {t("report.comment.action")}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {reportComment ? (
+          <ReportContentModal
+            onClose={() => setReportComment(null)}
+            targetId={reportComment.id}
+            targetType="COMMENT"
+            visible
+          />
+        ) : null}
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -734,6 +854,10 @@ const styles = StyleSheet.create({
   commentBody: {
     flex: 1,
   },
+  commentActions: {
+    alignItems: "center",
+    gap: spacing.xs,
+  },
   commentCafeBadge: {
     alignItems: "center",
     backgroundColor: colors.primarySoft,
@@ -762,6 +886,12 @@ const styles = StyleSheet.create({
     fontSize: typography.caption,
     fontWeight: "800",
     marginTop: 2,
+  },
+  commentOverflowButton: {
+    alignItems: "center",
+    height: 44,
+    justifyContent: "center",
+    width: 44,
   },
   commentLine: {
     color: colors.foreground,
@@ -870,6 +1000,20 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "flex-end",
   },
+  optionsBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  optionsOverlay: {
+    backgroundColor: "rgba(33, 29, 28, 0.42)",
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  optionsSheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    padding: spacing.lg,
+  },
   pendingCommentItem: {
     opacity: 0.86,
   },
@@ -923,6 +1067,20 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: typography.caption,
     fontWeight: "800",
+  },
+  reportCommentAction: {
+    alignItems: "center",
+    borderColor: colors.danger,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 52,
+    paddingHorizontal: spacing.lg,
+  },
+  reportCommentActionText: {
+    color: colors.danger,
+    fontSize: typography.body,
+    fontWeight: "900",
   },
   sendButton: {
     alignItems: "center",

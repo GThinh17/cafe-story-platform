@@ -42,7 +42,7 @@ type LocaleProviderProps = {
 const LocaleContext = createContext<LocaleContextValue | null>(null);
 
 function browserLocale(): Locale {
-  if (typeof navigator === "undefined") return "en";
+  if (typeof navigator === "undefined") return "vi";
   const languages = navigator.languages?.length
     ? navigator.languages
     : [navigator.language];
@@ -106,7 +106,7 @@ export function LocaleProvider({
     }
 
     applyPreference(
-      isLocalePreference(storedPreference) ? storedPreference : "system",
+      isLocalePreference(storedPreference) ? storedPreference : "vi",
     );
     setIsReady(true);
   }, [applyPreference, hasPersistedPreference, initialLocale, initialPreference]);

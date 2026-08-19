@@ -1,0 +1,23 @@
+{
+  "runtime": "Expo Web on localhost:8081",
+  "authenticated": true,
+  "feed": {
+    "status": "PASS",
+    "observed": "Stories and ten feed cards were rendered"
+  },
+  "comments": {
+    "status": "PASS",
+    "observed": "Existing comment thread rendered in the comments dialog"
+  },
+  "search": {
+    "status": "PASS",
+    "before": "Searching remained visible for more than 31 seconds",
+    "afterCafeQueryElapsedMs": 1379,
+    "finalCleanBuildCafeQueryElapsedMs": 1567,
+    "afterCafeQuery": "Cafe page and blog result groups rendered",
+    "afterReviewerQuery": "User/reviewer and blog result groups rendered",
+    "stuckSearching": false
+  },
+  "secretsStored": false,
+  "nativeAndroidVerified": false
+}

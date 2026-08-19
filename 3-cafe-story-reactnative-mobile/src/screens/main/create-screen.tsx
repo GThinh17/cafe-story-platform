@@ -1,5 +1,5 @@
 import * as ImagePicker from "expo-image-picker";
-import { Text } from "../../features/i18n/localized-native";
+import { Text } from "react-native";
 import { useCallback, useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
@@ -25,6 +25,7 @@ import {
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type { CreatePostDraft, UserResponse } from "../../types";
+import { t } from "../../features/i18n";
 
 type CreatePostStep = "compose" | "settings";
 type CreateRouteProp = RouteProp<MainTabParamList, typeof routes.create>;
@@ -178,7 +179,7 @@ export function CreateScreen() {
 
   const handleNext = useCallback(() => {
     if (!draft.caption.trim()) {
-      setError("Write a caption before continuing.");
+      setError(t("Write a caption before continuing."));
       return;
     }
 
@@ -195,7 +196,7 @@ export function CreateScreen() {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
-      setError("Photo access is required to add images.");
+      setError(t("Photo access is required to add images."));
       return;
     }
 
@@ -255,13 +256,13 @@ export function CreateScreen() {
 
   const handlePost = useCallback(async () => {
     if (!draft.caption.trim()) {
-      setError("Write a caption before posting.");
+      setError(t("Write a caption before posting."));
       setCurrentStep("compose");
       return;
     }
 
     if (!draft.location?.regionId) {
-      setError("Add your profile location before posting.");
+      setError(t("Add your profile location before posting."));
       return;
     }
 
@@ -292,7 +293,7 @@ export function CreateScreen() {
       resetDraft();
       navigation.navigate(routes.home);
     } catch {
-      setError("Unable to create post. Please try again.");
+      setError(t("Unable to create post. Please try again."));
     } finally {
       setIsSubmitting(false);
     }
@@ -304,7 +305,7 @@ export function CreateScreen() {
         isBack={isSettingsStep}
         onLeftPress={isSettingsStep ? handleBack : handleCancel}
         showAction={false}
-        title={isSettingsStep ? "Post Settings" : "New Post"}
+        title={isSettingsStep ? t("Post Settings") : t("New Post")}
       />
 
       {error ? (
@@ -351,7 +352,7 @@ export function CreateScreen() {
 
       <CreatePostBottomBar
         actionDisabled={isSettingsStep ? isSubmitting : !canContinue}
-        actionLabel={isSettingsStep ? "Post" : "Next"}
+        actionLabel={isSettingsStep ? t("Post") : t("Next")}
         isSubmitting={isSubmitting}
         onAction={isSettingsStep ? handlePost : handleNext}
         onAddMedia={handleAddMedia}

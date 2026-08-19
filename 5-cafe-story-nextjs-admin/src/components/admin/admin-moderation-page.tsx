@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { EyeIcon } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
+import { AdminTranslatableContent } from "@/components/admin/admin-translatable-content";
 import { UserCell } from "@/components/admin/user-cell";
 import {
   AdminDataTable,
@@ -132,9 +133,11 @@ export function AdminModerationPage() {
         lines: 2,
         maxWidth: 420,
         cell: (result) => (
-          <p className="text-sm leading-6 text-muted">
-            {result.caption || result.explanation || "—"}
-          </p>
+          <AdminTranslatableContent
+            contentKind={result.caption ? "BLOG_CONTENT" : "MODERATION_REASON"}
+            text={result.caption || result.explanation}
+            textClassName="text-sm leading-6 text-muted"
+          />
         ),
       },
       { header: "Caption score", cell: (result) => result.captionScore ?? "-" },
@@ -302,11 +305,14 @@ export function AdminModerationPage() {
                 ) : (
                   <p className="mt-2 text-sm text-muted">{ui("No images")}</p>
                 )}
-                {detailBlog.content && (
-                  <p className="mt-3 max-h-40 overflow-y-auto whitespace-pre-wrap text-sm leading-6 text-foreground">
-                    {detailBlog.content}
-                  </p>
-                )}
+                {detailBlog.content ? (
+                  <AdminTranslatableContent
+                    className="mt-3 max-h-48 overflow-y-auto"
+                    contentKind="BLOG_CONTENT"
+                    text={detailBlog.content}
+                    textClassName="text-sm leading-6 text-foreground"
+                  />
+                ) : null}
               </div>
             )}
             <Separator />
@@ -317,16 +323,25 @@ export function AdminModerationPage() {
               <p className="text-xs font-black uppercase tracking-[0.08em] text-muted">
                 {ui("Caption")}
               </p>
-              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">
-                {detailResult.caption || ui("No caption")}
-              </p>
+              <AdminTranslatableContent
+                className="mt-2"
+                contentKind="BLOG_CONTENT"
+                text={detailResult.caption || ui("No caption")}
+                textClassName="text-sm leading-6 text-foreground"
+              />
             </div>
             <AdminDetailGrid>
               <AdminDetailField label="Caption reason" className="sm:col-span-2">
-                {detailResult.captionReason || "-"}
+                <AdminTranslatableContent
+                  contentKind="MODERATION_REASON"
+                  text={detailResult.captionReason}
+                />
               </AdminDetailField>
               <AdminDetailField label="Image reason" className="sm:col-span-2">
-                {detailResult.imageReason || "-"}
+                <AdminTranslatableContent
+                  contentKind="MODERATION_REASON"
+                  text={detailResult.imageReason}
+                />
               </AdminDetailField>
               <AdminDetailField label="Tags" className="sm:col-span-2">
                 <div className="flex flex-wrap gap-1">

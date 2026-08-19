@@ -157,24 +157,33 @@ const allowedPhrases = new Set([
 const englishDictionaryValues = new Set(en.values.values());
 const knownUiPhrases = new Set(phraseCatalog.values.keys());
 const missingPhrases = new Map();
+const implicitPhrases = new Map();
+const forbiddenImports = [];
 
 function normalizePhrase(value) {
   return value.replace(/\s+/g, " ").trim();
 }
 
-function recordPhrase(value, file, sourceFile, position) {
+function phraseLocation(file, sourceFile, position) {
+  const relative = path.relative(projectRoot, file).replaceAll(path.sep, "/");
+  const line = sourceFile.getLineAndCharacterOfPosition(position).line + 1;
+  return `${relative}:${line}`;
+}
+
+function recordPhrase(value, file, sourceFile, position, requireExplicit = false) {
   const phrase = normalizePhrase(value);
   if (!phrase || !/[A-Za-z]/.test(phrase) || allowedPhrases.has(phrase)) {
     return;
   }
   if (englishDictionaryValues.has(phrase) || knownUiPhrases.has(phrase)) {
+    if (requireExplicit && !implicitPhrases.has(phrase)) {
+      implicitPhrases.set(phrase, phraseLocation(file, sourceFile, position));
+    }
     return;
   }
 
-  const relative = path.relative(projectRoot, file).replaceAll(path.sep, "/");
-  const line = sourceFile.getLineAndCharacterOfPosition(position).line + 1;
   if (!missingPhrases.has(phrase)) {
-    missingPhrases.set(phrase, `${relative}:${line}`);
+    missingPhrases.set(phrase, phraseLocation(file, sourceFile, position));
   }
 }
 
@@ -188,9 +197,13 @@ function scanSource(file) {
     ts.ScriptKind.TSX,
   );
 
+  if (source.includes("features/i18n/localized-native")) {
+    forbiddenImports.push(path.relative(projectRoot, file).replaceAll(path.sep, "/"));
+  }
+
   function visit(node) {
     if (ts.isJsxText(node)) {
-      recordPhrase(node.text, file, sourceFile, node.pos);
+      recordPhrase(node.text, file, sourceFile, node.pos, true);
     }
 
     if (
@@ -199,7 +212,7 @@ function scanSource(file) {
       node.initializer &&
       ts.isStringLiteral(node.initializer)
     ) {
-      recordPhrase(node.initializer.text, file, sourceFile, node.pos);
+      recordPhrase(node.initializer.text, file, sourceFile, node.pos, true);
     }
 
     if (
@@ -215,7 +228,7 @@ function scanSource(file) {
       if (/^(Alert\.alert|setError|setMessage|setSuccess)$/.test(callName)) {
         for (const argument of node.arguments) {
           if (ts.isStringLiteralLike(argument)) {
-            recordPhrase(argument.text, file, sourceFile, argument.pos);
+            recordPhrase(argument.text, file, sourceFile, argument.pos, true);
           }
         }
       }
@@ -227,7 +240,7 @@ function scanSource(file) {
       (node.parent.whenTrue === node || node.parent.whenFalse === node) &&
       ts.isJsxExpression(node.parent.parent)
     ) {
-      recordPhrase(node.text, file, sourceFile, node.pos);
+      recordPhrase(node.text, file, sourceFile, node.pos, true);
     }
 
     ts.forEachChild(node, visit);
@@ -259,6 +272,24 @@ if (missingPhrases.size > 0) {
     `Uncatalogued UI phrases (${missingPhrases.size}):\n${[...missingPhrases]
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([phrase, location]) => `  - ${JSON.stringify(phrase)} at ${location}`)
+      .join("\n")}`,
+  );
+}
+
+if (implicitPhrases.size > 0) {
+  errors.push(
+    `UI phrases must use explicit t(...) calls (${implicitPhrases.size}):\n${[...implicitPhrases]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([phrase, location]) => `  - ${JSON.stringify(phrase)} at ${location}`)
+      .join("\n")}`,
+  );
+}
+
+if (forbiddenImports.length > 0) {
+  errors.push(
+    `Forbidden localized-native imports:\n${forbiddenImports
+      .sort()
+      .map((file) => `  - ${file}`)
       .join("\n")}`,
   );
 }

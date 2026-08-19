@@ -5,7 +5,7 @@ export type Locale = (typeof LOCALES)[number];
 export type LocalePreference = (typeof LOCALE_PREFERENCES)[number];
 export type LocaleTag = "en-US" | "vi-VN";
 
-export const DEFAULT_LOCALE: Locale = "en";
+export const DEFAULT_LOCALE: Locale = "vi";
 export const LOCALE_PREFERENCE_KEY = "cafestory-admin-locale-preference";
 export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 

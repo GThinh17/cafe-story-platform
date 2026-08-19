@@ -1,7 +1,8 @@
 import { ScrollView, StyleSheet } from "react-native";
-import { Pressable, Text } from "../../features/i18n/localized-native";
+import { Pressable, Text } from "react-native";
 
 import { colors, spacing, typography } from "../../theme";
+import { t, type TranslationKey } from "../../features/i18n";
 
 export type ExploreTab = "all" | "cafes" | "reviewers" | "trending";
 
@@ -10,11 +11,11 @@ type ExploreTabsProps = {
   onChange: (tab: ExploreTab) => void;
 };
 
-const tabs: Array<{ label: string; value: ExploreTab }> = [
-  { label: "All", value: "all" },
-  { label: "Cafes", value: "cafes" },
-  { label: "Reviewers", value: "reviewers" },
-  { label: "Trending", value: "trending" },
+const tabs: Array<{ labelKey: TranslationKey; value: ExploreTab }> = [
+  { labelKey: "explore.tab.all", value: "all" },
+  { labelKey: "explore.tab.cafes", value: "cafes" },
+  { labelKey: "explore.tab.reviewers", value: "reviewers" },
+  { labelKey: "explore.tab.trending", value: "trending" },
 ];
 
 export function ExploreTabs({ activeTab, onChange }: ExploreTabsProps) {
@@ -26,10 +27,11 @@ export function ExploreTabs({ activeTab, onChange }: ExploreTabsProps) {
     >
       {tabs.map((tab) => {
         const isActive = activeTab === tab.value;
+        const label = t(tab.labelKey);
 
         return (
           <Pressable
-            accessibilityLabel={`Show ${tab.label}`}
+            accessibilityLabel={label}
             accessibilityRole="button"
             key={tab.value}
             onPress={() => onChange(tab.value)}
@@ -40,7 +42,7 @@ export function ExploreTabs({ activeTab, onChange }: ExploreTabsProps) {
             ]}
           >
             <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
-              {tab.label}
+              {label}
             </Text>
           </Pressable>
         );

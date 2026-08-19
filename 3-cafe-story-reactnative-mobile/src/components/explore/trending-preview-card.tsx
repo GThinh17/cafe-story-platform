@@ -1,11 +1,12 @@
 import { ChevronRight, Flame, Pin, TrendingUp } from "lucide-react-native";
-import { Pressable } from "../../features/i18n/localized-native";
-import { Text } from "../../features/i18n/localized-native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
 import { StyleSheet, View } from "react-native";
 
 import { colors, spacing, typography } from "../../theme";
 import { formatCurrentCompactNumber, formatCurrentNumber } from "../../features/i18n";
 import type { BlogTrendingResponse } from "../../types";
+import { t } from "../../features/i18n";
 
 type TrendingPreviewCardProps = {
   item: BlogTrendingResponse;
@@ -42,7 +43,7 @@ export function TrendingPreviewCard({ item, onPress }: TrendingPreviewCardProps)
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
       <View style={styles.rankBlock}>
-        <Text style={styles.rankText}>{rank ? `#${rank}` : "Hot"}</Text>
+        <Text style={styles.rankText}>{rank ? `#${rank}` : t("Hot")}</Text>
         <TrendingUp color={colors.primary} size={18} strokeWidth={2.5} />
       </View>
 
@@ -54,7 +55,7 @@ export function TrendingPreviewCard({ item, onPress }: TrendingPreviewCardProps)
           {item.pinned ? (
             <View style={styles.pinBadge}>
               <Pin color={colors.primary} size={13} strokeWidth={2.6} />
-              <Text style={styles.pinText}>Pinned</Text>
+              <Text style={styles.pinText}>{t("Pinned")}</Text>
             </View>
           ) : null}
         </View>

@@ -1,10 +1,11 @@
 import { Check, X } from "lucide-react-native";
-import { Text } from "../../features/i18n/localized-native";
-import { Pressable, TextInput } from "../../features/i18n/localized-native";
+import { Text } from "react-native";
+import { Pressable, TextInput } from "react-native";
 import { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView, Modal, Platform, StyleSheet, View } from "react-native";
 import { colors, spacing, typography } from "../../theme";
+import { t } from "../../features/i18n";
 
 const BIO_MAX_LENGTH = 150;
 
@@ -52,7 +53,7 @@ export function BioEditorModal({
       >
         <View style={styles.topBar}>
           <Pressable
-            accessibilityLabel="Close bio editor"
+            accessibilityLabel={t("Close bio editor")}
             accessibilityRole="button"
             disabled={isSaving}
             onPress={handleClose}
@@ -65,10 +66,10 @@ export function BioEditorModal({
             <X color={colors.foreground} size={34} strokeWidth={2.2} />
           </Pressable>
 
-          <Text style={styles.title}>Bio</Text>
+          <Text style={styles.title}>{t("Bio")}</Text>
 
           <Pressable
-            accessibilityLabel="Save bio"
+            accessibilityLabel={t("Save bio")}
             accessibilityRole="button"
             disabled={isSaving}
             onPress={() => onSave(bioDraft)}
@@ -84,7 +85,7 @@ export function BioEditorModal({
 
         <View style={styles.inputBox}>
           <View style={styles.inputHeader}>
-            <Text style={styles.inputLabel}>Bio</Text>
+            <Text style={styles.inputLabel}>{t("Bio")}</Text>
             <Text style={styles.counter}>
               {bioDraft.length}/{BIO_MAX_LENGTH}
             </Text>
@@ -96,7 +97,7 @@ export function BioEditorModal({
             maxLength={BIO_MAX_LENGTH}
             multiline
             onChangeText={setBioDraft}
-            placeholder="Add a bio"
+            placeholder={t("Add a bio")}
             placeholderTextColor={colors.muted}
             selectionColor={colors.tertiary}
             style={styles.input}

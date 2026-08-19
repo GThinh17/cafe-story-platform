@@ -62,6 +62,24 @@ public interface CafePageRepository extends JpaRepository<CafePage, UUID> {
     @Query("select p from CafePage p where p.status = com.cafestory.entity.enums.PageStatus.ACTIVE and lower(p.name) like lower(concat('%', :query, '%'))")
     List<CafePage> searchActiveCafePagesByName(@Param("query") String query);
 
+    @Query("""
+            select p
+            from CafePage p
+            left join fetch p.region r
+            left join fetch p.owner o
+            where p.status = com.cafestory.entity.enums.PageStatus.ACTIVE
+            and p.pageActive = true
+            and (
+                lower(p.name) like lower(concat('%', :query, '%'))
+                or lower(coalesce(p.description, '')) like lower(concat('%', :query, '%'))
+                or lower(coalesce(p.address, '')) like lower(concat('%', :query, '%'))
+                or lower(coalesce(r.city, '')) like lower(concat('%', :query, '%'))
+                or lower(coalesce(r.province, '')) like lower(concat('%', :query, '%'))
+            )
+            order by coalesce(p.followerCount, 0) desc, coalesce(p.likeCount, 0) desc, p.name asc
+            """)
+    List<CafePage> searchActiveCafePages(@Param("query") String query, Pageable pageable);
+
     @Query("select p from CafePage p where p.status = com.cafestory.entity.enums.PageStatus.ACTIVE")
     List<CafePage> findAllActiveCafePages();
 

@@ -21,7 +21,7 @@ export async function getServerLocaleState(): Promise<ServerLocaleState> {
   const [cookieStore, headerStore] = await Promise.all([cookies(), headers()]);
   const storedPreference = cookieStore.get(LOCALE_PREFERENCE_KEY)?.value;
   const hasPersistedPreference = isLocalePreference(storedPreference);
-  const preference = hasPersistedPreference ? storedPreference : "system";
+  const preference = hasPersistedPreference ? storedPreference : "vi";
   const systemLocale = resolveLocaleFromAcceptLanguage(
     headerStore.get("accept-language"),
   );

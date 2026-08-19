@@ -10,7 +10,8 @@
     "start": "next start",
     "test:e2e:admin-assistant": "playwright test tests/e2e/admin-assistant.spec.ts --project=chromium",
     "test:e2e:admin-report-ai": "playwright test tests/e2e/admin-report-ai.spec.ts --project=chromium",
-    "test:e2e:i18n": "playwright test tests/e2e/admin-i18n.spec.ts --project=chromium"
+    "test:e2e:i18n": "playwright test tests/e2e/admin-i18n.spec.ts --project=chromium",
+    "test:e2e:translation": "playwright test tests/e2e/admin-translation.spec.ts --project=chromium"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

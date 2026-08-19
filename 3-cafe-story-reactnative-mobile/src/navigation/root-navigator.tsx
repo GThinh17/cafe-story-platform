@@ -1,6 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { LoadingState, Screen } from "../components";
 import { useAuth } from "../features/auth";
+import { t } from "../features/i18n";
 import {
   AdsManagerScreen,
   AiAssistantScreen,
@@ -29,7 +30,7 @@ export function RootNavigator() {
   if (isLoading) {
     return (
       <Screen>
-        <LoadingState label="Preparing CafeStory..." />
+        <LoadingState label={t("Preparing CafeStory...")} />
       </Screen>
     );
   }

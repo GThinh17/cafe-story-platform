@@ -114,6 +114,15 @@ export const apiEndpoints = {
       return queryString ? `/api/regions/wards?${queryString}` : "/api/regions/wards";
     },
   },
+  search: {
+    explore: (query: string, size = 8) => {
+      const searchParams = new URLSearchParams({
+        query,
+        size: String(size),
+      });
+      return `/api/search?${searchParams.toString()}`;
+    },
+  },
   recommendations: {
     cafePages: (page = 0, size = 20) =>
       `/api/recommendations/cafe-pages?page=${page}&size=${size}`,

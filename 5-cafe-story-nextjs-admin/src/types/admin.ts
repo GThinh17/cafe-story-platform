@@ -5,6 +5,27 @@ export type PostStatus = "DRAFT" | "PUBLISHED" | "HIDDEN" | "REMOVED";
 export type PageStatus = "DRAFT" | "ACTIVE" | "SUSPENDED";
 export type ReportStatus = "OPEN" | "REVIEWING" | "RESOLVED" | "REJECTED";
 export type ReportTargetType = "BLOG" | "COMMENT" | "USER" | "CAFE_PAGE";
+export type AdminTranslationContentKind =
+  | "BLOG_CONTENT"
+  | "COMMENT_CONTENT"
+  | "REPORT_DESCRIPTION"
+  | "REPORT_REASON"
+  | "AI_EXPLANATION"
+  | "AI_RATIONALE"
+  | "MODERATION_REASON";
+export type AdminContentTranslationRequest = {
+  text: string;
+  targetLocale: "en" | "vi";
+  contentKind: AdminTranslationContentKind;
+};
+export type AdminContentTranslationResponse = {
+  requestId: UUID;
+  detectedLocale: "en" | "vi" | "und";
+  targetLocale: "en" | "vi";
+  translatedText: string;
+  translationState: "TRANSLATED";
+  modelName: string;
+};
 export type AdminReportAiReportDecision =
   | "RESOLVE"
   | "REJECT"

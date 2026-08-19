@@ -13,6 +13,7 @@ import {
   XCircleIcon,
 } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
+import { AdminTranslatableContent } from "@/components/admin/admin-translatable-content";
 import { AdminReportAiPolicySheet } from "@/components/admin/admin-report-ai-policy-sheet";
 import { AdminReportTargetActions } from "@/components/admin/admin-report-target-actions";
 import { UserCell } from "@/components/admin/user-cell";
@@ -637,9 +638,12 @@ export function AdminReportsPage() {
                 })}
               </Badge>
             </div>
-            <p className="mt-1 text-sm leading-6 text-muted">
-              {report.description ?? "—"}
-            </p>
+            <AdminTranslatableContent
+              className="mt-1"
+              contentKind="REPORT_DESCRIPTION"
+              text={report.description}
+              textClassName="text-sm leading-6 text-muted"
+            />
             {report.reasonCode ? (
               <p className="mt-1 font-mono text-xs text-muted">{report.reasonCode}</p>
             ) : null}
@@ -1199,8 +1203,11 @@ export function AdminReportsPage() {
               >
                 <AdminDetailGrid>
                 <AdminDetailField label="Reason" className="sm:col-span-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span>{reportReason(detailReport, enumLabel, ui)}</span>
+                  <div className="flex flex-wrap items-start gap-2">
+                    <AdminTranslatableContent
+                      contentKind="REPORT_REASON"
+                      text={detailReport.reasonLabel || detailReport.reason}
+                    />
                     <Badge className={severityClassName(detailReport.reasonSeverity)}>
                       {ui("Severity {severity}", {
                         severity:
@@ -1248,9 +1255,11 @@ export function AdminReportsPage() {
                   {formatDate(detailReport.resolvedAt, localeTag)}
                 </AdminDetailField>
                 <AdminDetailField label="Description" className="sm:col-span-2">
-                  <p className="whitespace-pre-wrap leading-6">
-                    {detailReport.description || "-"}
-                  </p>
+                  <AdminTranslatableContent
+                    contentKind="REPORT_DESCRIPTION"
+                    text={detailReport.description}
+                    textClassName="leading-6"
+                  />
                 </AdminDetailField>
                 </AdminDetailGrid>
 
@@ -1333,9 +1342,12 @@ export function AdminReportsPage() {
                           <p className="mt-3 text-sm font-semibold text-espresso">
                              {enumLabel(resolution.reportDecision)} / {enumLabel(resolution.targetAction)}
                           </p>
-                          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-muted">
-                            {resolution.explanation || "-"}
-                          </p>
+                          <AdminTranslatableContent
+                            className="mt-2"
+                            contentKind="AI_EXPLANATION"
+                            text={resolution.explanation}
+                            textClassName="text-sm leading-6 text-muted"
+                          />
                           <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted">
                             {resolution.contractVersion === "2.0" ? (
                               <>
@@ -1464,7 +1476,12 @@ export function AdminReportsPage() {
                                 <span className="text-xs text-muted">{finding.ruleVersion}</span>
                                 <AdminStatusBadge value={finding.outcome} />
                               </div>
-                              <p className="mt-2 text-sm text-foreground">{finding.rationale}</p>
+                              <AdminTranslatableContent
+                                className="mt-2"
+                                contentKind="AI_RATIONALE"
+                                text={finding.rationale}
+                                textClassName="text-sm text-foreground"
+                              />
                               <p className="mt-2 text-xs text-muted">
                                  {ui("Evidence: {ids}", { ids: finding.evidenceIds.join(", ") || ui("none") })}
                               </p>
@@ -1502,9 +1519,12 @@ export function AdminReportsPage() {
                       <p className="text-xs font-black uppercase text-muted">
                          {ui("AI rationale — not evidence")}
                       </p>
-                      <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-foreground">
-                        {latestAiResolution.explanation || "-"}
-                      </p>
+                      <AdminTranslatableContent
+                        className="mt-1"
+                        contentKind="AI_EXPLANATION"
+                        text={latestAiResolution.explanation}
+                        textClassName="text-sm leading-6 text-foreground"
+                      />
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {latestAiResolution.labels.length ? (

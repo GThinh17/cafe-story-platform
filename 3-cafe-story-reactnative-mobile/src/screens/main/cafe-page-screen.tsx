@@ -1,6 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
-import { Pressable } from "../../features/i18n/localized-native";
-import { Text } from "../../features/i18n/localized-native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
@@ -33,6 +33,7 @@ import {
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type { CafePageResponse, CafePageUpdateRequest, UserPostPreview } from "../../types";
+import { t } from "../../features/i18n";
 
 type CafePageRouteProp = RouteProp<RootStackParamList, typeof routes.cafeDetail>;
 type CafePageContentTab = "posts" | "reviews" | "members" | "requests";
@@ -415,8 +416,8 @@ export function CafePageScreen() {
       ) : (
         <View style={[styles.tabContent, styles.emptyPosts]}>
           <EmptyState
-            description="Posts from this cafe page will appear here."
-            title="No cafe posts yet"
+            description={t("Posts from this cafe page will appear here.")}
+            title={t("No cafe posts yet")}
           />
         </View>
       );
@@ -426,8 +427,8 @@ export function CafePageScreen() {
       return (
         <View style={[styles.tabContent, styles.emptyPosts]}>
           <EmptyState
-            description="Cafe reviews will appear here when reviewers publish them."
-            title="No reviews yet"
+            description={t("Cafe reviews will appear here when reviewers publish them.")}
+            title={t("No reviews yet")}
           />
         </View>
       );
@@ -437,8 +438,8 @@ export function CafePageScreen() {
       return (
         <View style={[styles.tabContent, styles.emptyPosts]}>
           <EmptyState
-            description="Page members will appear here when member APIs are connected."
-            title="No members to show"
+            description={t("Page members will appear here when member APIs are connected.")}
+            title={t("No members to show")}
           />
         </View>
       );
@@ -447,8 +448,8 @@ export function CafePageScreen() {
     return (
       <View style={[styles.tabContent, styles.emptyPosts]}>
         <EmptyState
-          description="Join requests will appear here for page owners."
-          title="No requests right now"
+          description={t("Join requests will appear here for page owners.")}
+          title={t("No requests right now")}
         />
       </View>
     );
@@ -458,7 +459,7 @@ export function CafePageScreen() {
     <Screen padded={false}>
       <View style={styles.topBar}>
         <Pressable
-          accessibilityLabel="Back"
+          accessibilityLabel={t("Back")}
           accessibilityRole="button"
           hitSlop={10}
           onPress={() => navigation.goBack()}
@@ -467,14 +468,12 @@ export function CafePageScreen() {
           <ArrowLeft color={colors.foreground} size={30} strokeWidth={2.5} />
         </Pressable>
 
-        <Text numberOfLines={1} style={styles.topBarTitle}>
-          Cafe Page
-        </Text>
+        <Text numberOfLines={1} style={styles.topBarTitle}>{t("Cafe Page")}</Text>
 
         {canManageCafePage ? (
           <View style={styles.topBarActions}>
             <Pressable
-              accessibilityLabel="Create cafe page post"
+              accessibilityLabel={t("Create cafe page post")}
               accessibilityRole="button"
               hitSlop={10}
               onPress={openCafePagePostComposer}
@@ -484,7 +483,7 @@ export function CafePageScreen() {
             </Pressable>
 
             <Pressable
-              accessibilityLabel="Open cafe page messages"
+              accessibilityLabel={t("Open cafe page messages")}
               accessibilityRole="button"
               hitSlop={10}
               onPress={() => {
@@ -501,7 +500,7 @@ export function CafePageScreen() {
       </View>
 
       {isLoading && !cafePage ? (
-        <LoadingState label="Loading cafe page..." />
+        <LoadingState label={t("Loading cafe page...")} />
       ) : (
         <ScrollView
           contentContainerStyle={styles.content}
@@ -535,8 +534,8 @@ export function CafePageScreen() {
           ) : (
             <View style={styles.emptyPage}>
               <EmptyState
-                description="Pull down to refresh and try again."
-                title="Cafe page unavailable"
+                description={t("Pull down to refresh and try again.")}
+                title={t("Cafe page unavailable")}
               />
             </View>
           )}

@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getLocales } from "expo-localization";
 import {
   createContext,
+  Fragment,
   type PropsWithChildren,
   useCallback,
   useContext,
@@ -13,6 +14,7 @@ import { AppState } from "react-native";
 import { Platform } from "react-native";
 
 import {
+  DEFAULT_LOCALE,
   LOCALE_STORAGE_KEY,
   LOCALE_TAGS,
   isLocale,
@@ -41,8 +43,8 @@ export function resolveDeviceLocale(): Locale {
 
 export function LocaleProvider({ children }: PropsWithChildren) {
   const [preference, setPreference] =
-    useState<LocalePreference>("system");
-  const [locale, setLocale] = useState<Locale>(resolveDeviceLocale);
+    useState<LocalePreference>(DEFAULT_LOCALE);
+  const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
@@ -54,19 +56,25 @@ export function LocaleProvider({ children }: PropsWithChildren) {
           return;
         }
 
+        if (storedPreference === "system") {
+          setPreference("system");
+          setLocale(resolveDeviceLocale());
+          return;
+        }
+
         if (isLocale(storedPreference)) {
           setPreference(storedPreference);
           setLocale(storedPreference);
           return;
         }
 
-        setPreference("system");
-        setLocale(resolveDeviceLocale());
+        setPreference(DEFAULT_LOCALE);
+        setLocale(DEFAULT_LOCALE);
       })
       .catch(() => {
         if (isActive) {
-          setPreference("system");
-          setLocale(resolveDeviceLocale());
+          setPreference(DEFAULT_LOCALE);
+          setLocale(DEFAULT_LOCALE);
         }
       })
       .finally(() => {
@@ -107,11 +115,7 @@ export function LocaleProvider({ children }: PropsWithChildren) {
         nextPreference === "system" ? resolveDeviceLocale() : nextPreference,
       );
 
-      if (nextPreference === "system") {
-        await AsyncStorage.removeItem(LOCALE_STORAGE_KEY);
-      } else {
-        await AsyncStorage.setItem(LOCALE_STORAGE_KEY, nextPreference);
-      }
+      await AsyncStorage.setItem(LOCALE_STORAGE_KEY, nextPreference);
     },
     [],
   );
@@ -131,7 +135,9 @@ export function LocaleProvider({ children }: PropsWithChildren) {
   );
 
   return (
-    <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>
+    <LocaleContext.Provider value={value}>
+      <Fragment key={locale}>{children}</Fragment>
+    </LocaleContext.Provider>
   );
 }
 

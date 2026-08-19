@@ -227,14 +227,14 @@ async function mockLoggedIn(page: Page, capture: AssistantCapture) {
 test.describe("system locale and login selector", () => {
   test.use({ locale: "vi-VN" });
 
-  test("uses Vietnamese on first visit, switches immediately, persists, and follows System", async ({ page }) => {
+  test("uses Vietnamese by default, switches immediately, persists, and follows System when selected", async ({ page }) => {
     await mockLoggedOut(page);
     await page.goto("/login");
 
     await expect(page.locator("html")).toHaveAttribute("lang", "vi-VN");
     await expect(page).toHaveTitle("Quản trị CafeStory");
     await expect(page.getByRole("heading", { name: "Đăng nhập" })).toBeVisible();
-    await expect(page.getByRole("radio", { name: "Hệ thống" })).toHaveAttribute(
+    await expect(page.getByRole("radio", { name: "Tiếng Việt" })).toHaveAttribute(
       "aria-checked",
       "true",
     );
@@ -296,15 +296,15 @@ test.describe("system locale and login selector", () => {
   });
 });
 
-test.describe("English system locale", () => {
+test.describe("Vietnamese fresh default on an English browser", () => {
   test.use({ locale: "en-US" });
 
-  test("uses English on a fresh non-Vietnamese browser", async ({ page }) => {
+  test("uses Vietnamese on a fresh non-Vietnamese browser", async ({ page }) => {
     await mockLoggedOut(page);
     await page.goto("/login");
-    await expect(page.locator("html")).toHaveAttribute("lang", "en-US");
-    await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
-    await expect(page.getByRole("radio", { name: "System" })).toHaveAttribute(
+    await expect(page.locator("html")).toHaveAttribute("lang", "vi-VN");
+    await expect(page.getByRole("heading", { name: "Đăng nhập" })).toBeVisible();
+    await expect(page.getByRole("radio", { name: "Tiếng Việt" })).toHaveAttribute(
       "aria-checked",
       "true",
     );
@@ -315,6 +315,9 @@ test.describe("English system locale", () => {
     await mockLoggedIn(page, capture);
     await page.goto("/");
 
+    await expect(page.getByRole("heading", { name: "Tổng quan" })).toBeVisible();
+    await expect(page.getByText(formatNumber(1_234_567, "vi-VN"), { exact: true })).toBeVisible();
+    await page.getByRole("radio", { name: "Tiếng Anh" }).click();
     await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
     await expect(page.getByText(formatNumber(1_234_567, "en-US"), { exact: true })).toBeVisible();
     await page.getByRole("radio", { name: "Vietnamese" }).click();

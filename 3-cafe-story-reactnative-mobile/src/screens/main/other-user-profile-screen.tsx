@@ -1,6 +1,6 @@
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
-import { Pressable } from "../../features/i18n/localized-native";
-import { Text } from "../../features/i18n/localized-native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
   ArrowLeft, Award, MessageCircle, MoreVertical, Store, UserPlus, } from "lucide-react-native";
@@ -42,6 +42,7 @@ import type {
   UserPostPreview,
   UserResponse,
 } from "../../types";
+import { t } from "../../features/i18n";
 
 type OtherUserProfileRouteProp = RouteProp<
   RootStackParamList,
@@ -260,9 +261,9 @@ export function OtherUserProfileScreen() {
 
   const stats = useMemo(
     () => [
-      { key: "posts", label: "posts", value: formatCount(tabPosts.posts.length) },
-      { key: "followers", label: "followers", value: formatCount(profile?.userFollower) },
-      { key: "following", label: "following", value: formatCount(profile?.followingCount) },
+      { key: "posts", label: t("profile.stat.posts"), displayLabel: t("profile.stat.posts"), value: formatCount(tabPosts.posts.length) },
+      { key: "followers", label: t("profile.stat.followers"), displayLabel: t("profile.stat.followersCompact"), value: formatCount(profile?.userFollower) },
+      { key: "following", label: t("profile.stat.following"), displayLabel: t("profile.stat.followingCompact"), value: formatCount(profile?.followingCount) },
     ],
     [profile?.followingCount, profile?.userFollower, tabPosts.posts.length],
   );
@@ -388,7 +389,7 @@ export function OtherUserProfileScreen() {
       <Screen padded={false}>
         <View style={styles.topBar}>
           <Pressable
-            accessibilityLabel="Go back"
+            accessibilityLabel={t("Go back")}
             accessibilityRole="button"
             onPress={() => navigation.goBack()}
             style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
@@ -409,7 +410,7 @@ export function OtherUserProfileScreen() {
     <Screen padded={false}>
       <View style={styles.topBar}>
         <Pressable
-          accessibilityLabel="Go back"
+          accessibilityLabel={t("Go back")}
           accessibilityRole="button"
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
@@ -421,7 +422,7 @@ export function OtherUserProfileScreen() {
         </Text>
         <View style={styles.topActions}>
           <Pressable
-            accessibilityLabel="Message user"
+            accessibilityLabel={t("Message user")}
             accessibilityRole="button"
             disabled={isOwnProfile || isMessagePending}
             onPress={handleMessagePress}
@@ -430,7 +431,7 @@ export function OtherUserProfileScreen() {
             <MessageCircle color={colors.foreground} size={25} strokeWidth={2.4} />
           </Pressable>
           <Pressable
-            accessibilityLabel="Open profile options"
+            accessibilityLabel={t("Open profile options")}
             accessibilityRole="button"
             style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
           >
@@ -481,7 +482,7 @@ export function OtherUserProfileScreen() {
             <View style={styles.stats}>
               {stats.map((stat) => (
                 <Pressable
-                  accessibilityLabel={`Open ${stat.label}`}
+                  accessibilityLabel={t("common.a11y.openNamed", { name: stat.label })}
                   accessibilityRole="button"
                   disabled={stat.key === "posts"}
                   key={stat.label}
@@ -496,7 +497,7 @@ export function OtherUserProfileScreen() {
                   ]}
                 >
                   <Text style={styles.statValue}>{stat.value}</Text>
-                  <Text style={styles.statLabel}>{stat.label}</Text>
+                  <Text numberOfLines={2} style={styles.statLabel}>{stat.displayLabel}</Text>
                 </Pressable>
               ))}
             </View>
@@ -509,7 +510,7 @@ export function OtherUserProfileScreen() {
 
         {ownedCafePageId ? (
           <Pressable
-            accessibilityLabel="Open cafe page"
+            accessibilityLabel={t("Open cafe page")}
             accessibilityRole="button"
             onPress={openOwnedCafePage}
             style={({ pressed }) => [
@@ -519,7 +520,7 @@ export function OtherUserProfileScreen() {
           >
             <Store color={colors.primary} size={16} strokeWidth={2.5} />
             <Text numberOfLines={1} style={styles.cafePageTagName}>
-              {ownedCafePage?.name || "View cafe page"}
+              {ownedCafePage?.name || t("profile.cafe.view")}
             </Text>
           </Pressable>
         ) : null}
@@ -530,7 +531,7 @@ export function OtherUserProfileScreen() {
 
         <View style={styles.actions}>
           <Pressable
-            accessibilityLabel={isFollowing ? "Unfollow user" : "Follow user"}
+            accessibilityLabel={isFollowing ? t("Unfollow user") : t("Follow user")}
             accessibilityRole="button"
             disabled={isOwnProfile || isFollowPending}
             onPress={handleToggleFollow}
@@ -546,12 +547,12 @@ export function OtherUserProfileScreen() {
                 (isFollowing || isOwnProfile) && styles.followingActionText,
               ]}
             >
-              {isOwnProfile ? "Your Profile" : isFollowing ? "Following" : "Follow"}
+              {isOwnProfile ? t("Your Profile") : isFollowing ? "Following" : "Follow"}
             </Text>
           </Pressable>
 
           <Pressable
-            accessibilityLabel="Message user"
+            accessibilityLabel={t("Message user")}
             accessibilityRole="button"
             disabled={isOwnProfile || isMessagePending}
             onPress={handleMessagePress}
@@ -560,11 +561,11 @@ export function OtherUserProfileScreen() {
               pressed && !isMessagePending && styles.pressed,
             ]}
           >
-            <Text style={styles.secondaryActionText}>Message</Text>
+            <Text style={styles.secondaryActionText}>{t("Message")}</Text>
           </Pressable>
 
           <Pressable
-            accessibilityLabel="Add profile suggestion"
+            accessibilityLabel={t("Add profile suggestion")}
             accessibilityRole="button"
             style={({ pressed }) => [styles.iconAction, pressed && styles.pressed]}
           >
@@ -584,7 +585,7 @@ export function OtherUserProfileScreen() {
           ) : contentError ? (
             <View style={styles.emptyPosts}>
               <EmptyState
-                description="Pull down to refresh and try again."
+                description={t("Pull down to refresh and try again.")}
                 title={contentError}
               />
             </View>
@@ -772,13 +773,21 @@ const styles = StyleSheet.create({
     fontWeight: "900",
   },
   statItem: {
-    alignItems: "flex-start",
+    alignItems: "center",
     flex: 1,
+    flexBasis: 0,
     gap: 2,
+    minWidth: 0,
+    paddingHorizontal: 2,
   },
   statLabel: {
     color: colors.muted,
-    fontSize: typography.caption,
+    fontSize: 11,
+    flexShrink: 1,
+    lineHeight: 14,
+    maxWidth: 64,
+    textAlign: "center",
+    width: "100%",
   },
   statValue: {
     color: colors.foreground,

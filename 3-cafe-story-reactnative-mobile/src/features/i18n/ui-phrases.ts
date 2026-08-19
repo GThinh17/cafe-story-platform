@@ -8,7 +8,7 @@ import type { TranslationKey } from "./dictionaries/en";
  * New copy should use `t(key)`; this catalog keeps the current surface fully
  * bilingual while screens are incrementally moved to semantic keys.
  */
-export const viUiPhrases: Record<string, string> = {
+export const viUiPhrases = {
   "(optional)": "(không bắt buộc)",
   "(required)": "(bắt buộc)",
   "Activate campaign": "Kích hoạt chiến dịch",
@@ -536,7 +536,9 @@ export const viUiPhrases: Record<string, string> = {
   "Your posts": "Bài viết của bạn",
   "Your report has been submitted and will be reviewed by CafeStory.": "Báo cáo đã được gửi và sẽ được đội ngũ CafeStory xem xét.",
   "Your report is anonymous. If someone is in immediate danger, contact your local emergency services right away.": "Báo cáo của bạn được ẩn danh. Nếu có ai đó đang gặp nguy hiểm, hãy liên hệ ngay cơ quan chức năng tại địa phương.",
-};
+} as const satisfies Record<string, string>;
+
+export type UiPhraseKey = keyof typeof viUiPhrases;
 
 const coreEnglishToKey = Object.fromEntries(
   Object.entries(en).map(([key, value]) => [value, key]),
@@ -558,7 +560,7 @@ function translateKnownPhrase(locale: Locale, phrase: string): string {
   }
 
   if (locale === "vi") {
-    return viUiPhrases[phrase] ?? phrase;
+    return (viUiPhrases as Record<string, string>)[phrase] ?? phrase;
   }
 
   return vietnamesePhraseToEnglish[phrase] ?? phrase;

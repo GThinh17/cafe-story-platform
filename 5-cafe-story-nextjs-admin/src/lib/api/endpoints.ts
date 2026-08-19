@@ -9,6 +9,7 @@ export const apiEndpoints = {
   },
   admin: {
     dashboardSummary: "/api/admin/dashboard/summary",
+    translations: "/api/admin/translations",
     analyticsRegions: "/api/admin/analytics/regions",
     analyticsRevenue: "/api/admin/analytics/revenue",
     assistantConversations: "/api/admin/assistant/conversations",

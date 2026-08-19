@@ -10,6 +10,8 @@ import type {
   AdminAssistantDraftAction,
   AdminAssistantMessage,
   AdminAssistantMessageRequest,
+  AdminContentTranslationRequest,
+  AdminContentTranslationResponse,
   AdminModerationResult,
   AdminPayout,
   AdminPayoutStatus,
@@ -64,6 +66,13 @@ export function getAdminDashboardSummary(signal?: AbortSignal) {
 }
 
 export const getDashboardSummary = getAdminDashboardSummary;
+
+export function translateAdminContent(request: AdminContentTranslationRequest) {
+  return apiFetch<AdminContentTranslationResponse>(apiEndpoints.admin.translations, {
+    body: request,
+    method: "POST",
+  });
+}
 
 export function getRegionAnalytics(signal?: AbortSignal) {
   return apiFetch<AdminRegionAnalytics[]>(apiEndpoints.admin.analyticsRegions, {

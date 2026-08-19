@@ -1,8 +1,9 @@
 import { Send } from "lucide-react-native";
-import { Pressable } from "../../features/i18n/localized-native";
-import { TextInput } from "../../features/i18n/localized-native";
+import { Pressable } from "react-native";
+import { TextInput } from "react-native";
 import { StyleSheet, View } from "react-native";
 import { colors, spacing, typography } from "../../theme";
+import { t } from "../../features/i18n";
 
 type AiAssistantComposerProps = {
   disabled?: boolean;
@@ -25,7 +26,7 @@ export function AiAssistantComposer({
         editable={!disabled}
         onChangeText={onChangeText}
         onSubmitEditing={canSend ? onSend : undefined}
-        placeholder="Ask CafeStory Assistant..."
+        placeholder={t("Ask CafeStory Assistant...")}
         placeholderTextColor={colors.muted}
         returnKeyType="send"
         style={styles.input}
@@ -33,7 +34,7 @@ export function AiAssistantComposer({
       />
 
       <Pressable
-        accessibilityLabel="Send assistant message"
+        accessibilityLabel={t("Send assistant message")}
         accessibilityRole="button"
         disabled={!canSend}
         onPress={onSend}

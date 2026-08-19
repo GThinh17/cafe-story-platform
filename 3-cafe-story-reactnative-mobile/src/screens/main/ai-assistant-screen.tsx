@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Pressable, Text } from "../../features/i18n/localized-native";
+import { Pressable, Text } from "react-native";
 import {
   FlatList, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, View } from "react-native";
 import { ChevronLeft, Sparkles } from "lucide-react-native";
@@ -19,6 +19,7 @@ import type {
   AiAssistantMessageListItem,
   AiChatHistoryItem,
 } from "../../types";
+import { t } from "../../features/i18n";
 
 const ASSISTANT_HISTORY_LIMIT = 10;
 const ASSISTANT_WELCOME_MESSAGE_ID = "assistant-welcome";
@@ -167,7 +168,7 @@ export function AiAssistantScreen() {
       >
         <View style={styles.header}>
           <Pressable
-            accessibilityLabel="Go back"
+            accessibilityLabel={t("Go back")}
             accessibilityRole="button"
             onPress={() => navigation.goBack()}
             style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}

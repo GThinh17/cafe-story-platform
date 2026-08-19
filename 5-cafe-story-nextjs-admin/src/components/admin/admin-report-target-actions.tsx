@@ -10,6 +10,7 @@ import {
   Trash2Icon,
 } from "lucide-react";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AdminTranslatableContent } from "@/components/admin/admin-translatable-content";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -98,9 +99,12 @@ export function AdminReportTargetActions({
               <p className="font-mono text-xs text-muted">{target.id}</p>
               <AdminStatusBadge value={target.status} />
             </div>
-            <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-foreground">
-              {target.content || ui("No text content")}
-            </p>
+            <AdminTranslatableContent
+              className="mt-3"
+              contentKind={report.targetType === "BLOG" ? "BLOG_CONTENT" : "COMMENT_CONTENT"}
+              text={target.content || ui("No text content")}
+              textClassName="text-sm leading-6 text-foreground"
+            />
             {target.imageUrls.length ? (
               <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3">
                 <p className="flex items-center gap-2 text-xs font-bold uppercase text-muted">

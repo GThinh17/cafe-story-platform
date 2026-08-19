@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, Text } from "../../features/i18n/localized-native";
+import { Pressable, Text } from "react-native";
 import {
   FlatList, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, View } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -21,6 +21,7 @@ import { getConversationMessages, sendChatMessage } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type { ChatIdentity, ChatMessageListItem, ChatMessageResponse } from "../../types";
 import type { AuthUser } from "../../types";
+import { t } from "../../features/i18n";
 
 function formatMessageTime(value: string | null) {
   if (!value) {
@@ -234,10 +235,10 @@ export function ChatDetailScreen() {
                     ? shouldSendAsCafePage
                       ? "Replying as this cafe page to this customer."
                       : "Message this cafe page here."
-                    : "Start the conversation here."}
+                    : t("Start the conversation here.")}
                 </Text>
                 <Pressable
-                  accessibilityLabel="View chat profile"
+                  accessibilityLabel={t("View chat profile")}
                   accessibilityRole="button"
                   disabled={!conversation.targetUserId && !conversation.targetCafePageId}
                   onPress={handleOpenProfile}
@@ -250,12 +251,12 @@ export function ChatDetailScreen() {
                 >
                   <Text style={styles.profileButtonText}>
                     {conversation.targetType === "CAFE_PAGE" && !isCafePageInboxConversation
-                      ? "View cafe page"
-                      : "View profile"}
+                      ? t("View cafe page")
+                      : t("View profile")}
                   </Text>
                 </Pressable>
               </View>
-              {isLoading ? <LoadingState label="Loading messages..." /> : null}
+              {isLoading ? <LoadingState label={t("Loading messages...")} /> : null}
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
             </>
           }

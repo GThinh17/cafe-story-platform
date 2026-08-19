@@ -1,6 +1,7 @@
 import { StyleSheet, TextInputProps, View } from "react-native";
-import { Text, TextInput } from "../../features/i18n/localized-native";
+import { Text, TextInput } from "react-native";
 import { colors, spacing, typography } from "../../theme";
+import { t } from "../../features/i18n";
 
 type TextFieldProps = TextInputProps & {
   label: string;

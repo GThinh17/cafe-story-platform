@@ -1,6 +1,6 @@
 import { ArrowLeft, Camera, CheckCircle2, Image as ImageIcon, MapPin } from "lucide-react-native";
-import { Text } from "../../features/i18n/localized-native";
-import { Pressable, TextInput } from "../../features/i18n/localized-native";
+import { Text } from "react-native";
+import { Pressable, TextInput } from "react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, View } from "react-native";
@@ -22,6 +22,7 @@ import type {
 import { Avatar } from "../ui/avatar";
 import { LoadingState } from "../ui/loading-state";
 import { TextField } from "../ui/text-field";
+import { t } from "../../features/i18n";
 
 const DESCRIPTION_MAX_LENGTH = 300;
 
@@ -360,7 +361,7 @@ export function EditCafePageModal({
       >
         <View style={styles.header}>
           <Pressable
-            accessibilityLabel="Close edit cafe page"
+            accessibilityLabel={t("Close edit cafe page")}
             accessibilityRole="button"
             disabled={isSaving}
             onPress={onClose}
@@ -373,12 +374,10 @@ export function EditCafePageModal({
             <ArrowLeft color={colors.foreground} size={32} strokeWidth={2.5} />
           </Pressable>
 
-          <Text numberOfLines={1} style={styles.headerTitle}>
-            Edit page
-          </Text>
+          <Text numberOfLines={1} style={styles.headerTitle}>{t("Edit page")}</Text>
 
           <Pressable
-            accessibilityLabel="Save cafe page"
+            accessibilityLabel={t("Save cafe page")}
             accessibilityRole="button"
             disabled={!canSave}
             onPress={() => {
@@ -393,7 +392,7 @@ export function EditCafePageModal({
             {isSaving ? (
               <ActivityIndicator color={colors.link} />
             ) : (
-              <Text style={styles.saveText}>Save</Text>
+              <Text style={styles.saveText}>{t("Save")}</Text>
             )}
           </Pressable>
         </View>
@@ -405,7 +404,7 @@ export function EditCafePageModal({
         >
           <View style={styles.mediaSection}>
             <Pressable
-              accessibilityLabel="Edit cafe cover image"
+              accessibilityLabel={t("Edit cafe cover image")}
               accessibilityRole="button"
               disabled={isSaving || isUploadingCover}
               onPress={onCoverPress}
@@ -420,7 +419,7 @@ export function EditCafePageModal({
               ) : (
                 <View style={styles.coverFallback}>
                   <ImageIcon color={colors.secondaryStrong} size={34} strokeWidth={2.5} />
-                  <Text style={styles.coverFallbackText}>Add cover</Text>
+                  <Text style={styles.coverFallbackText}>{t("Add cover")}</Text>
                 </View>
               )}
               <View style={styles.coverOverlay}>
@@ -429,7 +428,7 @@ export function EditCafePageModal({
                 ) : (
                   <>
                     <Camera color={colors.white} size={18} strokeWidth={2.6} />
-                    <Text style={styles.coverOverlayText}>Edit cover</Text>
+                    <Text style={styles.coverOverlayText}>{t("Edit cover")}</Text>
                   </>
                 )}
               </View>
@@ -437,7 +436,7 @@ export function EditCafePageModal({
 
             <View style={styles.avatarSection}>
               <Pressable
-                accessibilityLabel="Edit cafe avatar"
+                accessibilityLabel={t("Edit cafe avatar")}
                 accessibilityRole="button"
                 disabled={isSaving || isUploadingAvatar}
                 onPress={onAvatarPress}
@@ -465,21 +464,21 @@ export function EditCafePageModal({
           </View>
 
           <View style={styles.fields}>
-            <TextField label="Cafe name" onChangeText={setName} value={name} />
+            <TextField label={t("Cafe name")} onChangeText={setName} value={name} />
             <TextField
-              label="Address"
+              label={t("Address")}
               onChangeText={setAddress}
-              placeholder="Street or display address"
+              placeholder={t("Street or display address")}
               value={address}
             />
 
             <View style={styles.fieldWrapper}>
-              <Text style={styles.fieldLabel}>Description</Text>
+              <Text style={styles.fieldLabel}>{t("Description")}</Text>
               <TextInput
                 maxLength={DESCRIPTION_MAX_LENGTH}
                 multiline
                 onChangeText={setDescription}
-                placeholder="Tell people what makes your cafe special"
+                placeholder={t("Tell people what makes your cafe special")}
                 placeholderTextColor={colors.muted}
                 style={styles.descriptionInput}
                 textAlignVertical="top"
@@ -492,15 +491,13 @@ export function EditCafePageModal({
           </View>
 
           <View style={styles.regionSection}>
-            <Text style={styles.regionTitle}>Location</Text>
-            <Text style={styles.regionDescription}>
-              Pick province, city, and ward to help people discover this cafe.
-            </Text>
+            <Text style={styles.regionTitle}>{t("Location")}</Text>
+            <Text style={styles.regionDescription}>{t("Pick province, city, and ward to help people discover this cafe.")}</Text>
 
             <SelectionGroup
-              emptyLabel="No provinces available."
+              emptyLabel={t("No provinces available.")}
               isLoading={isProvinceLoading}
-              label="Province"
+              label={t("Province")}
               onSelect={handleProvincePress}
               options={provinces}
               selectedCode={selectedProvince?.provinceCode}
@@ -509,9 +506,9 @@ export function EditCafePageModal({
 
             {selectedProvince ? (
               <SelectionGroup
-                emptyLabel="No cities available for this province."
+                emptyLabel={t("No cities available for this province.")}
                 isLoading={isCityLoading}
-                label="City"
+                label={t("City")}
                 onSelect={handleCityPress}
                 options={cities}
                 selectedCode={selectedCity?.cityCode}
@@ -521,9 +518,9 @@ export function EditCafePageModal({
 
             {selectedCity ? (
               <SelectionGroup
-                emptyLabel="No wards available for this city."
+                emptyLabel={t("No wards available for this city.")}
                 isLoading={isWardLoading}
-                label="Ward"
+                label={t("Ward")}
                 onSelect={setSelectedWard}
                 options={wards}
                 selectedCode={selectedWard?.wardCode}

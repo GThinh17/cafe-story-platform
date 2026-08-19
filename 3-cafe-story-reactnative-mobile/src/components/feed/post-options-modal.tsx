@@ -1,8 +1,9 @@
 import { Bookmark, CircleUserRound, Eye, EyeOff, Info, MessageSquareWarning, QrCode, SlidersHorizontal, } from "lucide-react-native";
-import { Pressable, Text } from "../../features/i18n/localized-native";
+import { Pressable, Text } from "react-native";
 import { Modal, StyleSheet, View } from "react-native";
 
 import { colors, spacing, typography } from "../../theme";
+import { t } from "../../features/i18n";
 
 type PostOptionsModalProps = {
   isSavePending: boolean;
@@ -51,7 +52,7 @@ export function PostOptionsModal({
     >
       <View style={styles.overlay}>
         <Pressable
-          accessibilityLabel="Close post options"
+          accessibilityLabel={t("Close post options")}
           onPress={onClose}
           style={styles.backdrop}
         />
@@ -60,7 +61,7 @@ export function PostOptionsModal({
 
           <View style={styles.quickActions}>
             <Pressable
-              accessibilityLabel={isSaved ? "Unsave post" : "Save post"}
+              accessibilityLabel={isSaved ? t("Unsave post") : t("Save post")}
               accessibilityRole="button"
               disabled={isSavePending}
               onPress={onToggleSave}
@@ -78,39 +79,39 @@ export function PostOptionsModal({
                   strokeWidth={2.4}
                 />
               </View>
-              <Text style={styles.quickLabel}>{isSaved ? "Saved" : "Save"}</Text>
+              <Text style={styles.quickLabel}>{isSaved ? t("Saved") : t("Save")}</Text>
             </Pressable>
 
             <Pressable
-              accessibilityLabel="Open QR code"
+              accessibilityLabel={t("Open QR code")}
               accessibilityRole="button"
               style={({ pressed }) => [styles.quickAction, pressed && styles.pressed]}
             >
               <View style={styles.quickIcon}>
                 <QrCode color={colors.foreground} size={34} strokeWidth={2.4} />
               </View>
-              <Text style={styles.quickLabel}>QR code</Text>
+              <Text style={styles.quickLabel}>{t("QR code")}</Text>
             </Pressable>
           </View>
 
           <View style={styles.divider} />
 
           <View style={styles.rows}>
-            <OptionRow Icon={Info} label="Why you're seeing this post" />
-            <OptionRow Icon={EyeOff} label="Not interested" />
-            <OptionRow Icon={Eye} label="Interested" />
-            <OptionRow Icon={CircleUserRound} label="About this account" />
+            <OptionRow Icon={Info} label={t("Why you're seeing this post")} />
+            <OptionRow Icon={EyeOff} label={t("Not interested")} />
+            <OptionRow Icon={Eye} label={t("Interested")} />
+            <OptionRow Icon={CircleUserRound} label={t("About this account")} />
             <OptionRow
               Icon={MessageSquareWarning}
               color={colors.danger}
-              label="Report"
+              label={t("Report")}
               onPress={onReport}
             />
           </View>
 
           <View style={styles.divider} />
 
-          <OptionRow Icon={SlidersHorizontal} label="Manage content preferences" />
+          <OptionRow Icon={SlidersHorizontal} label={t("Manage content preferences")} />
         </View>
       </View>
     </Modal>

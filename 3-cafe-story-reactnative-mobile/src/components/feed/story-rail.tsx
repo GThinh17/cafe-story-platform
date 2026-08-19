@@ -1,11 +1,12 @@
 import { Plus } from "lucide-react-native";
-import { Pressable } from "../../features/i18n/localized-native";
-import { Text } from "../../features/i18n/localized-native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
 import { ScrollView, StyleSheet, View } from "react-native";
 
 import { Avatar } from "../ui/avatar";
 import { colors, spacing, typography } from "../../theme";
 import type { StoryItem } from "../../types";
+import { t } from "../../features/i18n";
 
 type StoryRailProps = {
   onStoryPress?: (story: StoryItem) => void;
@@ -22,7 +23,7 @@ export function StoryRail({ onStoryPress, stories }: StoryRailProps) {
       >
         {stories.map((story) => (
           <Pressable
-            accessibilityLabel={`${story.label} story`}
+            accessibilityLabel={t("story.a11y.open", { name: story.label })}
             accessibilityRole="button"
             key={story.id}
             onPress={() => onStoryPress?.(story)}

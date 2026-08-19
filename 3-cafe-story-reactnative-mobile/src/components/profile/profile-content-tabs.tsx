@@ -1,31 +1,32 @@
 import { Bookmark, Grid3X3, Repeat2, UserRound } from "lucide-react-native";
-import { Pressable } from "../../features/i18n/localized-native";
+import { Pressable } from "react-native";
 import { StyleSheet, View } from "react-native";
 import { colors, spacing } from "../../theme";
 import type { ProfileContentTab } from "../../types";
+import { t, type TranslationKey } from "../../features/i18n";
 
 const tabs: Array<{
-  accessibilityLabel: string;
+  accessibilityLabelKey: TranslationKey;
   icon: typeof Grid3X3;
   value: ProfileContentTab;
 }> = [
   {
-    accessibilityLabel: "Show profile posts",
+    accessibilityLabelKey: "profile.tab.posts",
     icon: Grid3X3,
     value: "posts",
   },
   {
-    accessibilityLabel: "Show saved posts",
+    accessibilityLabelKey: "profile.tab.saved",
     icon: Bookmark,
     value: "saved",
   },
   {
-    accessibilityLabel: "Show shared posts",
+    accessibilityLabelKey: "profile.tab.shared",
     icon: Repeat2,
     value: "shared",
   },
   {
-    accessibilityLabel: "Show tagged posts",
+    accessibilityLabelKey: "profile.tab.tagged",
     icon: UserRound,
     value: "tagged",
   },
@@ -54,7 +55,7 @@ export function ProfileContentTabs({
 
         return (
           <Pressable
-            accessibilityLabel={tab.accessibilityLabel}
+            accessibilityLabel={t(tab.accessibilityLabelKey)}
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
             key={tab.value}

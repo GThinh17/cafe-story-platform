@@ -1,5 +1,5 @@
 import { BarChart3, CalendarDays, Eye, MousePointerClick } from "lucide-react-native";
-import { Text } from "../../features/i18n/localized-native";
+import { Text } from "react-native";
 import { useCallback, useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -8,6 +8,7 @@ import { colors, spacing, typography } from "../../theme";
 import { formatCurrentDate, formatCurrentNumber } from "../../features/i18n";
 import type { AdCampaignResponse, AdCampaignStatsResponse } from "../../types";
 import { Button } from "../ui/button";
+import { t } from "../../features/i18n";
 
 type AdCampaignCardProps = {
   campaign: AdCampaignResponse;
@@ -78,8 +79,8 @@ export function AdCampaignCard({ campaign, onChanged }: AdCampaignCardProps) {
       </View>
 
       <View style={styles.metrics}>
-        <Metric Icon={Eye} label="Impressions" value={String(stats?.servedImpressions ?? campaign.servedImpressions ?? 0)} />
-        <Metric Icon={MousePointerClick} label="Clicks" value={String(stats?.totalClicks ?? 0)} />
+        <Metric Icon={Eye} label={t("Impressions")} value={String(stats?.servedImpressions ?? campaign.servedImpressions ?? 0)} />
+        <Metric Icon={MousePointerClick} label={t("Clicks")} value={String(stats?.totalClicks ?? 0)} />
         <Metric
           Icon={BarChart3}
           label="CTR"
@@ -88,7 +89,7 @@ export function AdCampaignCard({ campaign, onChanged }: AdCampaignCardProps) {
             minimumFractionDigits: 2,
           })}%`}
         />
-        <Metric Icon={CalendarDays} label="Days left" value={String(stats?.remainingDays ?? 0)} />
+        <Metric Icon={CalendarDays} label={t("Days left")} value={String(stats?.remainingDays ?? 0)} />
       </View>
 
       <View style={styles.progressTrack}>
@@ -107,15 +108,14 @@ export function AdCampaignCard({ campaign, onChanged }: AdCampaignCardProps) {
         />
       </View>
       <Text style={styles.meta}>
-        {formatDate(campaign.startAt)} to {formatDate(campaign.endAt)} · {stats?.remainingImpressions ?? 0} impressions left
-      </Text>
+        {formatDate(campaign.startAt)}{t("to")}{formatDate(campaign.endAt)} · {stats?.remainingImpressions ?? 0}{t("impressions left")}</Text>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {canChangeStatus ? (
         <Button
           isLoading={isPending}
-          label={campaign.status === "ACTIVE" ? "Pause campaign" : "Activate campaign"}
+          label={campaign.status === "ACTIVE" ? t("Pause campaign") : t("Activate campaign")}
           onPress={changeStatus}
           variant={campaign.status === "ACTIVE" ? "outlined" : "primary"}
         />
