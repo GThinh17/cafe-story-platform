@@ -1,6 +1,7 @@
 package com.cafestory.service.serviceInterface;
 
 import com.cafestory.dto.requestDTO.AdminReportAiResolutionCreateRequestDTO;
+import com.cafestory.dto.responseDTO.AdminReportAiPolicyResponseDTO;
 import com.cafestory.dto.responseDTO.AdminReportAiResolutionResponseDTO;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,4 +18,6 @@ public interface AdminReportAiResolutionService {
             UUID adminUserId);
 
     Page<AdminReportAiResolutionResponseDTO> getResolutions(UUID reportId, Pageable pageable);
+
+    AdminReportAiPolicyResponseDTO getPolicy(UUID reportId);
 }

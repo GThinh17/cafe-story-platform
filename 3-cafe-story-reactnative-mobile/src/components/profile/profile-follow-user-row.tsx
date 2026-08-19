@@ -1,8 +1,11 @@
 import { MessageCircle, UserPlus, X } from "lucide-react-native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { colors, spacing, typography } from "../../theme";
 import type { UserResponse } from "../../types";
 import { Avatar } from "../ui/avatar";
+import { t } from "../../features/i18n";
 
 type ProfileFollowUserRowProps = {
   disabled?: boolean;
@@ -63,7 +66,7 @@ export function ProfileFollowUserRow({
           ]}
         >
           <UserPlus color={colors.white} size={16} strokeWidth={2.4} />
-          <Text style={styles.followButtonText}>Follow</Text>
+          <Text style={styles.followButtonText}>{t("Follow")}</Text>
         </Pressable>
       ) : canMessage ? (
         <Pressable
@@ -77,7 +80,7 @@ export function ProfileFollowUserRow({
           ]}
         >
           <MessageCircle color={colors.foreground} size={16} strokeWidth={2.4} />
-          <Text style={styles.messageButtonText}>Message</Text>
+          <Text style={styles.messageButtonText}>{t("Message")}</Text>
         </Pressable>
       ) : null}
 

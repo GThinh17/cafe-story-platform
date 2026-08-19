@@ -1,5 +1,6 @@
 import type { ApiEnvelope, ApiErrorPayload } from "../../types";
 import { getApiBaseUrl } from "../../config";
+import { localizeApiErrorMessage } from "../../features/i18n";
 import { invalidateApiCache } from "./api-cache";
 
 type ApiFetchOptions = Omit<RequestInit, "body"> & {
@@ -10,12 +11,14 @@ let authAccessToken: string | null = null;
 
 export class ApiError extends Error {
   payload: ApiErrorPayload | null;
+  rawMessage: string | null;
   statusCode: number;
 
   constructor(message: string, statusCode: number, payload: ApiErrorPayload | null) {
-    super(message);
+    super(localizeApiErrorMessage(statusCode, message));
     this.name = "ApiError";
     this.payload = payload;
+    this.rawMessage = message || null;
     this.statusCode = statusCode;
   }
 }
@@ -84,14 +87,32 @@ export async function apiFetch<T>(
     ? JSON.stringify(body)
     : (body as BodyInit | null | undefined);
 
-  const response = await fetch(buildUrl(path), {
-    credentials: "include",
-    ...restOptions,
-    body: requestBody,
-    headers: requestHeaders,
-  });
+  let response: Response;
 
-  const payload = await parseJson<ApiEnvelope<T> | ApiErrorPayload>(response);
+  try {
+    response = await fetch(buildUrl(path), {
+      credentials: "include",
+      ...restOptions,
+      body: requestBody,
+      headers: requestHeaders,
+    });
+  } catch (requestError) {
+    const rawMessage =
+      requestError instanceof Error ? requestError.message : "Network request failed";
+    throw new ApiError(rawMessage, 0, null);
+  }
+
+  let payload: ApiEnvelope<T> | ApiErrorPayload | null;
+
+  try {
+    payload = await parseJson<ApiEnvelope<T> | ApiErrorPayload>(response);
+  } catch (parseError) {
+    const rawMessage =
+      parseError instanceof Error
+        ? parseError.message
+        : "API returned an invalid response";
+    throw new ApiError(rawMessage, response.status, null);
+  }
 
   if (!response.ok) {
     const message =

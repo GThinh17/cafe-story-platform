@@ -1,14 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Pressable, Text } from "react-native";
 import {
-  FlatList,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+  FlatList, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, View } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { RouteProp } from "@react-navigation/native";
@@ -21,12 +14,14 @@ import {
 } from "../../components";
 import { Avatar } from "../../components/ui/avatar";
 import { useAuth } from "../../features/auth";
+import { formatCurrentTime } from "../../features/i18n";
 import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
 import { getConversationMessages, sendChatMessage } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type { ChatIdentity, ChatMessageListItem, ChatMessageResponse } from "../../types";
 import type { AuthUser } from "../../types";
+import { t } from "../../features/i18n";
 
 function formatMessageTime(value: string | null) {
   if (!value) {
@@ -39,7 +34,7 @@ function formatMessageTime(value: string | null) {
     return "";
   }
 
-  return date.toLocaleTimeString([], {
+  return formatCurrentTime(date, {
     hour: "2-digit",
     minute: "2-digit",
   });
@@ -240,10 +235,10 @@ export function ChatDetailScreen() {
                     ? shouldSendAsCafePage
                       ? "Replying as this cafe page to this customer."
                       : "Message this cafe page here."
-                    : "Start the conversation here."}
+                    : t("Start the conversation here.")}
                 </Text>
                 <Pressable
-                  accessibilityLabel="View chat profile"
+                  accessibilityLabel={t("View chat profile")}
                   accessibilityRole="button"
                   disabled={!conversation.targetUserId && !conversation.targetCafePageId}
                   onPress={handleOpenProfile}
@@ -256,12 +251,12 @@ export function ChatDetailScreen() {
                 >
                   <Text style={styles.profileButtonText}>
                     {conversation.targetType === "CAFE_PAGE" && !isCafePageInboxConversation
-                      ? "View cafe page"
-                      : "View profile"}
+                      ? t("View cafe page")
+                      : t("View profile")}
                   </Text>
                 </Pressable>
               </View>
-              {isLoading ? <LoadingState label="Loading messages..." /> : null}
+              {isLoading ? <LoadingState label={t("Loading messages...")} /> : null}
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
             </>
           }

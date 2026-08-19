@@ -1,0 +1,22 @@
+{
+  "workflowId": "cafestory-admin-content-translation-v1",
+  "active": true,
+  "health": "ok",
+  "realOpenAI": {
+    "englishToVietnamese": "PASS",
+    "vietnameseToEnglish": "PASS",
+    "identifierHeavyReportDescription": "PASS",
+    "strictResponseSchema": "PASS",
+    "signedResponse": "PASS",
+    "identifierPreservation": "PASS"
+  },
+  "backendToN8nToOpenAI": {
+    "translationState": "TRANSLATED",
+    "detectedLocale": "en",
+    "targetLocale": "vi",
+    "urlPreserved": true,
+    "enumPreserved": true,
+    "diagnosticIdentifierPreserved": true
+  },
+  "secretsStored": false
+}

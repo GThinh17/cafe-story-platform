@@ -33,6 +33,12 @@ import type {
   AdminRegionAnalytics,
   AdminRevenueAnalytics,
 } from "@/types/admin";
+import {
+  formatNumber,
+  localizeApiError,
+  useI18n,
+  useUiText,
+} from "@/features/i18n";
 
 function SectionCard({
   title,
@@ -47,6 +53,7 @@ function SectionCard({
   children: React.ReactNode;
   className?: string;
 }) {
+  const ui = useUiText();
   return (
     <Card
       asChild
@@ -55,7 +62,7 @@ function SectionCard({
       <Link href={href} className="flex flex-col no-underline">
         <CardHeader className="flex flex-row items-center justify-between gap-3 p-4 pb-2">
           <CardTitle className="text-sm font-semibold text-espresso">
-            {title}
+            {ui(title)}
           </CardTitle>
           {meta}
         </CardHeader>
@@ -66,6 +73,8 @@ function SectionCard({
 }
 
 export function AdminOverview() {
+  const { locale, localeTag, t } = useI18n();
+  const ui = useUiText();
   const router = useRouter();
   const [summary, setSummary] = useState<AdminDashboardSummary | null>(null);
   const [revenue, setRevenue] = useState<AdminRevenueAnalytics | null>(null);
@@ -98,11 +107,7 @@ export function AdminOverview() {
           return;
         }
 
-        setError(
-          requestError instanceof Error
-            ? requestError.message
-            : "Unable to load dashboard data.",
-        );
+        setError(localizeApiError(requestError, locale, t, "common.error.loadRecords"));
       })
       .finally(() => {
         if (!controller.signal.aborted && requestIdRef.current === requestId) {
@@ -111,7 +116,7 @@ export function AdminOverview() {
       });
 
     return () => controller.abort();
-  }, []);
+  }, [locale, t]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -128,7 +133,7 @@ export function AdminOverview() {
         </div>
       ) : error ? (
         <Card className="p-4">
-          <p className="text-sm font-semibold text-accent">Request failed</p>
+          <p className="text-sm font-semibold text-accent">{ui("Request failed")}</p>
           <p className="mt-1 text-sm text-muted">{error}</p>
         </Card>
       ) : summary ? (
@@ -137,17 +142,21 @@ export function AdminOverview() {
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <AdminStatCard
               label="Users"
-              value={summary.totalUsers.toLocaleString("vi-VN")}
-              meta={`${summary.activeUsers.toLocaleString("vi-VN")} active`}
+              value={formatNumber(summary.totalUsers, localeTag)}
+              meta={ui("{count} active", {
+                count: formatNumber(summary.activeUsers, localeTag),
+              })}
               href="/users"
               icon={UsersIcon}
             />
             <AdminStatCard
               label="Revenue 30d"
-              value={revenue ? formatVnd(revenue.totalAmount) : "—"}
+              value={revenue ? formatVnd(revenue.totalAmount, localeTag) : "—"}
               meta={
                 revenue
-                  ? `${summary.paidPayments.toLocaleString("vi-VN")} paid payments`
+                  ? ui("{count} paid payments", {
+                      count: formatNumber(summary.paidPayments, localeTag),
+                    })
                   : undefined
               }
               href="/payments"
@@ -156,15 +165,17 @@ export function AdminOverview() {
             />
             <AdminStatCard
               label="Cafe pages"
-              value={summary.totalCafePages.toLocaleString("vi-VN")}
-              meta={`${summary.activeCafePages.toLocaleString("vi-VN")} active`}
+              value={formatNumber(summary.totalCafePages, localeTag)}
+              meta={ui("{count} active", {
+                count: formatNumber(summary.activeCafePages, localeTag),
+              })}
               href="/cafes"
               icon={CoffeeIcon}
               iconClassName="bg-warning/10 text-warning"
             />
             <AdminStatCard
               label="Pending moderation"
-              value={summary.pendingModerationItems.toLocaleString("vi-VN")}
+              value={formatNumber(summary.pendingModerationItems, localeTag)}
               meta="Items waiting for review"
               href="/moderation"
               icon={ShieldCheckIcon}
@@ -186,7 +197,7 @@ export function AdminOverview() {
                   className="h-64 w-full"
                 />
               ) : (
-                <p className="text-sm text-muted">No revenue data.</p>
+                <p className="text-sm text-muted">{ui("No revenue data.")}</p>
               )}
             </SectionCard>
             <Card
@@ -195,13 +206,13 @@ export function AdminOverview() {
             >
               <CardHeader className="flex flex-row items-center justify-between gap-3 p-4 pb-2">
                 <CardTitle className="text-sm font-semibold text-espresso">
-                  Users by province
+                  {ui("Users by province")}
                 </CardTitle>
                 <Link
                   href="/regions"
                   className="text-xs font-medium text-primary no-underline hover:underline"
                 >
-                  Open regions
+                  {ui("Open regions")}
                 </Link>
               </CardHeader>
               <div className="p-4 pt-0">
@@ -282,7 +293,7 @@ export function AdminOverview() {
             </SectionCard>
             <AdminStatCard
               label="Reviewers"
-              value={summary.totalReviewers.toLocaleString("vi-VN")}
+              value={formatNumber(summary.totalReviewers, localeTag)}
               meta="Active reviewer accounts"
               href="/ranking"
               icon={TrophyIcon}
@@ -291,14 +302,16 @@ export function AdminOverview() {
             <div className="flex flex-col gap-3">
               <AdminStatCard
                 label="Blogs"
-                value={summary.totalBlogs.toLocaleString("vi-VN")}
-                meta={`${summary.publishedBlogs.toLocaleString("vi-VN")} published`}
+                value={formatNumber(summary.totalBlogs, localeTag)}
+                meta={ui("{count} published", {
+                  count: formatNumber(summary.publishedBlogs, localeTag),
+                })}
                 href="/blogs"
                 icon={FileTextIcon}
               />
               <AdminStatCard
                 label="Comments"
-                value={summary.totalComments.toLocaleString("vi-VN")}
+                value={formatNumber(summary.totalComments, localeTag)}
                 meta="Across all blogs"
                 href="/comments"
                 icon={MessageSquareIcon}

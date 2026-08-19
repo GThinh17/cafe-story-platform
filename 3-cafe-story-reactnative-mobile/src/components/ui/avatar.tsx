@@ -1,8 +1,10 @@
 import { UserRound } from "lucide-react-native";
+import { Text } from "react-native";
 import { useEffect, useState } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, View } from "react-native";
 import { colors, typography } from "../../theme";
 import { resolveAvatarImageUri } from "../../utils/avatar-image";
+import { t } from "../../features/i18n";
 
 type AvatarProps = {
   initials?: string;

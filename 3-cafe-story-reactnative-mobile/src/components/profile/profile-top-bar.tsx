@@ -1,16 +1,10 @@
-import {
-  CreditCard,
-  Ellipsis,
-  LayoutDashboard,
-  Megaphone,
-  Send,
-  Settings,
-  Store,
-} from "lucide-react-native";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { CreditCard, Ellipsis, LayoutDashboard, Megaphone, Send, Settings, Store, } from "lucide-react-native";
+import { Pressable, Text } from "react-native";
+import { Modal, StyleSheet, View } from "react-native";
 import { useState, type ReactNode } from "react";
 
 import { colors, spacing, typography } from "../../theme";
+import { t } from "../../features/i18n";
 
 type ProfileTopBarProps = {
   onAdsManagerPress?: () => void;
@@ -46,7 +40,7 @@ export function ProfileTopBar({
   return (
     <View style={styles.container}>
       <Pressable
-        accessibilityLabel="Open settings"
+        accessibilityLabel={t("Open settings")}
         accessibilityRole="button"
         onPress={onSettingsPress}
         style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
@@ -60,7 +54,7 @@ export function ProfileTopBar({
 
       <View style={styles.rightActions}>
         <Pressable
-          accessibilityLabel="Open profile options"
+          accessibilityLabel={t("Open profile options")}
           accessibilityRole="button"
           onPress={() => setIsOptionsVisible(true)}
           style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
@@ -69,7 +63,7 @@ export function ProfileTopBar({
         </Pressable>
 
         <Pressable
-          accessibilityLabel="Open messages"
+          accessibilityLabel={t("Open messages")}
           accessibilityRole="button"
           onPress={onMessagePress}
           style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
@@ -85,14 +79,14 @@ export function ProfileTopBar({
         visible={isOptionsVisible}
       >
         <Pressable
-          accessibilityLabel="Close profile options"
+          accessibilityLabel={t("Close profile options")}
           onPress={closeOptions}
           style={styles.menuBackdrop}
         >
           <View style={styles.optionsMenu}>
             <OptionItem
               icon={<CreditCard color={colors.foreground} size={20} strokeWidth={2.4} />}
-              label="Payment"
+              label={t("Payment")}
               onPress={() => {
                 closeOptions();
                 onPaymentPress?.();
@@ -101,7 +95,7 @@ export function ProfileTopBar({
             {showAdsManagerAction ? (
               <OptionItem
                 icon={<Megaphone color={colors.foreground} size={20} strokeWidth={2.4} />}
-                label="Ads Manager"
+                label={t("Ads Manager")}
                 onPress={() => {
                   closeOptions();
                   onAdsManagerPress?.();
@@ -117,7 +111,7 @@ export function ProfileTopBar({
                     strokeWidth={2.4}
                   />
                 }
-                label="Reviewer"
+                label={t("Reviewer")}
                 onPress={() => {
                   closeOptions();
                   onReviewerDashboardPress?.();
@@ -127,7 +121,7 @@ export function ProfileTopBar({
             {showCafePageAction ? (
               <OptionItem
                 icon={<Store color={colors.foreground} size={20} strokeWidth={2.4} />}
-                label="Cafe"
+                label={t("Cafe")}
                 onPress={() => {
                   closeOptions();
                   onCafePagePress?.();

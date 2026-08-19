@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useUiText } from "@/features/i18n";
 
 type AdminDetailDialogProps = {
   open: boolean;
@@ -35,6 +36,7 @@ export function AdminDetailDialog({
   footer,
   className,
 }: AdminDetailDialogProps) {
+  const ui = useUiText();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -45,16 +47,16 @@ export function AdminDetailDialog({
       >
         <div className="flex items-start justify-between gap-4 border-b border-border px-4 py-3">
           <div className="min-w-0">
-            <DialogTitle className="truncate">{title}</DialogTitle>
+            <DialogTitle className="truncate">{ui(title)}</DialogTitle>
             {description ? (
-              <DialogDescription className="mt-1">{description}</DialogDescription>
+              <DialogDescription className="mt-1">{ui(description)}</DialogDescription>
             ) : null}
           </div>
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label="Close"
+            aria-label={ui("Close")}
             onClick={() => onOpenChange(false)}
           >
             <XIcon />
@@ -69,7 +71,7 @@ export function AdminDetailDialog({
             </div>
           ) : error ? (
             <div className="rounded-md border border-border bg-surface-muted p-4">
-              <p className="text-sm font-bold text-accent">Request failed</p>
+              <p className="text-sm font-bold text-accent">{ui("Request failed")}</p>
               <p className="mt-2 text-sm text-muted">{error}</p>
             </div>
           ) : (
@@ -97,10 +99,11 @@ export function AdminDetailField({
   children: ReactNode;
   className?: string;
 }) {
+  const ui = useUiText();
   return (
     <div className={cn("min-w-0 rounded-md border border-border bg-background p-2.5", className)}>
       <dt className="text-[11px] font-medium uppercase tracking-wide text-muted">
-        {label}
+        {ui(label)}
       </dt>
       <dd className="mt-1 break-words text-sm text-foreground">{children}</dd>
     </div>

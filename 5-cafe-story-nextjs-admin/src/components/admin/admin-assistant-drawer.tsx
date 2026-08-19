@@ -22,20 +22,26 @@ import {
 } from "@/lib/api/admin";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import {
+  formatDateTime,
+  formatNumber,
+  localizeApiError,
+  useEnumLabel,
+  useI18n,
+  useUiText,
+  type Locale,
+  type LocaleTag,
+  type UiTextTranslate,
+} from "@/features/i18n";
 import type {
   AdminAssistantConversation,
   AdminAssistantDraftAction,
   AdminAssistantMessage,
 } from "@/types/admin";
 
-function formatTime(value: string | null | undefined) {
+function formatTime(value: string | null | undefined, localeTag: LocaleTag) {
   if (!value) return "";
-  return new Intl.DateTimeFormat("en", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
+  return formatDateTime(value, localeTag);
 }
 
 function asText(value: unknown) {
@@ -52,14 +58,20 @@ function pageContext() {
   };
 }
 
-const assistantInputLabel = "Ask assistant message";
-const assistantInputPlaceholder = "Ask in Vietnamese or English about reports and moderation...";
-const assistantPromptChips = [
-  "Cho tôi xem các report đang review",
-  "Báo cáo bài viết lừa đảo nào cần xử lý?",
-  "Tóm tắt moderation queue hiện tại",
-  "What admin actions are allowed for reports?",
-];
+const ASSISTANT_PROMPTS: Record<Locale, string[]> = {
+  en: [
+    "Show me reports currently under review",
+    "Which fraudulent blog reports need attention?",
+    "Summarize the current moderation queue",
+    "What admin actions are allowed for reports?",
+  ],
+  vi: [
+    "Cho tôi xem các báo cáo đang được xem xét",
+    "Báo cáo bài viết lừa đảo nào cần xử lý?",
+    "Tóm tắt hàng đợi kiểm duyệt hiện tại",
+    "Quản trị viên được phép thực hiện hành động nào với báo cáo?",
+  ],
+};
 
 function isSafeLink(url: string) {
   try {
@@ -70,7 +82,7 @@ function isSafeLink(url: string) {
   }
 }
 
-function renderInlineMarkdown(text: string, keyPrefix: string) {
+function renderInlineMarkdown(text: string, keyPrefix: string, ui: UiTextTranslate) {
   const nodes: React.ReactNode[] = [];
   const tokenPattern = /(!?\[[^\]]*]\([^)]*\)|\*\*[^*]+\*\*)/g;
   let lastIndex = 0;
@@ -99,11 +111,11 @@ function renderInlineMarkdown(text: string, keyPrefix: string) {
             rel="noreferrer"
             className="inline-flex max-w-full items-center rounded-sm bg-primary/10 px-1.5 py-0.5 text-xs font-semibold text-primary underline-offset-2 hover:underline"
           >
-            {alt || "Image reference"}
+            {alt || ui("Image reference")}
           </a>
         ) : (
           <span key={key} className="text-muted">
-            {alt || "Image reference"}
+            {alt || ui("Image reference")}
           </span>
         ),
       );
@@ -118,10 +130,10 @@ function renderInlineMarkdown(text: string, keyPrefix: string) {
             rel="noreferrer"
             className="font-medium text-primary underline underline-offset-2"
           >
-            {label || "Link"}
+            {label || ui("Link")}
           </a>
         ) : (
-          <span key={key}>{label || "Link"}</span>
+          <span key={key}>{label || ui("Link")}</span>
         ),
       );
     } else if (boldMatch) {
@@ -145,7 +157,7 @@ function renderInlineMarkdown(text: string, keyPrefix: string) {
   return nodes;
 }
 
-function renderMessageContent(message: AdminAssistantMessage) {
+function renderMessageContent(message: AdminAssistantMessage, ui: UiTextTranslate) {
   const lines = message.content.split(/\r?\n/);
 
   if (message.role === "USER") {
@@ -168,7 +180,7 @@ function renderMessageContent(message: AdminAssistantMessage) {
         if (heading) {
           return (
             <p key={key} className="whitespace-pre-wrap break-words font-bold text-espresso [overflow-wrap:anywhere]">
-              {renderInlineMarkdown(heading[1], key)}
+              {renderInlineMarkdown(heading[1], key, ui)}
             </p>
           );
         }
@@ -178,7 +190,7 @@ function renderMessageContent(message: AdminAssistantMessage) {
           return (
             <p key={key} className="flex gap-2 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
               <span className="mt-[0.65em] size-1.5 shrink-0 rounded-full bg-primary" />
-              <span className="min-w-0">{renderInlineMarkdown(bullet[1], key)}</span>
+              <span className="min-w-0">{renderInlineMarkdown(bullet[1], key, ui)}</span>
             </p>
           );
         }
@@ -188,14 +200,14 @@ function renderMessageContent(message: AdminAssistantMessage) {
           return (
             <p key={key} className="flex gap-2 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
               <span className="shrink-0 font-semibold text-primary">{numbered[1]}.</span>
-              <span className="min-w-0">{renderInlineMarkdown(numbered[2], key)}</span>
+              <span className="min-w-0">{renderInlineMarkdown(numbered[2], key, ui)}</span>
             </p>
           );
         }
 
         return (
           <p key={key} className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-            {renderInlineMarkdown(line, key)}
+            {renderInlineMarkdown(line, key, ui)}
           </p>
         );
       })}
@@ -228,6 +240,9 @@ function maskedFieldCount(value: unknown) {
 }
 
 export function AdminAssistantDrawer() {
+  const { locale, localeTag, t } = useI18n();
+  const ui = useUiText();
+  const enumLabel = useEnumLabel();
   const { user } = useCurrentUser();
   const [open, setOpen] = useState(false);
   const [conversations, setConversations] = useState<AdminAssistantConversation[]>([]);
@@ -243,6 +258,7 @@ export function AdminAssistantDrawer() {
   const [historyOpen, setHistoryOpen] = useState(true);
   const [drawerWidth, setDrawerWidth] = useState(940);
   const [isResizing, setIsResizing] = useState(false);
+  const assistantPromptChips = ASSISTANT_PROMPTS[locale];
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -315,7 +331,7 @@ export function AdminAssistantDrawer() {
         await selectConversation(page.content[0]);
       }
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to load assistant chats.");
+      setError(localizeApiError(requestError, locale, t));
     }
   }
 
@@ -326,13 +342,13 @@ export function AdminAssistantDrawer() {
       const page = await getAssistantMessages(conversation.id, { page: 0, size: 80 });
       setMessages([...page.content].reverse());
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to load messages.");
+      setError(localizeApiError(requestError, locale, t));
     }
   }
 
   async function ensureConversation() {
     if (activeConversation) return activeConversation;
-    const created = await createAssistantConversation({ title: "Admin assistant" });
+    const created = await createAssistantConversation({ title: ui("Admin assistant") });
     setConversations((current) => [created, ...current]);
     setActiveConversation(created);
     return created;
@@ -371,14 +387,18 @@ export function AdminAssistantDrawer() {
             setDraftAction(response.draftAction);
           },
           onError: (payload) => {
-            setError(asText(payload.message) || "Admin assistant service unavailable.");
+            setError(
+              locale === "en"
+                ? asText(payload.message) || ui("Admin assistant service unavailable.")
+                : t("common.error.action"),
+            );
           },
           onDone: () => setLoading(false),
         },
       );
       await loadConversations();
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Admin assistant service unavailable.");
+      setError(localizeApiError(requestError, locale, t, "common.error.action"));
     } finally {
       setLoading(false);
     }
@@ -395,7 +415,7 @@ export function AdminAssistantDrawer() {
         await selectConversation(activeConversation);
       }
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Draft action failed.");
+      setError(localizeApiError(requestError, locale, t, "common.error.action"));
     } finally {
       setLoading(false);
     }
@@ -424,14 +444,14 @@ export function AdminAssistantDrawer() {
         onClick={() => setOpen(true)}
       >
         <BotIcon className="size-4" />
-        Assistant
+        {ui("Assistant")}
       </Button>
 
       {open ? (
         <div className="fixed inset-0 z-[65]">
           <button
             type="button"
-            aria-label="Close assistant overlay"
+            aria-label={ui("Close assistant overlay")}
             className="absolute inset-0 bg-black/30"
             onClick={() => setOpen(false)}
           />
@@ -447,7 +467,7 @@ export function AdminAssistantDrawer() {
             <div
               role="separator"
               aria-orientation="vertical"
-              aria-label="Resize assistant"
+              aria-label={ui("Resize assistant")}
               className={cn(
                 "absolute inset-y-0 left-0 hidden w-1.5 cursor-ew-resize bg-transparent transition-colors hover:bg-primary/30 sm:block",
                 isResizing && "bg-primary/40",
@@ -463,7 +483,7 @@ export function AdminAssistantDrawer() {
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  aria-label={historyOpen ? "Hide chat history" : "Show chat history"}
+                  aria-label={ui(historyOpen ? "Hide chat history" : "Show chat history")}
                   className="hidden lg:inline-flex"
                   onClick={() => setHistoryOpen((current) => !current)}
                 >
@@ -477,9 +497,9 @@ export function AdminAssistantDrawer() {
                   <BotIcon className="size-4" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="truncate text-sm font-bold text-espresso">Admin assistant</h2>
+                  <h2 className="truncate text-sm font-bold text-espresso">{ui("Admin assistant")}</h2>
                   <p className="truncate text-xs font-medium text-muted">
-                    Core ops support with tool-audited answers.
+                    {ui("Core ops support with tool-audited answers.")}
                   </p>
                 </div>
               </div>
@@ -490,15 +510,15 @@ export function AdminAssistantDrawer() {
                   size="sm"
                   className="lg:hidden"
                   onClick={async () => {
-                    const created = await createAssistantConversation({ title: "Admin assistant" });
+                    const created = await createAssistantConversation({ title: ui("Admin assistant") });
                     setConversations((current) => [created, ...current]);
                     await selectConversation(created);
                   }}
                 >
                   <MessageSquareTextIcon className="size-4" />
-                  New chat
+                  {ui("New chat")}
                 </Button>
-                <Button type="button" variant="ghost" size="icon-sm" onClick={() => setOpen(false)}>
+                <Button type="button" variant="ghost" size="icon-sm" aria-label={ui("Close assistant")} onClick={() => setOpen(false)}>
                   <XIcon className="size-4" />
                 </Button>
               </div>
@@ -521,13 +541,13 @@ export function AdminAssistantDrawer() {
                   variant="outline"
                   className="mb-3 w-full justify-start"
                   onClick={async () => {
-                    const created = await createAssistantConversation({ title: "Admin assistant" });
+                    const created = await createAssistantConversation({ title: ui("Admin assistant") });
                     setConversations((current) => [created, ...current]);
                     await selectConversation(created);
                   }}
                 >
                   <MessageSquareTextIcon className="size-4" />
-                  New chat
+                  {ui("New chat")}
                 </Button>
                 <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
                   {conversations.map((conversation) => (
@@ -543,9 +563,9 @@ export function AdminAssistantDrawer() {
                       onClick={() => void selectConversation(conversation)}
                     >
                       <p className="truncate text-sm font-semibold text-foreground">
-                        {conversation.title || "Assistant chat"}
+                        {conversation.title || ui("Assistant chat")}
                       </p>
-                      <p className="text-xs text-muted">{formatTime(conversation.updatedAt)}</p>
+                      <p className="text-xs text-muted">{formatTime(conversation.updatedAt, localeTag)}</p>
                     </button>
                   ))}
                 </div>
@@ -559,9 +579,9 @@ export function AdminAssistantDrawer() {
                         <div className="mx-auto mb-4 grid size-11 place-items-center rounded-md border border-primary/15 bg-primary/10 text-primary">
                           <SparklesIcon className="size-5" />
                         </div>
-                        <h3 className="text-base font-bold text-espresso">Ask about admin operations</h3>
+                        <h3 className="text-base font-bold text-espresso">{ui("Ask about admin operations")}</h3>
                         <p className="mt-2 text-sm text-muted">
-                          Start with report queues, moderation risk, suspicious blogs, comments, or user/page signals.
+                          {ui("Start with report queues, moderation risk, suspicious blogs, comments, or user/page signals.")}
                         </p>
                         <div className="mt-4 flex flex-wrap justify-center gap-2">
                           {assistantPromptChips.map((prompt) => (
@@ -596,14 +616,14 @@ export function AdminAssistantDrawer() {
                               : "border-border bg-surface text-foreground",
                           )}
                         >
-                          {renderMessageContent(message)}
+                          {renderMessageContent(message, ui)}
                           <p
                             className={cn(
                               "mt-1 text-[11px]",
                               message.role === "USER" ? "text-primary-foreground/75" : "text-muted",
                             )}
                           >
-                            {formatTime(message.createdAt)}
+                            {formatTime(message.createdAt, localeTag)}
                           </p>
                         </div>
                       </div>
@@ -611,7 +631,7 @@ export function AdminAssistantDrawer() {
                     {loading ? (
                       <div className="flex w-fit max-w-[92%] items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-sm text-muted">
                         <span className="size-2 rounded-full bg-primary" />
-                        <span>Assistant is checking tools and policies...</span>
+                        <span>{ui("Assistant is checking tools and policies...")}</span>
                       </div>
                     ) : null}
                     <div ref={messagesEndRef} />
@@ -623,17 +643,20 @@ export function AdminAssistantDrawer() {
                     <div className="mx-auto max-w-3xl rounded-md border border-line-soft bg-background p-3">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="text-xs font-bold uppercase text-muted">Draft action</p>
+                          <p className="text-xs font-bold uppercase text-muted">{ui("Draft action")}</p>
                           <p className="break-words text-sm font-bold text-espresso">
-                            {draftAction.actionType}
+                            {enumLabel(draftAction.actionType)}
                           </p>
                           <p className="mt-1 break-words text-sm text-muted">
-                            {draftAction.explanation || "Assistant proposed an admin action."}
+                            {draftAction.explanation || ui("Assistant proposed an admin action.")}
+                          </p>
+                          <p className="mt-1 text-xs font-medium text-muted">
+                            {ui("Draft only. An admin must select Execute to apply this action.")}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="rounded-md bg-surface-muted px-2 py-1 text-xs font-bold text-muted">
-                            {draftAction.status}
+                            {enumLabel(draftAction.status)}
                           </span>
                           {draftAction.status === "PENDING" ? (
                             <Button
@@ -643,7 +666,7 @@ export function AdminAssistantDrawer() {
                               disabled={loading}
                             >
                               <CheckCircle2Icon className="size-4" />
-                              Execute
+                              {ui("Execute")}
                             </Button>
                           ) : null}
                         </div>
@@ -657,10 +680,12 @@ export function AdminAssistantDrawer() {
                     <div className="mx-auto max-w-3xl rounded-md border border-line-soft bg-background px-3 py-2">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
-                          <p className="text-xs font-bold uppercase text-muted">Tool evidence</p>
+                          <p className="text-xs font-bold uppercase text-muted">{ui("Tool evidence")}</p>
                           <p className="text-xs text-muted">
-                            {latestToolCalls.length} tool call{latestToolCalls.length === 1 ? "" : "s"} ·{" "}
-                            {latestCitations.length} citation{latestCitations.length === 1 ? "" : "s"}
+                            {ui("{tools} tool calls · {citations} citations", {
+                              tools: formatNumber(latestToolCalls.length, localeTag),
+                              citations: formatNumber(latestCitations.length, localeTag),
+                            })}
                           </p>
                         </div>
                         <div className="flex max-w-full flex-wrap justify-end gap-1.5">
@@ -669,7 +694,9 @@ export function AdminAssistantDrawer() {
                               <span
                                 key={`${toolCallName(toolCall)}-${index}`}
                                 className="rounded-md border border-border bg-surface px-2 py-1 text-[11px] font-semibold text-foreground"
-                                title={`${maskedFieldCount(toolCall)} masked field(s)`}
+                                title={ui("{count} masked fields", {
+                                  count: formatNumber(maskedFieldCount(toolCall), localeTag),
+                                })}
                               >
                                 {toolCallName(toolCall)}
                               </span>
@@ -731,8 +758,8 @@ export function AdminAssistantDrawer() {
                     <Textarea
                       value={input}
                       onChange={(event) => setInput(event.target.value)}
-                      aria-label={assistantInputLabel}
-                      placeholder={assistantInputPlaceholder}
+                      aria-label={ui("Ask assistant message")}
+                      placeholder={ui("Ask in Vietnamese or English about reports and moderation...")}
                       rows={1}
                       className="max-h-32 min-h-12 resize-none bg-background py-3"
                       onKeyDown={(event) => {
@@ -748,7 +775,7 @@ export function AdminAssistantDrawer() {
                       className="size-12"
                       disabled={!canSend}
                       onClick={() => void handleSend()}
-                      aria-label="Send assistant message"
+                      aria-label={ui("Send assistant message")}
                     >
                       <SendIcon className="size-4" />
                     </Button>

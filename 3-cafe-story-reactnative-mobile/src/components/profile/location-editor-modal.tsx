@@ -1,16 +1,8 @@
 import { ArrowLeft, CheckCircle2, MapPin } from "lucide-react-native";
+import { Pressable, Text } from "react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+  ActivityIndicator, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, View } from "react-native";
 
 import {
   getRegionCities,
@@ -27,6 +19,7 @@ import type {
 } from "../../types";
 import { LoadingState } from "../ui/loading-state";
 import { TextField } from "../ui/text-field";
+import { t } from "../../features/i18n";
 
 type LocationEditorModalProps = {
   error?: string | null;
@@ -330,7 +323,7 @@ export function LocationEditorModal({
       >
         <View style={styles.header}>
           <Pressable
-            accessibilityLabel="Close location editor"
+            accessibilityLabel={t("Close location editor")}
             accessibilityRole="button"
             disabled={isSaving}
             onPress={onClose}
@@ -343,12 +336,10 @@ export function LocationEditorModal({
             <ArrowLeft color={colors.foreground} size={32} strokeWidth={2.5} />
           </Pressable>
 
-          <Text numberOfLines={1} style={styles.headerTitle}>
-            Update location
-          </Text>
+          <Text numberOfLines={1} style={styles.headerTitle}>{t("Update location")}</Text>
 
           <Pressable
-            accessibilityLabel="Save location"
+            accessibilityLabel={t("Save location")}
             accessibilityRole="button"
             disabled={!canSave}
             onPress={handleSave}
@@ -361,7 +352,7 @@ export function LocationEditorModal({
             {isSaving ? (
               <ActivityIndicator color={colors.link} />
             ) : (
-              <Text style={styles.saveText}>Save</Text>
+              <Text style={styles.saveText}>{t("Save")}</Text>
             )}
           </Pressable>
         </View>
@@ -371,15 +362,12 @@ export function LocationEditorModal({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.description}>
-            Keep your profile location accurate so CafeStory can personalize
-            local cafe discovery.
-          </Text>
+          <Text style={styles.description}>{t("Keep your profile location accurate so CafeStory can personalize local cafe discovery.")}</Text>
 
           <SelectionGroup
-            emptyLabel="No provinces available."
+            emptyLabel={t("No provinces available.")}
             isLoading={isProvinceLoading}
-            label="Province"
+            label={t("Province")}
             onSelect={handleProvincePress}
             options={provinces}
             selectedCode={selectedProvince?.provinceCode}
@@ -388,9 +376,9 @@ export function LocationEditorModal({
 
           {selectedProvince ? (
             <SelectionGroup
-              emptyLabel="No cities available for this province."
+              emptyLabel={t("No cities available for this province.")}
               isLoading={isCityLoading}
-              label="City"
+              label={t("City")}
               onSelect={handleCityPress}
               options={cities}
               selectedCode={selectedCity?.cityCode}
@@ -400,9 +388,9 @@ export function LocationEditorModal({
 
           {selectedCity ? (
             <SelectionGroup
-              emptyLabel="No wards available for this city."
+              emptyLabel={t("No wards available for this city.")}
               isLoading={isWardLoading}
-              label="Ward"
+              label={t("Ward")}
               onSelect={setSelectedWard}
               options={wards}
               selectedCode={selectedWard?.wardCode}
@@ -411,9 +399,9 @@ export function LocationEditorModal({
           ) : null}
 
           <TextField
-            label="Street"
+            label={t("Street")}
             onChangeText={setStreet}
-            placeholder="Street address"
+            placeholder={t("Street address")}
             value={street}
           />
 

@@ -1,6 +1,9 @@
 import { Camera, Image, Mic, Send } from "lucide-react-native";
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import { Pressable } from "react-native";
+import { TextInput } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { colors, spacing, typography } from "../../theme";
+import { t } from "../../features/i18n";
 
 type ChatComposerProps = {
   disabled?: boolean;
@@ -25,7 +28,7 @@ export function ChatComposer({
           editable={!disabled}
           onSubmitEditing={canSend ? onSend : undefined}
           onChangeText={onChangeText}
-          placeholder="Message..."
+          placeholder={t("Message...")}
           placeholderTextColor={colors.muted}
           returnKeyType="send"
           style={styles.input}
@@ -35,7 +38,7 @@ export function ChatComposer({
         <Image color={colors.muted} size={21} strokeWidth={2.2} />
       </View>
       <Pressable
-        accessibilityLabel="Send message"
+        accessibilityLabel={t("Send message")}
         accessibilityRole="button"
         disabled={!canSend}
         onPress={onSend}

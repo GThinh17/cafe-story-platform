@@ -1,9 +1,12 @@
 import { Award, Sparkles, Store, UserRound } from "lucide-react-native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { colors, spacing, typography } from "../../theme";
 import type { RecommendationCardResponse } from "../../types";
 import { Avatar } from "../ui/avatar";
+import { t } from "../../features/i18n";
 
 type ExploreRecommendationCardProps = {
   item: RecommendationCardResponse;

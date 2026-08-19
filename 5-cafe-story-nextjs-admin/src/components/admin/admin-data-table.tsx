@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import type { PageResponse } from "@/types/api";
+import { useUiText } from "@/features/i18n";
 
 export type AdminTableColumn<T> = {
   header: string;
@@ -65,6 +66,7 @@ export function AdminDataTable<T>({
   emptyDescription = "Try changing the filters or refresh the page.",
   onRowClick,
 }: AdminDataTableProps<T>) {
+  const ui = useUiText();
   if (isLoading) {
     return (
       <Card className="overflow-hidden">
@@ -80,7 +82,7 @@ export function AdminDataTable<T>({
   if (error) {
     return (
       <Card className="p-4">
-        <p className="text-sm font-semibold text-accent">Request failed</p>
+        <p className="text-sm font-semibold text-accent">{ui("Request failed")}</p>
         <p className="mt-1 text-sm text-muted">{error}</p>
       </Card>
     );
@@ -89,8 +91,8 @@ export function AdminDataTable<T>({
   if (!rows.length) {
     return (
       <Card className="p-5">
-        <p className="text-sm font-semibold text-espresso">{emptyTitle}</p>
-        <p className="mt-1 text-sm text-muted">{emptyDescription}</p>
+        <p className="text-sm font-semibold text-espresso">{ui(emptyTitle)}</p>
+        <p className="mt-1 text-sm text-muted">{ui(emptyDescription)}</p>
       </Card>
     );
   }
@@ -109,7 +111,7 @@ export function AdminDataTable<T>({
                   )}
                   key={column.header}
                 >
-                  {column.header}
+                  {ui(column.header)}
                 </TableHead>
               ))}
             </TableRow>
@@ -191,6 +193,7 @@ export type AdminRowAction = {
 };
 
 export function AdminRowActions({ actions }: { actions: AdminRowAction[] }) {
+  const ui = useUiText();
   if (!actions.length) {
     return null;
   }
@@ -207,7 +210,7 @@ export function AdminRowActions({ actions }: { actions: AdminRowAction[] }) {
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label="Row actions"
+            aria-label={ui("Row actions")}
           >
             <MoreHorizontalIcon />
           </Button>
@@ -221,7 +224,7 @@ export function AdminRowActions({ actions }: { actions: AdminRowAction[] }) {
               onSelect={() => action.onSelect()}
             >
               {action.icon ? <action.icon className="size-3.5" /> : null}
-              {action.label}
+              {ui(action.label)}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
@@ -257,6 +260,7 @@ function buildPageWindow(current: number, total: number): (number | "…")[] {
 }
 
 export function AdminPagination<T>({ page, onPageChange }: AdminPaginationProps<T>) {
+  const ui = useUiText();
   if (!page) {
     return null;
   }
@@ -267,13 +271,15 @@ export function AdminPagination<T>({ page, onPageChange }: AdminPaginationProps<
 
   return (
     <div className="grid grid-cols-3 items-center gap-2 rounded-md border border-border bg-surface px-3 py-2 text-xs text-muted">
-      <span className="justify-self-start">{page.totalElements} records</span>
+      <span className="justify-self-start">
+        {ui("{count} records", { count: page.totalElements })}
+      </span>
       <div className="flex items-center justify-self-center gap-1">
         <Button
           type="button"
           variant="ghost"
           size="icon-xs"
-          aria-label="First page"
+          aria-label={ui("First page")}
           disabled={page.first}
           onClick={() => onPageChange(0)}
         >
@@ -283,7 +289,7 @@ export function AdminPagination<T>({ page, onPageChange }: AdminPaginationProps<
           type="button"
           variant="ghost"
           size="icon-xs"
-          aria-label="Previous page"
+          aria-label={ui("Previous page")}
           disabled={page.first}
           onClick={() => onPageChange(Math.max(page.number - 1, 0))}
         >
@@ -304,7 +310,7 @@ export function AdminPagination<T>({ page, onPageChange }: AdminPaginationProps<
               variant={entry === currentPage ? "default" : "ghost"}
               size="icon-xs"
               aria-current={entry === currentPage ? "page" : undefined}
-              aria-label={`Page ${entry}`}
+              aria-label={ui("Page {page}", { page: entry })}
               key={entry}
               onClick={() => onPageChange(entry - 1)}
             >
@@ -316,7 +322,7 @@ export function AdminPagination<T>({ page, onPageChange }: AdminPaginationProps<
           type="button"
           variant="ghost"
           size="icon-xs"
-          aria-label="Next page"
+          aria-label={ui("Next page")}
           disabled={page.last}
           onClick={() => onPageChange(page.number + 1)}
         >
@@ -326,7 +332,7 @@ export function AdminPagination<T>({ page, onPageChange }: AdminPaginationProps<
           type="button"
           variant="ghost"
           size="icon-xs"
-          aria-label="Last page"
+          aria-label={ui("Last page")}
           disabled={page.last}
           onClick={() => onPageChange(totalPages - 1)}
         >

@@ -1,78 +1,9 @@
-import type {
-  BlogResponse,
-  CafePageResponse,
-  ExploreSearchResults,
-  UserResponse,
-} from "../../types";
-import { getBlogs } from "./blogs";
-import { getCafePages } from "./cafe-pages";
-import { getUsers } from "./users";
+import type { ExploreSearchResults } from "../../types";
+import { apiCacheTtl, cachedApiCall } from "./api-cache";
+import { apiFetch } from "./client";
+import { apiEndpoints } from "./endpoints";
 
 const MAX_SEARCH_RESULTS_PER_GROUP = 8;
-
-function normalize(value: string | null | undefined) {
-  return (value ?? "").trim().toLowerCase();
-}
-
-function containsQuery(values: Array<string | null | undefined>, query: string) {
-  const normalizedQuery = normalize(query);
-
-  return values.some((value) => normalize(value).includes(normalizedQuery));
-}
-
-function filterUsers(users: UserResponse[], query: string) {
-  return users
-    .filter((user) =>
-      containsQuery(
-        [
-          user.userName,
-          user.userFullName,
-          user.userDescription,
-          user.regionCity,
-          user.regionProvince,
-        ],
-        query,
-      ),
-    )
-    .slice(0, MAX_SEARCH_RESULTS_PER_GROUP);
-}
-
-function filterCafePages(cafePages: CafePageResponse[], query: string) {
-  return cafePages
-    .filter((page) =>
-      containsQuery(
-        [
-          page.name,
-          page.description,
-          page.address,
-          page.regionArea,
-          page.regionCity,
-          page.regionProvince,
-          page.regionStreet,
-          page.regionWard,
-        ],
-        query,
-      ),
-    )
-    .slice(0, MAX_SEARCH_RESULTS_PER_GROUP);
-}
-
-function filterBlogs(blogs: BlogResponse[], query: string) {
-  return blogs
-    .filter((blog) =>
-      containsQuery(
-        [
-          blog.content,
-          blog.authorUserName,
-          blog.authorUserFullName,
-          blog.displayName,
-          blog.pageName,
-        ],
-        query,
-      ),
-    )
-    .slice(0, MAX_SEARCH_RESULTS_PER_GROUP);
-}
 
 export async function searchExplore(query: string): Promise<ExploreSearchResults> {
   const normalizedQuery = query.trim();
@@ -85,15 +16,14 @@ export async function searchExplore(query: string): Promise<ExploreSearchResults
     };
   }
 
-  const [users, cafePages, blogs] = await Promise.all([
-    getUsers().catch(() => []),
-    getCafePages().catch(() => []),
-    getBlogs().catch(() => []),
-  ]);
+  const path = apiEndpoints.search.explore(
+    normalizedQuery,
+    MAX_SEARCH_RESULTS_PER_GROUP,
+  );
 
-  return {
-    blogs: filterBlogs(blogs, normalizedQuery),
-    cafePages: filterCafePages(cafePages, normalizedQuery),
-    users: filterUsers(users, normalizedQuery),
-  };
+  return cachedApiCall(
+    `search:explore:${normalizedQuery.toLowerCase()}`,
+    apiCacheTtl.dynamic,
+    () => apiFetch<ExploreSearchResults>(path, { method: "GET" }),
+  );
 }

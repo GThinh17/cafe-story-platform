@@ -1,9 +1,12 @@
 import { Check, Eye, Lock, MessageCircle, Pin } from "lucide-react-native";
-import { Image, Pressable, ScrollView, StyleSheet, Switch, Text, View } from "react-native";
+import { Switch } from "react-native";
+import { Pressable, Text } from "react-native";
+import { Image, ScrollView, StyleSheet, View } from "react-native";
 
 import { Avatar } from "../ui/avatar";
 import { colors, spacing, typography } from "../../theme";
 import type { AuthUser, CreatePostDraft, PostVisibility } from "../../types";
+import { t } from "../../features/i18n";
 
 type CreatePostSettingsStepProps = {
   draft: CreatePostDraft;
@@ -60,13 +63,13 @@ export function CreatePostSettingsStep({
               {displayName}
             </Text>
             <Text style={styles.previewMeta}>
-              {postingIdentity ? "Cafe page post" : "Just now"}
+              {postingIdentity ? t("Cafe page post") : t("Just now")}
             </Text>
           </View>
         </View>
         {previewImage ? (
           <Image
-            accessibilityLabel="Post preview"
+            accessibilityLabel={t("Post preview")}
             resizeMode="cover"
             source={{ uri: previewImage }}
             style={[
@@ -83,7 +86,7 @@ export function CreatePostSettingsStep({
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Visibility</Text>
+        <Text style={styles.sectionTitle}>{t("Visibility")}</Text>
         <View style={styles.visibilityGrid}>
           {visibilityOptions.map(({ description, Icon, label, value }) => {
             const selected = draft.visibility === value;
@@ -123,26 +126,24 @@ export function CreatePostSettingsStep({
       <View style={styles.settingsCard}>
         <SettingToggle
           Icon={MessageCircle}
-          description="People can reply under this post."
-          label="Allow comments"
+          description={t("People can reply under this post.")}
+          label={t("Allow comments")}
           onValueChange={(allowComments) => onUpdateDraft({ allowComments })}
           value={draft.allowComments}
         />
         <View style={styles.divider} />
         <SettingToggle
           Icon={Pin}
-          description="Keep this post near the top of your profile."
-          label="Pin to profile"
+          description={t("Keep this post near the top of your profile.")}
+          label={t("Pin to profile")}
           onValueChange={(pinToProfile) => onUpdateDraft({ pinToProfile })}
           value={draft.pinToProfile}
         />
       </View>
 
       <View style={styles.payloadNote}>
-        <Text style={styles.payloadTitle}>Ready to post</Text>
-        <Text style={styles.payloadText}>
-          CafeStory will publish your caption, selected photos, comments setting, profile pin, location, cafe page, and tagged people where available.
-        </Text>
+        <Text style={styles.payloadTitle}>{t("Ready to post")}</Text>
+        <Text style={styles.payloadText}>{t("CafeStory will publish your caption, selected photos, comments setting, profile pin, location, cafe page, and tagged people where available.")}</Text>
       </View>
     </ScrollView>
   );

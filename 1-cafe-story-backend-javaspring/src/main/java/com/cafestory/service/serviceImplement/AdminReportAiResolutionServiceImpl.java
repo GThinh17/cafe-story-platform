@@ -8,6 +8,9 @@ import com.cafestory.dto.requestDTO.AdminReportAiPolicyContextRequestDTO;
 import com.cafestory.dto.requestDTO.AdminReportAiResolutionRequestDTO;
 import com.cafestory.dto.responseDTO.AdminReportAiResolutionResponseDTO;
 import com.cafestory.dto.responseDTO.AdminReportAiResolutionWebhookResponseDTO;
+import com.cafestory.dto.responseDTO.AdminReportAiPolicyResponseDTO;
+import com.cafestory.dto.responseDTO.AdminReportAiPolicyRuleRequirementResponseDTO;
+import com.cafestory.dto.responseDTO.AdminReportAiPolicyRuleResponseDTO;
 import com.cafestory.entity.AdminReportAiResolution;
 import com.cafestory.entity.AiModerationResult;
 import com.cafestory.entity.Blog;
@@ -341,6 +344,58 @@ public class AdminReportAiResolutionServiceImpl implements AdminReportAiResoluti
         ContentReport report = findReport(reportId);
         return resolutionRepository.findByContentReportId(report.getId(), pageable)
                 .map(this::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminReportAiPolicyResponseDTO getPolicy(UUID reportId) {
+        ContentReport report = findReport(reportId);
+        String reasonCode = report.getReason() == null ? null : report.getReason().getCode();
+        return AdminReportAiPolicyResponseDTO.builder()
+                .reportId(report.getId())
+                .targetType(report.getTargetType())
+                .reasonCode(reasonCode)
+                .contextSchemaVersion(AdminReportAiPolicyCatalog.CONTEXT_SCHEMA_VERSION)
+                .policyVersion(AdminReportAiPolicyCatalog.POLICY_VERSION)
+                .policyStatus(AdminReportAiPolicyCatalog.POLICY_STATUS)
+                .ruleCatalogVersion(AdminReportAiPolicyCatalog.RULE_CATALOG_VERSION)
+                .ruleCatalogStatus(AdminReportAiPolicyCatalog.RULE_CATALOG_STATUS)
+                .evaluationMode(AdminReportAiPolicyCatalog.EVALUATION_MODE)
+                .recommendationOnly(true)
+                .candidateRules(AdminReportAiPolicyCatalog.candidateRules(reasonCode).stream()
+                        .map(this::toPolicyRuleResponse)
+                        .toList())
+                .build();
+    }
+
+    private AdminReportAiPolicyRuleResponseDTO toPolicyRuleResponse(
+            AdminReportAiCandidateRuleRequestDTO rule) {
+        return AdminReportAiPolicyRuleResponseDTO.builder()
+                .ruleId(rule.getRuleId())
+                .ruleVersion(rule.getRuleVersion())
+                .ruleStatus(rule.getRuleStatus())
+                .ruleFamily(rule.getRuleFamily())
+                .ruleType(rule.getRuleType())
+                .material(rule.getMaterial())
+                .applicableTargetTypes(rule.getApplicableTargetTypes())
+                .requirementProfileIds(rule.getRequirementProfileIds())
+                .requiredEvidenceKinds(rule.getRequiredEvidenceKinds())
+                .conditionalRequirements(rule.getConditionalRequirements().stream()
+                        .map(requirement -> AdminReportAiPolicyRuleRequirementResponseDTO.builder()
+                                .requirementCode(requirement.getRequirementCode())
+                                .evidenceKind(requirement.getEvidenceKind())
+                                .requirementType(requirement.getRequirementType())
+                                .trigger(requirement.getTrigger())
+                                .missingBehavior(requirement.getMissingBehavior())
+                                .build())
+                        .toList())
+                .semanticRequirementCodes(rule.getSemanticRequirementCodes())
+                .counterEvidenceRequired(rule.getCounterEvidenceRequired())
+                .exceptionCodes(rule.getExceptionCodes())
+                .evaluationCeiling(rule.getEvaluationCeiling())
+                .allowedOutcomes(rule.getAllowedOutcomes())
+                .allowedCandidateActions(rule.getAllowedCandidateActions())
+                .build();
     }
 
     protected AdminReportAiResolutionWebhookResponseDTO callWebhook(AdminReportAiResolutionRequestDTO request) {

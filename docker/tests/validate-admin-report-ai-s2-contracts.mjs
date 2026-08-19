@@ -105,12 +105,14 @@ const runtimeRequest = () => ({
   targetType: 'BLOG',
   targetId: crypto.randomUUID(),
   reasonCode: 'SPAM',
+  reasonLabel: 'Spam or misleading content',
+  description: 'This post contains a phishing scam.',
   reportClaim: {
     reportId: crypto.randomUUID(),
     status: 'OPEN',
     reasonCode: 'SPAM',
     reasonCatalogVersion: 'IRC-2.0.0-proposed.1',
-    description: 'Synthetic claim.',
+    description: 'This post contains a phishing scam.',
     trustLevel: 'UNTRUSTED_REPORTER_CLAIM',
   },
   targetSnapshot: {
@@ -370,6 +372,50 @@ assert.equal(
   builtEvidenceById.get('EV-TARGET-REPORT-HISTORY').sanitizedPayload.sameTargetOpenReportCount,
   2,
 );
+assert.equal(builtItems[0].json.responseLanguage, 'en');
+assert.match(
+  builtItems[0].json.openaiRequest.input[0].content[0].text,
+  /Write explanation and every finding\.rationale in English\./,
+);
+assert.match(
+  builtItems[0].json.openaiRequest.input[0].content[0].text,
+  /identify the concrete words, URL patterns, requests, promises, or instructions observed in TARGET_TEXT_CONTENT/,
+);
+assert.match(
+  builtItems[0].json.openaiRequest.input[0].content[0].text,
+  /Separate direct observation from inference/,
+);
+assert.match(
+  builtItems[0].json.openaiRequest.input[0].content[0].text,
+  /evidence is missing or insufficient/,
+);
+
+const vietnameseRuntime = clone(validRuntime);
+vietnameseRuntime.correlationId = crypto.randomUUID();
+vietnameseRuntime.idempotencyKey = crypto.randomBytes(32).toString('hex');
+vietnameseRuntime.description = 'Bài viết này có nội dung lừa đảo.';
+vietnameseRuntime.reasonLabel = 'Nội dung lừa đảo hoặc gây hiểu nhầm';
+vietnameseRuntime.reportClaim.description = vietnameseRuntime.description;
+const vietnameseBuiltItems = await executeSigned(vietnameseRuntime);
+assert.equal(vietnameseBuiltItems[0].json.responseLanguage, 'vi');
+assert.match(
+  vietnameseBuiltItems[0].json.openaiRequest.input[0].content[0].text,
+  /Write explanation and every finding\.rationale in Vietnamese\./,
+);
+
+const englishDescriptionWithVietnameseReason = clone(validRuntime);
+englishDescriptionWithVietnameseReason.correlationId = crypto.randomUUID();
+englishDescriptionWithVietnameseReason.idempotencyKey = crypto.randomBytes(32).toString('hex');
+englishDescriptionWithVietnameseReason.description = 'This post contains a phishing scam.';
+englishDescriptionWithVietnameseReason.reasonLabel = 'Nội dung lừa đảo';
+englishDescriptionWithVietnameseReason.reportClaim.description =
+  englishDescriptionWithVietnameseReason.description;
+const englishDescriptionBuiltItems = await executeSigned(englishDescriptionWithVietnameseReason);
+assert.equal(
+  englishDescriptionBuiltItems[0].json.responseLanguage,
+  'en',
+  'Recognizable report description language must take precedence over the reason snapshot',
+);
 await assert.rejects(
   () => executeSigned(runtimeNestedUnknown),
   /Report claim contains unknown properties: unknownAuthority/,
@@ -392,5 +438,8 @@ console.log('S2_CONTRACT_SCHEMA_COMPILE=PASS');
 console.log('S2_SCHEMA_BOUNDARIES=7/7 PASS');
 console.log('S2_N8N_NESTED_BOUNDARY=PASS');
 console.log('S2_PROVIDER_SCHEMA_PARITY=PASS');
+console.log('S2_RESPONSE_LANGUAGE_ENGLISH=PASS');
+console.log('S2_RESPONSE_LANGUAGE_VIETNAMESE=PASS');
+console.log('S2_RESPONSE_LANGUAGE_DESCRIPTION_PRECEDENCE=PASS');
 console.log(`S2_RUNTIME_SCHEMA_SHA256=${schemaHash(runtimeSchema)}`);
 console.log(`S2_PROVIDER_SCHEMA_SHA256=${schemaHash(providerSchema)}`);

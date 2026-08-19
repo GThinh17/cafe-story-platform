@@ -33,6 +33,14 @@ import {
   updateExtraFee,
   updateExtraFeeStatus,
 } from "@/lib/api/admin";
+import {
+  formatCurrency,
+  formatNumber,
+  localizeApiError,
+  useEnumLabel,
+  useI18n,
+  useUiText,
+} from "@/features/i18n";
 import type { ExtraFee, ExtraFeeRequest, ExtraFeeType } from "@/types/admin";
 
 const feeTypes: ExtraFeeType[] = ["REVIEWER_REGISTRATION", "CAFE_PAGE_OPENING"];
@@ -86,6 +94,9 @@ function toRequest(form: FeeFormState): ExtraFeeRequest {
 }
 
 export function AdminExtraFeesPage() {
+  const { locale, localeTag, t } = useI18n();
+  const ui = useUiText();
+  const enumLabel = useEnumLabel();
   const [status, setStatus] = useState<boolean | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingExtraFeeAction | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -105,18 +116,20 @@ export function AdminExtraFeesPage() {
         cell: (fee) => (
           <div className="max-w-sm">
             <p className="font-bold text-espresso">{fee.name}</p>
-            <p className="mt-1 text-sm text-muted">{fee.description || fee.feeType}</p>
+            <p className="mt-1 text-sm text-muted">{fee.description || enumLabel(fee.feeType)}</p>
           </div>
         ),
       },
-      { header: "Type", cell: (fee) => fee.feeType },
-      { header: "Price", cell: (fee) => fee.price.toLocaleString() },
+      { header: "Type", cell: (fee) => enumLabel(fee.feeType) },
+      { header: "Price", cell: (fee) => formatCurrency(fee.price, "VND", localeTag) },
       {
         header: "Duration",
         cell: (fee) =>
-          fee.durationMonths ? `${fee.durationMonths} months` : "One time",
+          fee.durationMonths
+            ? ui("{count} months", { count: formatNumber(fee.durationMonths, localeTag) })
+            : ui("One time"),
       },
-      { header: "Members", cell: (fee) => fee.maxMembers ?? "—" },
+      { header: "Members", cell: (fee) => fee.maxMembers == null ? "—" : formatNumber(fee.maxMembers, localeTag) },
       { header: "Status", cell: (fee) => <AdminStatusBadge value={fee.status} /> },
       {
         header: "",
@@ -134,7 +147,7 @@ export function AdminExtraFeesPage() {
                 },
               },
               {
-                label: fee.status ? "Disable" : "Enable",
+                label: ui(fee.status ? "Disable" : "Enable"),
                 icon: PowerIcon,
                 destructive: Boolean(fee.status),
                 onSelect: () =>
@@ -145,7 +158,7 @@ export function AdminExtraFeesPage() {
         ),
       },
     ],
-    [],
+    [enumLabel, localeTag, ui],
   );
 
   async function handleConfirm() {
@@ -162,9 +175,7 @@ export function AdminExtraFeesPage() {
       setPendingAction(null);
       resource.refetch();
     } catch (requestError) {
-      setActionError(
-        requestError instanceof Error ? requestError.message : "Action failed.",
-      );
+      setActionError(localizeApiError(requestError, locale, t, "common.error.action"));
     } finally {
       setIsSubmitting(false);
     }
@@ -174,7 +185,7 @@ export function AdminExtraFeesPage() {
     const request = toRequest(form);
 
     if (!request.name || Number.isNaN(request.price)) {
-      setActionError("Name and numeric price are required.");
+      setActionError(ui("Name and numeric price are required."));
       return;
     }
 
@@ -192,9 +203,7 @@ export function AdminExtraFeesPage() {
       setForm(emptyForm);
       resource.refetch();
     } catch (requestError) {
-      setActionError(
-        requestError instanceof Error ? requestError.message : "Action failed.",
-      );
+      setActionError(localizeApiError(requestError, locale, t, "common.error.action"));
     } finally {
       setIsSubmitting(false);
     }
@@ -214,7 +223,7 @@ export function AdminExtraFeesPage() {
               setFormOpen(true);
             }}
           >
-            Create fee
+            {ui("Create fee")}
           </Button>
         }
       />
@@ -245,22 +254,22 @@ export function AdminExtraFeesPage() {
         <DialogContent className="max-w-2xl p-5">
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <DialogTitle>{form.extraFeeId ? "Edit fee" : "Create fee"}</DialogTitle>
+              <DialogTitle>{ui(form.extraFeeId ? "Edit fee" : "Create fee")}</DialogTitle>
               <DialogDescription>
-                Fields map to the backend ExtraFeeRequestDTO contract.
+                {ui("Fields map to the backend ExtraFeeRequestDTO contract.")}
               </DialogDescription>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <Input
                 value={form.name}
-                placeholder="Name"
+                placeholder={ui("Name")}
                 onChange={(event) => setForm({ ...form, name: event.target.value })}
               />
               <Input
                 type="number"
                 min={0}
                 value={form.price}
-                placeholder="Price"
+                placeholder={ui("Price")}
                 onChange={(event) => setForm({ ...form, price: event.target.value })}
               />
               <FilterSelect
@@ -285,7 +294,7 @@ export function AdminExtraFeesPage() {
                 type="number"
                 min={1}
                 value={form.durationMonths}
-                placeholder="Duration months"
+                placeholder={ui("Duration months")}
                 onChange={(event) =>
                   setForm({ ...form, durationMonths: event.target.value })
                 }
@@ -294,7 +303,7 @@ export function AdminExtraFeesPage() {
                 type="number"
                 min={1}
                 value={form.maxMembers}
-                placeholder="Max members"
+                placeholder={ui("Max members")}
                 onChange={(event) =>
                   setForm({ ...form, maxMembers: event.target.value })
                 }
@@ -315,10 +324,10 @@ export function AdminExtraFeesPage() {
                 disabled={isSubmitting}
                 onClick={() => setFormOpen(false)}
               >
-                Cancel
+                {ui("Cancel")}
               </Button>
               <Button type="button" disabled={isSubmitting} onClick={handleSubmitForm}>
-                {isSubmitting ? "Saving..." : "Save"}
+                {ui(isSubmitting ? "Saving..." : "Save")}
               </Button>
             </div>
           </div>

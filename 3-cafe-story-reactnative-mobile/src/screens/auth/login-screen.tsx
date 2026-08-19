@@ -1,12 +1,16 @@
 import { useNavigation } from "@react-navigation/native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { Button, Screen, TextField } from "../../components";
 import { useAuth } from "../../features/auth";
+import { LanguageSelector } from "../../features/i18n";
 import { routes } from "../../navigation";
 import type { AuthStackParamList } from "../../navigation";
 import { colors, spacing, typography } from "../../theme";
+import { t } from "../../features/i18n";
 
 export function LoginScreen() {
   const { login } = useAuth();
@@ -21,7 +25,7 @@ export function LoginScreen() {
     setError("");
 
     if (!identifier.trim() || !password) {
-      setError("Email/username and password are required.");
+      setError(t("Email/username and password are required."));
       return;
     }
 
@@ -42,26 +46,25 @@ export function LoginScreen() {
 
   return (
     <Screen>
+      <LanguageSelector variant="compact" />
       <View style={styles.header}>
         <Text style={styles.eyebrow}>CafeStory</Text>
-        <Text style={styles.title}>Welcome back</Text>
-        <Text style={styles.description}>
-          Sign in to keep collecting cafe stories, saved corners, and reviews.
-        </Text>
+        <Text style={styles.title}>{t("Welcome back")}</Text>
+        <Text style={styles.description}>{t("Sign in to keep collecting cafe stories, saved corners, and reviews.")}</Text>
       </View>
 
       <View style={styles.form}>
         <TextField
           autoCapitalize="none"
-          label="Email or username"
+          label={t("Email or username")}
           onChangeText={setIdentifier}
           placeholder="hello@cafestory.com"
           value={identifier}
         />
         <TextField
-          label="Password"
+          label={t("Password")}
           onChangeText={setPassword}
-          placeholder="Enter your password"
+          placeholder={t("Enter your password")}
           secureTextEntry
           value={password}
         />
@@ -69,7 +72,7 @@ export function LoginScreen() {
         <Button
           disabled={isSubmitting || !identifier.trim() || !password}
           isLoading={isSubmitting}
-          label="Sign in"
+          label={t("Sign in")}
           onPress={handleLogin}
         />
         <Pressable
@@ -77,7 +80,7 @@ export function LoginScreen() {
           onPress={() => navigation.navigate(routes.register)}
           style={styles.switch}
         >
-          <Text style={styles.switchText}>Create a CafeStory account</Text>
+          <Text style={styles.switchText}>{t("Create a CafeStory account")}</Text>
         </Pressable>
       </View>
     </Screen>

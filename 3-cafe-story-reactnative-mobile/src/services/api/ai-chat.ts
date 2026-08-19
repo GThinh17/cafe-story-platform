@@ -1,4 +1,5 @@
 import { getAiBaseUrl } from "../../config";
+import { getCurrentLocale, translate } from "../../features/i18n";
 import type { AskAssistantRequest, AskAssistantResponse } from "../../types";
 import { apiFetch, ApiError } from "./client";
 import { apiEndpoints } from "./endpoints";
@@ -50,12 +51,15 @@ export async function askAssistant(
       );
     }
     if (error instanceof Error && error.name === "AbortError") {
-      throw new AiChatError("Assistant is taking too long to reply.", 408);
+      throw new AiChatError(
+        translate(getCurrentLocale(), "ai.error.timeout"),
+        408,
+      );
     }
     throw new AiChatError(
-      error instanceof Error
+      getCurrentLocale() === "en" && error instanceof Error
         ? error.message
-        : "Unable to reach assistant. Please try again.",
+        : translate(getCurrentLocale(), "ai.error.unavailable"),
       0,
     );
   } finally {

@@ -1,8 +1,10 @@
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { ArrowLeft, Megaphone, RefreshCw } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import { AdCampaignCard, AdCampaignForm, Button, EmptyState, LoadingState, Screen } from "../../components";
 import { useAuth } from "../../features/auth";
@@ -11,6 +13,7 @@ import type { RootStackParamList } from "../../navigation";
 import { getAdCampaigns, getCafePagesByOwner, getPayments } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type { AdCampaignResponse, CafePageResponse, PaymentResponse } from "../../types";
+import { t } from "../../features/i18n";
 
 type AdsManagerRouteProp = RouteProp<RootStackParamList, typeof routes.adsManager>;
 type CampaignFilter = "ALL" | "DRAFT" | "ACTIVE" | "PAUSED" | "EXPIRED";
@@ -34,7 +37,7 @@ export function AdsManagerScreen() {
 
   const loadDashboard = useCallback(async () => {
     if (!user?.userId) {
-      setError("Sign in as a cafe owner to manage Ads.");
+      setError(t("Sign in as a cafe owner to manage Ads."));
       setIsLoading(false);
       return;
     }
@@ -73,55 +76,55 @@ export function AdsManagerScreen() {
   return (
     <Screen padded={false}>
       <View style={styles.header}>
-        <Pressable accessibilityLabel="Back" hitSlop={10} onPress={() => navigation.goBack()} style={styles.iconButton}>
+        <Pressable accessibilityLabel={t("Back")} hitSlop={10} onPress={() => navigation.goBack()} style={styles.iconButton}>
           <ArrowLeft color={colors.foreground} size={28} />
         </Pressable>
         <View style={styles.headerIcon}><Megaphone color={colors.primary} size={21} /></View>
         <View style={styles.headerCopy}>
-          <Text style={styles.headerTitle}>Ads Manager</Text>
-          <Text style={styles.headerSubtitle}>Campaigns, delivery and performance</Text>
+          <Text style={styles.headerTitle}>{t("Ads Manager")}</Text>
+          <Text style={styles.headerSubtitle}>{t("Campaigns, delivery and performance")}</Text>
         </View>
-        <Pressable accessibilityLabel="Refresh Ads Manager" hitSlop={10} onPress={() => void loadDashboard()} style={styles.iconButton}>
+        <Pressable accessibilityLabel={t("Refresh Ads Manager")} hitSlop={10} onPress={() => void loadDashboard()} style={styles.iconButton}>
           <RefreshCw color={colors.foreground} size={21} />
         </Pressable>
       </View>
 
       {isLoading ? (
-        <View style={styles.center}><LoadingState label="Loading Ads Manager..." /></View>
+        <View style={styles.center}><LoadingState label={t("Loading Ads Manager...")} /></View>
       ) : error ? (
         <View style={styles.center}>
-          <EmptyState description="Check your connection and cafe owner access, then try again." title={error} />
-          <Button label="Retry" onPress={loadDashboard} variant="outlined" />
+          <EmptyState description={t("Check your connection and cafe owner access, then try again.")} title={error} />
+          <Button label={t("Retry")} onPress={loadDashboard} variant="outlined" />
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {route.params?.paymentId ? (
             <View style={styles.paidBanner}>
-              <Text style={styles.paidTitle}>Ads payment confirmed</Text>
-              <Text style={styles.paidText}>Use the selected paid package below to create your campaign.</Text>
+              <Text style={styles.paidTitle}>{t("Ads payment confirmed")}</Text>
+              <Text style={styles.paidText}>{t("Use the selected paid package below to create your campaign.")}</Text>
             </View>
           ) : null}
 
           <View style={styles.summary}>
-            <Text style={styles.eyebrow}>ADVERTISER WORKSPACE</Text>
-            <Text style={styles.summaryTitle}>Grow your cafe without leaving CafeStory</Text>
-            <Text style={styles.summaryText}>Every campaign includes up to 10,000 served impressions or 30 days of delivery.</Text>
+            <Text style={styles.eyebrow}>{t("ADVERTISER WORKSPACE")}</Text>
+            <Text style={styles.summaryTitle}>{t("Grow your cafe without leaving CafeStory")}</Text>
+            <Text style={styles.summaryText}>{t("Every campaign includes up to 10,000 served impressions or 30 days of delivery.")}</Text>
             <View style={styles.summaryMetrics}>
-              <SummaryMetric label="Campaigns" value={String(campaigns.length)} />
-              <SummaryMetric label="Active" value={String(campaigns.filter((item) => item.status === "ACTIVE").length)} />
-              <SummaryMetric label="Unused packages" value={String(availablePayments.length)} />
+              <SummaryMetric label={t("Campaigns")} value={String(campaigns.length)} />
+              <SummaryMetric label={t("Active")} value={String(campaigns.filter((item) => item.status === "ACTIVE").length)} />
+              <SummaryMetric label={t("Unused packages")} value={String(availablePayments.length)} />
             </View>
-            <Button label="Buy another Ads package" onPress={() => navigation.navigate(routes.paymentOptions, { initialTab: "ads" })} variant="secondary" />
+            <Button label={t("Buy another Ads package")} onPress={() => navigation.navigate(routes.paymentOptions, { initialTab: "ads" })} variant="secondary" />
           </View>
 
           {!cafePages.length ? (
             <View style={styles.stateCard}>
-              <EmptyState description="Create and activate a cafe page before launching a campaign." title="No active cafe page" />
+              <EmptyState description={t("Create and activate a cafe page before launching a campaign.")} title={t("No active cafe page")} />
             </View>
           ) : !availablePayments.length ? (
             <View style={styles.stateCard}>
-              <EmptyState description="Buy an Ads package or finish a pending Stripe payment to create another campaign." title="No unused paid package" />
-              <Button label="View Ads packages" onPress={() => navigation.navigate(routes.paymentOptions, { initialTab: "ads" })} />
+              <EmptyState description={t("Buy an Ads package or finish a pending Stripe payment to create another campaign.")} title={t("No unused paid package")} />
+              <Button label={t("View Ads packages")} onPress={() => navigation.navigate(routes.paymentOptions, { initialTab: "ads" })} />
             </View>
           ) : (
             <AdCampaignForm
@@ -134,8 +137,8 @@ export function AdsManagerScreen() {
 
           <View style={styles.campaignHeading}>
             <View>
-              <Text style={styles.eyebrow}>CAMPAIGNS</Text>
-              <Text style={styles.sectionTitle}>Delivery status</Text>
+              <Text style={styles.eyebrow}>{t("CAMPAIGNS")}</Text>
+              <Text style={styles.sectionTitle}>{t("Delivery status")}</Text>
             </View>
             <Text style={styles.campaignCount}>{visibleCampaigns.length}</Text>
           </View>
@@ -155,7 +158,7 @@ export function AdsManagerScreen() {
             ))
           ) : (
             <View style={styles.stateCard}>
-              <EmptyState description="Create a campaign above or choose a different status filter." title="No campaigns in this view" />
+              <EmptyState description={t("Create a campaign above or choose a different status filter.")} title={t("No campaigns in this view")} />
             </View>
           )}
         </ScrollView>

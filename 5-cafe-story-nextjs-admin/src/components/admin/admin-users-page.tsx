@@ -30,6 +30,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { UserCell } from "@/components/admin/user-cell";
 import { getUsers, updateUserRoles, updateUserStatus } from "@/lib/api/admin";
+import {
+  formatNumber,
+  localizeApiError,
+  useEnumLabel,
+  useI18n,
+  useUiText,
+} from "@/features/i18n";
 import type { AdminUser, UserRole } from "@/types/admin";
 
 const roles: UserRole[] = ["USER", "REVIEWER", "ADMIN", "CAFE_PAGE"];
@@ -39,6 +46,9 @@ type PendingUserAction =
   | { type: "roles"; user: AdminUser; roles: UserRole[] };
 
 export function AdminUsersPage() {
+  const { locale, localeTag, t } = useI18n();
+  const ui = useUiText();
+  const enumLabel = useEnumLabel();
   const [search, setSearch] = useState("");
   const [accountStatus, setAccountStatus] = useState<boolean | null>(null);
   const [role, setRole] = useState<UserRole | "">("");
@@ -78,7 +88,7 @@ export function AdminUsersPage() {
           <div className="flex flex-wrap gap-1">
             {user.roles.map((userRole) => (
               <Badge variant="secondary" key={userRole}>
-                {userRole}
+                {enumLabel(userRole)}
               </Badge>
             ))}
           </div>
@@ -92,7 +102,10 @@ export function AdminUsersPage() {
         header: "Engagement",
         cell: (user) => (
           <span className="text-muted">
-            {user.userLike ?? 0} likes · {user.userFollower ?? 0} followers
+            {ui("{likes} likes · {followers} followers", {
+              likes: formatNumber(user.userLike ?? 0, localeTag),
+              followers: formatNumber(user.userFollower ?? 0, localeTag),
+            })}
           </span>
         ),
       },
@@ -108,7 +121,7 @@ export function AdminUsersPage() {
                 onSelect: () => openDetail(user),
               },
               {
-                label: user.accountStatus ? "Deactivate" : "Activate",
+                label: ui(user.accountStatus ? "Deactivate" : "Activate"),
                 icon: PowerIcon,
                 destructive: user.accountStatus,
                 onSelect: () =>
@@ -119,9 +132,11 @@ export function AdminUsersPage() {
                   }),
               },
               {
-                label: user.roles.includes("REVIEWER")
-                  ? "Remove reviewer role"
-                  : "Grant reviewer role",
+                label: ui(
+                  user.roles.includes("REVIEWER")
+                    ? "Remove reviewer role"
+                    : "Grant reviewer role",
+                ),
                 icon: StarIcon,
                 onSelect: () =>
                   setPendingAction({
@@ -137,7 +152,7 @@ export function AdminUsersPage() {
         ),
       },
     ],
-    [detail],
+    [detail, enumLabel, localeTag, ui],
   );
 
   async function handleConfirm() {
@@ -167,9 +182,7 @@ export function AdminUsersPage() {
       setPendingAction(null);
       resource.refetch();
     } catch (requestError) {
-      setActionError(
-        requestError instanceof Error ? requestError.message : "Action failed.",
-      );
+      setActionError(localizeApiError(requestError, locale, t, "common.error.action"));
     } finally {
       setIsSubmitting(false);
     }
@@ -222,16 +235,19 @@ export function AdminUsersPage() {
               <div className="flex flex-wrap gap-1">
                 {detail.data.roles.map((userRole) => (
                   <Badge variant="secondary" key={userRole}>
-                    {userRole}
+                    {enumLabel(userRole)}
                   </Badge>
                 ))}
               </div>
             </AdminDetailField>
             <AdminDetailField label="Engagement">
-              {detail.data.userLike ?? 0} likes / {detail.data.userFollower ?? 0} followers
+              {ui("{likes} likes / {followers} followers", {
+                likes: formatNumber(detail.data.userLike ?? 0, localeTag),
+                followers: formatNumber(detail.data.userFollower ?? 0, localeTag),
+              })}
             </AdminDetailField>
             <AdminDetailField label="Region">{detail.data.regionId || "-"}</AdminDetailField>
-            <AdminDetailField label="Loaded at">{formatDate(new Date().toISOString())}</AdminDetailField>
+            <AdminDetailField label="Loaded at">{formatDate(new Date().toISOString(), localeTag)}</AdminDetailField>
           </AdminDetailGrid>
         ) : null}
       </AdminDetailDialog>

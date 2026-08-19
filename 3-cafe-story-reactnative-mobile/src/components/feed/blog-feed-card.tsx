@@ -1,15 +1,10 @@
-import {
-  Bookmark,
-  Heart,
-  MessageSquare,
-  MoreHorizontal,
-  Send,
-  Store,
-} from "lucide-react-native";
+import { Bookmark, Heart, MessageSquare, MoreHorizontal, Send, Store, } from "lucide-react-native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { Avatar } from "../ui/avatar";
 import { CommentModal } from "./comment-modal";
@@ -17,6 +12,10 @@ import { MobilePostCarousel } from "./mobile-post-carousel";
 import { PostOptionsModal } from "./post-options-modal";
 import { ReportPostModal } from "./report-post-modal";
 import { useAuth } from "../../features/auth";
+import {
+  formatCurrentCompactNumber,
+  getCurrentLocale,
+} from "../../features/i18n";
 import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
 import {
@@ -30,6 +29,7 @@ import {
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type { BlogFeedResponse } from "../../types";
+import { t } from "../../features/i18n";
 
 type BlogFeedCardProps = {
   blog: BlogFeedResponse;
@@ -38,13 +38,7 @@ type BlogFeedCardProps = {
 };
 
 function compactCount(value: number | null) {
-  const count = value ?? 0;
-
-  if (count >= 1000) {
-    return `${(count / 1000).toFixed(count >= 10000 ? 0 : 1)}k`;
-  }
-
-  return String(count);
+  return formatCurrentCompactNumber(value ?? 0);
 }
 
 function firstNonBlank(...values: Array<string | null | undefined>) {
@@ -92,29 +86,36 @@ function getInitials(name: string) {
 }
 
 function formatTimeAgo(createdAt: string | null) {
+  const isVietnamese = getCurrentLocale() === "vi";
+
   if (!createdAt) {
-    return "JUST NOW";
+    return isVietnamese ? "VỪA XONG" : "JUST NOW";
   }
 
   const created = new Date(createdAt).getTime();
 
   if (Number.isNaN(created)) {
-    return "JUST NOW";
+    return isVietnamese ? "VỪA XONG" : "JUST NOW";
   }
 
   const diffMinutes = Math.max(1, Math.floor((Date.now() - created) / 60000));
 
   if (diffMinutes < 60) {
-    return `${diffMinutes} MINUTES AGO`;
+    return isVietnamese
+      ? `${diffMinutes} PHÚT TRƯỚC`
+      : `${diffMinutes} MINUTES AGO`;
   }
 
   const diffHours = Math.floor(diffMinutes / 60);
 
   if (diffHours < 24) {
-    return `${diffHours} HOURS AGO`;
+    return isVietnamese
+      ? `${diffHours} GIỜ TRƯỚC`
+      : `${diffHours} HOURS AGO`;
   }
 
-  return `${Math.floor(diffHours / 24)} DAYS AGO`;
+  const days = Math.floor(diffHours / 24);
+  return isVietnamese ? `${days} NGÀY TRƯỚC` : `${days} DAYS AGO`;
 }
 
 export function BlogFeedCard({
@@ -327,7 +328,7 @@ export function BlogFeedCard({
         <View style={styles.headerActions}>
           {shouldShowFollowButton ? (
             <Pressable
-              accessibilityLabel="Follow author"
+              accessibilityLabel={t("Follow author")}
               accessibilityRole="button"
               disabled={isFollowDisabled}
               onPress={handleFollowAuthor}
@@ -336,11 +337,11 @@ export function BlogFeedCard({
                 pressed && !isFollowDisabled && styles.pressed,
               ]}
             >
-              <Text style={styles.followButtonText}>Follow</Text>
+              <Text style={styles.followButtonText}>{t("Follow")}</Text>
             </Pressable>
           ) : null}
           <Pressable
-            accessibilityLabel="Open post options"
+            accessibilityLabel={t("Open post options")}
             accessibilityRole="button"
             hitSlop={10}
             onPress={() => setIsOptionsModalVisible(true)}
@@ -365,7 +366,7 @@ export function BlogFeedCard({
         <View style={styles.actionsRow}>
           <View style={styles.leftActions}>
             <Pressable
-              accessibilityLabel={isLiked ? "Unlike post" : "Like post"}
+              accessibilityLabel={isLiked ? t("Unlike post") : t("Like post")}
               accessibilityRole="button"
               disabled={isLikePending}
               onPress={handleToggleLike}
@@ -379,7 +380,7 @@ export function BlogFeedCard({
               />
             </Pressable>
             <Pressable
-              accessibilityLabel="Comment on post"
+              accessibilityLabel={t("Comment on post")}
               accessibilityRole="button"
               onPress={() => setIsCommentModalVisible(true)}
               style={styles.actionButton}
@@ -387,7 +388,7 @@ export function BlogFeedCard({
               <MessageSquare color={colors.foreground} size={24} strokeWidth={2.2} />
             </Pressable>
             <Pressable
-              accessibilityLabel="Share post"
+              accessibilityLabel={t("Share post")}
               accessibilityRole="button"
               disabled={isSharePending}
               onPress={handleShare}
@@ -397,7 +398,7 @@ export function BlogFeedCard({
             </Pressable>
           </View>
           <Pressable
-            accessibilityLabel={isSaved ? "Unsave post" : "Save post"}
+            accessibilityLabel={isSaved ? t("Unsave post") : t("Save post")}
             accessibilityRole="button"
             disabled={isSavePending}
             onPress={handleToggleSave}
@@ -412,19 +413,17 @@ export function BlogFeedCard({
           </Pressable>
         </View>
 
-        <Text style={styles.likes}>{compactCount(likeCount)} likes</Text>
+        <Text style={styles.likes}>{compactCount(likeCount)}{t("likes")}</Text>
         <Text numberOfLines={2} style={styles.caption}>
           <Text style={styles.captionAuthor}>{displayName} </Text>
           {blog.contentPreview ?? ""}
         </Text>
         <Pressable
-          accessibilityLabel="View post comments"
+          accessibilityLabel={t("View post comments")}
           accessibilityRole="button"
           onPress={() => setIsCommentModalVisible(true)}
         >
-          <Text style={styles.comments}>
-            View all {compactCount(commentCount)} comments
-          </Text>
+          <Text style={styles.comments}>{t("View all")}{compactCount(commentCount)}{t("comments")}</Text>
         </Pressable>
         <Text style={styles.meta}>
           {formatTimeAgo(blog.createdAt)}

@@ -1,16 +1,11 @@
 import { useNavigation } from "@react-navigation/native";
+import { Text } from "react-native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Send } from "lucide-react-native";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from "react-native";
+  RefreshControl, ScrollView, StyleSheet, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import {
   BlogFeedCard,
   EmptyState,
@@ -47,6 +42,7 @@ import type {
   StoryItem,
   UserFollowResponse,
 } from "../../types";
+import { t } from "../../features/i18n";
 
 const INITIAL_FEED_PAGE_SIZE = 10;
 const LOAD_MORE_FEED_PAGE_SIZE = 5;
@@ -400,7 +396,7 @@ export function HomeScreen() {
       if (append) {
         setLoadMoreError("Unable to load more posts.");
       } else {
-        setError("Unable to load feed. Pull down to try again.");
+        setError(t("Unable to load feed. Pull down to try again."));
       }
     } finally {
       isFetchingRef.current = false;
@@ -530,7 +526,7 @@ export function HomeScreen() {
       id: "story-me",
       initials: user?.userName?.slice(0, 2).toUpperCase() ?? "ME",
       isSelf: true,
-      label: "Your posts",
+      label: t("story.selfLabel"),
       targetType: "CREATE_POST",
     },
     ...followingTargets
@@ -625,7 +621,7 @@ export function HomeScreen() {
         {isLoading ? (
           <FeedCardSkeletonList />
         ) : error ? (
-          <EmptyState description={error} title="Feed unavailable" />
+          <EmptyState description={error} title={t("Feed unavailable")} />
         ) : feedItems.length ? (
           <>
             {feedItems.map(renderFeedItem)}
@@ -637,8 +633,8 @@ export function HomeScreen() {
           </>
         ) : (
           <EmptyState
-            description="New cafe stories will appear here when they are ready."
-            title="No posts yet"
+            description={t("New cafe stories will appear here when they are ready.")}
+            title={t("No posts yet")}
           />
         )}
       </ScrollView>

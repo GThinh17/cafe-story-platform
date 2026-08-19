@@ -1,6 +1,8 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { Text } from "react-native";
 import { colors, spacing, typography } from "../../theme";
 import type { ChatMessageListItem } from "../../types";
+import { t } from "../../features/i18n";
 
 type ChatMessageBubbleProps = {
   message: ChatMessageListItem;

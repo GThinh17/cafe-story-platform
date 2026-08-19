@@ -1,18 +1,21 @@
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
 import { Bell, House, Search, SquarePlus, User } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { routes } from "../../navigation/routes";
 import type { MainTabParamList } from "../../navigation/types";
 import { getUnreadNotificationCount } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
+import { t, type UiPhraseKey } from "../../features/i18n";
 
 type TabName = keyof MainTabParamList;
 type TabIcon = typeof House;
 
-const tabItems: Record<TabName, { Icon: TabIcon; label: string }> = {
+const tabItems: Record<TabName, { Icon: TabIcon; label: UiPhraseKey }> = {
   [routes.home]: {
     Icon: House,
     label: "Home",
@@ -76,6 +79,7 @@ export function BottomBar({
           }
 
           const { Icon, label } = tabItems[route.name];
+          const localizedLabel = t(label);
           const isFocused = state.index === index;
           const options = descriptors[route.key]?.options;
           const showNotificationBadge =
@@ -102,7 +106,7 @@ export function BottomBar({
 
           return (
             <Pressable
-              accessibilityLabel={options?.tabBarAccessibilityLabel}
+              accessibilityLabel={options?.tabBarAccessibilityLabel ?? localizedLabel}
               accessibilityRole="button"
               accessibilityState={isFocused ? { selected: true } : {}}
               key={route.key}
@@ -125,7 +129,7 @@ export function BottomBar({
                   </View>
                 ) : null}
               </View>
-              {isFocused ? <Text style={styles.label}>{label}</Text> : null}
+              {isFocused ? <Text style={styles.label}>{localizedLabel}</Text> : null}
             </Pressable>
           );
         })}

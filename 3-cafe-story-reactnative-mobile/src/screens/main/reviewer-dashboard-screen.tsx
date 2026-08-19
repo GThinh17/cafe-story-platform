@@ -1,19 +1,11 @@
 import { useNavigation } from "@react-navigation/native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
-  ArrowLeft,
-  Award,
-  BadgeCheck,
-  BarChart3,
-  Heart,
-  MessageCircle,
-  Share2,
-  Sparkles,
-  Trophy,
-  Wallet,
-} from "lucide-react-native";
+  ArrowLeft, Award, BadgeCheck, BarChart3, Heart, MessageCircle, Share2, Sparkles, Trophy, Wallet, } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import {
   Avatar,
@@ -24,6 +16,11 @@ import {
 } from "../../components";
 import { PayoutHistoryList } from "../../components/reviewer-dashboard/payout-history-list";
 import { useAuth } from "../../features/auth";
+import {
+  formatCurrentCompactNumber,
+  formatCurrentCurrency,
+  formatCurrentDate,
+} from "../../features/i18n";
 import {
   ApiError,
   getReviewerBadges,
@@ -47,6 +44,7 @@ import type {
   ReviewerDashboardRankingItem,
   ReviewerDashboardStats,
 } from "../../types";
+import { t } from "../../features/i18n";
 
 const periods: {
   label: string;
@@ -73,19 +71,11 @@ function hasReviewerRole(user: AuthUser | null | undefined) {
 }
 
 function formatCount(value: number) {
-  if (value >= 1000000) {
-    return `${(value / 1000000).toFixed(value >= 10000000 ? 0 : 1)}m`;
-  }
-
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k`;
-  }
-
-  return String(value);
+  return formatCurrentCompactNumber(value);
 }
 
 function formatVnd(value: number) {
-  return `${String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} VND`;
+  return formatCurrentCurrency(value);
 }
 
 function formatDate(value: string | null) {
@@ -99,7 +89,7 @@ function formatDate(value: string | null) {
     return "No expiry date";
   }
 
-  return date.toLocaleDateString(undefined, {
+  return formatCurrentDate(date, {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -159,7 +149,7 @@ function compactMonthLabel(value: string) {
     return value;
   }
 
-  return date.toLocaleDateString(undefined, { month: "short" });
+  return formatCurrentDate(date, { month: "short" });
 }
 
 function buildPerformancePoints(
@@ -212,7 +202,11 @@ function buildPayoutHistoryRows({
 
   return payouts.map((payout) => ({
     ...payout,
-    badge: badgesByMonth.get(payout.payoutMonth) ?? profileBadge ?? "IRON",
+    badge:
+      badgesByMonth.get(payout.payoutMonth) ??
+      payout.badge ??
+      profileBadge ??
+      "IRON",
   }));
 }
 
@@ -251,10 +245,10 @@ function buildActivities({
 
   if (currentPayout) {
     activities.push({
-      description: `${formatVnd(currentPayout.totalAmount)} from likes, shares, and comments.`,
+      description: `${formatVnd(currentPayout.totalFinalAmount)} from likes, shares, and comments.`,
       id: `payout-${currentPayout.id}`,
       time: currentPayout.payoutMonth,
-      title: `${currentPayout.payoutStatus} payout`,
+      title: `${currentPayout.status} payout`,
       type: "payout",
     });
   }
@@ -308,7 +302,11 @@ export function ReviewerDashboardScreen() {
   );
   const currentPayout = payoutHistoryRows[0];
   const allTimePayout = useMemo(
-    () => payoutHistoryRows.reduce((total, payout) => total + payout.totalAmount, 0),
+    () =>
+      payoutHistoryRows.reduce(
+        (total, payout) => total + payout.totalFinalAmount,
+        0,
+      ),
     [payoutHistoryRows],
   );
   const currentRank = ranking.find(
@@ -458,13 +456,10 @@ export function ReviewerDashboardScreen() {
           <View style={styles.upgradeIcon}>
             <Sparkles color={colors.primary} size={30} strokeWidth={2.4} />
           </View>
-          <Text style={styles.upgradeTitle}>Reviewer access required</Text>
-          <Text style={styles.upgradeDescription}>
-            Upgrade to reviewer to unlock payout wallet, ranking, badges, and
-            performance analytics.
-          </Text>
+          <Text style={styles.upgradeTitle}>{t("Reviewer access required")}</Text>
+          <Text style={styles.upgradeDescription}>{t("Upgrade to reviewer to unlock payout wallet, ranking, badges, and performance analytics.")}</Text>
           <Button
-            label="Become reviewer"
+            label={t("Become reviewer")}
             onPress={() =>
               navigation.navigate(routes.paymentOptions, {
                 initialTab: "reviewer",
@@ -491,10 +486,10 @@ export function ReviewerDashboardScreen() {
         <DashboardHeader onBack={() => navigation.goBack()} />
         <View style={styles.stateContainer}>
           <EmptyState
-            description="Pull to retry is not available here yet. Use the button below to reload reviewer data."
+            description={t("Pull to retry is not available here yet. Use the button below to reload reviewer data.")}
             title={dashboardError ?? "Reviewer dashboard unavailable"}
           />
-          <Button label="Retry" onPress={() => void loadDashboard()} />
+          <Button label={t("Retry")} onPress={() => void loadDashboard()} />
         </View>
       </Screen>
     );
@@ -511,7 +506,7 @@ export function ReviewerDashboardScreen() {
           <View style={styles.heroTop}>
             <Avatar uri={profile.avatar} size={76} />
             <View style={styles.heroCopy}>
-              <Text style={styles.heroEyebrow}>Reviewer workspace</Text>
+              <Text style={styles.heroEyebrow}>{t("Reviewer workspace")}</Text>
               <Text style={styles.heroName}>
                 {profile.name ?? user?.userName ?? "CafeStory reviewer"}
               </Text>
@@ -528,23 +523,23 @@ export function ReviewerDashboardScreen() {
           </View>
           <View style={styles.heroStats}>
             <HeroStat
-              label="Followers"
+              label={t("Followers")}
               value={formatCount(profile.follower)}
             />
             <HeroStat
-              label="Likes"
+              label={t("Likes")}
               value={formatCount(profile.like)}
             />
             <HeroStat
-              label="Score"
+              label={t("Score")}
               value={formatCount(profile.score)}
             />
           </View>
         </View>
 
         <SectionHeader
-          subtitle={isPeriodLoading ? "Updating performance..." : periodError ?? "Live reviewer stats from backend."}
-          title="Performance"
+          subtitle={isPeriodLoading ? t("Updating performance...") : periodError ?? "Live reviewer stats from backend."}
+          title={t("Performance")}
         />
         <View style={styles.periods}>
           {periods.map((item) => {
@@ -579,29 +574,29 @@ export function ReviewerDashboardScreen() {
         <View style={styles.statGrid}>
           <MetricCard
             Icon={BarChart3}
-            label="Score"
+            label={t("Score")}
             value={formatCount(stats?.score ?? 0)}
           />
           <MetricCard
             Icon={Heart}
-            label="Likes"
+            label={t("Likes")}
             value={formatCount(stats?.likeCount ?? 0)}
           />
           <MetricCard
             Icon={Share2}
-            label="Shares"
+            label={t("Shares")}
             value={formatCount(stats?.shareCount ?? 0)}
           />
           <MetricCard
             Icon={MessageCircle}
-            label="Comments"
+            label={t("Comments")}
             value={formatCount(stats?.commentCount ?? 0)}
           />
         </View>
 
         <SectionHeader
           subtitle="Earnings from reviewer-only payout history."
-          title="Payout wallet"
+          title={t("Payout wallet")}
         />
         {currentPayout ? (
           <>
@@ -611,17 +606,17 @@ export function ReviewerDashboardScreen() {
         ) : (
           <DashboardStateCard
             description={payoutError ?? "Payout rows will appear after monthly payout generation."}
-            title="No payout history yet"
+            title={t("No payout history yet")}
           />
         )}
 
         <SectionHeader
           subtitle="Ranking preview with current reviewer highlighted when present."
-          title="Ranking"
+          title={t("Ranking")}
         />
         <View style={styles.rankSummary}>
           <View>
-            <Text style={styles.rankLabel}>Current rank</Text>
+            <Text style={styles.rankLabel}>{t("Current rank")}</Text>
             <Text style={styles.rankValue}>#{currentRank?.rank ?? "-"}</Text>
           </View>
           <View style={styles.segmentPill}>
@@ -643,13 +638,13 @@ export function ReviewerDashboardScreen() {
         ) : (
           <DashboardStateCard
             description={periodError ?? "Ranking data will appear after reviewer activity is available."}
-            title="No ranking data yet"
+            title={t("No ranking data yet")}
           />
         )}
 
         <SectionHeader
           subtitle="Badge history and reviewer-only activity."
-          title="Badges and activity"
+          title={t("Badges and activity")}
         />
         {badges.length > 0 ? (
           <View style={styles.badgeList}>
@@ -661,8 +656,7 @@ export function ReviewerDashboardScreen() {
                 <View style={styles.badgeCopy}>
                   <Text style={styles.badgeTitle}>{item.badge}</Text>
                   <Text style={styles.badgeDescription}>
-                    {item.month} - {formatCount(item.score)} score
-                  </Text>
+                    {item.month} - {formatCount(item.score)}{t("score")}</Text>
                 </View>
               </View>
             ))}
@@ -670,12 +664,12 @@ export function ReviewerDashboardScreen() {
         ) : (
           <DashboardStateCard
             description={badgeError ?? "Badge history will appear after monthly badge generation."}
-            title="No badge history yet"
+            title={t("No badge history yet")}
           />
         )}
 
         <View style={styles.chartCard}>
-          <Text style={styles.chartTitle}>Score trend</Text>
+          <Text style={styles.chartTitle}>{t("Score trend")}</Text>
           {performance.length > 0 ? (
             <View style={styles.chartBars}>
               {performance.map((item) => (
@@ -691,7 +685,7 @@ export function ReviewerDashboardScreen() {
               ))}
             </View>
           ) : (
-            <Text style={styles.chartEmptyText}>Score trend will appear after reviewer activity is available.</Text>
+            <Text style={styles.chartEmptyText}>{t("Score trend will appear after reviewer activity is available.")}</Text>
           )}
         </View>
 
@@ -703,8 +697,8 @@ export function ReviewerDashboardScreen() {
           </View>
         ) : (
           <DashboardStateCard
-            description="Recent activity will appear after stats, payouts, or badges are available."
-            title="No recent activity yet"
+            description={t("Recent activity will appear after stats, payouts, or badges are available.")}
+            title={t("No recent activity yet")}
           />
         )}
       </ScrollView>
@@ -716,7 +710,7 @@ function DashboardHeader({ onBack }: { onBack: () => void }) {
   return (
     <View style={styles.header}>
       <Pressable
-        accessibilityLabel="Back"
+        accessibilityLabel={t("Back")}
         accessibilityRole="button"
         hitSlop={10}
         onPress={onBack}
@@ -728,8 +722,8 @@ function DashboardHeader({ onBack }: { onBack: () => void }) {
         <Trophy color={colors.primary} size={22} strokeWidth={2.5} />
       </View>
       <View style={styles.headerCopy}>
-        <Text style={styles.title}>Reviewer dashboard</Text>
-        <Text style={styles.subtitle}>Reviewer-only workspace</Text>
+        <Text style={styles.title}>{t("Reviewer dashboard")}</Text>
+        <Text style={styles.subtitle}>{t("Reviewer-only workspace")}</Text>
       </View>
     </View>
   );
@@ -753,7 +747,7 @@ function DashboardSkeleton() {
       </View>
       <View style={styles.skeletonPanel} />
       <View style={styles.skeletonPanel} />
-      <LoadingState label="Loading reviewer dashboard..." />
+      <LoadingState label={t("Loading reviewer dashboard...")} />
     </ScrollView>
   );
 }
@@ -839,18 +833,20 @@ function WalletCard({
           <Wallet color={colors.white} size={22} strokeWidth={2.5} />
         </View>
         <View style={styles.walletCopy}>
-          <Text style={styles.walletLabel}>Current payout</Text>
-          <Text style={styles.walletValue}>{formatVnd(payout.totalAmount)}</Text>
+          <Text style={styles.walletLabel}>{t("Current payout")}</Text>
+          <Text style={styles.walletValue}>
+            {formatVnd(payout.totalFinalAmount)}
+          </Text>
         </View>
       </View>
       <View style={styles.walletRows}>
-        <WalletRow label="Likes" value={formatVnd(payout.likeAmount)} />
-        <WalletRow label="Shares" value={formatVnd(payout.shareAmount)} />
-        <WalletRow label="Comments" value={formatVnd(payout.commentAmount)} />
+        <WalletRow label={t("Likes")} value={formatVnd(payout.likeAmount)} />
+        <WalletRow label={t("Shares")} value={formatVnd(payout.shareAmount)} />
+        <WalletRow label={t("Comments")} value={formatVnd(payout.commentAmount)} />
       </View>
       <View style={styles.walletFooter}>
-        <Text style={styles.walletFooterText}>{payout.payoutStatus}</Text>
-        <Text style={styles.walletFooterText}>Total {formatVnd(total)}</Text>
+        <Text style={styles.walletFooterText}>{payout.status}</Text>
+        <Text style={styles.walletFooterText}>{t("Total")}{formatVnd(total)}</Text>
       </View>
     </View>
   );
@@ -878,10 +874,9 @@ function RankingRow({
         <Text style={styles.rankingRankText}>#{item.rank}</Text>
       </View>
       <View style={styles.rankingCopy}>
-        <Text style={styles.rankingTitle}>{isCurrent ? "You" : item.badge}</Text>
+        <Text style={styles.rankingTitle}>{isCurrent ? t("You") : item.badge}</Text>
         <Text style={styles.rankingDescription}>
-          {item.location} - {formatCount(item.score)} score
-        </Text>
+          {item.location} - {formatCount(item.score)}{t("score")}</Text>
       </View>
       <Text style={styles.rankingMeta}>
         {formatCount(item.likeCount)} L / {formatCount(item.shareCount)} S

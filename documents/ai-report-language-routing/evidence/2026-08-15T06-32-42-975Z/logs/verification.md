@@ -1,0 +1,33 @@
+# Verification log
+
+## PASS
+
+```text
+S2_CONTRACT_SCHEMA_COMPILE=PASS
+S2_SCHEMA_BOUNDARIES=7/7 PASS
+S2_N8N_NESTED_BOUNDARY=PASS
+S2_PROVIDER_SCHEMA_PARITY=PASS
+S2_RESPONSE_LANGUAGE_ENGLISH=PASS
+S2_RESPONSE_LANGUAGE_VIETNAMESE=PASS
+S2_RESPONSE_LANGUAGE_DESCRIPTION_PRECEDENCE=PASS
+ADMIN_REPORT_AI_WORKFLOW_CODE_SYNC=PASS
+ADMIN_REPORT_AI_N8N_SECURITY=PASS
+ADV-001..ADV-012=PASS
+```
+
+## Environment limitation
+
+```text
+validate-admin-report-ai-runtime.mjs
+TypeError: fetch failed
+cause: connect ECONNREFUSED 127.0.0.1:5678
+```
+
+## Existing broad-suite limitation
+
+```text
+validate-admin-report-ai-evaluation-dataset.mjs
+dataset.schema.json: SHA-256 drift
+actual:   de055b8c95fe72073d6bab592f41520b6e84ea4e192e1f0047c5c49d3d0e806b
+expected: b62084d396b7006988a4d142a51755f715ef5117d77529feae5cca01096029cd
+```

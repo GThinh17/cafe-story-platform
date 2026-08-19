@@ -1,5 +1,7 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text } from "react-native";
+import { ActivityIndicator, StyleSheet } from "react-native";
+import { Pressable, Text } from "react-native";
 import { colors, spacing, typography } from "../../theme";
+import { t } from "../../features/i18n";
 
 type ButtonProps = {
   disabled?: boolean;

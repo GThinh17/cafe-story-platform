@@ -7,6 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { BrandIcon } from "@/components/ui/brand-icon";
+import {
+  LanguageSelector,
+  localizeApiError,
+  useI18n,
+} from "@/features/i18n";
 import { login } from "@/lib/api/auth";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { hasAdminRole } from "@/lib/auth";
@@ -27,6 +32,7 @@ function getNextPath() {
 }
 
 export function AdminLoginPage() {
+  const { locale, t } = useI18n();
   const router = useRouter();
   const {
     user,
@@ -60,18 +66,14 @@ export function AdminLoginPage() {
       const response = await login({ identifier, password });
 
       if (!hasAdminRole(response.user)) {
-        setError("This account does not have ADMIN access.");
+        setError(t("auth.login.adminRequired"));
         return;
       }
 
       setUser?.(response.user);
       router.replace(nextPath);
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to sign in.",
-      );
+      setError(localizeApiError(requestError, locale, t, "auth.login.failed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -79,25 +81,26 @@ export function AdminLoginPage() {
 
   const accessDeniedMessage =
     hasResolvedInitialAuth && user && !hasAdminRole(user)
-      ? "This account does not have ADMIN access."
+      ? t("auth.login.adminRequired")
       : null;
 
   return (
     <div className="grid min-h-screen place-items-center bg-background p-6 text-foreground">
       <Card className="w-full max-w-md">
         <CardHeader className="flex flex-col gap-4">
+          <LanguageSelector className="self-end" />
           <div className="flex items-center gap-3">
             <BrandIcon className="size-11 shadow-sm" />
             <div>
               <p className="text-sm font-black text-espresso">CafeStory Admin</p>
               <p className="text-xs font-semibold text-muted">
-                Secure operations sign in
+                {t("auth.login.subtitle")}
               </p>
             </div>
           </div>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2" role="heading" aria-level={1}>
             <ShieldCheckIcon className="size-5 text-primary" />
-            Sign in
+            {t("auth.login.title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -105,7 +108,8 @@ export function AdminLoginPage() {
             <Input
               autoComplete="username"
               value={identifier}
-              placeholder="Email or username"
+              placeholder={t("auth.login.identifierPlaceholder")}
+              aria-label={t("auth.login.identifierPlaceholder")}
               disabled={isInitialLoading || isSubmitting}
               onChange={(event) => setIdentifier(event.target.value)}
             />
@@ -113,7 +117,8 @@ export function AdminLoginPage() {
               autoComplete="current-password"
               type="password"
               value={password}
-              placeholder="Password"
+              placeholder={t("auth.login.passwordPlaceholder")}
+              aria-label={t("auth.login.passwordPlaceholder")}
               disabled={isInitialLoading || isSubmitting}
               onChange={(event) => setPassword(event.target.value)}
             />
@@ -130,7 +135,9 @@ export function AdminLoginPage() {
                 !password
               }
             >
-              {isSubmitting || isInitialLoading ? "Signing in..." : "Sign in"}
+              {isSubmitting || isInitialLoading
+                ? t("auth.login.submitting")
+                : t("auth.login.submit")}
             </Button>
           </form>
         </CardContent>

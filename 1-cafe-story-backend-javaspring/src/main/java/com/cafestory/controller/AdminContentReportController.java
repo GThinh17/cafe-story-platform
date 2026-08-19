@@ -3,6 +3,7 @@ package com.cafestory.controller;
 import com.cafestory.dto.requestDTO.AdminContentReportStatusUpdateRequestDTO;
 import com.cafestory.dto.requestDTO.AdminReportAiResolutionCreateRequestDTO;
 import com.cafestory.dto.responseDTO.AdminReportAiAutoApplyJobResponseDTO;
+import com.cafestory.dto.responseDTO.AdminReportAiPolicyResponseDTO;
 import com.cafestory.dto.responseDTO.AdminReportAiResolutionResponseDTO;
 import com.cafestory.dto.responseDTO.ContentReportResponseDTO;
 import com.cafestory.entity.enums.ReportStatus;
@@ -87,6 +88,11 @@ public class AdminContentReportController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return adminReportAiResolutionService.getResolutions(reportId, pageable(page, size));
+    }
+
+    @GetMapping("/{reportId}/ai-policy")
+    public AdminReportAiPolicyResponseDTO getAiPolicy(@PathVariable UUID reportId) {
+        return adminReportAiResolutionService.getPolicy(reportId);
     }
 
     @GetMapping("/{reportId}/ai-auto-resolutions")

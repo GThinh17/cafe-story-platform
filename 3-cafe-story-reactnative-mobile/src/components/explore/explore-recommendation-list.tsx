@@ -1,10 +1,12 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { Text } from "react-native";
 
 import { colors, spacing, typography } from "../../theme";
 import type { RecommendationCardResponse } from "../../types";
 import { EmptyState } from "../ui/empty-state";
 import { ListRowSkeletonList } from "../ui/skeleton";
 import { ExploreRecommendationCard } from "./explore-recommendation-card";
+import { t } from "../../features/i18n";
 
 type ExploreRecommendationListProps = {
   emptyDescription: string;
@@ -35,7 +37,7 @@ export function ExploreRecommendationList({
   }
 
   if (error) {
-    return <EmptyState description="Pull down to try again." title={error} />;
+    return <EmptyState description={t("Pull down to try again.")} title={error} />;
   }
 
   if (!items.length) {

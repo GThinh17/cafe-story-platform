@@ -1,16 +1,11 @@
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import { Text } from "react-native";
+import { Pressable, TextInput } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { ChevronLeft, Search, Store, UserPlus } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  FlatList,
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+  FlatList, RefreshControl, StyleSheet, View } from "react-native";
 import {
   EmptyState,
   ListRowSkeletonList,
@@ -30,6 +25,7 @@ import {
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type { FollowTargetResponse, UserFollowResponse, UserResponse } from "../../types";
+import { t } from "../../features/i18n";
 
 type ProfileFollowsRouteProp = RouteProp<
   RootStackParamList,
@@ -300,7 +296,7 @@ export function ProfileFollowsScreen() {
   const renderTabs = (
     <View style={styles.tabs}>
       <Pressable
-        accessibilityLabel="Show followers"
+        accessibilityLabel={t("Show followers")}
         accessibilityRole="tab"
         accessibilityState={{ selected: activeTab === "followers" }}
         onPress={() => setActiveTab("followers")}
@@ -316,13 +312,12 @@ export function ProfileFollowsScreen() {
             styles.tabText,
             activeTab === "followers" && styles.activeTabText,
           ]}
-        >
-          Followers: {followers.length}
+        >{t("Followers:")}{followers.length}
         </Text>
       </Pressable>
 
       <Pressable
-        accessibilityLabel="Show following"
+        accessibilityLabel={t("Show following")}
         accessibilityRole="tab"
         accessibilityState={{ selected: activeTab === "following" }}
         onPress={() => setActiveTab("following")}
@@ -338,8 +333,7 @@ export function ProfileFollowsScreen() {
             styles.tabText,
             activeTab === "following" && styles.activeTabText,
           ]}
-        >
-          Following: {following.length}
+        >{t("Following:")}{following.length}
         </Text>
       </Pressable>
     </View>
@@ -349,7 +343,7 @@ export function ProfileFollowsScreen() {
     <Screen padded={false}>
       <View style={styles.topBar}>
         <Pressable
-          accessibilityLabel="Go back"
+          accessibilityLabel={t("Go back")}
           accessibilityRole="button"
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
@@ -362,7 +356,7 @@ export function ProfileFollowsScreen() {
         </Text>
 
         <Pressable
-          accessibilityLabel="Find people"
+          accessibilityLabel={t("Find people")}
           accessibilityRole="button"
           style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
         >
@@ -380,7 +374,7 @@ export function ProfileFollowsScreen() {
               <TextInput
                 autoCapitalize="none"
                 onChangeText={setQuery}
-                placeholder="Search"
+                placeholder={t("Search")}
                 placeholderTextColor={colors.muted}
                 style={styles.searchInput}
                 value={query}
@@ -425,14 +419,14 @@ export function ProfileFollowsScreen() {
             <EmptyState
               description={
                 query.trim()
-                  ? "Try another name or username."
+                  ? t("Try another name or username.")
                   : activeTab === "followers"
                     ? "Followers will appear here."
                     : "People and cafe pages this profile follows will appear here."
               }
               title={
                 query.trim()
-                  ? "No people found"
+                  ? t("No people found")
                   : activeTab === "followers"
                     ? "No followers yet"
                     : "No following yet"
@@ -480,7 +474,7 @@ function FollowingCafePageRow({ onPress, target }: FollowingCafePageRowProps) {
 
       <View style={styles.pageBadge}>
         <Store color={colors.primaryStrong} size={16} strokeWidth={2.4} />
-        <Text style={styles.pageBadgeText}>Page</Text>
+        <Text style={styles.pageBadgeText}>{t("Page")}</Text>
       </View>
     </View>
   );

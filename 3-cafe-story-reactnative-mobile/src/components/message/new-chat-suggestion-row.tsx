@@ -1,7 +1,10 @@
 import { X } from "lucide-react-native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { Avatar } from "../ui/avatar";
 import { colors, spacing, typography } from "../../theme";
+import { t } from "../../features/i18n";
 
 export type NewChatSuggestionUser = {
   userAvatar: string | null;

@@ -1,0 +1,19 @@
+2026-08-16 CafeStory mobile search verification
+
+PASS  mobile npm run i18n:check
+PASS  mobile npm run typecheck
+PASS  backend focused tests: 4 tests, 0 failures, 0 errors
+PASS  backend clean focused rerun after generated-class repair: 4 tests, 0 failures, 0 errors
+PASS  backend mvn test: 1373 tests, 0 failures, 0 errors, 1 skipped
+PASS  git diff --check (CRLF conversion warnings only)
+PASS  backend health: GET /v3/api-docs returned HTTP 200
+PASS  Expo Web authenticated Feed loaded
+PASS  Expo Web comments dialog loaded existing comments
+PASS  Expo Web search query cafe returned result groups in about 1.38 seconds
+PASS  Expo Web reviewer query returned expected user/reviewer group
+PASS  final clean-build Expo Web search query cafe returned results in about 1.57 seconds
+PASS  final clean-build Feed exposed 9 comment actions and selected comments rendered
+PASS  task-owned backend process stopped after verification
+GAP   native Android runtime unavailable because adb/Android SDK was not found
+GAP   mobile unit coverage tooling is not configured
+NOTE  no credential or token is stored in this evidence

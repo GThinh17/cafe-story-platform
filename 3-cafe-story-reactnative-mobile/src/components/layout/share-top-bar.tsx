@@ -1,8 +1,10 @@
 import type { ComponentType } from "react";
-import { Image, Pressable, StyleSheet, View } from "react-native";
+import { Pressable } from "react-native";
+import { Image, StyleSheet, View } from "react-native";
 
 import { colors, spacing } from "../../theme";
 import { BrandIcon } from "../ui/brand-icon";
+import { t } from "../../features/i18n";
 
 type OptionIconProps = {
   color?: string;
@@ -28,7 +30,7 @@ export function ShareTopBar({
   return (
     <View style={styles.container}>
       <View
-        accessibilityLabel="Cafe Story"
+        accessibilityLabel={t("Cafe Story")}
         accessibilityRole="image"
         style={styles.brandGroup}
       >

@@ -1,0 +1,19 @@
+{
+  "status": "DONE",
+  "feature": "admin-mobile-vietnam-report-comment",
+  "timestamp": "2026-08-17T11:01:49.529Z",
+  "secretsStored": false,
+  "backendTests": { "passed": 1383, "failed": 0, "errors": 0, "skipped": 1 },
+  "backendChangedCoverage": {
+    "controllerLinePercent": 100,
+    "serviceLinePercent": 100,
+    "serviceBranchPercent": 97.37
+  },
+  "adminE2E": { "i18n": "5/5 PASS", "translation": "1/1 PASS" },
+  "n8nOpenAIRuntime": "3/3 PASS",
+  "authenticatedUiRuntime": "PASS",
+  "mobileProfileFinalScreenshot": "mobile-profile-vietnamese-390x844-final.png",
+  "testDataCleanup": "PASS",
+  "taskPortsStopped": true,
+  "commitCreated": false
+}

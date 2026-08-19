@@ -7,6 +7,7 @@ import {
   ChartTooltip,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { formatNumber, useI18n, useUiText } from "@/features/i18n";
 
 export type DonutSlice = {
   key: string;
@@ -28,6 +29,8 @@ function DonutTooltip({
   payload?: TooltipPayloadItem[];
   total: number;
 }) {
+  const { localeTag } = useI18n();
+  const ui = useUiText();
   const slice = payload?.[0]?.payload;
   if (!active || !slice) {
     return null;
@@ -41,9 +44,9 @@ function DonutTooltip({
           className="size-2 rounded-[2px]"
           style={{ backgroundColor: slice.color }}
         />
-        <span className="text-muted">{slice.label}</span>
+        <span className="text-muted">{ui(slice.label)}</span>
         <span className="ml-2 font-medium text-foreground">
-          {slice.value.toLocaleString("vi-VN")} · {percent}%
+          {formatNumber(slice.value, localeTag)} · {percent}%
         </span>
       </div>
     </div>
@@ -59,6 +62,8 @@ export function AdminStatusDonut({
   centerLabel?: string;
   className?: string;
 }) {
+  const { localeTag } = useI18n();
+  const ui = useUiText();
   const total = useMemo(
     () => slices.reduce((sum, slice) => sum + slice.value, 0),
     [slices],
@@ -69,10 +74,10 @@ export function AdminStatusDonut({
       Object.fromEntries(
         slices.map((slice) => [
           slice.key,
-          { label: slice.label, color: slice.color },
+          { label: ui(slice.label), color: slice.color },
         ]),
       ),
-    [slices],
+    [slices, ui],
   );
 
   return (
@@ -100,7 +105,7 @@ export function AdminStatusDonut({
             dominantBaseline="middle"
             className="fill-espresso text-xl font-semibold"
           >
-            {total.toLocaleString("vi-VN")}
+            {formatNumber(total, localeTag)}
           </text>
           {centerLabel ? (
             <text
@@ -110,7 +115,7 @@ export function AdminStatusDonut({
               dominantBaseline="middle"
               className="fill-muted text-[10px]"
             >
-              {centerLabel}
+              {ui(centerLabel)}
             </text>
           ) : null}
         </PieChart>
@@ -122,7 +127,7 @@ export function AdminStatusDonut({
               className="size-2 rounded-[2px]"
               style={{ backgroundColor: slice.color }}
             />
-            {slice.label}
+            {ui(slice.label)}
           </span>
         ))}
       </div>

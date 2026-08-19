@@ -6,6 +6,7 @@ import {
   VIETNAM_PROVINCES_34,
 } from "@/lib/geo/vietnam-provinces-34";
 import { cn } from "@/lib/utils";
+import { formatNumber, useI18n, useUiText } from "@/features/i18n";
 
 export type VietnamMapDatum = {
   provinceCode: string;
@@ -43,6 +44,8 @@ export function VietnamMap({
   onProvinceClick,
   className,
 }: VietnamMapProps) {
+  const { localeTag } = useI18n();
+  const ui = useUiText();
   const [hovered, setHovered] = useState<string | null>(null);
 
   const byCode = useMemo(() => {
@@ -67,7 +70,7 @@ export function VietnamMap({
         viewBox={VIETNAM_MAP_VIEWBOX}
         className="h-full w-full"
         role="img"
-        aria-label="Vietnam province map"
+        aria-label={ui("Vietnam province map")}
       >
         {VIETNAM_PROVINCES_34.map((province) => {
           const datum = byCode.get(province.code);
@@ -102,7 +105,7 @@ export function VietnamMap({
               }
             >
               <title>
-                {`${province.name}: ${(datum?.value ?? 0).toLocaleString("vi-VN")} ${valueLabel}`}
+                {`${province.name}: ${formatNumber(datum?.value ?? 0, localeTag)} ${ui(valueLabel)}`}
               </title>
             </path>
           );
@@ -112,7 +115,7 @@ export function VietnamMap({
         <div className="pointer-events-none absolute left-2 top-2 rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs shadow-sm">
           <p className="font-semibold text-espresso">{hoveredProvince.name}</p>
           <p className="text-muted">
-            {(hoveredDatum?.value ?? 0).toLocaleString("vi-VN")} {valueLabel}
+            {formatNumber(hoveredDatum?.value ?? 0, localeTag)} {ui(valueLabel)}
           </p>
         </div>
       ) : null}

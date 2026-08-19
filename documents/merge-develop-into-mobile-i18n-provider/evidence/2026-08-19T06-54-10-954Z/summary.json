@@ -1,0 +1,14 @@
+{
+  "status": "DONE",
+  "currentBranch": "codex/mobile-i18n-provider",
+  "sourceBranch": "develop",
+  "command": "git merge develop",
+  "result": "Already up to date.",
+  "head": "9dfc99f05dc918ea8f3ccf06ab89d64ff606eecb",
+  "develop": "14c0b83bc025eff52059cbdf05d71b6c203cb0c8",
+  "ahead": 5,
+  "behind": 0,
+  "conflicts": 0,
+  "mergeCommitCreated": false,
+  "stagedChanges": 0
+}

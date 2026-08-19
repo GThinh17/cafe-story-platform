@@ -1,6 +1,9 @@
 import { ChevronLeft, Edit3 } from "lucide-react-native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { colors, spacing, typography } from "../../theme";
+import { t } from "../../features/i18n";
 
 type ConversationTopBarProps = {
   onBackPress: () => void;
@@ -16,7 +19,7 @@ export function ConversationTopBar({
   return (
     <View style={styles.container}>
       <Pressable
-        accessibilityLabel="Go back"
+        accessibilityLabel={t("Go back")}
         accessibilityRole="button"
         onPress={onBackPress}
         style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
@@ -29,7 +32,7 @@ export function ConversationTopBar({
       </Text>
 
       <Pressable
-        accessibilityLabel="New message"
+        accessibilityLabel={t("New message")}
         accessibilityRole="button"
         disabled={!onEditPress}
         onPress={onEditPress}

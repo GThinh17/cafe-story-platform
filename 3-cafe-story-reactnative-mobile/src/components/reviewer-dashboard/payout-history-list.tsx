@@ -1,11 +1,18 @@
 import { Award, Wallet } from "lucide-react-native";
-import { StyleSheet, Text, View } from "react-native";
+import { Text } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { colors, spacing, typography } from "../../theme";
+import {
+  formatCurrentCompactNumber,
+  formatCurrentCurrency,
+  formatCurrentDate,
+} from "../../features/i18n";
 import type {
   ReviewerDashboardBadge,
   ReviewerDashboardPayout,
 } from "../../types";
+import { t } from "../../features/i18n";
 
 export type ReviewerPayoutHistoryRow = ReviewerDashboardPayout & {
   badge: ReviewerDashboardBadge | null;
@@ -16,19 +23,11 @@ type PayoutHistoryListProps = {
 };
 
 function formatVnd(value: number) {
-  return `${String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} VND`;
+  return formatCurrentCurrency(value);
 }
 
 function formatCount(value: number) {
-  if (value >= 1000000) {
-    return `${(value / 1000000).toFixed(value >= 10000000 ? 0 : 1)}m`;
-  }
-
-  if (value >= 1000) {
-    return `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}k`;
-  }
-
-  return String(value);
+  return formatCurrentCompactNumber(value);
 }
 
 function formatMonthLabel(value: string) {
@@ -47,7 +46,7 @@ function formatMonthLabel(value: string) {
     return value;
   }
 
-  return date.toLocaleDateString(undefined, {
+  return formatCurrentDate(date, {
     month: "short",
     year: "numeric",
   });
@@ -76,7 +75,7 @@ function PayoutHistoryRowCard({ item }: { item: ReviewerPayoutHistoryRow }) {
     <View style={styles.card}>
       <View style={styles.topRow}>
         <View style={styles.monthCopy}>
-          <Text style={styles.metaLabel}>Month</Text>
+          <Text style={styles.metaLabel}>{t("Month")}</Text>
           <Text style={styles.monthText}>{formatMonthLabel(item.payoutMonth)}</Text>
         </View>
         <View style={styles.statusPill}>
@@ -86,7 +85,7 @@ function PayoutHistoryRowCard({ item }: { item: ReviewerPayoutHistoryRow }) {
             numberOfLines={1}
             style={styles.statusText}
           >
-            {statusLabel(item.payoutStatus)}
+            {statusLabel(item.status)}
           </Text>
         </View>
       </View>
@@ -101,7 +100,7 @@ function PayoutHistoryRowCard({ item }: { item: ReviewerPayoutHistoryRow }) {
       <View style={styles.amountBlock}>
         <View style={styles.amountLabelRow}>
           <Wallet color={colors.secondary} size={16} strokeWidth={2.4} />
-          <Text style={styles.amountLabel}>Final amount</Text>
+          <Text style={styles.amountLabel}>{t("Final amount")}</Text>
         </View>
         <Text
           adjustsFontSizeToFit
@@ -109,7 +108,7 @@ function PayoutHistoryRowCard({ item }: { item: ReviewerPayoutHistoryRow }) {
           numberOfLines={1}
           style={styles.amountText}
         >
-          {formatVnd(item.totalAmount)}
+          {formatVnd(item.totalFinalAmount)}
         </Text>
       </View>
 
@@ -117,17 +116,17 @@ function PayoutHistoryRowCard({ item }: { item: ReviewerPayoutHistoryRow }) {
         <BreakdownRow
           amount={item.likeAmount}
           count={item.likeCount}
-          label="Likes"
+          label={t("Likes")}
         />
         <BreakdownRow
           amount={item.shareAmount}
           count={item.shareCount}
-          label="Shares"
+          label={t("Shares")}
         />
         <BreakdownRow
           amount={item.commentAmount}
           count={item.commentCount}
-          label="Comments"
+          label={t("Comments")}
         />
       </View>
     </View>

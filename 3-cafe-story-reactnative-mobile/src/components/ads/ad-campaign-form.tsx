@@ -1,16 +1,10 @@
 import * as ImagePicker from "expo-image-picker";
+import { Pressable, Switch } from "react-native";
+import { Text } from "react-native";
 import { Check, ChevronDown, ImagePlus, MapPin, X } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
-  Image,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  View,
-} from "react-native";
+  Image, Modal, ScrollView, StyleSheet, View } from "react-native";
 
 import {
   createAdCampaign,
@@ -20,6 +14,7 @@ import {
   uploadAdImageToCloudinary,
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
+import { formatCurrentNumber } from "../../features/i18n";
 import type {
   AdTargetRegionRequest,
   CafePageResponse,
@@ -30,6 +25,7 @@ import type {
 } from "../../types";
 import { Button } from "../ui/button";
 import { TextField } from "../ui/text-field";
+import { t } from "../../features/i18n";
 
 type AdCampaignFormProps = {
   cafePages: CafePageResponse[];
@@ -52,7 +48,7 @@ function isHttpUrl(value: string) {
 }
 
 function paymentLabel(payment: PaymentResponse) {
-  const amount = Number(payment.amount ?? 0).toLocaleString("en-US");
+  const amount = formatCurrentNumber(Number(payment.amount ?? 0));
   return `${amount} VND · ${payment.paymentId.slice(0, 8)}`;
 }
 
@@ -142,7 +138,7 @@ export function AdCampaignForm({ cafePages, initialPaymentId, onCreated, payment
     setError(null);
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      setError("Photo library permission is required to select an ad image.");
+      setError(t("Photo library permission is required to select an ad image."));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -171,7 +167,7 @@ export function AdCampaignForm({ cafePages, initialPaymentId, onCreated, payment
 
   function addTarget() {
     if (!selectedProvince) {
-      setError("Choose at least a province before adding a target region.");
+      setError(t("Choose at least a province before adding a target region."));
       return;
     }
     const target: AdTargetRegionRequest = {
@@ -196,23 +192,23 @@ export function AdCampaignForm({ cafePages, initialPaymentId, onCreated, payment
     const normalizedDescription = description.trim();
     const normalizedTargetUrl = targetUrl.trim();
     if (!cafePageId || !paymentId) {
-      setError("Choose a cafe page and an unused paid Ads payment.");
+      setError(t("Choose a cafe page and an unused paid Ads payment."));
       return;
     }
     if (!normalizedTitle || normalizedTitle.length > 160) {
-      setError("Title must contain 1 to 160 characters.");
+      setError(t("Title must contain 1 to 160 characters."));
       return;
     }
     if (normalizedDescription.length > 1000) {
-      setError("Description cannot exceed 1,000 characters.");
+      setError(t("Description cannot exceed 1,000 characters."));
       return;
     }
     if (normalizedTargetUrl && !isHttpUrl(normalizedTargetUrl)) {
-      setError("Target URL must start with http:// or https://.");
+      setError(t("Target URL must start with http:// or https://."));
       return;
     }
     if (imageUrl && !isHttpUrl(imageUrl)) {
-      setError("Creative image URL must use http:// or https://.");
+      setError(t("Creative image URL must use http:// or https://."));
       return;
     }
     setIsSubmitting(true);
@@ -244,28 +240,28 @@ export function AdCampaignForm({ cafePages, initialPaymentId, onCreated, payment
   return (
     <View style={styles.card}>
       <View style={styles.heading}>
-        <Text style={styles.eyebrow}>NEW CAMPAIGN</Text>
-        <Text style={styles.title}>Turn a paid Ads package into a campaign</Text>
-        <Text style={styles.description}>Each payment can be used once. Leave targeting empty for nationwide delivery.</Text>
+        <Text style={styles.eyebrow}>{t("NEW CAMPAIGN")}</Text>
+        <Text style={styles.title}>{t("Turn a paid Ads package into a campaign")}</Text>
+        <Text style={styles.description}>{t("Each payment can be used once. Leave targeting empty for nationwide delivery.")}</Text>
       </View>
 
       <Selector
-        label="Cafe page"
+        label={t("Cafe page")}
         onPress={() => setPicker({ kind: "cafe", options: cafePages.map((page) => ({ id: page.id, label: page.name || "Unnamed cafe" })) })}
         value={selectedCafe?.name || "Choose a cafe page"}
       />
       <Selector
-        label="Paid Ads package"
+        label={t("Paid Ads package")}
         onPress={() => setPicker({ kind: "payment", options: payments.map((payment) => ({ id: payment.paymentId, label: paymentLabel(payment) })) })}
-        value={selectedPayment ? paymentLabel(selectedPayment) : "Choose an unused payment"}
+        value={selectedPayment ? paymentLabel(selectedPayment) : t("Choose an unused payment")}
       />
-      <TextField label="Title" maxLength={160} onChangeText={setTitle} placeholder="Summer coffee discovery" value={title} />
+      <TextField label={t("Title")} maxLength={160} onChangeText={setTitle} placeholder={t("Summer coffee discovery")} value={title} />
       <TextField
-        label="Description"
+        label={t("Description")}
         maxLength={1000}
         multiline
         onChangeText={setDescription}
-        placeholder="Tell CafeStory members what makes this promotion useful."
+        placeholder={t("Tell CafeStory members what makes this promotion useful.")}
         style={styles.multiline}
         textAlignVertical="top"
         value={description}
@@ -273,7 +269,7 @@ export function AdCampaignForm({ cafePages, initialPaymentId, onCreated, payment
       <TextField
         autoCapitalize="none"
         keyboardType="url"
-        label="Target URL (optional)"
+        label={t("Target URL (optional)")}
         onChangeText={setTargetUrl}
         placeholder="https://your-cafe.example/menu"
         value={targetUrl}
@@ -282,38 +278,38 @@ export function AdCampaignForm({ cafePages, initialPaymentId, onCreated, payment
       <View style={styles.creative}>
         {imageUrl ? <Image source={{ uri: imageUrl }} style={styles.preview} /> : <ImagePlus color={colors.secondary} size={30} />}
         <View style={styles.creativeCopy}>
-          <Text style={styles.fieldLabel}>CREATIVE IMAGE</Text>
-          <Text style={styles.helper}>Use a square 1:1 image for a consistent feed card.</Text>
+          <Text style={styles.fieldLabel}>{t("CREATIVE IMAGE")}</Text>
+          <Text style={styles.helper}>{t("Use a square 1:1 image for a consistent feed card.")}</Text>
         </View>
-        <Button isLoading={isUploading} label={imageUrl ? "Replace" : "Upload"} onPress={chooseImage} variant="outlined" />
+        <Button isLoading={isUploading} label={imageUrl ? t("Replace") : t("Upload")} onPress={chooseImage} variant="outlined" />
       </View>
 
       <View style={styles.targetBox}>
         <View style={styles.targetHeading}>
           <MapPin color={colors.primary} size={20} />
           <View style={styles.targetCopy}>
-            <Text style={styles.fieldLabel}>TARGET REGIONS</Text>
-            <Text style={styles.helper}>Add multiple areas or keep this nationwide.</Text>
+            <Text style={styles.fieldLabel}>{t("TARGET REGIONS")}</Text>
+            <Text style={styles.helper}>{t("Add multiple areas or keep this nationwide.")}</Text>
           </View>
         </View>
         <Selector
-          label="Province"
+          label={t("Province")}
           onPress={() => setPicker({ kind: "province", options: provinces.map((province) => ({ id: province.provinceCode, label: province.name })) })}
           value={selectedProvince?.name || "Choose province"}
         />
         <Selector
           disabled={!provinceCode}
-          label="City (optional)"
+          label={t("City (optional)")}
           onPress={() => setPicker({ kind: "city", options: cities.map((city) => ({ id: city.cityCode, label: city.name })) })}
           value={selectedCity?.name || "All cities"}
         />
         <Selector
           disabled={!cityCode}
-          label="Ward (optional)"
+          label={t("Ward (optional)")}
           onPress={() => setPicker({ kind: "ward", options: wards.map((ward) => ({ id: ward.wardCode, label: ward.name })) })}
           value={selectedWard?.name || "All wards"}
         />
-        <Button label="Add target region" onPress={addTarget} variant="outlined" />
+        <Button label={t("Add target region")} onPress={addTarget} variant="outlined" />
         {targets.length ? (
           <View style={styles.chips}>
             {targets.map((target, index) => (
@@ -329,22 +325,22 @@ export function AdCampaignForm({ cafePages, initialPaymentId, onCreated, payment
             ))}
           </View>
         ) : (
-          <Text style={styles.nationwide}>Nationwide delivery</Text>
+          <Text style={styles.nationwide}>{t("Nationwide delivery")}</Text>
         )}
       </View>
 
       <View style={styles.switchRow}>
         <View style={styles.switchCopy}>
-          <Text style={styles.switchTitle}>Activate immediately</Text>
-          <Text style={styles.helper}>Turn this off to save the campaign as a draft.</Text>
+          <Text style={styles.switchTitle}>{t("Activate immediately")}</Text>
+          <Text style={styles.helper}>{t("Turn this off to save the campaign as a draft.")}</Text>
         </View>
         <Switch onValueChange={setActivateNow} thumbColor={colors.white} trackColor={{ false: colors.border, true: colors.primary }} value={activateNow} />
       </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      <Button disabled={isUploading} isLoading={isSubmitting} label={activateNow ? "Create and activate" : "Save draft"} onPress={submit} />
+      <Button disabled={isUploading} isLoading={isSubmitting} label={activateNow ? t("Create and activate") : t("Save draft")} onPress={submit} />
 
-      <OptionPicker onClose={() => setPicker(null)} onSelect={selectOption} options={picker?.options ?? []} selectedId={pickerValue} title={picker ? `Choose ${picker.kind}` : "Choose option"} visible={Boolean(picker)} />
+      <OptionPicker onClose={() => setPicker(null)} onSelect={selectOption} options={picker?.options ?? []} selectedId={pickerValue} title={picker ? `Choose ${picker.kind}` : t("Choose option")} visible={Boolean(picker)} />
     </View>
   );
 }
@@ -368,7 +364,7 @@ function OptionPicker({ onClose, onSelect, options, selectedId, title, visible }
         <Pressable style={styles.sheet}>
           <View style={styles.sheetHeader}>
             <Text style={styles.sheetTitle}>{title}</Text>
-            <Pressable accessibilityLabel="Close options" onPress={onClose}><X color={colors.foreground} size={22} /></Pressable>
+            <Pressable accessibilityLabel={t("Close options")} onPress={onClose}><X color={colors.foreground} size={22} /></Pressable>
           </View>
           <ScrollView contentContainerStyle={styles.options}>
             {options.length ? options.map((option) => (
@@ -376,7 +372,7 @@ function OptionPicker({ onClose, onSelect, options, selectedId, title, visible }
                 <Text style={styles.optionText}>{option.label}</Text>
                 {selectedId === option.id ? <Check color={colors.primary} size={20} /> : null}
               </Pressable>
-            )) : <Text style={styles.emptyOptions}>No options are available.</Text>}
+            )) : <Text style={styles.emptyOptions}>{t("No options are available.")}</Text>}
           </ScrollView>
         </Pressable>
       </Pressable>

@@ -1,27 +1,15 @@
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
-  Bell,
-  Bookmark,
-  CheckCheck,
-  Heart,
-  MessageCircle,
-  Tag,
-  Trash2,
-  UserPlus,
-} from "lucide-react-native";
+  Bell, Bookmark, CheckCheck, Heart, MessageCircle, Tag, Trash2, UserPlus, } from "lucide-react-native";
 import { useCallback, useMemo, useState } from "react";
-import {
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 
 import { EmptyState, Screen } from "../../components";
+import { getCurrentLocale } from "../../features/i18n";
 import { routes } from "../../navigation";
 import type { MainTabParamList, RootStackParamList } from "../../navigation";
 import {
@@ -33,6 +21,7 @@ import {
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type { NotificationResponse } from "../../types";
+import { t } from "../../features/i18n";
 
 const NOTIFICATION_PAGE_SIZE = 30;
 type NotificationFilterKey = "ALL" | "MESSAGES" | "TAGS" | "POSTS" | "FOLLOWS";
@@ -149,29 +138,32 @@ function getEmptyCopy(filter: NotificationFilterKey) {
 }
 
 function formatTime(value: string | null) {
+  const isVietnamese = getCurrentLocale() === "vi";
+
   if (!value) {
-    return "Just now";
+    return isVietnamese ? "Vừa xong" : "Just now";
   }
 
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
-    return "Just now";
+    return isVietnamese ? "Vừa xong" : "Just now";
   }
 
   const diffMinutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
   if (diffMinutes < 1) {
-    return "Just now";
+    return isVietnamese ? "Vừa xong" : "Just now";
   }
   if (diffMinutes < 60) {
-    return `${diffMinutes}m ago`;
+    return isVietnamese ? `${diffMinutes} phút trước` : `${diffMinutes}m ago`;
   }
 
   const diffHours = Math.floor(diffMinutes / 60);
   if (diffHours < 24) {
-    return `${diffHours}h ago`;
+    return isVietnamese ? `${diffHours} giờ trước` : `${diffHours}h ago`;
   }
 
-  return `${Math.floor(diffHours / 24)}d ago`;
+  const days = Math.floor(diffHours / 24);
+  return isVietnamese ? `${days} ngày trước` : `${days}d ago`;
 }
 
 function getNotificationIcon(type: string) {
@@ -274,7 +266,7 @@ export function NotificationsScreen() {
       setNotifications(filterNotifications(nextNotifications, activeFilter));
       setUnreadCount(nextUnread.unreadCount ?? 0);
     } catch {
-      setError("Unable to load notifications. Pull down to try again.");
+      setError(t("Unable to load notifications. Pull down to try again."));
     } finally {
       setIsInitialLoading(false);
       setIsRefreshing(false);
@@ -344,7 +336,7 @@ export function NotificationsScreen() {
       );
       setUnreadCount(0);
     } catch {
-      setError("Unable to mark notifications as read.");
+      setError(t("Unable to mark notifications as read."));
     } finally {
       setIsMutating(false);
     }
@@ -362,7 +354,7 @@ export function NotificationsScreen() {
     try {
       await deleteNotification(notificationId);
     } catch {
-      setError("Unable to delete notification.");
+      setError(t("Unable to delete notification."));
       void loadNotifications(true);
     }
   }, [loadNotifications, notifications]);
@@ -472,7 +464,7 @@ function NotificationFilterBar({
 function NotificationSkeletonList() {
   return (
     <View
-      accessibilityLabel="Loading notifications"
+      accessibilityLabel={t("Loading notifications")}
       accessibilityRole="progressbar"
       style={styles.skeletonContent}
     >
@@ -502,12 +494,12 @@ function Header({
   return (
     <View style={styles.header}>
       <View style={styles.headerCopy}>
-        <Text style={styles.title}>Notifications</Text>
+        <Text style={styles.title}>{t("Notifications")}</Text>
         <Text style={styles.subtitle}>{unreadLabel}</Text>
       </View>
       {showMarkAll ? (
         <Pressable
-          accessibilityLabel="Mark all notifications as read"
+          accessibilityLabel={t("Mark all notifications as read")}
           accessibilityRole="button"
           onPress={onMarkAllRead}
           style={({ pressed }) => [styles.markAllButton, pressed && styles.pressed]}
@@ -568,7 +560,7 @@ function NotificationRow({
         </Text>
       </View>
       <Pressable
-        accessibilityLabel="Delete notification"
+        accessibilityLabel={t("Delete notification")}
         accessibilityRole="button"
         hitSlop={8}
         onPress={() => onDelete(notification.id)}

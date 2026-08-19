@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { hasAdminRole } from "@/lib/auth";
+import { useTranslate } from "@/features/i18n";
 
 function AdminLoadingState() {
   return (
@@ -32,16 +33,15 @@ function AdminAuthRedirect() {
 }
 
 function AdminAccessDenied({ error }: { error: string | null }) {
+  const t = useTranslate();
   return (
     <div className="grid min-h-screen place-items-center bg-background p-6 text-foreground">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Access denied</CardTitle>
+          <CardTitle>{t("auth.accessDenied.title")}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-3 text-sm leading-6 text-muted">
-          <p>
-            Sign in with an ADMIN account to open the CafeStory admin workspace.
-          </p>
+          <p>{t("auth.accessDenied.description")}</p>
           {error ? <p>{error}</p> : null}
         </CardContent>
       </Card>

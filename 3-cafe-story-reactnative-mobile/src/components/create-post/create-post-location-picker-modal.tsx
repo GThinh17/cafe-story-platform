@@ -1,14 +1,8 @@
 import { ArrowLeft, CheckCircle2, MapPin } from "lucide-react-native";
+import { Pressable, Text } from "react-native";
 import { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+  ActivityIndicator, Modal, ScrollView, StyleSheet, View } from "react-native";
 
 import {
   createRegion,
@@ -25,6 +19,7 @@ import type {
 } from "../../types";
 import { EmptyState } from "../ui/empty-state";
 import { LoadingState } from "../ui/loading-state";
+import { t } from "../../features/i18n";
 
 type CreatePostLocationPickerModalProps = {
   onApply: (location: NonNullable<CreatePostDraft["location"]>) => void;
@@ -223,7 +218,7 @@ export function CreatePostLocationPickerModal({
 
   async function handleSave() {
     if (!selectedProvince || !selectedCity) {
-      setError("Province and city are required.");
+      setError(t("Province and city are required."));
       return;
     }
 
@@ -264,7 +259,7 @@ export function CreatePostLocationPickerModal({
       <View style={styles.modal}>
         <View style={styles.header}>
           <Pressable
-            accessibilityLabel="Close location picker"
+            accessibilityLabel={t("Close location picker")}
             accessibilityRole="button"
             disabled={isSaving}
             onPress={onClose}
@@ -277,12 +272,10 @@ export function CreatePostLocationPickerModal({
             <ArrowLeft color={colors.foreground} size={30} strokeWidth={2.5} />
           </Pressable>
 
-          <Text numberOfLines={1} style={styles.headerTitle}>
-            Select location
-          </Text>
+          <Text numberOfLines={1} style={styles.headerTitle}>{t("Select location")}</Text>
 
           <Pressable
-            accessibilityLabel="Apply post location"
+            accessibilityLabel={t("Apply post location")}
             accessibilityRole="button"
             disabled={!canSave}
             onPress={handleSave}
@@ -295,7 +288,7 @@ export function CreatePostLocationPickerModal({
             {isSaving ? (
               <ActivityIndicator color={colors.link} />
             ) : (
-              <Text style={styles.doneText}>Done</Text>
+              <Text style={styles.doneText}>{t("Done")}</Text>
             )}
           </Pressable>
         </View>
@@ -304,30 +297,28 @@ export function CreatePostLocationPickerModal({
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.description}>
-            Pick a post location. Street is not required for blog posts.
-          </Text>
+          <Text style={styles.description}>{t("Pick a post location. Street is not required for blog posts.")}</Text>
 
           {isProvinceLoading ? (
-            <LoadingState label="Loading provinces..." />
+            <LoadingState label={t("Loading provinces...")} />
           ) : provinces.length > 0 ? (
             <SelectionGroup
-              emptyLabel="No provinces available."
-              label="Province"
+              emptyLabel={t("No provinces available.")}
+              label={t("Province")}
               onSelect={handleProvincePress}
               options={provinces}
               selectedCode={selectedProvince?.provinceCode}
               valueKey="provinceCode"
             />
           ) : (
-            <EmptyState title="No provinces available" />
+            <EmptyState title={t("No provinces available")} />
           )}
 
           {selectedProvince ? (
             <SelectionGroup
-              emptyLabel="No cities available for this province."
+              emptyLabel={t("No cities available for this province.")}
               isLoading={isCityLoading}
-              label="City"
+              label={t("City")}
               onSelect={handleCityPress}
               options={cities}
               selectedCode={selectedCity?.cityCode}
@@ -337,9 +328,9 @@ export function CreatePostLocationPickerModal({
 
           {selectedCity ? (
             <SelectionGroup
-              emptyLabel="No wards available for this city."
+              emptyLabel={t("No wards available for this city.")}
               isLoading={isWardLoading}
-              label="Ward optional"
+              label={t("Ward optional")}
               onSelect={setSelectedWard}
               options={wards}
               selectedCode={selectedWard?.wardCode}
@@ -351,7 +342,7 @@ export function CreatePostLocationPickerModal({
             <View style={styles.selectedBox}>
               <MapPin color={colors.primary} size={20} strokeWidth={2.5} />
               <View style={styles.selectedCopy}>
-                <Text style={styles.selectedLabel}>Selected location</Text>
+                <Text style={styles.selectedLabel}>{t("Selected location")}</Text>
                 <Text numberOfLines={2} style={styles.selectedValue}>
                   {locationName}
                 </Text>

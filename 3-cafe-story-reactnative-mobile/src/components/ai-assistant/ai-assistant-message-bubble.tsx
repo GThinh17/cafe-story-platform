@@ -1,6 +1,8 @@
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { Text } from "react-native";
 import { colors, spacing, typography } from "../../theme";
 import type { AiAssistantMessageListItem, AiChatSource } from "../../types";
+import { t } from "../../features/i18n";
 
 type AiAssistantMessageBubbleProps = {
   message: AiAssistantMessageListItem;
@@ -30,7 +32,7 @@ export function AiAssistantMessageBubble({
         {isPending ? (
           <View style={styles.pendingContent}>
             <ActivityIndicator color={colors.muted} size="small" />
-            <Text style={styles.pendingText}>Thinking...</Text>
+            <Text style={styles.pendingText}>{t("Thinking...")}</Text>
           </View>
         ) : (
           <Text

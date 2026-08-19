@@ -14,9 +14,11 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useI18n, type TranslationKey } from "../../features/i18n";
 import { createContentReport, getReportReasons } from "../../services/api";
+import { ApiError } from "../../services/api/client";
 import { colors, spacing, typography } from "../../theme";
-import type { ReportReasonResponse } from "../../types";
+import type { ReportReasonResponse, ReportTargetType } from "../../types";
 
 type ReportPostModalProps = {
   blogId: string;
@@ -24,59 +26,99 @@ type ReportPostModalProps = {
   visible: boolean;
 };
 
+type ReportContentModalProps = {
+  onClose: () => void;
+  targetId: string;
+  targetType: Extract<ReportTargetType, "BLOG" | "COMMENT">;
+  visible: boolean;
+};
+
 type ReportReasonCopy = {
-  description?: string;
-  label: string;
+  descriptionKey?: TranslationKey;
+  labelKey: TranslationKey;
 };
 
 const REPORT_REASON_COPY: Record<string, ReportReasonCopy> = {
   BULLYING_OR_UNWANTED_CONTACT: {
-    label: "Bullying or unwanted contact",
+    labelKey: "report.reason.bullying",
   },
   DISLIKE_CONTENT: {
-    label: "I just don't like this content",
+    labelKey: "report.reason.dislike",
   },
   FALSE_INFORMATION: {
-    label: "False information",
+    labelKey: "report.reason.falseInformation",
   },
   INTELLECTUAL_PROPERTY: {
-    description:
-      "Tell CafeStory what rights may be affected so the team can review the report accurately.",
-    label: "Intellectual property",
+    descriptionKey: "report.reason.intellectualPropertyDescription",
+    labelKey: "report.reason.intellectualProperty",
   },
   NUDITY_OR_SEXUAL_ACTIVITY: {
-    label: "Nudity or sexual activity",
+    labelKey: "report.reason.nudity",
   },
   RESTRICTED_GOODS: {
-    label: "Selling or promoting restricted goods",
+    labelKey: "report.reason.restrictedGoods",
   },
   SCAM_FRAUD_OR_SPAM: {
-    label: "Scam, fraud, or spam",
+    labelKey: "report.reason.scam",
   },
   SELF_HARM_OR_ABNORMAL_EATING: {
-    label: "Self-harm or disordered eating",
+    labelKey: "report.reason.selfHarm",
   },
   VIOLENCE_HATE_OR_EXPLOITATION: {
-    label: "Violence, hate, or exploitation",
+    labelKey: "report.reason.violence",
   },
 };
 
-function reportReasonLabel(reason: ReportReasonResponse) {
-  return REPORT_REASON_COPY[reason.code]?.label ?? reason.labelVi;
+function reportReasonLabel(
+  reason: ReportReasonResponse,
+  locale: "en" | "vi",
+  t: (key: TranslationKey) => string,
+) {
+  const copy = REPORT_REASON_COPY[reason.code];
+  if (copy) {
+    return t(copy.labelKey);
+  }
+  return locale === "vi" ? reason.labelVi : reason.code;
 }
 
-function reportReasonDescription(reason: ReportReasonResponse) {
-  return (
-    REPORT_REASON_COPY[reason.code]?.description ??
-    "Tell CafeStory a little more so the team can review this accurately."
-  );
+function reportReasonDescription(
+  reason: ReportReasonResponse,
+  t: (key: TranslationKey) => string,
+) {
+  const descriptionKey = REPORT_REASON_COPY[reason.code]?.descriptionKey;
+  return t(descriptionKey ?? "report.common.reasonDescription");
 }
 
-export function ReportPostModal({
-  blogId,
+function reportRequestError(error: unknown, t: (key: TranslationKey) => string) {
+  if (error instanceof ApiError) {
+    const rawMessage = error.rawMessage?.toLowerCase() ?? "";
+    if (error.statusCode === 403 || rawMessage.includes("own")) {
+      return t("report.common.submitForbidden");
+    }
+    if (
+      error.statusCode === 409 ||
+      rawMessage.includes("already") ||
+      rawMessage.includes("duplicate")
+    ) {
+      return t("report.common.submitDuplicate");
+    }
+    if (error.statusCode === 401) {
+      return t("common.error.sessionExpired");
+    }
+    if (error.statusCode === 0) {
+      return t("common.error.network");
+    }
+  }
+  return t("report.common.submitError");
+}
+
+export function ReportContentModal({
   onClose,
+  targetId,
+  targetType,
   visible,
-}: ReportPostModalProps) {
+}: ReportContentModalProps) {
+  const { locale, t } = useI18n();
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
   const [isLoadingReasons, setIsLoadingReasons] = useState(false);
@@ -84,6 +126,7 @@ export function ReportPostModal({
   const [reasons, setReasons] = useState<ReportReasonResponse[]>([]);
   const [selectedReason, setSelectedReason] = useState<ReportReasonResponse | null>(null);
   const [submittedReportId, setSubmittedReportId] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let isActive = true;
@@ -99,7 +142,7 @@ export function ReportPostModal({
     setIsLoadingReasons(true);
     setError("");
 
-    getReportReasons("BLOG")
+    getReportReasons(targetType)
       .then((response) => {
         if (isActive) {
           setReasons(response);
@@ -111,7 +154,7 @@ export function ReportPostModal({
           setError(
             requestError instanceof Error
               ? requestError.message
-              : "Unable to load report reasons.",
+              : t("report.common.loadError"),
           );
         }
       })
@@ -124,7 +167,7 @@ export function ReportPostModal({
     return () => {
       isActive = false;
     };
-  }, [visible]);
+  }, [reloadKey, t, targetType, visible]);
 
   const isDescriptionRequired = Boolean(selectedReason?.requiresDescription);
   const canSubmitReport =
@@ -160,17 +203,13 @@ export function ReportPostModal({
       const response = await createContentReport({
         description: description.trim() || undefined,
         reasonId: selectedReason.id,
-        targetId: blogId,
-        targetType: "BLOG",
+        targetId,
+        targetType,
       });
 
       setSubmittedReportId(response.id);
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Unable to submit this report.",
-      );
+      setError(reportRequestError(requestError, t));
     } finally {
       setIsSubmitting(false);
     }
@@ -181,7 +220,7 @@ export function ReportPostModal({
       return (
         <View style={styles.stateBlock}>
           <ActivityIndicator color={colors.primary} />
-          <Text style={styles.stateText}>Loading report reasons...</Text>
+          <Text style={styles.stateText}>{t("report.common.loading")}</Text>
         </View>
       );
     }
@@ -189,8 +228,16 @@ export function ReportPostModal({
     if (error && !reasons.length) {
       return (
         <View style={styles.stateBlock}>
-          <Text style={styles.stateTitle}>Unable to load report reasons</Text>
+          <Text style={styles.stateTitle}>{t("report.common.loadError")}</Text>
           <Text style={styles.stateText}>{error}</Text>
+          <Pressable
+            accessibilityLabel={t("report.action.retry")}
+            accessibilityRole="button"
+            onPress={() => setReloadKey((value) => value + 1)}
+            style={({ pressed }) => [styles.retryButton, pressed && styles.pressed]}
+          >
+            <Text style={styles.retryText}>{t("report.action.retry")}</Text>
+          </Pressable>
         </View>
       );
     }
@@ -198,9 +245,9 @@ export function ReportPostModal({
     if (!reasons.length) {
       return (
         <View style={styles.stateBlock}>
-          <Text style={styles.stateTitle}>No report reasons yet</Text>
+          <Text style={styles.stateTitle}>{t("report.common.emptyTitle")}</Text>
           <Text style={styles.stateText}>
-            Please try again after report reasons have been configured.
+            {t("report.common.emptyDescription")}
           </Text>
         </View>
       );
@@ -212,17 +259,22 @@ export function ReportPostModal({
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.hero}>
-          <Text style={styles.question}>Why are you reporting this post?</Text>
+          <Text style={styles.question}>
+            {t(
+              targetType === "BLOG"
+                ? "report.post.question"
+                : "report.comment.question",
+            )}
+          </Text>
           <Text style={styles.description}>
-            Your report is anonymous. If someone is in immediate danger,
-            contact your local emergency services right away.
+            {t("report.common.anonymousNotice")}
           </Text>
         </View>
 
         <View style={styles.reasons}>
           {reasons.map((reason) => (
             <Pressable
-              accessibilityLabel={reportReasonLabel(reason)}
+              accessibilityLabel={reportReasonLabel(reason, locale, t)}
               accessibilityRole="button"
               key={reason.id}
               onPress={() => {
@@ -232,7 +284,9 @@ export function ReportPostModal({
               }}
               style={({ pressed }) => [styles.reasonRow, pressed && styles.pressed]}
             >
-              <Text style={styles.reasonText}>{reportReasonLabel(reason)}</Text>
+              <Text style={styles.reasonText}>
+                {reportReasonLabel(reason, locale, t)}
+              </Text>
               <ChevronRight color={colors.muted} size={28} strokeWidth={2.2} />
             </Pressable>
           ))}
@@ -249,17 +303,17 @@ export function ReportPostModal({
     if (submittedReportId) {
       return (
         <View style={styles.successBlock}>
-          <Text style={styles.detailTitle}>Thanks for your report</Text>
+          <Text style={styles.detailTitle}>{t("report.common.successTitle")}</Text>
           <Text style={styles.detailText}>
-            Your report has been submitted and will be reviewed by CafeStory.
+            {t("report.common.successDescription")}
           </Text>
           <Pressable
-            accessibilityLabel="Close report"
+            accessibilityLabel={t("report.common.close")}
             accessibilityRole="button"
             onPress={onClose}
             style={({ pressed }) => [styles.submitButton, pressed && styles.pressed]}
           >
-            <Text style={styles.submitText}>Close</Text>
+            <Text style={styles.submitText}>{t("report.action.close")}</Text>
           </Pressable>
         </View>
       );
@@ -275,19 +329,25 @@ export function ReportPostModal({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.detailTitle}>{reportReasonLabel(selectedReason)}</Text>
+          <Text style={styles.detailTitle}>
+            {reportReasonLabel(selectedReason, locale, t)}
+          </Text>
           <Text style={styles.detailText}>
-            {reportReasonDescription(selectedReason)}
+            {reportReasonDescription(selectedReason, t)}
           </Text>
 
           <View style={styles.inputBlock}>
             <Text style={styles.inputLabel}>
-              Details {isDescriptionRequired ? "(required)" : "(optional)"}
+              {t(
+                isDescriptionRequired
+                  ? "report.common.detailsRequired"
+                  : "report.common.detailsOptional",
+              )}
             </Text>
             <TextInput
               multiline
               onChangeText={setDescription}
-              placeholder="Add report details..."
+              placeholder={t("report.common.detailsPlaceholder")}
               placeholderTextColor={colors.muted}
               style={styles.input}
               textAlignVertical="top"
@@ -300,7 +360,7 @@ export function ReportPostModal({
 
         <View style={styles.footer}>
           <Pressable
-            accessibilityLabel="Submit report"
+            accessibilityLabel={t("report.common.submit")}
             accessibilityRole="button"
             disabled={!canSubmitReport}
             onPress={handleSubmitReport}
@@ -313,7 +373,7 @@ export function ReportPostModal({
             {isSubmitting ? (
               <ActivityIndicator color={colors.white} />
             ) : (
-              <Text style={styles.submitText}>Report</Text>
+              <Text style={styles.submitText}>{t("report.action.submit")}</Text>
             )}
           </Pressable>
         </View>
@@ -326,16 +386,16 @@ export function ReportPostModal({
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <Pressable
-            accessibilityLabel="Go back"
+            accessibilityLabel={t("report.action.goBack")}
             accessibilityRole="button"
             onPress={handleBack}
             style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
           >
             <ArrowLeft color={colors.foreground} size={30} strokeWidth={2.5} />
           </Pressable>
-          <Text style={styles.title}>Report</Text>
+          <Text style={styles.title}>{t("report.common.title")}</Text>
           <Pressable
-            accessibilityLabel="Close report"
+            accessibilityLabel={t("report.common.close")}
             accessibilityRole="button"
             onPress={onClose}
             style={({ pressed }) => [styles.headerButton, pressed && styles.pressed]}
@@ -347,6 +407,17 @@ export function ReportPostModal({
         {selectedReason ? renderReasonDetails() : renderReasonList()}
       </SafeAreaView>
     </Modal>
+  );
+}
+
+export function ReportPostModal({ blogId, onClose, visible }: ReportPostModalProps) {
+  return (
+    <ReportContentModal
+      onClose={onClose}
+      targetId={blogId}
+      targetType="BLOG"
+      visible={visible}
+    />
   );
 }
 
@@ -459,6 +530,21 @@ const styles = StyleSheet.create({
     fontSize: typography.body,
     fontWeight: "700",
     lineHeight: 25,
+  },
+  retryButton: {
+    alignItems: "center",
+    borderColor: colors.primary,
+    borderRadius: 12,
+    borderWidth: 1,
+    justifyContent: "center",
+    marginTop: spacing.lg,
+    minHeight: 44,
+    paddingHorizontal: spacing.lg,
+  },
+  retryText: {
+    color: colors.primary,
+    fontSize: typography.label,
+    fontWeight: "900",
   },
   reasons: {
     paddingTop: 62,

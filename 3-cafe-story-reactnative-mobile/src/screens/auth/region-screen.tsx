@@ -1,14 +1,10 @@
 import { useNavigation } from "@react-navigation/native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { CheckCircle2, MapPin } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import { Button, LoadingState, Screen, TextField } from "../../components";
 import { useAuth } from "../../features/auth";
@@ -26,6 +22,7 @@ import type {
   RegionProvinceResponse,
   RegionWardResponse,
 } from "../../types";
+import { t } from "../../features/i18n";
 
 export function RegionScreen() {
   const navigation =
@@ -199,7 +196,7 @@ export function RegionScreen() {
 
   async function handleContinue() {
     if (!selectedProvince || !selectedCity || !selectedWard || !street.trim()) {
-      setError("Province, city, ward, and street are required.");
+      setError(t("Province, city, ward, and street are required."));
       return;
     }
 
@@ -236,20 +233,17 @@ export function RegionScreen() {
       >
         <View style={styles.header}>
           <Text style={styles.eyebrow}>CafeStory</Text>
-          <Text style={styles.title}>Choose your region</Text>
-          <Text style={styles.description}>
-            Tell us where you usually explore cafes so your feed can feel closer
-            to home.
-          </Text>
+          <Text style={styles.title}>{t("Choose your region")}</Text>
+          <Text style={styles.description}>{t("Tell us where you usually explore cafes so your feed can feel closer to home.")}</Text>
         </View>
 
         <View style={styles.form}>
           {isProvinceLoading ? (
-            <LoadingState label="Loading provinces..." />
+            <LoadingState label={t("Loading provinces...")} />
           ) : (
             <SelectionGroup
-              emptyLabel="No provinces available."
-              label="Province"
+              emptyLabel={t("No provinces available.")}
+              label={t("Province")}
               onSelect={handleProvincePress}
               options={provinces}
               selectedCode={selectedProvince?.provinceCode}
@@ -259,11 +253,11 @@ export function RegionScreen() {
 
           {selectedProvince ? (
             isCityLoading ? (
-              <LoadingState label="Loading cities..." />
+              <LoadingState label={t("Loading cities...")} />
             ) : (
               <SelectionGroup
-                emptyLabel="No cities available for this province."
-                label="City"
+                emptyLabel={t("No cities available for this province.")}
+                label={t("City")}
                 onSelect={handleCityPress}
                 options={cities}
                 selectedCode={selectedCity?.cityCode}
@@ -274,11 +268,11 @@ export function RegionScreen() {
 
           {selectedCity ? (
             isWardLoading ? (
-              <LoadingState label="Loading wards..." />
+              <LoadingState label={t("Loading wards...")} />
             ) : (
               <SelectionGroup
-                emptyLabel="No wards available for this city."
-                label="Ward"
+                emptyLabel={t("No wards available for this city.")}
+                label={t("Ward")}
                 onSelect={setSelectedWard}
                 options={wards}
                 selectedCode={selectedWard?.wardCode}
@@ -288,7 +282,7 @@ export function RegionScreen() {
           ) : null}
 
           <TextField
-            label="Street"
+            label={t("Street")}
             onChangeText={setStreet}
             placeholder="Nguyen Hue Street"
             value={street}
@@ -299,7 +293,7 @@ export function RegionScreen() {
           <Button
             disabled={!canContinue}
             isLoading={isSubmitting}
-            label="Continue"
+            label={t("Continue")}
             onPress={handleContinue}
           />
 
@@ -308,7 +302,7 @@ export function RegionScreen() {
             onPress={() => navigation.navigate(routes.login)}
             style={styles.switch}
           >
-            <Text style={styles.switchText}>Back to sign in</Text>
+            <Text style={styles.switchText}>{t("Back to sign in")}</Text>
           </Pressable>
         </View>
       </ScrollView>

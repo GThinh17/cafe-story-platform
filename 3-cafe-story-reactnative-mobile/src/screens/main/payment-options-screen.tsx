@@ -1,32 +1,19 @@
 import { RouteProp, useNavigation, useRoute } from "@react-navigation/native";
+import { Pressable, Text } from "react-native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
-  AlertCircle,
-  ArrowLeft,
-  BadgeCheck,
-  CheckCircle2,
-  CreditCard,
-  Landmark,
-  Megaphone,
-  RefreshCw,
-  Store,
-  X,
-} from "lucide-react-native";
+  AlertCircle, ArrowLeft, BadgeCheck, CheckCircle2, CreditCard, Landmark, Megaphone, RefreshCw, Store, X, } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Linking,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+  ActivityIndicator, Linking, Modal, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Button, EmptyState, LoadingState, Screen } from "../../components";
 import { useAuth } from "../../features/auth";
+import {
+  formatCurrentCurrency,
+  getCurrentLocale,
+} from "../../features/i18n";
 import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
 import {
@@ -44,6 +31,7 @@ import type {
   PaymentPlanTab,
   PaymentResponse,
 } from "../../types";
+import { t } from "../../features/i18n";
 
 type PaymentOptionsRouteProp = RouteProp<
   RootStackParamList,
@@ -130,15 +118,17 @@ const paymentMethods: {
 
 function formatVnd(value: number | string | null | undefined) {
   const safeValue = Number(value ?? 0);
-
-  return `${String(safeValue).replace(/\B(?=(\d{3})+(?!\d))/g, ",")} VND`;
+  return formatCurrentCurrency(safeValue);
 }
 
 function formatMonths(value: number | null | undefined) {
   if (!value || value <= 0) {
-    return "No expiry";
+    return getCurrentLocale() === "vi" ? "Không hết hạn" : "No expiry";
   }
 
+  if (getCurrentLocale() === "vi") {
+    return `${value} tháng`;
+  }
   return `${value} ${value === 1 ? "month" : "months"}`;
 }
 
@@ -514,7 +504,7 @@ export function PaymentOptionsScreen() {
     if (isLoadingPlans) {
       return (
         <View style={styles.stateCard}>
-          <LoadingState label="Loading payment plans..." />
+          <LoadingState label={t("Loading payment plans...")} />
         </View>
       );
     }
@@ -523,10 +513,10 @@ export function PaymentOptionsScreen() {
       return (
         <View style={styles.stateCard}>
           <EmptyState
-            description="Pull plans from the backend again when the connection is ready."
+            description={t("Pull plans from the backend again when the connection is ready.")}
             title={loadError}
           />
-          <Button label="Retry" onPress={loadPaymentPlans} variant="outlined" />
+          <Button label={t("Retry")} onPress={loadPaymentPlans} variant="outlined" />
         </View>
       );
     }
@@ -537,10 +527,10 @@ export function PaymentOptionsScreen() {
           <EmptyState
             description={
               activeTab === "ads"
-                ? "No active ad fee packages are available for this account."
-                : "No active package is available for this tab yet."
+                ? t("No active ad fee packages are available for this account.")
+                : t("No active package is available for this tab yet.")
             }
-            title="No packages"
+            title={t("No packages")}
           />
         </View>
       );
@@ -550,7 +540,7 @@ export function PaymentOptionsScreen() {
       <>
         {activeTab === "ads" ? (
           <Button
-            label="Open Ads Manager"
+            label={t("Open Ads Manager")}
             onPress={() => navigation.navigate(routes.adsManager)}
             variant="outlined"
           />
@@ -568,7 +558,7 @@ export function PaymentOptionsScreen() {
     <Screen padded={false}>
       <View style={styles.header}>
         <Pressable
-          accessibilityLabel="Back to profile"
+          accessibilityLabel={t("Back to profile")}
           accessibilityRole="button"
           hitSlop={10}
           onPress={() => navigation.goBack()}
@@ -583,10 +573,10 @@ export function PaymentOptionsScreen() {
           <CreditCard color={colors.primary} size={22} strokeWidth={2.5} />
         </View>
         <View style={styles.headerCopy}>
-          <Text style={styles.title}>Payment options</Text>
+          <Text style={styles.title}>{t("Payment options")}</Text>
           <Text style={styles.subtitle}>
             {isSuccess
-              ? "Payment completed"
+              ? t("Payment completed")
               : activeTabMeta?.subtitle ?? "Choose a CafeStory package"}
           </Text>
         </View>
@@ -791,7 +781,7 @@ function PaymentMethodModal({
         <View style={styles.modalCard}>
           <View style={styles.modalHeader}>
             <View style={styles.modalTitleBlock}>
-              <Text style={styles.modalTitle}>Choose payment method</Text>
+              <Text style={styles.modalTitle}>{t("Choose payment method")}</Text>
               {plan ? (
                 <Text style={styles.modalSubtitle}>
                   {plan.title} - {formatVnd(plan.priceVnd)}
@@ -799,7 +789,7 @@ function PaymentMethodModal({
               ) : null}
             </View>
             <Pressable
-              accessibilityLabel="Close payment method"
+              accessibilityLabel={t("Close payment method")}
               accessibilityRole="button"
               disabled={isCreatingPayment}
               onPress={onClose}
@@ -814,7 +804,7 @@ function PaymentMethodModal({
 
           {plan ? (
             <View style={styles.modalSummary}>
-              <Text style={styles.modalSummaryLabel}>Package duration</Text>
+              <Text style={styles.modalSummaryLabel}>{t("Package duration")}</Text>
               <Text style={styles.modalSummaryValue}>{plan.durationLabel}</Text>
             </View>
           ) : null}
@@ -911,7 +901,7 @@ function PaymentStatusCard({
         <View style={styles.statusCopy}>
           <Text style={styles.statusTitle}>
             {isChecking
-              ? "Checking payment..."
+              ? t("Checking payment...")
               : isSuccess
                 ? "Payment successful"
                 : isFailure
@@ -936,7 +926,7 @@ function PaymentStatusCard({
         <Button
           label={
             flow.plan.tab === "ads"
-              ? "Open Ads Manager"
+              ? t("Open Ads Manager")
               : flow.plan.tab === "cafe-page" && cafePageId
               ? "Open cafe page"
               : "Back to profile"
@@ -947,13 +937,13 @@ function PaymentStatusCard({
         <View style={styles.statusActions}>
           <Button
             isLoading={isChecking}
-            label={isChecking ? "Checking..." : "Check status"}
+            label={isChecking ? t("Checking...") : t("Check status")}
             onPress={onCheckStatus}
           />
           {isFailure ? (
             <Button
               disabled={isChecking}
-              label="Choose another method"
+              label={t("Choose another method")}
               onPress={onChooseAgain}
               variant="outlined"
             />

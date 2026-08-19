@@ -1,26 +1,13 @@
-import {
-  Camera,
-  Image as ImageIcon,
-  MapPin,
-  Music,
-  SmilePlus,
-  Store,
-  Tag,
-  Users,
-} from "lucide-react-native";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Camera, Image as ImageIcon, MapPin, Music, SmilePlus, Store, Tag, Users, } from "lucide-react-native";
+import { Pressable } from "react-native";
+import { Text, TextInput } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import { MobilePostCarousel } from "../feed/mobile-post-carousel";
 import { Avatar } from "../ui/avatar";
 import { colors, spacing, typography } from "../../theme";
 import type { AuthUser, CreatePostDraft, UserResponse } from "../../types";
+import { t } from "../../features/i18n";
 
 type CreatePostComposeStepProps = {
   draft: CreatePostDraft;
@@ -95,7 +82,7 @@ export function CreatePostComposeStep({
             </Text>
             <Text numberOfLines={1} style={styles.username}>
               {postingIdentity
-                ? "Posting as cafe page"
+                ? t("Posting as cafe page")
                 : user?.userName
                   ? `@${user.userName}`
                   : "New cafe story"}
@@ -131,7 +118,7 @@ export function CreatePostComposeStep({
         <TextInput
           multiline
           onChangeText={(caption) => onUpdateDraft({ caption })}
-          placeholder="Write a review..."
+          placeholder={t("Write a review...")}
           placeholderTextColor={colors.muted}
           style={styles.captionInput}
           textAlignVertical="top"
@@ -149,7 +136,7 @@ export function CreatePostComposeStep({
               />
               <View style={styles.mediaActions}>
                 <Pressable
-                  accessibilityLabel="Add more photos"
+                  accessibilityLabel={t("Add more photos")}
                   accessibilityRole="button"
                   onPress={onAddMedia}
                   style={({ pressed }) => [
@@ -158,10 +145,10 @@ export function CreatePostComposeStep({
                   ]}
                 >
                   <ImageIcon color={colors.foreground} size={20} strokeWidth={2.4} />
-                  <Text style={styles.mediaActionText}>Add photo</Text>
+                  <Text style={styles.mediaActionText}>{t("Add photo")}</Text>
                 </Pressable>
                 <Pressable
-                  accessibilityLabel="Remove selected photos"
+                  accessibilityLabel={t("Remove selected photos")}
                   accessibilityRole="button"
                   onPress={onRemoveMedia}
                   style={({ pressed }) => [
@@ -169,13 +156,13 @@ export function CreatePostComposeStep({
                     pressed && styles.pressed,
                   ]}
                 >
-                  <Text style={styles.mediaActionText}>Clear</Text>
+                  <Text style={styles.mediaActionText}>{t("Clear")}</Text>
                 </Pressable>
               </View>
             </>
           ) : (
             <Pressable
-              accessibilityLabel="Choose photos from library"
+              accessibilityLabel={t("Choose photos from library")}
               accessibilityRole="button"
               onPress={onAddMedia}
               style={({ pressed }) => [
@@ -186,16 +173,14 @@ export function CreatePostComposeStep({
               <View style={styles.cameraIconWrap}>
                 <Camera color={colors.primary} size={34} strokeWidth={2.5} />
               </View>
-              <Text style={styles.emptyMediaTitle}>Add photos</Text>
-              <Text style={styles.emptyMediaDescription}>
-                Choose images from your device.
-              </Text>
+              <Text style={styles.emptyMediaTitle}>{t("Add photos")}</Text>
+              <Text style={styles.emptyMediaDescription}>{t("Choose images from your device.")}</Text>
             </Pressable>
           )}
         </View>
 
         <View style={styles.ratioSection}>
-          <Text style={styles.ratioTitle}>Image ratio</Text>
+          <Text style={styles.ratioTitle}>{t("Image ratio")}</Text>
           <View style={styles.ratioOptions}>
             {mediaRatioOptions.map((option) => {
               const selected = draft.mediaAspectRatio === option.value;
@@ -229,22 +214,22 @@ export function CreatePostComposeStep({
         <View style={styles.rowsCard}>
           <OptionRow
             Icon={Store}
-            label="Tag cafe page"
+            label={t("Tag cafe page")}
             value={postingIdentity?.name || (draft.cafePageId ? "Cafe page selected" : "Optional")}
           />
           <OptionRow
             Icon={Users}
-            label="Tag people"
+            label={t("Tag people")}
             onPress={onOpenPeoplePicker}
             value={
               selectedTaggedUsers.length
                 ? `${selectedTaggedUsers.length} selected`
-                : "Optional"
+                : t("Optional")
             }
           />
           <OptionRow
             Icon={MapPin}
-            label="Location"
+            label={t("Location")}
             onPress={onOpenLocationPicker}
             value={draft.location?.name ?? "Use profile location"}
           />
@@ -254,7 +239,7 @@ export function CreatePostComposeStep({
           <View style={styles.selectedSection}>
             {selectedTaggedUsers.length ? (
               <View style={styles.selectedGroup}>
-                <Text style={styles.selectedLabel}>Tagged people</Text>
+                <Text style={styles.selectedLabel}>{t("Tagged people")}</Text>
                 <View style={styles.selectedChips}>
                   {selectedTaggedUsers.map((profile) => (
                     <View key={profile.userId} style={styles.selectedChip}>
@@ -274,7 +259,7 @@ export function CreatePostComposeStep({
 
             {draft.location?.name ? (
               <View style={styles.selectedGroup}>
-                <Text style={styles.selectedLabel}>Location</Text>
+                <Text style={styles.selectedLabel}>{t("Location")}</Text>
                 <View style={styles.selectedLocation}>
                   <MapPin color={colors.primary} size={17} strokeWidth={2.5} />
                   <Text numberOfLines={2} style={styles.selectedLocationText}>
@@ -289,7 +274,7 @@ export function CreatePostComposeStep({
         <View style={styles.tagsSection}>
           <View style={styles.sectionTitleRow}>
             <Tag color={colors.foreground} size={20} strokeWidth={2.4} />
-            <Text style={styles.sectionTitle}>Common tags</Text>
+            <Text style={styles.sectionTitle}>{t("Common tags")}</Text>
           </View>
           <View style={styles.tagWrap}>
             {commonTags.map((tag) => {

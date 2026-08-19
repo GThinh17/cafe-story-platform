@@ -1,0 +1,28 @@
+{
+  "status": "DONE",
+  "timestampUtc": "2026-08-16T12:34:14.000Z",
+  "baselineCommit": "9f49128",
+  "layout": {
+    "historyInsideMainColumn": true,
+    "desktopEvidenceParallel": true,
+    "mobileHistoryBeforeEvidence": true,
+    "horizontalOverflowAbsent": true,
+    "blogVerified": true,
+    "commentVerified": true
+  },
+  "validation": {
+    "i18nCheck": "PASS",
+    "typecheck": "PASS",
+    "build": "PASS",
+    "focusedE2e": "1/1 PASS",
+    "frontendCoverage": "FRONTEND_COVERAGE_TOOLING_MISSING"
+  },
+  "behaviorChanged": {
+    "api": false,
+    "database": false,
+    "n8n": false,
+    "permissions": false,
+    "recommendationOnlyBoundary": false
+  },
+  "layoutCommitCreated": true
+}

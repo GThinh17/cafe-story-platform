@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { EyeIcon } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
+import { AdminTranslatableContent } from "@/components/admin/admin-translatable-content";
 import { UserCell } from "@/components/admin/user-cell";
 import {
   AdminDataTable,
@@ -31,6 +32,7 @@ import {
   getComments,
   updateCommentStatus,
 } from "@/lib/api/admin";
+import { localizeApiError, useEnumLabel, useI18n, useUiText } from "@/features/i18n";
 import type { Comment, PostStatus } from "@/types/admin";
 
 const postStatuses: PostStatus[] = ["DRAFT", "PUBLISHED", "HIDDEN", "REMOVED"];
@@ -42,6 +44,9 @@ type PendingCommentAction = {
 };
 
 export function AdminCommentsPage() {
+  const { locale, localeTag, t } = useI18n();
+  const ui = useUiText();
+  const enumLabel = useEnumLabel();
   const [status, setStatus] = useState<PostStatus | "">("");
   const [blogId, setBlogId] = useState("");
   const [userId, setUserId] = useState("");
@@ -70,12 +75,16 @@ export function AdminCommentsPage() {
         lines: 2,
         maxWidth: 420,
         cell: (comment) => (
-          <p className="text-sm leading-6 text-muted">{comment.content ?? "—"}</p>
+          <AdminTranslatableContent
+            contentKind="COMMENT_CONTENT"
+            text={comment.content}
+            textClassName="text-sm leading-6 text-muted"
+          />
         ),
       },
       { header: "Blog", cell: (comment) => comment.blogId.slice(0, 8) },
       { header: "Status", cell: (comment) => <AdminStatusBadge value={comment.status} /> },
-      { header: "Created", cell: (comment) => formatDate(comment.createdAt) },
+      { header: "Created", cell: (comment) => formatDate(comment.createdAt, localeTag) },
       {
         header: "",
         className: "w-12 text-right",
@@ -91,7 +100,9 @@ export function AdminCommentsPage() {
               ...postStatuses
                 .filter((nextStatus) => nextStatus !== comment.status)
                 .map((nextStatus) => ({
-                  label: `Set status: ${nextStatus}`,
+                  label: ui("Set status: {status}", {
+                    status: enumLabel(nextStatus),
+                  }),
                   destructive: nextStatus === "REMOVED",
                   onSelect: () =>
                     setPendingAction({ type: "status", comment, status: nextStatus }),
@@ -101,7 +112,7 @@ export function AdminCommentsPage() {
         ),
       },
     ],
-    [detail],
+    [detail, enumLabel, localeTag, ui],
   );
 
   async function handleConfirm() {
@@ -124,9 +135,7 @@ export function AdminCommentsPage() {
       setPendingAction(null);
       resource.refetch();
     } catch (requestError) {
-      setActionError(
-        requestError instanceof Error ? requestError.message : "Action failed.",
-      );
+      setActionError(localizeApiError(requestError, locale, t, "common.error.action"));
     } finally {
       setIsSubmitting(false);
     }
@@ -178,17 +187,21 @@ export function AdminCommentsPage() {
               <AdminDetailField label="Status">
                 <AdminStatusBadge value={detail.data.status} />
               </AdminDetailField>
-              <AdminDetailField label="Created">{formatDate(detail.data.createdAt)}</AdminDetailField>
-              <AdminDetailField label="Updated">{formatDate(detail.data.updatedAt)}</AdminDetailField>
+              <AdminDetailField label="Created">{formatDate(detail.data.createdAt, localeTag)}</AdminDetailField>
+              <AdminDetailField label="Updated">{formatDate(detail.data.updatedAt, localeTag)}</AdminDetailField>
               <AdminDetailField label="Content" className="sm:col-span-2">
-                <p className="whitespace-pre-wrap leading-6">{detail.data.content || "-"}</p>
+                <AdminTranslatableContent
+                  contentKind="COMMENT_CONTENT"
+                  text={detail.data.content}
+                  textClassName="leading-6"
+                />
               </AdminDetailField>
             </AdminDetailGrid>
             {detail.data.imageUrls?.length ? (
               <div className="grid gap-3 sm:grid-cols-2">
                 {detail.data.imageUrls.map((url) => (
                   <img
-                    alt="Comment attachment"
+                    alt={ui("Comment attachment")}
                     className="max-h-72 w-full rounded-md border border-border object-contain"
                     key={url}
                     src={url}

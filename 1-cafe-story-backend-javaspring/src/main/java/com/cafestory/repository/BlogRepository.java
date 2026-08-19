@@ -28,6 +28,22 @@ public interface BlogRepository extends JpaRepository<Blog, UUID> {
             left join fetch b.page p
             where b.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
             and (
+                lower(b.content) like lower(concat('%', :query, '%'))
+                or lower(coalesce(a.userName, '')) like lower(concat('%', :query, '%'))
+                or lower(coalesce(a.userFullName, '')) like lower(concat('%', :query, '%'))
+                or lower(coalesce(p.name, '')) like lower(concat('%', :query, '%'))
+            )
+            order by b.createdAt desc, b.id desc
+            """)
+    List<Blog> searchPublishedBlogs(@Param("query") String query, Pageable pageable);
+
+    @Query("""
+            select b
+            from Blog b
+            left join fetch b.author a
+            left join fetch b.page p
+            where b.status = com.cafestory.entity.enums.PostStatus.PUBLISHED
+            and (
                 (:cursorId is null and coalesce(b.updatedAt, b.createdAt) >= :since)
                 or (:cursorId is not null and (
                     coalesce(b.updatedAt, b.createdAt) > :since

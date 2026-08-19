@@ -1,7 +1,10 @@
 import { ChevronLeft, X } from "lucide-react-native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { colors, spacing, typography } from "../../theme";
+import { t } from "../../features/i18n";
 
 type CreatePostHeaderProps = {
   actionDisabled?: boolean;
@@ -30,7 +33,7 @@ export function CreatePostHeader({
   return (
     <View style={styles.header}>
       <Pressable
-        accessibilityLabel={isBack ? "Back to compose" : "Cancel post"}
+        accessibilityLabel={isBack ? t("Back to compose") : t("Cancel post")}
         accessibilityRole="button"
         onPress={onLeftPress}
         style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
@@ -55,7 +58,7 @@ export function CreatePostHeader({
           ]}
         >
           <Text style={styles.actionText}>
-            {isSubmitting ? "Posting" : actionLabel}
+            {isSubmitting ? t("Posting") : actionLabel}
           </Text>
         </Pressable>
       ) : (

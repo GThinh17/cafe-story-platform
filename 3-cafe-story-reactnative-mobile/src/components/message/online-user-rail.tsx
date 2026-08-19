@@ -1,7 +1,9 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { Text } from "react-native";
 import { Avatar } from "../ui/avatar";
 import { colors, spacing, typography } from "../../theme";
 import type { MockOnlineUser } from "../../types";
+import { t } from "../../features/i18n";
 
 type OnlineUserRailProps = {
   users: MockOnlineUser[];

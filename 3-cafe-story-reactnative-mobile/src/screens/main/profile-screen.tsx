@@ -1,24 +1,9 @@
-import {
-  AtSign,
-  Award,
-  Pencil,
-  Plus,
-  Store,
-  UserPlus,
-} from "lucide-react-native";
+import { AtSign, Award, Pencil, Plus, Store, UserPlus, } from "lucide-react-native";
+import { Alert } from "react-native";
+import { Pressable, Text } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-  Alert,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { NativeScrollEvent, NativeSyntheticEvent, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import {
@@ -36,6 +21,7 @@ import {
   UserPostGrid,
 } from "../../components";
 import { useAuth } from "../../features/auth";
+import { formatCurrentCompactNumber } from "../../features/i18n";
 import { routes } from "../../navigation";
 import type { RootStackParamList } from "../../navigation";
 import {
@@ -67,6 +53,7 @@ import type {
   UserResponse,
   UserUpdateRequest,
 } from "../../types";
+import { t } from "../../features/i18n";
 
 const emptyTabPosts: Record<ProfileContentTab, UserPostPreview[]> = {
   posts: [],
@@ -102,40 +89,30 @@ function initialsFor(name?: string | null) {
 }
 
 function formatCount(value?: number | null) {
-  const safeValue = value ?? 0;
-
-  if (safeValue >= 1000000) {
-    return `${(safeValue / 1000000).toFixed(safeValue >= 10000000 ? 0 : 1)}m`;
-  }
-
-  if (safeValue >= 1000) {
-    return `${(safeValue / 1000).toFixed(safeValue >= 10000 ? 0 : 1)}k`;
-  }
-
-  return String(safeValue);
+  return formatCurrentCompactNumber(value ?? 0);
 }
 
 function getEmptyCopy(tab: ProfileContentTab) {
   switch (tab) {
     case "saved":
       return {
-        description: "Posts you save will appear here.",
-        title: "No saved posts yet",
+        description: t("profile.empty.saved.description"),
+        title: t("profile.empty.saved.title"),
       };
     case "shared":
       return {
-        description: "Posts you share will appear here.",
-        title: "No shared posts yet",
+        description: t("profile.empty.shared.description"),
+        title: t("profile.empty.shared.title"),
       };
     case "tagged":
       return {
-        description: "Posts that tag you will appear here.",
-        title: "No tagged posts yet",
+        description: t("profile.empty.tagged.description"),
+        title: t("profile.empty.tagged.title"),
       };
     default:
       return {
-        description: "Your cafe stories will appear here after you publish them.",
-        title: "No blogs yet",
+        description: t("profile.empty.posts.description"),
+        title: t("profile.empty.posts.title"),
       };
   }
 }
@@ -638,15 +615,15 @@ export function ProfileScreen() {
     }
     : null);
 
-  const displayName = activeProfile?.userFullName || activeProfile?.userName || "Cafe Story user";
+  const displayName = activeProfile?.userFullName || activeProfile?.userName || t("profile.fallback.user");
   const userName = activeProfile?.userName || "cafestory";
   const avatarUri = activeProfile?.userAvatar;
   const userDescription = activeProfile?.userDescription?.trim();
   const stats = useMemo(
     () => [
-      { key: "posts", label: "posts", value: formatCount(tabPosts.posts.length) },
-      { key: "followers", label: "followers", value: formatCount(activeProfile?.userFollower) },
-      { key: "following", label: "following", value: formatCount(activeProfile?.followingCount) },
+      { key: "posts", label: t("profile.stat.posts"), displayLabel: t("profile.stat.posts"), value: formatCount(tabPosts.posts.length) },
+      { key: "followers", label: t("profile.stat.followers"), displayLabel: t("profile.stat.followersCompact"), value: formatCount(activeProfile?.userFollower) },
+      { key: "following", label: t("profile.stat.following"), displayLabel: t("profile.stat.followingCompact"), value: formatCount(activeProfile?.followingCount) },
     ],
     [activeProfile?.followingCount, activeProfile?.userFollower, tabPosts.posts.length],
   );
@@ -688,8 +665,8 @@ export function ProfileScreen() {
   const openOwnedCafePage = useCallback(() => {
     if (!ownedCafePageId) {
       Alert.alert(
-        "Cafe page",
-        "Cafe page is not available yet.",
+        t("Cafe page"),
+        t("Cafe page is not available yet."),
       );
       return;
     }
@@ -886,7 +863,7 @@ export function ProfileScreen() {
             <View style={styles.stats}>
               {stats.map((stat) => (
                 <Pressable
-                  accessibilityLabel={`Open ${stat.label}`}
+                  accessibilityLabel={t("common.a11y.openNamed", { name: stat.label })}
                   accessibilityRole="button"
                   disabled={stat.key === "posts"}
                   key={stat.label}
@@ -901,7 +878,7 @@ export function ProfileScreen() {
                   ]}
                 >
                   <Text style={styles.statValue}>{stat.value}</Text>
-                  <Text style={styles.statLabel}>{stat.label}</Text>
+                  <Text numberOfLines={2} style={styles.statLabel}>{stat.displayLabel}</Text>
                 </Pressable>
               ))}
             </View>
@@ -910,7 +887,7 @@ export function ProfileScreen() {
 
         {userDescription ? (
           <Pressable
-            accessibilityLabel="Edit profile bio"
+            accessibilityLabel={t("Edit profile bio")}
             accessibilityRole="button"
             onPress={openBioModal}
             style={({ pressed }) => [
@@ -926,7 +903,7 @@ export function ProfileScreen() {
           </Pressable>
         ) : (
           <Pressable
-            accessibilityLabel="Add profile description"
+            accessibilityLabel={t("Add profile description")}
             accessibilityRole="button"
             onPress={openBioModal}
             style={({ pressed }) => [
@@ -935,15 +912,13 @@ export function ProfileScreen() {
             ]}
           >
             <Pencil color={colors.muted} size={16} strokeWidth={2.3} />
-            <Text style={styles.descriptionPromptText}>
-              Add a short description about you here
-            </Text>
+            <Text style={styles.descriptionPromptText}>{t("Add a short description about you here")}</Text>
           </Pressable>
         )}
 
         {shouldShowCafePageAction ? (
           <Pressable
-            accessibilityLabel="Open owned cafe page"
+            accessibilityLabel={t("Open owned cafe page")}
             accessibilityRole="button"
             onPress={openOwnedCafePage}
             style={({ pressed }) => [
@@ -953,7 +928,7 @@ export function ProfileScreen() {
           >
             <Store color={colors.primary} size={16} strokeWidth={2.5} />
             <Text numberOfLines={1} style={styles.cafePageTagName}>
-              {ownedCafePage?.name || "View cafe page"}
+              {ownedCafePage?.name || t("profile.cafe.view")}
             </Text>
           </Pressable>
         ) : null}
@@ -968,7 +943,7 @@ export function ProfileScreen() {
 
           {shouldShowReviewerDashboardAction ? (
             <Pressable
-              accessibilityLabel="Open reviewer dashboard"
+              accessibilityLabel={t("Open reviewer dashboard")}
               accessibilityRole="button"
               onPress={openReviewerDashboard}
               style={({ pressed }) => [
@@ -978,14 +953,12 @@ export function ProfileScreen() {
               ]}
             >
               <Award color={colors.tertiaryStrong} size={16} strokeWidth={2.5} />
-              <Text numberOfLines={1} style={styles.reviewerChipText}>
-                Reviewer
-              </Text>
+              <Text numberOfLines={1} style={styles.reviewerChipText}>{t("Reviewer")}</Text>
             </Pressable>
           ) : null}
 
           <Pressable
-            accessibilityLabel="Open profile suggestions"
+            accessibilityLabel={t("Open profile suggestions")}
             accessibilityRole="button"
             onPress={toggleSuggestions}
             style={({ pressed }) => [
@@ -994,13 +967,13 @@ export function ProfileScreen() {
             ]}
           >
             <Plus color={colors.muted} size={18} strokeWidth={2.4} />
-            <Text style={styles.profileChipMuted}>Add</Text>
+            <Text style={styles.profileChipMuted}>{t("Add")}</Text>
           </Pressable>
         </View>
 
         <View style={styles.actions}>
           <Pressable
-            accessibilityLabel="Edit profile"
+            accessibilityLabel={t("Edit profile")}
             accessibilityRole="button"
             onPress={openEditProfile}
             style={({ pressed }) => [
@@ -1008,22 +981,22 @@ export function ProfileScreen() {
               pressed && styles.actionPressed,
             ]}
           >
-            <Text style={styles.profileActionText}>Edit Profile</Text>
+            <Text style={styles.profileActionText}>{t("Edit Profile")}</Text>
           </Pressable>
 
           <Pressable
-            accessibilityLabel="Share profile"
+            accessibilityLabel={t("Share profile")}
             accessibilityRole="button"
             style={({ pressed }) => [
               styles.profileActionButton,
               pressed && styles.actionPressed,
             ]}
           >
-            <Text style={styles.profileActionText}>Share Profile</Text>
+            <Text style={styles.profileActionText}>{t("Share Profile")}</Text>
           </Pressable>
 
           <Pressable
-            accessibilityLabel="Open profile suggestions"
+            accessibilityLabel={t("Open profile suggestions")}
             accessibilityRole="button"
             onPress={toggleSuggestions}
             style={({ pressed }) => [
@@ -1061,7 +1034,7 @@ export function ProfileScreen() {
           ) : contentError ? (
             <View style={styles.emptyPosts}>
               <EmptyState
-                description="Pull down to refresh and try again."
+                description={t("Pull down to refresh and try again.")}
                 title={contentError}
               />
             </View>
@@ -1244,9 +1217,12 @@ const styles = StyleSheet.create({
   },
 
   statItem: {
-    alignItems: "flex-start",
+    alignItems: "center",
     flex: 1,
+    flexBasis: 0,
     gap: 2,
+    minWidth: 0,
+    paddingHorizontal: 2,
   },
 
   statValue: {
@@ -1257,7 +1233,12 @@ const styles = StyleSheet.create({
 
   statLabel: {
     color: colors.muted,
-    fontSize: typography.caption,
+    fontSize: 11,
+    flexShrink: 1,
+    lineHeight: 14,
+    maxWidth: 64,
+    textAlign: "center",
+    width: "100%",
   },
 
   description: {

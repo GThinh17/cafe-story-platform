@@ -1,18 +1,12 @@
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { Text } from "react-native";
+import { Pressable, TextInput } from "react-native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Search, Send } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+  ActivityIndicator, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 
 import {
   Avatar,
@@ -37,14 +31,15 @@ import {
 } from "../../services/api";
 import { colors, spacing, typography } from "../../theme";
 import type {
-  BlogResponse,
   BlogTrendingResponse,
-  CafePageResponse,
+  ExploreBlogSearchResult,
+  ExploreCafePageSearchResult,
   ExploreSearchResults,
+  ExploreUserSearchResult,
   RecommendationCardResponse,
-  UserResponse,
 } from "../../types";
 import type { ExploreTab } from "../../components";
+import { t } from "../../features/i18n";
 
 type ExploreRecommendationState = Record<Exclude<ExploreTab, "trending">, RecommendationCardResponse[]>;
 
@@ -64,12 +59,12 @@ function hasSearchResults(results: ExploreSearchResults) {
   return results.users.length > 0 || results.cafePages.length > 0 || results.blogs.length > 0;
 }
 
-function blogSearchTitle(blog: BlogResponse) {
-  return blog.content?.trim() || blog.displayName || blog.authorUserName || "Blog post";
+function blogSearchTitle(blog: ExploreBlogSearchResult) {
+  return blog.content?.trim() || blog.displayName || blog.authorUserName || t("explore.fallback.blogPost");
 }
 
-function blogSearchSubtitle(blog: BlogResponse) {
-  return blog.displayName || blog.pageName || blog.authorUserName || "CafeStory post";
+function blogSearchSubtitle(blog: ExploreBlogSearchResult) {
+  return blog.displayName || blog.pageName || blog.authorUserName || t("explore.fallback.cafeStoryPost");
 }
 
 type SearchResultRowProps = {
@@ -89,7 +84,7 @@ function SearchResultRow({
 }: SearchResultRowProps) {
   return (
     <Pressable
-      accessibilityLabel={`Open ${title}`}
+      accessibilityLabel={t("common.a11y.openNamed", { name: title })}
       accessibilityRole="button"
       onPress={onPress}
       style={({ pressed }) => [
@@ -231,20 +226,20 @@ export function ExploreScreen() {
     });
   }, [navigation]);
 
-  const handleUserSearchPress = useCallback((user: UserResponse) => {
+  const handleUserSearchPress = useCallback((user: ExploreUserSearchResult) => {
     navigation.navigate(routes.otherUserProfile, {
       userId: user.userId,
       userName: user.userName,
     });
   }, [navigation]);
 
-  const handleCafeSearchPress = useCallback((page: CafePageResponse) => {
+  const handleCafeSearchPress = useCallback((page: ExploreCafePageSearchResult) => {
     navigation.navigate(routes.cafeDetail, {
       cafeId: page.id,
     });
   }, [navigation]);
 
-  const handleBlogSearchPress = useCallback((blog: BlogResponse) => {
+  const handleBlogSearchPress = useCallback((blog: ExploreBlogSearchResult) => {
     navigation.navigate(routes.blogDetail, {
       blogId: blog.id,
     });
@@ -310,13 +305,13 @@ export function ExploreScreen() {
   const title = useMemo(() => {
     switch (activeTab) {
       case "cafes":
-        return "Suggested cafes";
+        return t("explore.title.suggestedCafes");
       case "reviewers":
-        return "Explore reviewers";
+        return t("explore.title.reviewers");
       case "trending":
-        return "Trending posts";
+        return t("explore.title.trending");
       default:
-        return "Recommended for you";
+        return t("explore.title.recommended");
     }
   }, [activeTab]);
 
@@ -325,60 +320,60 @@ export function ExploreScreen() {
 
   const searchContent = normalizedSearchQuery.length < 2 ? (
     <EmptyState
-      description="Type at least 2 characters to search users, cafe pages, and posts."
-      title="Keep typing"
+      description={t("Type at least 2 characters to search users, cafe pages, and posts.")}
+      title={t("Keep typing")}
     />
   ) : isSearching && !hasSearchResults(searchResults) ? (
     <View style={styles.searchSection}>
       <View style={styles.searchingTitleRow}>
-        <Text style={styles.title}>Searching</Text>
+        <Text style={styles.title}>{t("Searching")}</Text>
         <ActivityIndicator color={colors.primary} />
       </View>
       <ListRowSkeletonList padded={false} />
     </View>
   ) : searchError ? (
-    <EmptyState description="Pull down or edit the query to try again." title={searchError} />
+    <EmptyState description={t("Pull down or edit the query to try again.")} title={searchError} />
   ) : hasSearchResults(searchResults) ? (
     <View style={styles.searchSection}>
-      <Text style={styles.title}>Search results</Text>
+      <Text style={styles.title}>{t("Search results")}</Text>
       {searchResults.users.length > 0 ? (
         <View style={styles.searchGroup}>
-          <Text style={styles.searchGroupTitle}>Users and reviewers</Text>
+          <Text style={styles.searchGroupTitle}>{t("Users and reviewers")}</Text>
           {searchResults.users.map((user) => (
             <SearchResultRow
               avatar={user.userAvatar}
               key={user.userId}
-              label="User"
+              label={t("User")}
               onPress={() => handleUserSearchPress(user)}
-              subtitle={user.userName ? `@${user.userName}` : user.regionCity ?? "CafeStory user"}
-              title={user.userFullName || user.userName || "CafeStory user"}
+              subtitle={user.userName ? `@${user.userName}` : user.regionCity ?? t("explore.fallback.cafeStoryUser")}
+              title={user.userFullName || user.userName || t("explore.fallback.cafeStoryUser")}
             />
           ))}
         </View>
       ) : null}
       {searchResults.cafePages.length > 0 ? (
         <View style={styles.searchGroup}>
-          <Text style={styles.searchGroupTitle}>Cafe pages</Text>
+          <Text style={styles.searchGroupTitle}>{t("Cafe pages")}</Text>
           {searchResults.cafePages.map((page) => (
             <SearchResultRow
               avatar={page.avatarUrl}
               key={page.id}
-              label="Cafe"
+              label={t("Cafe")}
               onPress={() => handleCafeSearchPress(page)}
-              subtitle={page.regionCity || page.address || "Cafe page"}
-              title={page.name || "Cafe page"}
+              subtitle={page.regionCity || page.address || t("explore.fallback.cafePage")}
+              title={page.name || t("explore.fallback.cafePage")}
             />
           ))}
         </View>
       ) : null}
       {searchResults.blogs.length > 0 ? (
         <View style={styles.searchGroup}>
-          <Text style={styles.searchGroupTitle}>Posts</Text>
+          <Text style={styles.searchGroupTitle}>{t("Posts")}</Text>
           {searchResults.blogs.map((blog) => (
             <SearchResultRow
               avatar={blog.displayAvatarUrl || blog.pageAvatarUrl || blog.authorUserAvatar}
               key={blog.id}
-              label="Post"
+              label={t("Post")}
               onPress={() => handleBlogSearchPress(blog)}
               subtitle={blogSearchSubtitle(blog)}
               title={blogSearchTitle(blog)}
@@ -389,8 +384,8 @@ export function ExploreScreen() {
     </View>
   ) : (
     <EmptyState
-      description="Try another cafe name, reviewer, location, or post keyword."
-      title="No results found"
+      description={t("Try another cafe name, reviewer, location, or post keyword.")}
+      title={t("No results found")}
     />
   );
 
@@ -398,7 +393,7 @@ export function ExploreScreen() {
     isLoading && !trendingBlogs.length ? (
       <FeedCardSkeletonList />
     ) : errors.trending ? (
-      <EmptyState description="Pull down to try again." title={errors.trending} />
+      <EmptyState description={t("Pull down to try again.")} title={errors.trending} />
     ) : trendingBlogs.length ? (
       <View style={styles.trendingList}>
         {trendingBlogs.map((item) => (
@@ -410,14 +405,14 @@ export function ExploreScreen() {
       </View>
     ) : (
       <EmptyState
-        description="Trending cafe stories will appear here soon."
-        title="No trending posts yet"
+        description={t("Trending cafe stories will appear here soon.")}
+        title={t("No trending posts yet")}
       />
     )
   ) : (
     <ExploreRecommendationList
-      emptyDescription="New recommendations will appear as CafeStory learns what you like."
-      emptyTitle="No recommendations yet"
+      emptyDescription={t("New recommendations will appear as CafeStory learns what you like.")}
+      emptyTitle={t("No recommendations yet")}
       error={errors[activeTab]}
       isLoading={isLoading && !recommendations[activeTab].length}
       items={recommendations[activeTab]}
@@ -430,7 +425,7 @@ export function ExploreScreen() {
     <Screen padded={false}>
       <ShareTopBar
         onRightPress={() => navigation.navigate(routes.conversations)}
-        rightAccessibilityLabel="Open messages"
+        rightAccessibilityLabel={t("Open messages")}
         rightIcon={Send}
       />
 
@@ -449,7 +444,7 @@ export function ExploreScreen() {
           <TextInput
             autoCorrect={false}
             onChangeText={setSearchQuery}
-            placeholder="Search cafes, reviewers, or posts"
+            placeholder={t("Search cafes, reviewers, or posts")}
             placeholderTextColor={colors.muted}
             returnKeyType="search"
             style={styles.searchInput}

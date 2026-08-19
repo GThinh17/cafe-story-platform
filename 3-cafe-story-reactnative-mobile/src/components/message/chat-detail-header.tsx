@@ -1,8 +1,11 @@
 import { ChevronLeft, Info, Phone, Video } from "lucide-react-native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { Avatar } from "../ui/avatar";
 import { colors, spacing, typography } from "../../theme";
 import type { ChatIdentity } from "../../types";
+import { t } from "../../features/i18n";
 
 type ChatDetailHeaderProps = {
   conversation: ChatIdentity;
@@ -18,7 +21,7 @@ export function ChatDetailHeader({
   return (
     <View style={styles.container}>
       <Pressable
-        accessibilityLabel="Go back"
+        accessibilityLabel={t("Go back")}
         accessibilityRole="button"
         onPress={onBackPress}
         style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
@@ -27,7 +30,7 @@ export function ChatDetailHeader({
       </Pressable>
 
       <Pressable
-        accessibilityLabel="Open chat profile"
+        accessibilityLabel={t("Open chat profile")}
         accessibilityRole="button"
         disabled={!onProfilePress}
         onPress={onProfilePress}
@@ -41,7 +44,7 @@ export function ChatDetailHeader({
           {conversation.name}
         </Text>
         <Text numberOfLines={1} style={styles.status}>
-          {conversation.isOnline ? "Active now" : conversation.userName}
+          {conversation.isOnline ? t("Active now") : conversation.userName}
         </Text>
       </View>
 

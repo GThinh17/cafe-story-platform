@@ -10,11 +10,14 @@ import type {
   AdminAssistantDraftAction,
   AdminAssistantMessage,
   AdminAssistantMessageRequest,
+  AdminContentTranslationRequest,
+  AdminContentTranslationResponse,
   AdminModerationResult,
   AdminPayout,
   AdminPayoutStatus,
   AdminReportAiAutoApplyJob,
   AdminReportAiAutoApplyRequest,
+  AdminReportAiPolicy,
   AdminReportAiResolution,
   AdminUser,
   Blog,
@@ -63,6 +66,13 @@ export function getAdminDashboardSummary(signal?: AbortSignal) {
 }
 
 export const getDashboardSummary = getAdminDashboardSummary;
+
+export function translateAdminContent(request: AdminContentTranslationRequest) {
+  return apiFetch<AdminContentTranslationResponse>(apiEndpoints.admin.translations, {
+    body: request,
+    method: "POST",
+  });
+}
 
 export function getRegionAnalytics(signal?: AbortSignal) {
   return apiFetch<AdminRegionAnalytics[]>(apiEndpoints.admin.analyticsRegions, {
@@ -461,6 +471,13 @@ export function getReportAiResolutions(
     withQuery(apiEndpoints.admin.reportAiResolutions(reportId), params),
     { method: "GET", signal },
   );
+}
+
+export function getReportAiPolicy(reportId: string, signal?: AbortSignal) {
+  return apiFetch<AdminReportAiPolicy>(apiEndpoints.admin.reportAiPolicy(reportId), {
+    method: "GET",
+    signal,
+  });
 }
 
 export function getReportAiAutoResolutions(

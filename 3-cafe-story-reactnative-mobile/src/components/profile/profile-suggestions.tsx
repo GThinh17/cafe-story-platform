@@ -1,15 +1,12 @@
 import { Store, X } from "lucide-react-native";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import { colors, spacing, typography } from "../../theme";
 import type { RecommendationCardResponse } from "../../types";
 import { Avatar } from "../ui/avatar";
+import { t } from "../../features/i18n";
 
 type ProfileSuggestionsProps = {
   disabledUserIds?: string[];
@@ -43,8 +40,8 @@ export function ProfileSuggestions({
   return (
     <View style={styles.section}>
       <View style={styles.header}>
-        <Text style={styles.title}>Discovery</Text>
-        <Text style={styles.link}>See all</Text>
+        <Text style={styles.title}>{t("Discovery")}</Text>
+        <Text style={styles.link}>{t("See all")}</Text>
       </View>
 
       {isLoading ? (
@@ -55,10 +52,8 @@ export function ProfileSuggestions({
         </View>
       ) : suggestions.length === 0 ? (
         <View style={styles.stateCard}>
-          <Text style={styles.stateTitle}>No suggestions right now</Text>
-          <Text style={styles.stateDescription}>
-            We will show more people as your CafeStory network grows.
-          </Text>
+          <Text style={styles.stateTitle}>{t("No suggestions right now")}</Text>
+          <Text style={styles.stateDescription}>{t("We will show more people as your CafeStory network grows.")}</Text>
         </View>
       ) : (
         <ScrollView
@@ -133,7 +128,7 @@ export function ProfileSuggestions({
                       !isCafePage && isDisabled && styles.followTextDisabled,
                     ]}
                   >
-                    {isCafePage ? "View" : isDisabled ? "Following" : "Follow"}
+                    {isCafePage ? t("View") : isDisabled ? "Following" : "Follow"}
                   </Text>
                 </Pressable>
               </View>
@@ -148,7 +143,7 @@ export function ProfileSuggestions({
 function ProfileSuggestionSkeleton() {
   return (
     <ScrollView
-      accessibilityLabel="Loading suggestions"
+      accessibilityLabel={t("Loading suggestions")}
       accessibilityRole="progressbar"
       contentContainerStyle={styles.list}
       horizontal

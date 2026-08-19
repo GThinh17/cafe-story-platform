@@ -9,6 +9,7 @@ export const apiEndpoints = {
   },
   admin: {
     dashboardSummary: "/api/admin/dashboard/summary",
+    translations: "/api/admin/translations",
     analyticsRegions: "/api/admin/analytics/regions",
     analyticsRevenue: "/api/admin/analytics/revenue",
     assistantConversations: "/api/admin/assistant/conversations",
@@ -53,6 +54,8 @@ export const apiEndpoints = {
       `/api/admin/reports/${pathId(reportId)}/ai-resolution`,
     reportAiResolutions: (reportId: string) =>
       `/api/admin/reports/${pathId(reportId)}/ai-resolutions`,
+    reportAiPolicy: (reportId: string) =>
+      `/api/admin/reports/${pathId(reportId)}/ai-policy`,
     reportAiAutoResolutions: (reportId: string) =>
       `/api/admin/reports/${pathId(reportId)}/ai-auto-resolutions`,
     reportAiAutoResolutionCancel: (jobId: string) =>

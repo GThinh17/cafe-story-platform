@@ -67,17 +67,21 @@ export type ReviewerDashboardSegmentItem = {
 };
 
 export type ReviewerDashboardPayout = {
+  badge: ReviewerDashboardBadge | null;
+  badgeMultiplier: number;
   commentAmount: number;
   commentCount: number;
   id: string;
   likeAmount: number;
   likeCount: number;
+  paidAt: string | null;
   payoutMonth: string;
-  payoutStatus: string;
   reviewerId: string;
   shareAmount: number;
   shareCount: number;
-  totalAmount: number;
+  status: "PENDING" | "APPROVED" | "PAID" | "CANCELLED" | string;
+  totalBaseAmount: number;
+  totalFinalAmount: number;
 };
 
 export type ReviewerDashboardBadgeHistoryItem = {

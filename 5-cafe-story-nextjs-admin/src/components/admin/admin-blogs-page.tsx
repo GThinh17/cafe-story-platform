@@ -8,6 +8,7 @@ import {
   PinIcon,
 } from "lucide-react";
 import { AdminConfirmDialog } from "@/components/admin/admin-confirm-dialog";
+import { AdminTranslatableContent } from "@/components/admin/admin-translatable-content";
 import { UserCell } from "@/components/admin/user-cell";
 import {
   AdminDataTable,
@@ -37,6 +38,13 @@ import {
   getBlogs,
   updateBlogStatus,
 } from "@/lib/api/admin";
+import {
+  formatNumber,
+  localizeApiError,
+  useEnumLabel,
+  useI18n,
+  useUiText,
+} from "@/features/i18n";
 import type { Blog, PostStatus } from "@/types/admin";
 
 const postStatuses: PostStatus[] = ["DRAFT", "PUBLISHED", "HIDDEN", "REMOVED"];
@@ -46,18 +54,16 @@ type PendingBlogAction =
   | { type: "status"; blog: Blog; status: PostStatus }
   | { type: "rank"; blog: Blog };
 
-function countLabel(value: number | null | undefined) {
-  return (value ?? 0).toLocaleString();
-}
-
 function BlogImages({ imageUrls }: { imageUrls: string[] }) {
+  const { localeTag } = useI18n();
+  const ui = useUiText();
   const [index, setIndex] = useState(0);
   const imageCount = imageUrls.length;
 
   if (!imageCount) {
     return (
       <div className="grid min-h-72 place-items-center rounded-md border border-border bg-surface-muted text-sm text-muted">
-        No images
+        {ui("No images")}
       </div>
     );
   }
@@ -68,7 +74,7 @@ function BlogImages({ imageUrls }: { imageUrls: string[] }) {
     <div className="flex flex-col gap-3">
       <div className="relative grid min-h-[360px] place-items-center rounded-md border border-border bg-black/90">
         <img
-          alt={`Blog image ${index + 1}`}
+          alt={ui("Blog image {index}", { index: formatNumber(index + 1, localeTag) })}
           className="max-h-[68vh] w-full object-contain"
           src={activeImage}
         />
@@ -79,7 +85,7 @@ function BlogImages({ imageUrls }: { imageUrls: string[] }) {
               variant="secondary"
               size="icon-sm"
               className="absolute left-3 top-1/2 -translate-y-1/2"
-              aria-label="Previous image"
+              aria-label={ui("Previous image")}
               onClick={() => setIndex((current) => (current === 0 ? imageCount - 1 : current - 1))}
             >
               <ChevronLeftIcon />
@@ -89,7 +95,7 @@ function BlogImages({ imageUrls }: { imageUrls: string[] }) {
               variant="secondary"
               size="icon-sm"
               className="absolute right-3 top-1/2 -translate-y-1/2"
-              aria-label="Next image"
+              aria-label={ui("Next image")}
               onClick={() => setIndex((current) => (current + 1) % imageCount)}
             >
               <ChevronRightIcon />
@@ -101,7 +107,9 @@ function BlogImages({ imageUrls }: { imageUrls: string[] }) {
         <div className="flex justify-center gap-2">
           {imageUrls.map((url, dotIndex) => (
             <button
-              aria-label={`Show image ${dotIndex + 1}`}
+              aria-label={ui("Show image {index}", {
+                index: formatNumber(dotIndex + 1, localeTag),
+              })}
               className={`size-2 rounded-full ${
                 dotIndex === index ? "bg-primary" : "bg-border"
               }`}
@@ -117,6 +125,9 @@ function BlogImages({ imageUrls }: { imageUrls: string[] }) {
 }
 
 export function AdminBlogsPage() {
+  const { locale, localeTag, t } = useI18n();
+  const ui = useUiText();
+  const enumLabel = useEnumLabel();
   const [status, setStatus] = useState<PostStatus | "">("");
   const [authorUserId, setAuthorUserId] = useState("");
   const [pageId, setPageId] = useState("");
@@ -159,13 +170,13 @@ export function AdminBlogsPage() {
         cell: (blog) =>
           blog.imageUrls?.[0] ? (
             <img
-              alt="Blog thumbnail"
+              alt={ui("Blog thumbnail")}
               className="size-16 rounded-md border border-border object-cover"
               src={blog.imageUrls[0]}
             />
           ) : (
             <div className="grid size-16 place-items-center rounded-md border border-border bg-surface-muted text-xs text-muted">
-              No image
+              {ui("No image")}
             </div>
           ),
       },
@@ -184,7 +195,11 @@ export function AdminBlogsPage() {
         lines: 2,
         maxWidth: 420,
         cell: (blog) => (
-          <p className="text-sm leading-6 text-muted">{blog.content ?? "—"}</p>
+          <AdminTranslatableContent
+            contentKind="BLOG_CONTENT"
+            text={blog.content}
+            textClassName="text-sm leading-6 text-muted"
+          />
         ),
       },
       { header: "Status", cell: (blog) => <AdminStatusBadge value={blog.status} /> },
@@ -192,12 +207,15 @@ export function AdminBlogsPage() {
         header: "Signals",
         cell: (blog) => (
           <span className="text-muted">
-            {countLabel(blog.likeCount)} likes / {countLabel(blog.commentCount)} comments /{" "}
-            {countLabel(blog.shareCount)} shares
+            {ui("{likes} likes / {comments} comments / {shares} shares", {
+              likes: formatNumber(blog.likeCount ?? 0, localeTag),
+              comments: formatNumber(blog.commentCount ?? 0, localeTag),
+              shares: formatNumber(blog.shareCount ?? 0, localeTag),
+            })}
           </span>
         ),
       },
-      { header: "Created", cell: (blog) => formatDate(blog.createdAt) },
+      { header: "Created", cell: (blog) => formatDate(blog.createdAt, localeTag) },
       {
         header: "",
         className: "w-12 text-right",
@@ -212,7 +230,9 @@ export function AdminBlogsPage() {
               ...detailStatuses
                 .filter((nextStatus) => nextStatus !== blog.status)
                 .map((nextStatus) => ({
-                  label: `Set status: ${nextStatus}`,
+                  label: ui("Set status: {status}", {
+                    status: enumLabel(nextStatus),
+                  }),
                   destructive: nextStatus === "REMOVED",
                   onSelect: () =>
                     setPendingAction({ type: "status", blog, status: nextStatus }),
@@ -227,7 +247,7 @@ export function AdminBlogsPage() {
         ),
       },
     ],
-    [],
+    [enumLabel, localeTag, ui],
   );
 
   async function handleConfirm() {
@@ -266,9 +286,7 @@ export function AdminBlogsPage() {
       setActionReason("");
       resource.refetch();
     } catch (requestError) {
-      setActionError(
-        requestError instanceof Error ? requestError.message : "Action failed.",
-      );
+      setActionError(localizeApiError(requestError, locale, t, "common.error.action"));
     } finally {
       setIsSubmitting(false);
     }
@@ -305,7 +323,11 @@ export function AdminBlogsPage() {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         title="Blog detail"
-        description={detailBlog ? `Post ${detailBlog.id}` : "Latest detail from admin API"}
+        description={
+          detailBlog
+            ? ui("Post {id}", { id: detailBlog.id })
+            : "Latest detail from admin API"
+        }
         isLoading={false}
         error={null}
         footer={
@@ -322,7 +344,7 @@ export function AdminBlogsPage() {
                     setPendingAction({ type: "status", blog: detailBlog, status: nextStatus })
                   }
                 >
-                  Set {nextStatus}
+                  {ui("Set {status}", { status: enumLabel(nextStatus) })}
                 </Button>
               ))}
             </div>
@@ -335,11 +357,14 @@ export function AdminBlogsPage() {
             <div className="flex flex-col gap-4">
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-wide text-muted">
-                  Caption
+                  {ui("Caption")}
                 </p>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">
-                  {detailBlog.content || "No caption"}
-                </p>
+                <AdminTranslatableContent
+                  className="mt-2"
+                  contentKind="BLOG_CONTENT"
+                  text={detailBlog.content || ui("No caption")}
+                  textClassName="text-sm leading-6 text-foreground"
+                />
               </div>
               <AdminDetailGrid>
                 <AdminDetailField label="Author">
@@ -357,27 +382,34 @@ export function AdminBlogsPage() {
                       <span className="text-muted">{detailBlog.pageId}</span>
                     </>
                   ) : (
-                    "Personal"
+                    ui("Personal")
                   )}
                 </AdminDetailField>
                 <AdminDetailField label="Status">
                   <AdminStatusBadge value={detailBlog.status} />
                 </AdminDetailField>
                 <AdminDetailField label="Flags">
-                  Comments {detailBlog.allowComment ? "on" : "off"} /{" "}
-                  {detailBlog.isPinned ? "pinned" : "not pinned"}
+                  {ui("Comments {comments} / {pinning}", {
+                    comments: ui(detailBlog.allowComment ? "on" : "off"),
+                    pinning: ui(detailBlog.isPinned ? "pinned" : "not pinned"),
+                  })}
                 </AdminDetailField>
                 <AdminDetailField label="Counts">
-                  {countLabel(detailBlog.likeCount)} likes / {countLabel(detailBlog.shareCount)}{" "}
-                  shares / {countLabel(detailBlog.commentCount)} comments /{" "}
-                  {countLabel(detailBlog.saveCount)} saves
+                  {ui("{likes} likes / {shares} shares / {comments} comments / {saves} saves", {
+                    likes: formatNumber(detailBlog.likeCount ?? 0, localeTag),
+                    shares: formatNumber(detailBlog.shareCount ?? 0, localeTag),
+                    comments: formatNumber(detailBlog.commentCount ?? 0, localeTag),
+                    saves: formatNumber(detailBlog.saveCount ?? 0, localeTag),
+                  })}
                 </AdminDetailField>
                 <AdminDetailField label="Rating">
-                  {detailBlog.ratingScore ?? "No score"} ({countLabel(detailBlog.ratingCount)}{" "}
-                  ratings)
+                  {ui("{rating} ({count} ratings)", {
+                    rating: detailBlog.ratingScore ?? ui("No score"),
+                    count: formatNumber(detailBlog.ratingCount ?? 0, localeTag),
+                  })}
                 </AdminDetailField>
-                <AdminDetailField label="Created">{formatDate(detailBlog.createdAt)}</AdminDetailField>
-                <AdminDetailField label="Updated">{formatDate(detailBlog.updatedAt)}</AdminDetailField>
+                <AdminDetailField label="Created">{formatDate(detailBlog.createdAt, localeTag)}</AdminDetailField>
+                <AdminDetailField label="Updated">{formatDate(detailBlog.updatedAt, localeTag)}</AdminDetailField>
               </AdminDetailGrid>
             </div>
           </div>

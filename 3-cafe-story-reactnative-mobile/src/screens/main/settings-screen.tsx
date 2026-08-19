@@ -1,13 +1,17 @@
 import { ChevronLeft, LogOut, Shield, UserRound } from "lucide-react-native";
+import { Pressable } from "react-native";
+import { Text } from "react-native";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import { Screen } from "../../components";
 import { useAuth } from "../../features/auth";
+import { LanguageSelector } from "../../features/i18n";
 import type { RootStackParamList } from "../../navigation";
 import { colors, spacing, typography } from "../../theme";
+import { t } from "../../features/i18n";
 
 type SettingsNavigation = NativeStackNavigationProp<RootStackParamList>;
 
@@ -37,7 +41,7 @@ export function SettingsScreen() {
     <Screen padded={false}>
       <View style={styles.topBar}>
         <Pressable
-          accessibilityLabel="Go back"
+          accessibilityLabel={t("Go back")}
           accessibilityRole="button"
           onPress={() => navigation.goBack()}
           style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
@@ -45,7 +49,7 @@ export function SettingsScreen() {
           <ChevronLeft color={colors.foreground} size={32} strokeWidth={2.4} />
         </Pressable>
 
-        <Text style={styles.title}>Settings</Text>
+        <Text style={styles.title}>{t("Settings")}</Text>
 
         <View style={styles.iconButton} />
       </View>
@@ -54,23 +58,25 @@ export function SettingsScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        <LanguageSelector />
+
         <View style={styles.section}>
           <SettingsRow
             Icon={UserRound}
-            description="Profile details, bio, and account preferences."
-            label="Account"
+            description={t("Profile details, bio, and account preferences.")}
+            label={t("Account")}
           />
           <SettingsRow
             Icon={Shield}
-            description="Security and privacy controls for your CafeStory account."
-            label="Privacy and security"
+            description={t("Security and privacy controls for your CafeStory account.")}
+            label={t("Privacy and security")}
           />
         </View>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         <Pressable
-          accessibilityLabel="Log out"
+          accessibilityLabel={t("Log out")}
           accessibilityRole="button"
           disabled={isLoggingOut}
           onPress={handleLogout}
@@ -82,7 +88,7 @@ export function SettingsScreen() {
         >
           <LogOut color={colors.danger} size={20} strokeWidth={2.5} />
           <Text style={styles.logoutText}>
-            {isLoggingOut ? "Logging out..." : "Log out"}
+            {isLoggingOut ? t("Logging out...") : t("Log out")}
           </Text>
         </Pressable>
       </ScrollView>
