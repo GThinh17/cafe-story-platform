@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app.config.rules import get_rules
+from app.config.settings import RAG_INGEST_SCHEDULER_ENABLED
 from app.router import router
 
 
@@ -16,13 +17,14 @@ logger = logging.getLogger("cafestory-ai")
 async def lifespan(app: FastAPI):
     get_rules()
     scheduler_started = False
-    try:
-        from app.services.ingest.ingest_scheduler import start_ingest_scheduler
+    if RAG_INGEST_SCHEDULER_ENABLED:
+        try:
+            from app.services.ingest.ingest_scheduler import start_ingest_scheduler
 
-        start_ingest_scheduler()
-        scheduler_started = True
-    except Exception:
-        logger.exception("ingest scheduler failed to start — RAG ingest disabled")
+            start_ingest_scheduler()
+            scheduler_started = True
+        except Exception:
+            logger.exception("ingest scheduler failed to start — RAG ingest disabled")
     logger.info("AI backend startup complete (ingest scheduler=%s)", scheduler_started)
     yield
     if scheduler_started:

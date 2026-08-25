@@ -34,7 +34,7 @@ export const dynamic = "force-dynamic";
  * slot, dưới 6 thì KHÔNG có slot nào. Ở mốc 12 này mỗi lượt nạp gồm 10 bài
  * organic + 2 quán tài trợ.
  */
-const FEED_PAGE_SIZE = 12;
+const FEED_PAGE_SIZE = 7;
 
 type HomeFeedState = {
   errorMessage?: string;

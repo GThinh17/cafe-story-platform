@@ -15,6 +15,10 @@ RAG_PGVECTOR_DSN: str = os.getenv(
 )
 JAVA_BACKEND_BASE_URL: str = os.getenv("JAVA_BACKEND_BASE_URL", "http://localhost:8080")
 RAG_INTERNAL_SECRET: str = os.getenv("RAG_INTERNAL_SECRET", "")
+RAG_INGEST_SCHEDULER_ENABLED: bool = os.getenv(
+    "RAG_INGEST_SCHEDULER_ENABLED",
+    "false",
+).strip().lower() in {"1", "true", "yes", "on"}
 RAG_INGEST_CRON_MINUTES: int = int(os.getenv("RAG_INGEST_CRON_MINUTES", "15"))
 RAG_DOCS_CORPUS_DIR: str = os.getenv(
     "RAG_DOCS_CORPUS_DIR",
