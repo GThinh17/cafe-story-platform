@@ -1,0 +1,10 @@
+issue_id	observed_component	verified_observation	current_effect	rebase_route
+S2RB-001	AdminReportAiPolicyCatalog.java	candidateRules runtime only carries ruleId and common ruleVersion	rule burden from M06 is not materialized	S2-01
+S2RB-002	canonical n8n workflow	system prompt is generic and has no per-family criteria or exceptions	prompt cannot deterministically apply detailed rule burden	S2-04 after S2-01/S2-02
+S2RB-003	canonical n8n workflow	strict JSON schema has enums and additionalProperties=false but no general maxLength/maxItems bounds	runtime schema is weaker than bounded-schema design	S2-02
+S2RB-004	AdminReportAiSemanticValidator.java	validator checks ids/categories/independent evidence but not per-rule version/completeness/requirements/ceiling	full M06 burden is not enforced at Backend trust boundary	S2-02
+S2RB-005	ADV-001 through ADV-012	provider is not called; suite validates prompt boundary and normalization	no model-quality or calibration claim	S2-03
+S2RB-006	Sprint 1 evidence	E2E proves safety/runtime/no-mutation, not representative model accuracy	provider comparison has no reliable quality oracle	S2-05 conditional
+S2RB-007	policy and evidence dossier	authoritative adapters need source authority/freshness/privacy/legal ownership	cannot be a generic prompt-only change	DEFER Sprint 4 or separate workstream
+S2RB-008	G0-10D and dataset design	no representative labeled outcomes or calibration report	numeric probability/threshold authority prohibited	DEFER future research gate
+S2RB-009	production readiness	5 of 14 items remain open	Sprint 2 cannot be used as production-readiness substitute	OUTSIDE S2 core

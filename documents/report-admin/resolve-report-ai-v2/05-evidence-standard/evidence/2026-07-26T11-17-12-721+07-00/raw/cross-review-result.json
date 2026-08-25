@@ -1,0 +1,19 @@
+{
+  "gate": "G0-12M-08",
+  "contractVersion": "2.0.0-rc.1",
+  "checkCount": 16,
+  "passedCheckCount": 16,
+  "failedCheckCount": 0,
+  "failedChecks": [],
+  "counts": {
+    "ruleIds": 24,
+    "evidenceKinds": 14,
+    "semanticRequirements": 15,
+    "targets": 4,
+    "fixtures": 18,
+    "fixturePasses": 18
+  },
+  "lifecycle": "PROPOSED",
+  "runtimeAuthority": false,
+  "allPassed": true
+}

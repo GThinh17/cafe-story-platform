@@ -1,0 +1,64 @@
+{
+  "gate": "G0-12E",
+  "status": "COMPLETED_VERIFIED_APPROVED",
+  "date": "2026-07-29",
+  "branch": "n8n/Ai-agent/fix-bug-report-admin",
+  "head": "9c155ff",
+  "runtime": {
+    "database": "LOCAL_DISPOSABLE_POSTGRESQL_17",
+    "databasePort": 55432,
+    "backendPort": 8080,
+    "adminPort": 3636,
+    "n8nPort": 5678,
+    "externalDatabaseMutated": false
+  },
+  "verification": {
+    "backendFocused": {
+      "tests": 32,
+      "failures": 0,
+      "errors": 0
+    },
+    "backendFull": {
+      "tests": 618,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "coverage": {
+      "class": "AdminReportAiResolutionServiceImpl",
+      "linePercent": 100.0,
+      "branchPercent": 87.85
+    },
+    "adminTypecheck": "PASS",
+    "adminBuild": "PASS",
+    "playwrightCommand": "PASS",
+    "automatedScenarios": {
+      "passed": 29,
+      "warn": 0,
+      "failed": 0,
+      "blocked": 1
+    },
+    "legacyCancelSupplement": "PASS",
+    "effectiveAcceptanceScenarios": "30/30 PASS",
+    "targetNoMutation": {
+      "BLOG": true,
+      "COMMENT": true,
+      "USER": true,
+      "CAFE_PAGE": true
+    }
+  },
+  "issues": [
+    "G012E-ENV-001",
+    "G012E-DATA-002",
+    "G012E-TEST-003",
+    "G012E-CODE-004",
+    "G012E-ENV-005",
+    "G012E-RELATED-006",
+    "G012E-TEST-007"
+  ],
+  "sourceCommit": "9c155ff",
+  "detailedDesign": "09-sprints/g0-12e-admin-ui-e2e-detailed-design.vi.md",
+  "approval": "APPROVE_G0-12E",
+  "approvalDate": "2026-07-29",
+  "nextRequiredAction": "IMPLEMENT_G0_12_DONE_AUDIT"
+}

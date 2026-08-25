@@ -1,0 +1,70 @@
+{
+  "gate": "G0-12B",
+  "status": "IMPLEMENTED_COVERAGE_VERIFIED_AWAITING_APPROVAL",
+  "baseline": {
+    "tests": 44,
+    "failures": 0,
+    "errors": 0,
+    "coverageGatePassed": false
+  },
+  "focusedVerification": {
+    "tests": 56,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "build": "SUCCESS"
+  },
+  "fullRegression": {
+    "tests": 617,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 1,
+    "build": "SUCCESS",
+    "skippedReason": "PostgreSQL integration test belongs to G0-12C runtime verification"
+  },
+  "coverage": [
+    {
+      "class": "AdminReportAiAutoApplyJobServiceImpl",
+      "line": "71/71",
+      "linePercent": 100.0,
+      "branch": "30/30",
+      "branchPercent": 100.0,
+      "passed": true
+    },
+    {
+      "class": "AdminReportAiResolutionServiceImpl",
+      "line": "418/418",
+      "linePercent": 100.0,
+      "branch": "159/181",
+      "branchPercent": 87.85,
+      "passed": true
+    },
+    {
+      "class": "AdminReportAiPolicyCatalog",
+      "line": "35/35",
+      "linePercent": 100.0,
+      "branch": "2/2",
+      "branchPercent": 100.0,
+      "passed": true
+    },
+    {
+      "class": "AdminReportAiSemanticValidator",
+      "line": "71/71",
+      "linePercent": 100.0,
+      "branch": "79/80",
+      "branchPercent": 98.75,
+      "passed": true
+    },
+    {
+      "class": "AdminReportAiWebhookSigner",
+      "line": "88/88",
+      "linePercent": 100.0,
+      "branch": "48/56",
+      "branchPercent": 85.71,
+      "passed": true
+    }
+  ],
+  "productionDeploymentAuthorized": false,
+  "nextToken": "APPROVE_G0-12B"
+}
+

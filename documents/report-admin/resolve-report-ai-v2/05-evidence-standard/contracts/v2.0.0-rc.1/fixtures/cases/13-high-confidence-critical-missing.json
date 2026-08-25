@@ -1,0 +1,21 @@
+{
+  "id": "M07-FX-13",
+  "description": "Assessment confidence cao không override critical missing evidence.",
+  "base": "blog-resolve.json",
+  "operations": [
+    {"op":"replace","path":"/policyContext/candidateRuleIds","value":["CSR.SEX.001"]},
+    {"op":"replace","path":"/evidence/3/collectedForRuleIds","value":["CSR.SEX.001"]},
+    {"op":"replace","path":"/ruleEvaluations/0","value":{"ruleId":"CSR.SEX.001","material":true,"outcome":"UNASSESSABLE","supportingEvidenceIds":["EV-BLOG-TEXT"],"counterEvidenceIds":[],"missingEvidenceIds":["ME-HIGH-CONFIDENCE-MEDIA"]}},
+    {"op":"add","path":"/missingEvidence/-","value":{"missingEvidenceId":"ME-HIGH-CONFIDENCE-MEDIA","requiredByRuleId":"CSR.SEX.001","requirementType":"EVIDENCE_KIND","requiredEvidenceKind":"VERIFIED_MEDIA_OBSERVATION","semanticRequirementCode":null,"triggerCondition":"MATERIAL_MEDIA_BRANCH","critical":true,"availability":"NOT_COLLECTED","reasonCode":"VERIFIED_MEDIA_COLLECTOR_NOT_AVAILABLE","recommendedNextStep":"HUMAN_REVIEW_MEDIA","decisionEffect":"NEEDS_MANUAL_REVIEW"}},
+    {"op":"replace","path":"/recommendation/reportDecision","value":"NEEDS_MANUAL_REVIEW"},
+    {"op":"replace","path":"/recommendation/candidateTargetAction","value":"NO_ACTION"},
+    {"op":"replace","path":"/recommendation/evidenceSufficiency","value":"UNASSESSABLE"},
+    {"op":"replace","path":"/recommendation/findings","value":[]},
+    {"op":"replace","path":"/recommendation/assessmentConfidence","value":0.99}
+  ],
+  "expected": {
+    "schemaValid": true,
+    "semanticValid": true,
+    "errorCodes": []
+  }
+}

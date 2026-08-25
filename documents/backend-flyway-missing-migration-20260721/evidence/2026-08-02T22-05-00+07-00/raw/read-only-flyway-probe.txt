@@ -1,0 +1,11 @@
+Read-only JDBC probe against flyway_schema_history:
+
+20260721.01|performance indexes|V20260721_01__performance_indexes.sql|698173291|true
+
+Interpretation:
+
+- version: 20260721.01
+- description: performance indexes
+- script: V20260721_01__performance_indexes.sql
+- checksum: 698173291
+- success: true

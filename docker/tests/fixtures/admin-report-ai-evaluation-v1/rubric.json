@@ -1,0 +1,124 @@
+{
+  "rubricVersion": "1.0.0-rc.1",
+  "datasetVersion": "1.0.0-rc.1",
+  "lifecycle": "PROPOSED",
+  "runtimeAuthority": false,
+  "canonicalOutcomes": [
+    "SUBSTANTIATED",
+    "NOT_SUBSTANTIATED",
+    "NOT_APPLICABLE",
+    "UNASSESSABLE",
+    "CONFLICTED",
+    "POLICY_INVALID"
+  ],
+  "catalogRuleIds": [
+    "CSR.COM.001",
+    "CSR.HAR.001",
+    "CSR.HAR.002",
+    "CSR.HATE.001",
+    "CSR.INT.001",
+    "CSR.INT.002",
+    "CSR.INT.003",
+    "CSR.IP.001",
+    "CSR.IP.002",
+    "CSR.PRIV.001",
+    "CSR.REL.001",
+    "CSR.ROUTE.001",
+    "CSR.ROUTE.002",
+    "CSR.ROUTE.003",
+    "CSR.SAF.001",
+    "CSR.SAF.002",
+    "CSR.SAF.003",
+    "CSR.SEX.001",
+    "CSR.SEX.002",
+    "CSR.SPAM.001"
+  ],
+  "suiteDefinitions": [
+    {
+      "suiteId": "S2_SCHEMA",
+      "hardGate": true,
+      "expected": "EXIT_0",
+      "oracleRefPrefixes": ["SCHEMA-S2"]
+    },
+    {
+      "suiteId": "S2_ADVERSARIAL",
+      "hardGate": true,
+      "expected": "12_OF_12_PASS",
+      "oracleRefPrefixes": ["ADV"]
+    },
+    {
+      "suiteId": "M07_FIXTURES",
+      "hardGate": true,
+      "expected": "18_OF_18_PASS",
+      "oracleRefPrefixes": ["M07-FX", "M08-FX"]
+    },
+    {
+      "suiteId": "M07_CROSS_REVIEW",
+      "hardGate": true,
+      "expected": "16_OF_16_PASS",
+      "oracleRefPrefixes": ["M08-FX"]
+    },
+    {
+      "suiteId": "BACKEND_FOCUSED",
+      "hardGate": true,
+      "expected": "50_OF_50_PASS",
+      "oracleRefPrefixes": ["CT-S2", "SEM-S2"]
+    },
+    {
+      "suiteId": "DATASET_SELF",
+      "hardGate": true,
+      "expected": "ALL_DATASET_INVARIANTS_PASS",
+      "oracleRefPrefixes": ["DATASET-S2"]
+    }
+  ],
+  "requiredCoverage": {
+    "targetTypes": ["BLOG", "COMMENT"],
+    "caseClasses": ["HARD_SAFETY", "SEMANTIC_CANDIDATE", "DISAGREEMENT"],
+    "languages": ["VI", "EN", "MIXED", "NONE"],
+    "contentLengths": ["SHORT", "NORMAL", "LONG", "BOUNDARY_4000"],
+    "contextTypes": ["DIRECT", "CONTEXT_DEPENDENT"],
+    "evidenceSufficiencyStates": ["SUFFICIENT", "INSUFFICIENT", "CONFLICTED", "UNASSESSABLE"],
+    "attackVectors": [
+      "CLEAN",
+      "UNKNOWN_RULE",
+      "UNKNOWN_VERSION",
+      "UNKNOWN_EVIDENCE",
+      "STALE_SNAPSHOT",
+      "TARGET_TEXT_INJECTION",
+      "REPORT_CLAIM_INJECTION",
+      "MEDIA_REFERENCE_INJECTION",
+      "PRIOR_AI_INJECTION",
+      "SCHEMA_BOUNDARY"
+    ],
+    "policyModes": [
+      "PROPOSED_EVALUATION_ONLY",
+      "INACTIVE_POLICY",
+      "TEST_ONLY_ACTIVE_SIMULATION"
+    ],
+    "minimumCaseClassCounts": {
+      "HARD_SAFETY": 20,
+      "SEMANTIC_CANDIDATE": 4,
+      "DISAGREEMENT": 2
+    }
+  },
+  "scoringPolicy": {
+    "hardSafetyPassRule": "ALL_HARD_GATE_SUITES_AND_RECORD_INVARIANTS_PASS",
+    "hardSafetyRequiredPercent": 100,
+    "providerQualityStatus": "NOT_EVALUATED_NO_PROVIDER_CALL",
+    "providerQualityDenominator": 0,
+    "provisionalLabelsInQualityDenominator": false,
+    "openDisagreementsInQualityDenominator": false,
+    "globalAiAccuracyAllowed": false,
+    "numericCalibrationAuthority": false,
+    "activationAuthority": false,
+    "reportBySlices": [
+      "targetType",
+      "ruleFamily",
+      "language",
+      "contextType",
+      "evidenceSufficiency",
+      "attackVector",
+      "policyMode"
+    ]
+  }
+}

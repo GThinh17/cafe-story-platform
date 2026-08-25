@@ -1,0 +1,23 @@
+id	criterion	evidence	result	blocker
+DOD-01	A0 default and no automation enable	Backend unit plus RAI-14/15/17/18	PASS	
+DOD-02	No new job or report/target mutation	Unit plus no-mutation matrix	PASS	
+DOD-03	Legacy quarantine and cancel	Unit plus supplemental cancel	PASS	
+DOD-04	Contract V2 semantics and references	G0-12M plus Backend plus RAI-12	PASS	
+DOD-05	USER/PAGE local manual only	Backend mock plus RAI-09/10	PASS	
+DOD-06	Unknown/critical missing clamp	Backend semantic/service tests	PASS	
+DOD-07	No raw/score action authority	Backend/UI/secret scan	PASS	
+DOD-08	Migration and constraints	G0-12C disposable runtime	PASS_DISPOSABLE	
+DOD-09	Coverage and regression	G0-12B/E	PASS	
+DOD-10	Signed security and replay	G0-12D	PASS_WITH_RESIDUAL	
+DOD-11	Exact published webhook/provider	G0-12D	PASS_LOCAL_RUNTIME	
+DOD-12	Evidence-first Admin UI	G0-12E	PASS	
+DOD-13	Four-target representative runtime	RAI-07 through RAI-10	PASS	
+DOD-14	Prompt adversarial executable suite	Designed ADV matrix only	BLOCKED_TEST_EVIDENCE	DOD-FIX-01
+DOD-15	Changed-snapshot stale non-reuse	Same-snapshot idempotency only	BLOCKED_TEST_EVIDENCE	DOD-FIX-02
+DOD-16	COMMENT missing-critical-context full E2E	Unit guards only	BLOCKED_E2E_FIXTURE	DOD-FIX-03
+DOD-17	Provider unavailable full E2E	Backend fail-closed only	BLOCKED_E2E_SCENARIO	DOD-FIX-04
+DOD-18	Bulk partial failure no mutation	Success batch only	BLOCKED_E2E_SCENARIO	DOD-FIX-05
+DOD-19	Terminal report BE and FE guard	BE pass; FE not evidenced	PARTIAL	DOD-FIX-06
+DOD-20	Operations plans exist	Operations documents	PASS_DESIGN_ONLY	
+DOD-21	As-built traceability	G0-12F	PASS	
+

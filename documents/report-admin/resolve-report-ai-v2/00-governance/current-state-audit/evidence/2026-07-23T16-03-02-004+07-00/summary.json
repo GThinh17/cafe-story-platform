@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "1.0",
+  "gate": "G0-06B",
+  "approval": "APPROVE_G0-06B",
+  "status": "DONE",
+  "mode": "STATIC_READ_ONLY_AUDIT",
+  "branch": "n8n/Ai-agent/fix-bug-report-admin",
+  "head": "68189a4",
+  "auditedComponents": [
+    "backend",
+    "admin-frontend",
+    "n8n-export",
+    "migration-artifacts",
+    "test-source"
+  ],
+  "notRun": [
+    "database-query",
+    "backend-runtime",
+    "admin-ui-runtime",
+    "n8n-runtime-webhook",
+    "openai-provider-call"
+  ],
+  "findingCounts": {
+    "source": 17,
+    "frontend": 13,
+    "n8n": 14
+  },
+  "criticalHighlights": [
+    "Destructive auto-apply conflicts with approved HI3 and AR3",
+    "Canonical evidence and score semantics are missing",
+    "Image URLs are text-only and do not prove visual inspection"
+  ],
+  "nextRequiredApproval": "APPROVE_G0-06C"
+}

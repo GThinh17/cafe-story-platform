@@ -1,0 +1,13 @@
+Gate: DOD-FIX-02
+Class: com/cafestory/service/serviceImplement/AdminReportAiResolutionServiceImpl
+JaCoCo source: 1-cafe-story-backend-javaspring/target/site/jacoco/jacoco.xml
+
+INSTRUCTION 2090/2092 = 99.90%
+BRANCH       172/196  = 87.76%
+LINE         458/458  = 100.00%
+COMPLEXITY   133/157  = 84.71%
+METHOD        50/50   = 100.00%
+CLASS          1/1    = 100.00%
+
+Required gate: changed production class line = 100%, branch >= 85%.
+Result: PASS.

@@ -1,0 +1,105 @@
+{
+  "candidateVersion": "report-ai-v2-sprint2.4-candidate.1",
+  "lifecycle": "PROPOSED",
+  "runtimeAuthority": false,
+  "automationMode": "A0_RECOMMEND_ONLY",
+  "providerCalled": false,
+  "sourceContextVersions": {
+    "contractVersion": "2.0",
+    "contextSchemaVersion": "RRC-1.0.0-rc.1",
+    "policyVersion": "PF-2.0.0-proposed.1",
+    "ruleCatalogVersion": "RC-2.0.0-proposed.2",
+    "ruleVersion": "1.0.0-proposed.2",
+    "datasetVersion": "1.0.0-rc.1",
+    "rubricVersion": "1.0.0-rc.1"
+  },
+  "baseSafetyClauseCodes": [
+    "SAFETY-UNTRUSTED-DATA-NOT-INSTRUCTION",
+    "SAFETY-AI-EXPLANATION-NOT-EVIDENCE",
+    "SAFETY-EVIDENCE-IDS-ONLY",
+    "SAFETY-NO-RULE-INVENTION",
+    "SAFETY-MISSING-EVIDENCE-MANUAL",
+    "SAFETY-NO-ACTION-AUTHORITY",
+    "SAFETY-CATEGORICAL-LIKELIHOOD",
+    "SAFETY-BOUNDED-RATIONALE"
+  ],
+  "selectedProfiles": [
+    {
+      "profileId": "PP-HAR-001-TEXT-V1",
+      "ruleId": "CSR.HAR.001",
+      "ruleFamily": "HAR",
+      "ruleType": "VIOLATION",
+      "actionAuthority": false,
+      "requiredEvidenceKinds": [
+        "TARGET_IDENTITY",
+        "TARGET_STATE",
+        "TARGET_TEXT_CONTENT"
+      ],
+      "requiredSemanticCodes": [
+        "SEM-TARGETED-SUBJECT",
+        "SEM-EXCEPTION-CONTEXT"
+      ],
+      "exceptionCodes": [
+        "CONTEXTUAL_EXCEPTION"
+      ],
+      "clauseCodes": [
+        "HAR-OBSERVE-TARGETED-SUBJECT",
+        "HAR-OBSERVE-CONDUCT",
+        "HAR-CHECK-CONTEXT-EXCEPTION",
+        "HAR-DO-NOT-INFER-PATTERN",
+        "HAR-MISSING-MATERIAL-MANUAL"
+      ],
+      "branches": [
+        {
+          "branchType": "DIRECT_TEXT",
+          "targetType": "BLOG",
+          "requiredContextKinds": [],
+          "missingBehavior": "NEEDS_MANUAL_REVIEW",
+          "targetActionCeiling": "NO_ACTION"
+        },
+        {
+          "branchType": "CONTEXT_DEPENDENT_TEXT",
+          "targetType": "COMMENT",
+          "requiredContextKinds": [
+            "PARENT_BLOG_CONTEXT"
+          ],
+          "missingBehavior": "NEEDS_MANUAL_REVIEW",
+          "targetActionCeiling": "NO_ACTION"
+        }
+      ],
+      "datasetCaseRefs": [
+        "S2EVAL-002",
+        "S2EVAL-007",
+        "S2EVAL-018",
+        "S2EVAL-022",
+        "S2EVAL-026"
+      ]
+    }
+  ],
+  "exclusions": [
+    {
+      "ruleId": "CSR.HAR.002",
+      "reasonCode": "PATTERN_HISTORY_REQUIRED"
+    },
+    {
+      "ruleId": "CSR.SPAM.001",
+      "reasonCode": "PATTERN_HISTORY_REQUIRED"
+    },
+    {
+      "ruleId": "CSR.HATE.001",
+      "reasonCode": "PROTECTED_LIST_VERSION_REQUIRED"
+    },
+    {
+      "ruleId": "CSR.REL.001",
+      "reasonCode": "RUNTIME_POLICY_SEMANTIC_MISMATCH"
+    }
+  ],
+  "outputInstructionCodes": [
+    "OUTPUT-PER-RULE-ONLY",
+    "OUTPUT-EVIDENCE-REFERENCES",
+    "OUTPUT-MISSING-REFERENCES",
+    "OUTPUT-CATEGORICAL-LIKELIHOOD",
+    "OUTPUT-NO-FINAL-ACTION"
+  ],
+  "maximumSystemPromptCharacters": 12000
+}

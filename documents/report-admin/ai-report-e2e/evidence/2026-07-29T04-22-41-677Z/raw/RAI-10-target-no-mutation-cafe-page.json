@@ -1,0 +1,21 @@
+{
+  "targetBefore": {
+    "targetType": "CAFE_PAGE",
+    "targetId": "7ca0d5a8-ef9c-4703-87ab-547d10b7aac9",
+    "state": {
+      "name": "G0-12E Synthetic Cafe",
+      "ownerUserId": "b99f66c0-06bf-4769-b819-ed918a4fa0d0",
+      "status": "ACTIVE"
+    }
+  },
+  "targetAfter": {
+    "targetType": "CAFE_PAGE",
+    "targetId": "7ca0d5a8-ef9c-4703-87ab-547d10b7aac9",
+    "state": {
+      "name": "G0-12E Synthetic Cafe",
+      "ownerUserId": "b99f66c0-06bf-4769-b819-ed918a4fa0d0",
+      "status": "ACTIVE"
+    }
+  },
+  "noMutation": true
+}

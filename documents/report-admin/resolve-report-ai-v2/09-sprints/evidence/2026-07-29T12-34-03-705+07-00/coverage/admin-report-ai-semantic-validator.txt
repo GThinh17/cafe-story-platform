@@ -1,0 +1,5 @@
+Class: com/cafestory/service/serviceImplement/AdminReportAiSemanticValidator
+JaCoCo line: 104/104 = 100.00%
+JaCoCo branch: 114/118 = 96.61%
+Gate: line 100%; branch >=85%
+Result: PASS

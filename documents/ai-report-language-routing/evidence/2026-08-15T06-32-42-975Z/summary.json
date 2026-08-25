@@ -1,0 +1,32 @@
+{
+  "feature": "ai-report-language-routing",
+  "timestamp": "2026-08-15T06:32:42.975Z",
+  "status": "PARTIAL",
+  "implemented": {
+    "descriptionLanguagePriority": true,
+    "reasonLanguageFallback": true,
+    "englishFallback": true,
+    "translatedFreeTextFields": [
+      "explanation",
+      "findings[].rationale"
+    ],
+    "requestContractChanged": false,
+    "authorityChanged": false
+  },
+  "verification": {
+    "contractSuite": "PASS",
+    "languageCases": "3/3 PASS",
+    "adversarialSuite": "12/12 PASS",
+    "securitySuite": "PASS",
+    "projectCheck": "PASS",
+    "workflowSync": "PASS",
+    "runtimeN8n": "NOT_VERIFIED",
+    "broadEvaluationDataset": "NOT_VERIFIED",
+    "changedFileCoverage": "NOT_MEASURED"
+  },
+  "issues": [
+    "AIRL-001",
+    "AIRL-002",
+    "AIRL-003"
+  ]
+}

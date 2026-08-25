@@ -1,0 +1,13 @@
+{
+  "id": "M07-FX-15",
+  "description": "Confidence 0.999 trên USER vẫn manual/no-action; score không cấp authority.",
+  "base": "user-manual.json",
+  "operations": [
+    {"op":"replace","path":"/recommendation/assessmentConfidence","value":0.999}
+  ],
+  "expected": {
+    "schemaValid": true,
+    "semanticValid": true,
+    "errorCodes": []
+  }
+}

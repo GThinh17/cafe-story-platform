@@ -1,0 +1,31 @@
+{
+  "status": "PASS_WITH_ENV_WARNING",
+  "merge_head": "1036d39bbbcc99ca01a80f956740b245c1f33318",
+  "conflicted_files_resolved": 8,
+  "semantic_conflicts_fixed": 1,
+  "backend_tests": {
+    "run": 63,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "web": {
+    "typecheck": "PASS",
+    "build": "PASS",
+    "browser_console_errors": 0
+  },
+  "runtime_smoke": [
+    "login",
+    "mixed_feed",
+    "like_toggle_and_rollback",
+    "pricing_modal",
+    "profile",
+    "ads_campaigns_empty_state"
+  ],
+  "data_cleanup": "PASS",
+  "residual_risks": [
+    "stale local cache deserialization warnings",
+    "frontend unit coverage tooling missing",
+    "no real payment or campaign created"
+  ]
+}

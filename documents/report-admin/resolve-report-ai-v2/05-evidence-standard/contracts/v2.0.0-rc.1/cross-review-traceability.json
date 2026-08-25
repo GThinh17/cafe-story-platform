@@ -1,0 +1,44 @@
+{
+  "gate": "G0-12M-08",
+  "status": "COMPLETED",
+  "contractVersion": "2.0.0-rc.1",
+  "reviewedGates": [
+    "G0-12M-00",
+    "G0-12M-01",
+    "G0-12M-02",
+    "G0-12M-03",
+    "G0-12M-04",
+    "G0-12M-05",
+    "G0-12M-06",
+    "G0-12M-07"
+  ],
+  "coverage": {
+    "ruleIds": {"expected": 24, "actual": 24, "status": "PASS"},
+    "evidenceKinds": {"expected": 14, "actual": 14, "status": "PASS"},
+    "semanticRequirements": {"expected": 15, "actual": 15, "status": "PASS"},
+    "policyLifecycleStates": {"expected": 6, "actual": 6, "status": "PASS"},
+    "targets": {"expected": 4, "actual": 4, "status": "PASS"},
+    "fixtures": {"minimum": 15, "actual": 18, "passed": 18, "status": "PASS"},
+    "crossReviewChecks": {"expected": 16, "passed": 16, "status": "PASS"}
+  },
+  "issues": [
+    {"id":"M08-CONTRACT-01","classification":"CODE_BUG","status":"FIXED"},
+    {"id":"M08-CONTRACT-02","classification":"CODE_BUG","status":"FIXED"},
+    {"id":"M08-CONTRACT-03","classification":"CODE_BUG","status":"FIXED"},
+    {"id":"M08-CONTRACT-04","classification":"CODE_BUG","status":"FIXED"}
+  ],
+  "layerReadiness": {
+    "designContract": "READY_FOR_APPROVAL",
+    "backendRuntime": "NOT_IMPLEMENTED",
+    "n8nRuntime": "NOT_IMPLEMENTED",
+    "providerRuntime": "NOT_VERIFIED",
+    "adminFrontendRuntime": "NOT_IMPLEMENTED",
+    "securityBoundary": "PENDING_G0_12A",
+    "productionDeployment": "NOT_AUTHORIZED"
+  },
+  "lifecycle": "APPROVED",
+  "runtimeAuthority": false,
+  "approvalReceived": "APPROVE_G0-12M-08",
+  "nextRequiredAction": "IMPLEMENT_G0_12A",
+  "nextRequiredApproval": null
+}

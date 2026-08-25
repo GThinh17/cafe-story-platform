@@ -1,0 +1,339 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import {
+  BellIcon,
+  SparklesIcon,
+  CompassIcon,
+  HomeIcon,
+  MessageCircleIcon,
+  MegaphoneIcon,
+  PlusIcon,
+  UserIcon,
+} from "lucide-react";
+import { useI18n } from "@/components/providers/locale-provider";
+import { ActivityList } from "@/components/notification/activity-list";
+import { ModerationReasonDialog } from "@/components/notification/moderation-reason-dialog";
+import { PricingPlanModal } from "@/components/layout/pricing-plan-modal";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { BrandIcon } from "@/components/ui/brand-icon";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { useNotifications } from "@/hooks/use-notifications";
+import {
+  Sheet,
+  SheetContent,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
+import { useCreatePost } from "@/context/create-post-context";
+import { useCommentModal } from "@/context/comment-modal-context";
+import { usePathname, useRouter } from "next/navigation";
+import type { TranslationKey } from "@/lib/i18n";
+import type { ModerationStatus, NotificationResponse } from "@/types/notification";
+
+type SidebarItem = {
+  href: string;
+  labelKey: TranslationKey;
+  icon: "home" | "explore" | "bell" | "message" | "profile" | "plus" | "ads";
+};
+
+const sidebarItems: SidebarItem[] = [
+  { href: "/", labelKey: "nav.home", icon: "home" },
+  { href: "/explore", labelKey: "nav.explore", icon: "explore" },
+  { href: "/notifications", labelKey: "nav.notifications", icon: "bell" },
+  { href: "/messages", labelKey: "nav.messages", icon: "message" },
+  { href: "/login", labelKey: "nav.profile", icon: "profile" },
+  { href: "/reviews/new", labelKey: "nav.createPost", icon: "plus" },
+];
+
+const sidebarIcons = {
+  home: HomeIcon,
+  explore: CompassIcon,
+  bell: BellIcon,
+  message: MessageCircleIcon,
+  profile: UserIcon,
+  plus: PlusIcon,
+  ads: MegaphoneIcon,
+};
+
+function isActivePath(pathname: string, href: string) {
+  if (href === "/") {
+    return pathname === "/";
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+
+export function SharedSidebar() {
+  const pathname = usePathname();
+  const { t } = useI18n();
+  const { user, isLoading } = useCurrentUser();
+  const { isOpen: isCreatePostOpen, open: openCreatePost } = useCreatePost();
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isPricingPlanOpen, setIsPricingPlanOpen] = useState(false);
+  const [moderationDialog, setModerationDialog] = useState<{
+    open: boolean;
+    status: ModerationStatus | null;
+    reason: string | null;
+  }>({ open: false, status: null, reason: null });
+  const profileHref = user?.userName ? `/${user.userName}` : "/login";
+  const router = useRouter();
+  const commentModal = useCommentModal();
+  const visibleSidebarItems = user?.roles.some((role) =>
+    ["CAFE_PAGE", "ROLE_CAFE_PAGE"].includes(role),
+  )
+    ? [
+        ...sidebarItems.slice(0, 4),
+        { href: "/ads", icon: "ads" as const, labelKey: "nav.ads" as const },
+        ...sidebarItems.slice(4),
+      ]
+    : sidebarItems;
+  const {
+    notifications,
+    unreadCount,
+    isLoading: notifLoading,
+    error: notifError,
+    activeFilter,
+    actors,
+    setActiveFilter,
+    markAllRead,
+    markRead,
+  } = useNotifications();
+
+  function handleNotificationClick(notification: NotificationResponse) {
+    if (!notification.isRead) void markRead(notification.id);
+    setIsNotificationsOpen(false);
+
+    switch (notification.type) {
+      case "MESSAGE":
+        if (notification.conversationId) {
+          router.push(`/messages?conversationId=${notification.conversationId}`);
+        }
+        break;
+      case "LIKE":
+      case "SHARE":
+      case "COMMENT":
+      case "TAG":
+        if (notification.blogId) commentModal.openByBlogId(notification.blogId);
+        break;
+      case "FOLLOW": {
+        const actor = actors[notification.actorId];
+        if (actor?.userName) {
+          router.push(`/${encodeURIComponent(actor.userName)}`);
+        }
+        break;
+      }
+      case "BLOG_MODERATION":
+        if (notification.moderationStatus === "APPROVED") {
+          if (notification.blogId) commentModal.openByBlogId(notification.blogId);
+        } else {
+          setModerationDialog({
+            open: true,
+            status: notification.moderationStatus,
+            reason: notification.moderationReason,
+          });
+        }
+        break;
+    }
+  }
+
+  return (
+    <>
+      <aside
+        className="group fixed inset-y-0 left-0 z-50 hidden w-16 flex-col overflow-hidden shadow-lg bg-surface  transition-[width] duration-200 ease-out hover:w-60 hover:shadow-lg focus-within:w-60 focus-within:shadow-lg sm:flex sm:w-[72px]"
+        aria-label={t("nav.primary")}
+      >
+        <Link
+          className="flex h-[72px] min-w-0 items-center gap-3 px-3 text-muted no-underline sm:px-4"
+          href="/"
+          aria-label={t("nav.brandHome")}
+          onClick={() => setIsNotificationsOpen(false)}
+        >
+          <BrandIcon className="size-10 shadow-sm" />
+          <img
+            alt="CaféStory"
+            className="h-7 w-auto translate-x-[-4px] object-contain opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100 [mix-blend-mode:multiply] dark:invert dark:[mix-blend-mode:screen]"
+            decoding="async"
+            src="/icons/cafestory-wordmark.png"
+          />
+        </Link>
+
+        <nav className="grid gap-1.5 px-2 py-2 sm:px-3">
+          {visibleSidebarItems.map((item) => {
+            const Icon = sidebarIcons[item.icon];
+            const isNotificationItem = item.icon === "bell";
+            const isCreatePostItem = item.icon === "plus";
+            const isProfileItem = item.icon === "profile";
+            const itemHref =
+              isProfileItem && !isLoading ? profileHref : item.href;
+            const isActive = isNotificationItem
+              ? isNotificationsOpen || isActivePath(pathname, itemHref)
+              : isCreatePostItem
+                ? isCreatePostOpen || isActivePath(pathname, itemHref)
+              : isActivePath(pathname, itemHref);
+            const itemClassName = cn(
+              buttonVariants({ variant: "ghost" }),
+              "h-12 w-full min-w-0 justify-start gap-3 px-3 text-sm no-underline",
+              isActive
+                ? `${isNotificationItem ? "font-medium" : "font-bold"} text-primary-strong hover:text-primary-strong`
+                : "font-medium text-muted hover:text-muted",
+            );
+
+            const itemContent = (
+              <>
+                <span className="relative grid size-6 shrink-0 place-items-center">
+                  <Icon aria-hidden="true" />
+                  {isNotificationItem && unreadCount > 0 && (
+                    <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-black leading-none text-white">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
+                </span>
+                <span className="translate-x-[-4px] whitespace-nowrap opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100">
+                  {t(item.labelKey)}
+                </span>
+              </>
+            );
+
+            if (isProfileItem && isLoading) {
+              return (
+                <Button
+                  aria-disabled="true"
+                  aria-label={t(item.labelKey)}
+                  className={itemClassName}
+                  disabled
+                  key={item.href}
+                  type="button"
+                  variant="ghost"
+                >
+                  {itemContent}
+                </Button>
+              );
+            }
+
+            if (isNotificationItem) {
+              return (
+                <Button
+                  aria-expanded={isNotificationsOpen}
+                  aria-label={t(item.labelKey)}
+                  className={itemClassName}
+                  key={item.href}
+                  onClick={() => setIsNotificationsOpen((isOpen) => !isOpen)}
+                  type="button"
+                  variant="ghost"
+                >
+                  {itemContent}
+                </Button>
+              );
+            }
+
+            if (isCreatePostItem) {
+              return (
+                <Button
+                  aria-expanded={isCreatePostOpen}
+                  aria-label={t(item.labelKey)}
+                  className={itemClassName}
+                  key={item.href}
+                  onClick={() => {
+                    setIsNotificationsOpen(false);
+                    openCreatePost();
+                  }}
+                  type="button"
+                  variant="ghost"
+                >
+                  {itemContent}
+                </Button>
+              );
+            }
+
+            return (
+              <Link
+                aria-current={isActive ? "page" : undefined}
+                aria-label={t(item.labelKey)}
+                className={itemClassName}
+                href={itemHref}
+                key={item.href}
+                onClick={() => setIsNotificationsOpen(false)}
+              >
+                {itemContent}
+              </Link>
+            );
+          })}
+
+          <Button
+            aria-expanded={isPricingPlanOpen}
+            aria-label={t("nav.pricingPlan")}
+            className={cn(
+              buttonVariants({ variant: "ghost" }),
+              "h-12 w-full min-w-0 justify-start gap-3 px-3 text-sm no-underline",
+              isPricingPlanOpen
+                ? "font-bold text-primary-strong hover:text-primary-strong"
+                : "font-medium text-muted hover:text-muted",
+            )}
+            onClick={() => {
+              setIsNotificationsOpen(false);
+              setIsPricingPlanOpen(true);
+            }}
+            type="button"
+            variant="ghost"
+          >
+            <span className="grid size-6 shrink-0 place-items-center">
+              <SparklesIcon aria-hidden="true" />
+            </span>
+            <span className="translate-x-[-4px] whitespace-nowrap opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100">
+              {t("nav.pricingPlan")}
+            </span>
+          </Button>
+        </nav>
+
+        <div className="mt-auto px-2 pb-4 sm:px-3">
+          <div className="flex h-12 min-w-0 items-center gap-3 px-3">
+            <ThemeToggle/>
+            <span className="translate-x-[-4px] whitespace-nowrap text-sm font-medium text-muted opacity-0 transition duration-150 group-hover:translate-x-0 group-hover:opacity-100 group-focus-within:translate-x-0 group-focus-within:opacity-100">
+              {t("nav.theme")}
+            </span>
+          </div>
+        </div>
+      </aside>
+
+      <Sheet open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
+        <SheetContent
+          className="!w-[min(500px,100vw)] !max-w-[500px] border-border bg-background p-0"
+          side="left"
+          showCloseButton={false}
+        >
+          <SheetTitle className="sr-only">{t("nav.notifications")}</SheetTitle>
+          <ActivityList
+            notifications={notifications}
+            unreadCount={unreadCount}
+            isLoading={notifLoading}
+            error={notifError}
+            activeFilter={activeFilter}
+            actors={actors}
+            onFilterChange={setActiveFilter}
+            onMarkAllRead={markAllRead}
+            onItemClick={handleNotificationClick}
+            onClose={() => setIsNotificationsOpen(false)}
+          />
+        </SheetContent>
+      </Sheet>
+
+      <PricingPlanModal
+        isOpen={isPricingPlanOpen}
+        onOpenChange={setIsPricingPlanOpen}
+      />
+
+      <ModerationReasonDialog
+        open={moderationDialog.open}
+        status={moderationDialog.status}
+        reason={moderationDialog.reason}
+        onClose={() =>
+          setModerationDialog({ open: false, status: null, reason: null })
+        }
+      />
+    </>
+  );
+}

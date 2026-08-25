@@ -1,0 +1,47 @@
+{
+  "id": "2933b559-d3e9-4490-bc27-ccf7ee11b5e0",
+  "contractVersion": "2.0",
+  "correlationId": "83fac594-f8ec-468e-a032-deead134d058",
+  "automationMode": "A0_RECOMMEND_ONLY",
+  "recommendationState": "NEEDS_MANUAL_REVIEW",
+  "contentReportId": "fc476a7b-de29-49e7-a5de-148ce766af51",
+  "targetType": "BLOG",
+  "targetId": "4f04a3f0-e3c5-492b-a65a-b387f1c1a6ec",
+  "reportDecision": "NEEDS_MANUAL_REVIEW",
+  "targetAction": "NO_ACTION",
+  "confidenceScore": null,
+  "riskScore": null,
+  "labels": [
+    "RESTRICTED_GOODS"
+  ],
+  "ruleCode": null,
+  "explanation": "Insufficient evidence quality for claim regarding restricted goods necessitates manual review for a definitive resolution.",
+  "modelName": "gpt-4o-mini-2024-07-18",
+  "createdAt": "2026-07-29T11:15:38.5155811",
+  "autoApplyJob": null,
+  "autoApplyWarning": null,
+  "findings": [],
+  "evidenceSummary": {
+    "usedEvidenceIds": [
+      "EV-TARGET-IDENTITY",
+      "EV-TARGET-CONTENT",
+      "EV-TARGET-STATE",
+      "EV-REASON-ROUTE"
+    ],
+    "counterEvidenceIds": [],
+    "missingEvidenceIds": []
+  },
+  "blockedReasons": [
+    "EVIDENCE_NOT_SUFFICIENT"
+  ],
+  "evidenceQuality": "HIGH",
+  "evidenceSufficiency": "INSUFFICIENT",
+  "violationLikelihood": "UNKNOWN",
+  "harmSeverity": "MEDIUM",
+  "actionRisk": "LOW",
+  "policyVersion": "PF-2.0.0-proposed.1",
+  "ruleCatalogVersion": "RC-2.0.0-proposed.1",
+  "promptVersion": "report-ai-v2-sprint1.1",
+  "workflowVersion": "cafestory-admin-report-ai-resolution-v2",
+  "targetSnapshotHash": "9fee4c4ef06af18c2d0dd91fba961f6361c27e45a7dec957f0dce1dc56a0733b"
+}

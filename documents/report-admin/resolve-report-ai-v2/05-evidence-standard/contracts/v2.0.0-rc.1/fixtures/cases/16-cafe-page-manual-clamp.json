@@ -1,0 +1,11 @@
+{
+  "id": "M07-FX-16",
+  "description": "CAFE_PAGE luôn local manual-only và provider projection bị cấm trong Sprint 1.",
+  "base": "cafe-page-manual.json",
+  "operations": [],
+  "expected": {
+    "schemaValid": true,
+    "semanticValid": true,
+    "errorCodes": []
+  }
+}

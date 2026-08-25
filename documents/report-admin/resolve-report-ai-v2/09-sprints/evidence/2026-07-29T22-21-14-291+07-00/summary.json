@@ -1,0 +1,72 @@
+{
+  "package": "S2-03",
+  "status": "COMPLETED_VERIFIED_APPROVED",
+  "datasetVersion": "1.0.0-rc.1",
+  "rubricVersion": "1.0.0-rc.1",
+  "lifecycle": "PROPOSED",
+  "runtimeAuthority": false,
+  "counts": {
+    "records": 26,
+    "evidenceBundles": 9,
+    "hardSafety": 20,
+    "semanticCandidates": 4,
+    "openDisagreements": 2
+  },
+  "verification": {
+    "datasetNegativeGuards": {
+      "passed": 6,
+      "failed": 0
+    },
+    "schemaBoundaries": {
+      "passed": 7,
+      "failed": 0
+    },
+    "adversarial": {
+      "passed": 12,
+      "failed": 0
+    },
+    "m07Fixtures": {
+      "passed": 18,
+      "failed": 0
+    },
+    "m07CrossReview": {
+      "passed": 16,
+      "failed": 0
+    },
+    "backendFocused": {
+      "passed": 50,
+      "failed": 0
+    },
+    "backendFull": {
+      "tests": 638,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 1
+    },
+    "hardSafetyPercent": 100.0
+  },
+  "providerQuality": {
+    "status": "NOT_EVALUATED_NO_PROVIDER_CALL",
+    "denominator": 0,
+    "providerCalled": false
+  },
+  "fingerprints": {
+    "dataset": "e42d57559ed00be22dbbf1311aa070255ca7499f0c2095d8145361d73e3895f1",
+    "schema": "b62084d396b7006988a4d142a51755f715ef5117d77529feae5cca01096029cd",
+    "rubric": "200a14e477d85893f81a409b9648ff174772dd31c8a50053e02e15ea372ab39a"
+  },
+  "issues": {
+    "detected": 5,
+    "resolvedVerified": 5,
+    "productionCodeBugs": 0
+  },
+  "scope": {
+    "productionSourceChanged": false,
+    "frontendChanged": false,
+    "databaseChanged": false,
+    "runtimePublished": false,
+    "productionDeploymentAuthorized": false
+  },
+  "approval": "APPROVE_S2_03",
+  "nextRequiredAction": "IMPLEMENT_S2_04"
+}

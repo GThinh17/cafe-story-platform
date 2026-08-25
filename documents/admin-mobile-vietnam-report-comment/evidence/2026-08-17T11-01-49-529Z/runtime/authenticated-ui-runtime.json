@@ -1,0 +1,35 @@
+{
+  "mobileViewport": "390x844",
+  "mobile": {
+    "login": "PASS",
+    "freshDefaultVietnamese": "PASS",
+    "feed": "PASS",
+    "search": "PASS",
+    "commentLoadPostReply": "PASS",
+    "rawCaptionInvariantAcrossLocale": "PASS",
+    "rawCommentInvariantAcrossLocale": "PASS",
+    "blogReport": {
+      "reportId": "940b98a9-fc56-4dc1-9e89-bea1404b4e35",
+      "finalReportStatus": "REJECTED",
+      "targetStatusBeforeAndAfter": "PUBLISHED"
+    },
+    "commentReport": {
+      "reportId": "8e01ca87-c079-4fc0-9ea4-3a37c4b88f75",
+      "finalReportStatus": "REJECTED",
+      "targetStatusBeforeAndAfter": "PUBLISHED"
+    },
+    "testCommentAndReplyRemaining": 0,
+    "finalLocale": "vi"
+  },
+  "admin": {
+    "login": "PASS",
+    "commentReportTargetType": "COMMENT",
+    "translationOnlyAfterClick": "PASS",
+    "safeErrorAndRetry": "PASS",
+    "originalTranslationToggle": "PASS",
+    "uuidAndDiagnosticNumberPreserved": "PASS",
+    "contentMutationByTranslation": false,
+    "reportOrTargetMutationByAI": false
+  },
+  "secretsStored": false
+}

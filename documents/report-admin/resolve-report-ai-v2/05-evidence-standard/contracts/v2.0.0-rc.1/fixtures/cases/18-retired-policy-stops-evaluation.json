@@ -1,0 +1,17 @@
+{
+  "id": "M08-FX-18",
+  "description": "RETIRED là lifecycle biết trước nhưng không có runtime authority; phải policy-stop thay vì unknown schema.",
+  "base": "blog-resolve.json",
+  "operations": [
+    {"op":"replace","path":"/policyContext/policyStatus","value":"RETIRED"},
+    {"op":"replace","path":"/policyContext/ruleCatalogStatus","value":"RETIRED"},
+    {"op":"replace","path":"/providerExecution","value":{"eligible":false,"called":false,"route":"POLICY_VALIDATION_STOP"}},
+    {"op":"replace","path":"/ruleEvaluations/0","value":{"ruleId":"CSR.SAF.001","material":true,"outcome":"POLICY_INVALID","supportingEvidenceIds":[],"counterEvidenceIds":[],"missingEvidenceIds":[]}},
+    {"op":"replace","path":"/recommendation","value":{"operationalStatus":"POLICY_INVALID","reportDecision":null,"candidateTargetAction":"NO_ACTION","evidenceSufficiency":"NOT_EVALUATED","findings":[],"assessmentConfidence":null}}
+  ],
+  "expected": {
+    "schemaValid": true,
+    "semanticValid": true,
+    "errorCodes": []
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "package": "S2-DONE-AUDIT",
+  "status": "PARTIAL_AUDIT_FINDINGS_APPROVED_REMEDIATION_REQUIRED",
+  "auditResult": "PARTIAL_AUDIT_FINDINGS_REMEDIATION_REQUIRED",
+  "implementationToken": "IMPLEMENT_S2_DONE_AUDIT",
+  "approval": "APPROVE_S2_DONE_AUDIT",
+  "auditCounts": {
+    "pass": 10,
+    "passWithScope": 1,
+    "partial": 3,
+    "blocked": 0
+  },
+  "s2_01ToS2_04Approved": true,
+  "s2_05Disposition": "DEFERRED_AFTER_PARTIAL_RUN_NO_QUALITY_AUTHORITY",
+  "providerCalledByAudit": false,
+  "selectedModel": null,
+  "schemaBoundaryPassed": 7,
+  "schemaBoundaryTotal": 7,
+  "adversarialPassed": 12,
+  "adversarialTotal": 12,
+  "promptPilot": "PASS",
+  "datasetRecords": 26,
+  "datasetEvidenceBundles": 9,
+  "hardSafetyPercent": 100,
+  "backendFocusedTests": 50,
+  "backendFocusedFailures": 0,
+  "backendFullTests": 638,
+  "backendFullFailures": 0,
+  "backendFullErrors": 0,
+  "backendFullSkipped": 1,
+  "coverage": {
+    "AdminReportAiResolutionServiceImpl": {
+      "linePercent": 98.77,
+      "branchPercent": 88.43,
+      "status": "FAIL_LINE_GATE"
+    },
+    "AdminReportAiSemanticValidator": {
+      "linePercent": 100,
+      "branchPercent": 88.49,
+      "status": "PASS"
+    },
+    "AdminReportAiPolicyCatalog": {
+      "linePercent": 100,
+      "branchPercent": 100,
+      "status": "PASS"
+    }
+  },
+  "securityStatic": "FAIL_TEST_FIXTURE_DRIFT",
+  "workflowCodeSync": true,
+  "secretScan": "PASS",
+  "productionReadinessPassed": 9,
+  "productionReadinessTotal": 14,
+  "productionReadinessStatus": "NOT_READY",
+  "productionDeploymentAuthorized": false,
+  "issuesDetected": 4,
+  "issuesResolved": 1,
+  "issuesOpenRemediation": 3,
+  "sourceChangedByAudit": false,
+  "providerRetestRequiredForSprint2CoreClosure": false,
+  "nextRequiredAction": "IMPLEMENT_S2_DONE_FIX_01",
+  "nextImplementationAfterApproval": "IMPLEMENT_S2_DONE_FIX_01"
+}

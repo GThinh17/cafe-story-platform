@@ -1,0 +1,1424 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cafestory.local/schemas/report-ai/evidence-metadata-contract/2.0.0-rc.1",
+  "title": "CafeStory Admin Report AI Evidence Metadata Contract",
+  "description": "Executable structural contract for G0-12M-07. Semantic decision invariants are additionally enforced by validate-fixtures.mjs.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "schemaVersion",
+    "correlationId",
+    "policyContext",
+    "targetSnapshot",
+    "providerExecution",
+    "evidence",
+    "ruleEvaluations",
+    "missingEvidence",
+    "conflicts",
+    "scopeEvaluation",
+    "recommendation"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "2.0.0-rc.1"
+    },
+    "schemaVersion": {
+      "const": "1.0.0-rc.1"
+    },
+    "correlationId": {
+      "type": "string",
+      "pattern": "^COR-[A-Z0-9-]{3,80}$"
+    },
+    "policyContext": {
+      "$ref": "#/$defs/policyContext"
+    },
+    "targetSnapshot": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/blogSnapshot"
+        },
+        {
+          "$ref": "#/$defs/commentSnapshot"
+        },
+        {
+          "$ref": "#/$defs/userSnapshot"
+        },
+        {
+          "$ref": "#/$defs/cafePageSnapshot"
+        }
+      ]
+    },
+    "providerExecution": {
+      "$ref": "#/$defs/providerExecution"
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/evidenceItem"
+      }
+    },
+    "ruleEvaluations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/ruleEvaluation"
+      }
+    },
+    "missingEvidence": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/missingEvidence"
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/conflict"
+      }
+    },
+    "scopeEvaluation": {
+      "$ref": "#/$defs/scopeEvaluation"
+    },
+    "recommendation": {
+      "$ref": "#/$defs/recommendation"
+    }
+  },
+  "$defs": {
+    "ruleId": {
+      "enum": [
+        "CSR.COM.001",
+        "CSR.EVD.001",
+        "CSR.EVD.002",
+        "CSR.EVD.003",
+        "CSR.EVD.004",
+        "CSR.HAR.001",
+        "CSR.HAR.002",
+        "CSR.HATE.001",
+        "CSR.INT.001",
+        "CSR.INT.002",
+        "CSR.INT.003",
+        "CSR.IP.001",
+        "CSR.IP.002",
+        "CSR.PRIV.001",
+        "CSR.REL.001",
+        "CSR.ROUTE.001",
+        "CSR.ROUTE.002",
+        "CSR.ROUTE.003",
+        "CSR.SAF.001",
+        "CSR.SAF.002",
+        "CSR.SAF.003",
+        "CSR.SEX.001",
+        "CSR.SEX.002",
+        "CSR.SPAM.001"
+      ]
+    },
+    "evidenceKind": {
+      "enum": [
+        "TARGET_IDENTITY",
+        "REPORT_TARGET_ASSOCIATION",
+        "TARGET_STATE",
+        "TARGET_TEXT_CONTENT",
+        "TARGET_MEDIA_REFERENCE",
+        "VERIFIED_MEDIA_OBSERVATION",
+        "TARGET_ACTOR_ASSOCIATION",
+        "TARGET_PAGE_ASSOCIATION",
+        "TARGET_REGION_ASSOCIATION",
+        "PARENT_BLOG_CONTEXT",
+        "PARENT_COMMENT_CONTEXT",
+        "TARGET_PUBLIC_PROFILE_CONTEXT",
+        "PAGE_OWNER_ASSOCIATION",
+        "TARGET_DEEP_CONTEXT"
+      ]
+    },
+    "semanticRequirementCode": {
+      "enum": [
+        "SEM-THREAT-CREDIBILITY",
+        "SEM-TARGETED-SUBJECT",
+        "SEM-PROTECTED-CHARACTERISTIC",
+        "SEM-AGE-CONSENT",
+        "SEM-PATTERN-HISTORY",
+        "SEM-IDENTITY-COMPARATOR",
+        "SEM-AUTHORITATIVE-FACT",
+        "SEM-TRANSACTION-INTENT",
+        "SEM-CLAIMANT-AUTHORITY",
+        "SEM-LICENSE-PERMISSION",
+        "SEM-PRIVACY-AUTHORIZATION",
+        "SEM-JURISDICTION",
+        "SEM-RESTRICTED-REGISTRY",
+        "SEM-EXCEPTION-CONTEXT",
+        "SEM-COMPLETE-EVALUATION-SCOPE"
+      ]
+    },
+    "policyContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policyVersion",
+        "policyStatus",
+        "ruleCatalogVersion",
+        "ruleCatalogStatus",
+        "evidenceKindCatalogVersion",
+        "candidateRuleIds"
+      ],
+      "properties": {
+        "policyVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "policyStatus": {
+          "enum": [
+            "DRAFT",
+            "PROPOSED",
+            "APPROVED",
+            "ACTIVE",
+            "DEPRECATED",
+            "RETIRED"
+          ]
+        },
+        "ruleCatalogVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ruleCatalogStatus": {
+          "enum": [
+            "DRAFT",
+            "PROPOSED",
+            "APPROVED",
+            "ACTIVE",
+            "DEPRECATED",
+            "RETIRED"
+          ]
+        },
+        "evidenceKindCatalogVersion": {
+          "const": "1.0.0-rc.1"
+        },
+        "candidateRuleIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/ruleId"
+          }
+        }
+      }
+    },
+    "reportAssociation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reportAlias",
+        "targetAlias",
+        "associationValidated"
+      ],
+      "properties": {
+        "reportAlias": {
+          "$ref": "#/$defs/alias"
+        },
+        "targetAlias": {
+          "$ref": "#/$defs/alias"
+        },
+        "associationValidated": {
+          "type": "boolean"
+        }
+      }
+    },
+    "content": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sanitizedText",
+        "sourceLength",
+        "capturedLength",
+        "truncated",
+        "sanitizerVersion",
+        "contentDigest"
+      ],
+      "properties": {
+        "sanitizedText": {
+          "type": "string",
+          "maxLength": 4000
+        },
+        "sourceLength": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "capturedLength": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4000
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "sanitizerVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contentDigest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "mediaReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mediaAlias",
+        "referenceDigest",
+        "mediaTypeHint",
+        "fetched",
+        "evaluated"
+      ],
+      "properties": {
+        "mediaAlias": {
+          "$ref": "#/$defs/alias"
+        },
+        "referenceDigest": {
+          "$ref": "#/$defs/digest"
+        },
+        "mediaTypeHint": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fetched": {
+          "type": "boolean"
+        },
+        "evaluated": {
+          "type": "boolean"
+        }
+      }
+    },
+    "targetSnapshotBase": {
+      "type": "object",
+      "required": [
+        "targetType",
+        "targetAlias",
+        "snapshotVersion",
+        "snapshotHash",
+        "capturedAt",
+        "freshness",
+        "reportTargetAssociation",
+        "data"
+      ],
+      "properties": {
+        "targetType": {
+          "enum": [
+            "BLOG",
+            "COMMENT",
+            "USER",
+            "CAFE_PAGE"
+          ]
+        },
+        "targetAlias": {
+          "$ref": "#/$defs/alias"
+        },
+        "snapshotVersion": {
+          "type": "string",
+          "minLength": 1
+        },
+        "snapshotHash": {
+          "$ref": "#/$defs/digest"
+        },
+        "capturedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "freshness": {
+          "enum": [
+            "CURRENT",
+            "LIMITED",
+            "STALE"
+          ]
+        },
+        "reportTargetAssociation": {
+          "$ref": "#/$defs/reportAssociation"
+        },
+        "data": {
+          "type": "object"
+        }
+      }
+    },
+    "blogSnapshot": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/$defs/targetSnapshotBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "targetType": {
+              "const": "BLOG"
+            },
+            "snapshotVersion": {
+              "type": "string",
+              "pattern": "^blog-[0-9]+\\.[0-9]+\\.[0-9]+$"
+            },
+            "data": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "state",
+                "content",
+                "media"
+              ],
+              "properties": {
+                "state": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "status",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  }
+                },
+                "content": {
+                  "$ref": "#/$defs/content"
+                },
+                "media": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/mediaReference"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "commentSnapshot": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/$defs/targetSnapshotBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "targetType": {
+              "const": "COMMENT"
+            },
+            "snapshotVersion": {
+              "type": "string",
+              "pattern": "^comment-[0-9]+\\.[0-9]+\\.[0-9]+$"
+            },
+            "data": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "state",
+                "content",
+                "context",
+                "media"
+              ],
+              "properties": {
+                "state": {
+                  "type": "object",
+                  "required": [
+                    "status",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "updatedAt": {
+                      "type": "string",
+                      "format": "date-time"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "content": {
+                  "$ref": "#/$defs/content"
+                },
+                "context": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "scope",
+                    "parentRelationPresent"
+                  ],
+                  "properties": {
+                    "scope": {
+                      "const": "DIRECT_PARENT_AND_BLOG_ONLY"
+                    },
+                    "parentRelationPresent": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "media": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/mediaReference"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "userSnapshot": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/$defs/targetSnapshotBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "targetType": {
+              "const": "USER"
+            },
+            "snapshotVersion": {
+              "type": "string",
+              "pattern": "^user-manual-[0-9]+\\.[0-9]+\\.[0-9]+$"
+            },
+            "freshness": {
+              "const": "LIMITED"
+            },
+            "data": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "state",
+                "publicProfileContext",
+                "privacy"
+              ],
+              "properties": {
+                "state": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "accountStatus",
+                    "sourceRepresentation",
+                    "versionSignal"
+                  ],
+                  "properties": {
+                    "accountStatus": {
+                      "type": "boolean"
+                    },
+                    "sourceRepresentation": {
+                      "const": "BOOLEAN"
+                    },
+                    "versionSignal": {
+                      "const": "UNAVAILABLE"
+                    }
+                  }
+                },
+                "publicProfileContext": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "userName": {},
+                    "displayName": {},
+                    "description": {},
+                    "avatar": {},
+                    "contextOnly": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "privacy": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "providerEligible",
+                    "providerProjectionCreated",
+                    "relatedCafePageContextCollected"
+                  ],
+                  "properties": {
+                    "providerEligible": {
+                      "const": false
+                    },
+                    "providerProjectionCreated": {
+                      "const": false
+                    },
+                    "relatedCafePageContextCollected": {
+                      "const": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "cafePageSnapshot": {
+      "type": "object",
+      "unevaluatedProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/$defs/targetSnapshotBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "targetType": {
+              "const": "CAFE_PAGE"
+            },
+            "snapshotVersion": {
+              "type": "string",
+              "pattern": "^cafe-page-manual-[0-9]+\\.[0-9]+\\.[0-9]+$"
+            },
+            "data": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "state",
+                "ownershipContext",
+                "publicPageContext",
+                "media",
+                "privacy"
+              ],
+              "properties": {
+                "state": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "lifecycleStatus",
+                    "subscriptionActive",
+                    "stateConsistency"
+                  ],
+                  "properties": {
+                    "lifecycleStatus": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "subscriptionActive": {
+                      "type": "boolean"
+                    },
+                    "stateConsistency": {
+                      "enum": [
+                        "CONSISTENT",
+                        "INCONSISTENT"
+                      ]
+                    }
+                  }
+                },
+                "ownershipContext": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "primaryOwnerAlias": {},
+                    "primaryOwnerRef": {},
+                    "ownerAssociationAvailability": {},
+                    "ownerPiiIncluded": {
+                      "type": "boolean"
+                    },
+                    "privilegedMemberDetails": {}
+                  }
+                },
+                "publicPageContext": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {},
+                    "description": {},
+                    "declaredAddress": {},
+                    "regionRef": {},
+                    "contextOnly": {
+                      "type": "boolean"
+                    }
+                  }
+                },
+                "media": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/mediaReference"
+                  }
+                },
+                "privacy": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "providerEligible",
+                    "providerProjectionCreated",
+                    "ownerContactPiiIncluded",
+                    "memberPiiIncluded"
+                  ],
+                  "properties": {
+                    "providerEligible": {
+                      "const": false
+                    },
+                    "providerProjectionCreated": {
+                      "const": false
+                    },
+                    "ownerContactPiiIncluded": {
+                      "const": false
+                    },
+                    "memberPiiIncluded": {
+                      "const": false
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "providerExecution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eligible",
+        "called",
+        "route"
+      ],
+      "properties": {
+        "eligible": {
+          "type": "boolean"
+        },
+        "called": {
+          "type": "boolean"
+        },
+        "route": {
+          "enum": [
+            "N8N_PROVIDER",
+            "LOCAL_MANUAL_ONLY",
+            "POLICY_VALIDATION_STOP"
+          ]
+        }
+      }
+    },
+    "evidenceItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidenceId",
+        "envelopeVersion",
+        "evidenceKind",
+        "subject",
+        "source",
+        "capture",
+        "integrity",
+        "availability",
+        "quality",
+        "privacy",
+        "intendedUse",
+        "collectedForRuleIds",
+        "payload"
+      ],
+      "properties": {
+        "evidenceId": {
+          "type": "string",
+          "pattern": "^EV-[A-Z0-9-]{3,100}$"
+        },
+        "envelopeVersion": {
+          "const": "1.0.0-rc.1"
+        },
+        "evidenceKind": {
+          "$ref": "#/$defs/evidenceKind"
+        },
+        "subject": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "targetType",
+            "targetAlias",
+            "snapshotVersion",
+            "snapshotHash"
+          ],
+          "properties": {
+            "targetType": {
+              "enum": [
+                "BLOG",
+                "COMMENT",
+                "USER",
+                "CAFE_PAGE"
+              ]
+            },
+            "targetAlias": {
+              "$ref": "#/$defs/alias"
+            },
+            "snapshotVersion": {
+              "type": "string"
+            },
+            "snapshotHash": {
+              "$ref": "#/$defs/digest"
+            }
+          }
+        },
+        "source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sourceType",
+            "sourceSystem",
+            "verificationStatus",
+            "authorityScope"
+          ],
+          "properties": {
+            "sourceType": {
+              "enum": [
+                "PLATFORM_RECORD",
+                "TARGET_SNAPSHOT",
+                "VERIFIED_MEDIA_OBSERVATION",
+                "AUTHORITATIVE_EXTERNAL_REFERENCE"
+              ]
+            },
+            "sourceSystem": {
+              "type": "string",
+              "minLength": 1
+            },
+            "sourceEntityType": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "sourceEntityAlias": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/alias"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sourceFieldPath": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "verificationStatus": {
+              "enum": [
+                "SYSTEM_CAPTURED",
+                "TOOL_VERIFIED",
+                "AUTHORITATIVE_REFERENCE_VERIFIED"
+              ]
+            },
+            "authorityScope": {
+              "enum": [
+                "PLATFORM_OWNED_FIELD",
+                "EXTERNAL_AUTHORITY_LIMITED"
+              ]
+            }
+          }
+        },
+        "capture": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "collectorName",
+            "collectorVersion",
+            "capturedAt",
+            "transformations"
+          ],
+          "properties": {
+            "collectorName": {
+              "type": "string",
+              "minLength": 1
+            },
+            "collectorVersion": {
+              "type": "string",
+              "minLength": 1
+            },
+            "capturedAt": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "sourceUpdatedAt": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "format": "date-time"
+            },
+            "transformations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "type",
+                  "version",
+                  "materiality"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": "string"
+                  },
+                  "materiality": {
+                    "enum": [
+                      "NON_MATERIAL",
+                      "MATERIAL",
+                      "MATERIALITY_UNKNOWN"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "integrity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "canonicalization",
+            "digestAlgorithm",
+            "payloadDigest"
+          ],
+          "properties": {
+            "canonicalization": {
+              "const": "JCS"
+            },
+            "digestAlgorithm": {
+              "const": "SHA-256"
+            },
+            "payloadDigest": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/digest"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "sourceDigest": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/digest"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        },
+        "availability": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "reasonCode"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "AVAILABLE",
+                "PARTIAL",
+                "MISSING",
+                "UNREADABLE",
+                "INACCESSIBLE",
+                "NOT_COLLECTED",
+                "STALE"
+              ]
+            },
+            "reasonCode": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "quality": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "level",
+            "reasonCodes"
+          ],
+          "properties": {
+            "level": {
+              "enum": [
+                "HIGH",
+                "MEDIUM",
+                "LOW",
+                "UNUSABLE"
+              ]
+            },
+            "reasonCodes": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "privacy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "classification",
+            "containsPersonalData",
+            "redactionStatus",
+            "retentionClass"
+          ],
+          "properties": {
+            "classification": {
+              "enum": [
+                "PUBLIC_CONTENT",
+                "INTERNAL_MODERATION",
+                "RESTRICTED",
+                "LEGAL_RESTRICTED"
+              ]
+            },
+            "containsPersonalData": {
+              "type": "boolean"
+            },
+            "redactionStatus": {
+              "enum": [
+                "NOT_REQUIRED",
+                "APPLIED",
+                "PARTIAL",
+                "BLOCKED"
+              ]
+            },
+            "retentionClass": {
+              "const": "REPORT_EVIDENCE_90D"
+            }
+          }
+        },
+        "intendedUse": {
+          "enum": [
+            "RULE_EVALUATION_CANDIDATE",
+            "CONTEXT_ONLY"
+          ]
+        },
+        "collectedForRuleIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/ruleId"
+          }
+        },
+        "payload": {
+          "$ref": "#/$defs/payload"
+        }
+      }
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "representation",
+        "mediaType",
+        "value",
+        "reference",
+        "truncated"
+      ],
+      "properties": {
+        "representation": {
+          "enum": [
+            "INLINE",
+            "REFERENCE",
+            "NONE"
+          ]
+        },
+        "mediaType": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "value": {},
+        "reference": {},
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "representation": {
+                "const": "INLINE"
+              }
+            },
+            "required": [
+              "representation"
+            ]
+          },
+          "then": {
+            "properties": {
+              "mediaType": {
+                "type": "string"
+              },
+              "value": {
+                "not": {
+                  "type": "null"
+                }
+              },
+              "reference": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "representation": {
+                "const": "REFERENCE"
+              }
+            },
+            "required": [
+              "representation"
+            ]
+          },
+          "then": {
+            "properties": {
+              "mediaType": {
+                "type": "string"
+              },
+              "value": {
+                "type": "null"
+              },
+              "reference": {
+                "not": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "representation": {
+                "const": "NONE"
+              }
+            },
+            "required": [
+              "representation"
+            ]
+          },
+          "then": {
+            "properties": {
+              "mediaType": {
+                "type": "null"
+              },
+              "value": {
+                "type": "null"
+              },
+              "reference": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ruleEvaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ruleId",
+        "material",
+        "outcome",
+        "supportingEvidenceIds",
+        "counterEvidenceIds",
+        "missingEvidenceIds"
+      ],
+      "properties": {
+        "ruleId": {
+          "$ref": "#/$defs/ruleId"
+        },
+        "material": {
+          "type": "boolean"
+        },
+        "outcome": {
+          "enum": [
+            "SUBSTANTIATED",
+            "NOT_SUBSTANTIATED",
+            "UNASSESSABLE",
+            "CONFLICTED",
+            "NOT_APPLICABLE",
+            "POLICY_INVALID"
+          ]
+        },
+        "supportingEvidenceIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^EV-"
+          }
+        },
+        "counterEvidenceIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^EV-"
+          }
+        },
+        "missingEvidenceIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^ME-"
+          }
+        }
+      }
+    },
+    "missingEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "missingEvidenceId",
+        "requiredByRuleId",
+        "requirementType",
+        "requiredEvidenceKind",
+        "semanticRequirementCode",
+        "triggerCondition",
+        "critical",
+        "availability",
+        "reasonCode",
+        "recommendedNextStep",
+        "decisionEffect"
+      ],
+      "properties": {
+        "missingEvidenceId": {
+          "type": "string",
+          "pattern": "^ME-[A-Z0-9-]{3,120}$"
+        },
+        "requiredByRuleId": {
+          "$ref": "#/$defs/ruleId"
+        },
+        "requirementType": {
+          "enum": [
+            "EVIDENCE_KIND",
+            "SEMANTIC_REQUIREMENT",
+            "POLICY_CONTEXT",
+            "OBSERVATION_REQUIREMENT"
+          ]
+        },
+        "requiredEvidenceKind": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/evidenceKind"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "semanticRequirementCode": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/semanticRequirementCode"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "triggerCondition": {
+          "type": "string",
+          "minLength": 1
+        },
+        "critical": {
+          "type": "boolean"
+        },
+        "availability": {
+          "enum": [
+            "MISSING",
+            "UNREADABLE",
+            "INACCESSIBLE",
+            "NOT_COLLECTED",
+            "STALE"
+          ]
+        },
+        "reasonCode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "recommendedNextStep": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decisionEffect": {
+          "const": "NEEDS_MANUAL_REVIEW"
+        }
+      }
+    },
+    "conflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "conflictId",
+        "ruleId",
+        "material",
+        "evidenceIds",
+        "resolutionStatus"
+      ],
+      "properties": {
+        "conflictId": {
+          "type": "string",
+          "pattern": "^CF-[A-Z0-9-]{3,100}$"
+        },
+        "ruleId": {
+          "$ref": "#/$defs/ruleId"
+        },
+        "material": {
+          "type": "boolean"
+        },
+        "evidenceIds": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^EV-"
+          }
+        },
+        "resolutionStatus": {
+          "const": "UNRESOLVED"
+        }
+      }
+    },
+    "scopeEvaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "complete",
+        "evidenceControlRuleIds"
+      ],
+      "properties": {
+        "complete": {
+          "type": "boolean"
+        },
+        "evidenceControlRuleIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/ruleId"
+          }
+        }
+      }
+    },
+    "recommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operationalStatus",
+        "reportDecision",
+        "candidateTargetAction",
+        "evidenceSufficiency",
+        "findings",
+        "assessmentConfidence"
+      ],
+      "properties": {
+        "operationalStatus": {
+          "enum": [
+            "VALID",
+            "POLICY_INVALID",
+            "SCHEMA_INVALID",
+            "STALE"
+          ]
+        },
+        "reportDecision": {
+          "enum": [
+            "RESOLVE",
+            "REJECT",
+            "NEEDS_MANUAL_REVIEW",
+            null
+          ]
+        },
+        "candidateTargetAction": {
+          "enum": [
+            "NO_ACTION",
+            "KEEP_VISIBLE",
+            "HIDE",
+            "REMOVE"
+          ]
+        },
+        "evidenceSufficiency": {
+          "enum": [
+            "SUFFICIENT",
+            "INSUFFICIENT",
+            "UNASSESSABLE",
+            "CONFLICTED",
+            "NOT_EVALUATED"
+          ]
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "ruleId",
+              "evidenceIds"
+            ],
+            "properties": {
+              "ruleId": {
+                "$ref": "#/$defs/ruleId"
+              },
+              "evidenceIds": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^EV-"
+                }
+              }
+            }
+          }
+        },
+        "assessmentConfidence": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "providerAlias": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{2,80}$"
+    },
+    "alias": {
+      "$ref": "#/$defs/providerAlias"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[A-Za-z0-9._-]{3,128}$"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+WEB_HOME_CALLER=src/app/(home)/page.tsx -> getMixedFeed
+WEB_FEED_SERVICE=src/lib/api/feed.ts -> GET /api/feed
+WEB_REBUILD_CALL=false
+MOBILE_HOME_CALLER=src/screens/main/home-screen.tsx -> getMixedFeed
+MOBILE_FEED_SERVICE=src/services/api/feed.ts -> GET /api/feed
+MOBILE_REBUILD_CALL=false
+REBUILD_OWNER=backend
+REBUILD_ENDPOINT=POST /api/blogs/feed/rebuild

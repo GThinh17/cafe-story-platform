@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0",
+  "gate": "G0-10E",
+  "approval": "APPROVE_G0-10E",
+  "status": "PARTIAL_WAITING_USER_APPROVAL",
+  "approvedDecision": {
+    "decisionId": "BD-005",
+    "selectedOption": "E1_VERSIONED_PROTECTED_LIST_WITH_FALLBACK",
+    "protectedCharacteristicCount": 13
+  },
+  "progress": {
+    "approved": 5,
+    "total": 12,
+    "current": "G0-10F"
+  },
+  "currentProposal": {
+    "decisionId": "BD-006",
+    "recommendedOption": "F1_CONSERVATIVE_PUBLIC_PLATFORM_WITH_EXCEPTIONS"
+  },
+  "nextRequiredApproval": "APPROVE_G0-10F",
+  "sourceOrDataMutation": false,
+  "g0_11Authorized": false
+}

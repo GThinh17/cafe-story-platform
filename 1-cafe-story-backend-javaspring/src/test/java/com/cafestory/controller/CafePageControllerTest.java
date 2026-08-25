@@ -1,0 +1,182 @@
+package com.cafestory.controller;
+
+import com.cafestory.dto.requestDTO.CafePageCreateDTO;
+import com.cafestory.dto.requestDTO.CafePageUpdateDTO;
+import com.cafestory.dto.responseDTO.BlogCursorPageResponseDTO;
+import com.cafestory.dto.responseDTO.BlogResponseDTO;
+import com.cafestory.dto.responseDTO.CafePageRankingResponseDTO;
+import com.cafestory.dto.responseDTO.CafePageResponseDTO;
+import com.cafestory.service.serviceInterface.CafePageService;
+import com.cafestory.until.security.AuthenticatedUserPrincipal;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class CafePageControllerTest {
+
+    @Mock
+    private CafePageService cafePageService;
+
+    @InjectMocks
+    private CafePageController cafePageController;
+
+    @Test
+    void createCafePage_success_TC001() {
+        UUID userId = UUID.randomUUID();
+        CafePageCreateDTO request = createRequest();
+        CafePageResponseDTO response = response();
+
+        when(cafePageService.createCafePage(request)).thenReturn(response);
+
+        CafePageResponseDTO result = cafePageController.createCafePage(request, principal(userId));
+
+        assertThat(result).isEqualTo(response);
+        assertThat(request.getOwnerUserId()).isEqualTo(userId);
+        verify(cafePageService).createCafePage(request);
+    }
+
+    @Test
+    void getCafePages_success_allPages_TC002() {
+        UUID viewerUserId = UUID.randomUUID();
+        List<CafePageResponseDTO> response = List.of(response());
+
+        when(cafePageService.getAllCafePages(viewerUserId)).thenReturn(response);
+
+        List<CafePageResponseDTO> result = cafePageController.getCafePages(
+                null,
+                null,
+                null,
+                principal(viewerUserId));
+
+        assertThat(result).isEqualTo(response);
+        verify(cafePageService).getAllCafePages(viewerUserId);
+    }
+
+    @Test
+    void getCafePages_success_byOwner_TC003() {
+        UUID ownerUserId = UUID.randomUUID();
+        UUID viewerUserId = UUID.randomUUID();
+        List<CafePageResponseDTO> response = List.of(response());
+
+        when(cafePageService.getCafePagesByOwnerId(ownerUserId, viewerUserId)).thenReturn(response);
+
+        List<CafePageResponseDTO> result = cafePageController.getCafePages(
+                ownerUserId,
+                null,
+                null,
+                principal(viewerUserId));
+
+        assertThat(result).isEqualTo(response);
+        verify(cafePageService).getCafePagesByOwnerId(ownerUserId, viewerUserId);
+    }
+
+    @Test
+    void getTopCafePages_success_TC004() {
+        UUID regionId = UUID.randomUUID();
+        List<CafePageRankingResponseDTO> response = List.of(new CafePageRankingResponseDTO());
+
+        UUID viewerUserId = UUID.randomUUID();
+        when(cafePageService.getTopCafePages(regionId, "Ho Chi Minh", null, null, 10, viewerUserId))
+                .thenReturn(response);
+
+        List<CafePageRankingResponseDTO> result = cafePageController.getTopCafePages(
+                regionId,
+                "Ho Chi Minh",
+                null,
+                null,
+                10,
+                principal(viewerUserId));
+
+        assertThat(result).isEqualTo(response);
+        verify(cafePageService).getTopCafePages(regionId, "Ho Chi Minh", null, null, 10, viewerUserId);
+    }
+
+    @Test
+    void getCafePageById_success_TC005() {
+        UUID cafePageId = UUID.randomUUID();
+        UUID viewerUserId = UUID.randomUUID();
+        CafePageResponseDTO response = response();
+
+        when(cafePageService.getCafePageById(cafePageId, viewerUserId)).thenReturn(response);
+
+        CafePageResponseDTO result = cafePageController.getCafePageById(cafePageId, principal(viewerUserId));
+
+        assertThat(result).isEqualTo(response);
+        verify(cafePageService).getCafePageById(cafePageId, viewerUserId);
+    }
+
+    @Test
+    void getBlogsByCafePageId_success_TC006() {
+        UUID cafePageId = UUID.randomUUID();
+        BlogCursorPageResponseDTO response = new BlogCursorPageResponseDTO();
+        response.setItems(List.of());
+        response.setHasMore(false);
+
+        UUID viewerUserId = UUID.randomUUID();
+        when(cafePageService.getBlogsByCafePageId(cafePageId, "cursor-token", 10, viewerUserId)).thenReturn(response);
+
+        BlogCursorPageResponseDTO result = cafePageController.getBlogsByCafePageId(
+                cafePageId,
+                "cursor-token",
+                10,
+                principal(viewerUserId));
+
+        assertThat(result).isEqualTo(response);
+        verify(cafePageService).getBlogsByCafePageId(cafePageId, "cursor-token", 10, viewerUserId);
+    }
+
+    @Test
+    void updateCafePage_success_TC007() {
+        UUID userId = UUID.randomUUID();
+        UUID cafePageId = UUID.randomUUID();
+        CafePageUpdateDTO request = new CafePageUpdateDTO();
+        CafePageResponseDTO response = response();
+
+        when(cafePageService.updateCafePage(cafePageId, userId, request)).thenReturn(response);
+
+        CafePageResponseDTO result = cafePageController.updateCafePage(cafePageId, request, principal(userId));
+
+        assertThat(result).isEqualTo(response);
+        verify(cafePageService).updateCafePage(cafePageId, userId, request);
+    }
+
+    @Test
+    void deleteCafePage_success_TC008() {
+        UUID userId = UUID.randomUUID();
+        UUID cafePageId = UUID.randomUUID();
+
+        cafePageController.deleteCafePage(cafePageId, principal(userId));
+
+        verify(cafePageService).deleteCafePage(cafePageId, userId);
+    }
+
+    private CafePageCreateDTO createRequest() {
+        CafePageCreateDTO request = new CafePageCreateDTO();
+        request.setName("Cafe Story");
+        request.setAddress("123 Nguyen Hue");
+        return request;
+    }
+
+    private CafePageResponseDTO response() {
+        CafePageResponseDTO response = new CafePageResponseDTO();
+        response.setId(UUID.randomUUID());
+        response.setOwnerUserId(UUID.randomUUID());
+        response.setName("Cafe Story");
+        response.setAddress("123 Nguyen Hue");
+        return response;
+    }
+
+    private AuthenticatedUserPrincipal principal(UUID userId) {
+        return new AuthenticatedUserPrincipal(userId, "tester", List.of("USER"));
+    }
+}

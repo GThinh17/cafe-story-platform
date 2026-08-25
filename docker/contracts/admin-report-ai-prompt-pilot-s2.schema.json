@@ -1,0 +1,255 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cafestory.local/contracts/admin-report-ai-prompt-pilot-s2.schema.json",
+  "title": "CafeStory Admin Report AI S2-04 Prompt Pilot Candidate",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "candidateVersion": {
+      "const": "report-ai-v2-sprint2.4-candidate.1"
+    },
+    "lifecycle": {
+      "const": "PROPOSED"
+    },
+    "runtimeAuthority": {
+      "const": false
+    },
+    "automationMode": {
+      "const": "A0_RECOMMEND_ONLY"
+    },
+    "providerCalled": {
+      "const": false
+    },
+    "sourceContextVersions": {
+      "$ref": "#/$defs/sourceContextVersions"
+    },
+    "baseSafetyClauseCodes": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "prefixItems": [
+        {"const": "SAFETY-UNTRUSTED-DATA-NOT-INSTRUCTION"},
+        {"const": "SAFETY-AI-EXPLANATION-NOT-EVIDENCE"},
+        {"const": "SAFETY-EVIDENCE-IDS-ONLY"},
+        {"const": "SAFETY-NO-RULE-INVENTION"},
+        {"const": "SAFETY-MISSING-EVIDENCE-MANUAL"},
+        {"const": "SAFETY-NO-ACTION-AUTHORITY"},
+        {"const": "SAFETY-CATEGORICAL-LIKELIHOOD"},
+        {"const": "SAFETY-BOUNDED-RATIONALE"}
+      ],
+      "items": false
+    },
+    "selectedProfiles": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/$defs/profile"
+      }
+    },
+    "exclusions": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 24,
+      "items": {
+        "$ref": "#/$defs/exclusion"
+      }
+    },
+    "outputInstructionCodes": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "uniqueItems": true,
+      "prefixItems": [
+        {"const": "OUTPUT-PER-RULE-ONLY"},
+        {"const": "OUTPUT-EVIDENCE-REFERENCES"},
+        {"const": "OUTPUT-MISSING-REFERENCES"},
+        {"const": "OUTPUT-CATEGORICAL-LIKELIHOOD"},
+        {"const": "OUTPUT-NO-FINAL-ACTION"}
+      ],
+      "items": false
+    },
+    "maximumSystemPromptCharacters": {
+      "const": 12000
+    }
+  },
+  "required": [
+    "candidateVersion",
+    "lifecycle",
+    "runtimeAuthority",
+    "automationMode",
+    "providerCalled",
+    "sourceContextVersions",
+    "baseSafetyClauseCodes",
+    "selectedProfiles",
+    "exclusions",
+    "outputInstructionCodes",
+    "maximumSystemPromptCharacters"
+  ],
+  "$defs": {
+    "code": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "codeList": {
+      "type": "array",
+      "minItems": 0,
+      "maxItems": 32,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/code"
+      }
+    },
+    "sourceContextVersions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": {"const": "2.0"},
+        "contextSchemaVersion": {"const": "RRC-1.0.0-rc.1"},
+        "policyVersion": {"const": "PF-2.0.0-proposed.1"},
+        "ruleCatalogVersion": {"const": "RC-2.0.0-proposed.2"},
+        "ruleVersion": {"const": "1.0.0-proposed.2"},
+        "datasetVersion": {"const": "1.0.0-rc.1"},
+        "rubricVersion": {"const": "1.0.0-rc.1"}
+      },
+      "required": [
+        "contractVersion",
+        "contextSchemaVersion",
+        "policyVersion",
+        "ruleCatalogVersion",
+        "ruleVersion",
+        "datasetVersion",
+        "rubricVersion"
+      ]
+    },
+    "branch": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "branchType": {
+          "type": "string",
+          "enum": ["DIRECT_TEXT", "CONTEXT_DEPENDENT_TEXT"]
+        },
+        "targetType": {
+          "type": "string",
+          "enum": ["BLOG", "COMMENT"]
+        },
+        "requiredContextKinds": {
+          "$ref": "#/$defs/codeList"
+        },
+        "missingBehavior": {
+          "const": "NEEDS_MANUAL_REVIEW"
+        },
+        "targetActionCeiling": {
+          "const": "NO_ACTION"
+        }
+      },
+      "required": [
+        "branchType",
+        "targetType",
+        "requiredContextKinds",
+        "missingBehavior",
+        "targetActionCeiling"
+      ]
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "profileId": {
+          "$ref": "#/$defs/code"
+        },
+        "ruleId": {
+          "const": "CSR.HAR.001"
+        },
+        "ruleFamily": {
+          "const": "HAR"
+        },
+        "ruleType": {
+          "const": "VIOLATION"
+        },
+        "actionAuthority": {
+          "const": false
+        },
+        "requiredEvidenceKinds": {
+          "$ref": "#/$defs/codeList"
+        },
+        "requiredSemanticCodes": {
+          "$ref": "#/$defs/codeList"
+        },
+        "exceptionCodes": {
+          "$ref": "#/$defs/codeList"
+        },
+        "clauseCodes": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "HAR-OBSERVE-TARGETED-SUBJECT",
+              "HAR-OBSERVE-CONDUCT",
+              "HAR-CHECK-CONTEXT-EXCEPTION",
+              "HAR-DO-NOT-INFER-PATTERN",
+              "HAR-MISSING-MATERIAL-MANUAL"
+            ]
+          }
+        },
+        "branches": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "$ref": "#/$defs/branch"
+          }
+        },
+        "datasetCaseRefs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^S2EVAL-[0-9]{3}$"
+          }
+        }
+      },
+      "required": [
+        "profileId",
+        "ruleId",
+        "ruleFamily",
+        "ruleType",
+        "actionAuthority",
+        "requiredEvidenceKinds",
+        "requiredSemanticCodes",
+        "exceptionCodes",
+        "clauseCodes",
+        "branches",
+        "datasetCaseRefs"
+      ]
+    },
+    "exclusion": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ruleId": {
+          "$ref": "#/$defs/code"
+        },
+        "reasonCode": {
+          "type": "string",
+          "enum": [
+            "PATTERN_HISTORY_REQUIRED",
+            "PROTECTED_LIST_VERSION_REQUIRED",
+            "RUNTIME_POLICY_SEMANTIC_MISMATCH",
+            "DEFERRED_ADAPTER_REQUIRED"
+          ]
+        }
+      },
+      "required": ["ruleId", "reasonCode"]
+    }
+  }
+}

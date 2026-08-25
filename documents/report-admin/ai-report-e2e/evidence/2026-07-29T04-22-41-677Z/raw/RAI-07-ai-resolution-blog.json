@@ -1,0 +1,50 @@
+{
+  "statusCode": 200,
+  "status": "Success",
+  "message": "Request processed successfully",
+  "data": {
+    "id": "268e703c-dd15-44f3-aedc-3c896fb8c346",
+    "contractVersion": "2.0",
+    "correlationId": "d449db23-4c3d-47a5-b885-ca2aa22d63d3",
+    "automationMode": "A0_RECOMMEND_ONLY",
+    "recommendationState": "NEEDS_MANUAL_REVIEW",
+    "contentReportId": "1d503577-900c-4399-b83e-87236077d8dc",
+    "targetType": "BLOG",
+    "targetId": "4f04a3f0-e3c5-492b-a65a-b387f1c1a6ec",
+    "reportDecision": "NEEDS_MANUAL_REVIEW",
+    "targetAction": "NO_ACTION",
+    "confidenceScore": null,
+    "riskScore": null,
+    "labels": [],
+    "ruleCode": null,
+    "explanation": "The claim involves restricted goods, but the evidence does not sufficiently demonstrate a clear violation to take action.",
+    "modelName": "gpt-4o-mini-2024-07-18",
+    "createdAt": "2026-07-29T11:23:02.8139879",
+    "autoApplyJob": null,
+    "autoApplyWarning": null,
+    "findings": [],
+    "evidenceSummary": {
+      "usedEvidenceIds": [
+        "EV-REASON-ROUTE",
+        "EV-TARGET-IDENTITY",
+        "EV-TARGET-CONTENT",
+        "EV-TARGET-STATE"
+      ],
+      "counterEvidenceIds": [],
+      "missingEvidenceIds": []
+    },
+    "blockedReasons": [
+      "EVIDENCE_NOT_SUFFICIENT"
+    ],
+    "evidenceQuality": "HIGH",
+    "evidenceSufficiency": "INSUFFICIENT",
+    "violationLikelihood": "UNKNOWN",
+    "harmSeverity": "UNKNOWN",
+    "actionRisk": "LOW",
+    "policyVersion": "PF-2.0.0-proposed.1",
+    "ruleCatalogVersion": "RC-2.0.0-proposed.1",
+    "promptVersion": "report-ai-v2-sprint1.1",
+    "workflowVersion": "cafestory-admin-report-ai-resolution-v2",
+    "targetSnapshotHash": "9fee4c4ef06af18c2d0dd91fba961f6361c27e45a7dec957f0dce1dc56a0733b"
+  }
+}

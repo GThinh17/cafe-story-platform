@@ -1,0 +1,16 @@
+fastapi
+uvicorn[standard]
+pydantic
+Pillow
+requests
+torch
+transformers
+google-genai
+openai
+python-dotenv
+jinja2
+psycopg[binary,pool]
+pgvector
+apscheduler
+python-frontmatter
+markdown-it-py

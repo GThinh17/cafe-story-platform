@@ -1,0 +1,20 @@
+{
+  "id": "M07-FX-06",
+  "description": "External factual claim thiếu authoritative fact nên INT.002 không được kết luận tự động.",
+  "base": "blog-resolve.json",
+  "operations": [
+    {"op":"replace","path":"/policyContext/candidateRuleIds","value":["CSR.INT.002"]},
+    {"op":"replace","path":"/evidence/3/collectedForRuleIds","value":["CSR.INT.002"]},
+    {"op":"replace","path":"/ruleEvaluations/0","value":{"ruleId":"CSR.INT.002","material":true,"outcome":"UNASSESSABLE","supportingEvidenceIds":["EV-BLOG-TEXT"],"counterEvidenceIds":[],"missingEvidenceIds":["ME-INT-AUTHORITATIVE-FACT"]}},
+    {"op":"add","path":"/missingEvidence/-","value":{"missingEvidenceId":"ME-INT-AUTHORITATIVE-FACT","requiredByRuleId":"CSR.INT.002","requirementType":"SEMANTIC_REQUIREMENT","requiredEvidenceKind":null,"semanticRequirementCode":"SEM-AUTHORITATIVE-FACT","triggerCondition":"EXTERNAL_FACT_BRANCH","critical":true,"availability":"NOT_COLLECTED","reasonCode":"AUTHORITATIVE_FACT_COLLECTOR_NOT_AVAILABLE","recommendedNextStep":"HUMAN_FACT_REVIEW","decisionEffect":"NEEDS_MANUAL_REVIEW"}},
+    {"op":"replace","path":"/recommendation/reportDecision","value":"NEEDS_MANUAL_REVIEW"},
+    {"op":"replace","path":"/recommendation/candidateTargetAction","value":"NO_ACTION"},
+    {"op":"replace","path":"/recommendation/evidenceSufficiency","value":"UNASSESSABLE"},
+    {"op":"replace","path":"/recommendation/findings","value":[]}
+  ],
+  "expected": {
+    "schemaValid": true,
+    "semanticValid": true,
+    "errorCodes": []
+  }
+}

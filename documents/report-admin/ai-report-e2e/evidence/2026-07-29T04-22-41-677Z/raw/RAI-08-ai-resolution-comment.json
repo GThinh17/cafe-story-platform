@@ -1,0 +1,54 @@
+{
+  "statusCode": 200,
+  "status": "Success",
+  "message": "Request processed successfully",
+  "data": {
+    "id": "e82aa378-89a6-4ad1-a3fc-8d09768e91b6",
+    "contractVersion": "2.0",
+    "correlationId": "5eac0a30-dbf3-499d-8cac-9697f5619aaf",
+    "automationMode": "A0_RECOMMEND_ONLY",
+    "recommendationState": "NEEDS_MANUAL_REVIEW",
+    "contentReportId": "769de633-0354-4d65-9e74-234ced29b3c1",
+    "targetType": "COMMENT",
+    "targetId": "c158cd15-5584-4852-9095-32e9d2012b0d",
+    "reportDecision": "NEEDS_MANUAL_REVIEW",
+    "targetAction": "NO_ACTION",
+    "confidenceScore": null,
+    "riskScore": null,
+    "labels": [
+      "RESTRICTED_GOODS",
+      "UNTRUSTED_REPORTER_CLAIM"
+    ],
+    "ruleCode": null,
+    "explanation": "Due to the presence of low-quality evidence related to the restricted goods designation and the overall inconclusive nature of the evidence, further manual review is required.",
+    "modelName": "gpt-4o-mini-2024-07-18",
+    "createdAt": "2026-07-29T11:23:08.2694103",
+    "autoApplyJob": null,
+    "autoApplyWarning": null,
+    "findings": [],
+    "evidenceSummary": {
+      "usedEvidenceIds": [
+        "EV-TARGET-IDENTITY",
+        "EV-TARGET-CONTENT",
+        "EV-TARGET-STATE",
+        "EV-REASON-ROUTE",
+        "EV-PARENT-CONTEXT"
+      ],
+      "counterEvidenceIds": [],
+      "missingEvidenceIds": []
+    },
+    "blockedReasons": [
+      "EVIDENCE_NOT_SUFFICIENT"
+    ],
+    "evidenceQuality": "MEDIUM",
+    "evidenceSufficiency": "INSUFFICIENT",
+    "violationLikelihood": "UNKNOWN",
+    "harmSeverity": "UNKNOWN",
+    "actionRisk": "LOW",
+    "policyVersion": "PF-2.0.0-proposed.1",
+    "ruleCatalogVersion": "RC-2.0.0-proposed.1",
+    "promptVersion": "report-ai-v2-sprint1.1",
+    "workflowVersion": "cafestory-admin-report-ai-resolution-v2",
+    "targetSnapshotHash": "f462150ff0498f890d0207c77a7df46253e2638dbd99f7bb8ac49487b1d92222"
+  }
+}

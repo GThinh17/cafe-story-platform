@@ -1,0 +1,250 @@
+"use client";
+
+import {
+  FlagIcon,
+  HeartIcon,
+  MessageCircleIcon,
+  MoreHorizontalIcon,
+  Repeat2Icon,
+  Trash2Icon,
+} from "lucide-react";
+import Link from "next/link";
+import { useI18n } from "@/components/providers/locale-provider";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { FollowButton } from "@/components/ui/follow-button";
+import { ReviewerBadgeChip } from "@/components/ui/reviewer-badge-chip";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  getFeedPostMediaList,
+  PostMediaCarousel,
+} from "@/components/feed/post-media-carousel";
+import { getPostIdentity } from "@/components/feed/post-identity";
+import { MentionText } from "@/components/feed/mention-text";
+import { SaveButton } from "@/components/feed/save-button";
+import type { FeedPost } from "@/types/feed";
+import { cn } from "@/lib/utils";
+
+export type { FeedPost };
+
+type PostCardProps = {
+  currentUserId?: string;
+  eagerMedia?: boolean;
+  onCommentClick?: (post: FeedPost) => void;
+  onDeleteClick?: (post: FeedPost) => void;
+  onLikeClick?: (post: FeedPost) => void;
+  onReportClick?: (post: FeedPost) => void;
+  onSaveClick?: (post: FeedPost) => void;
+  onShareClick?: (post: FeedPost) => void;
+  post: FeedPost;
+};
+
+const postActions = [
+  { id: "like", labelKey: "post.action.like", icon: HeartIcon },
+  { id: "comment", labelKey: "post.action.comment", icon: MessageCircleIcon },
+  { id: "share", labelKey: "post.action.share", icon: Repeat2Icon },
+] as const;
+
+function formatPostCommentCount(post: FeedPost) {
+  return typeof post.commentCount === "number"
+    ? formatCount(post.commentCount)
+    : Array.isArray(post.comments)
+    ? new Intl.NumberFormat("en", {
+        notation: "compact",
+        maximumFractionDigits: 1,
+      }).format(post.comments.length)
+    : post.comments;
+}
+
+function formatCount(value: number) {
+  return new Intl.NumberFormat("en", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
+function formatPostLikeCount(post: FeedPost) {
+  return typeof post.likeCount === "number" ? formatCount(post.likeCount) : post.likes;
+}
+
+export function PostCard({ currentUserId, eagerMedia, onCommentClick, onDeleteClick, onLikeClick, onReportClick, onSaveClick, onShareClick, post }: PostCardProps) {
+  const { t } = useI18n();
+  const identity = getPostIdentity(post);
+  const locationLabel = post.locationLabel?.trim() || post.location?.trim();
+  const commentCount = formatPostCommentCount(post);
+  const actionCounts: Record<string, string> = {
+    comment: commentCount,
+    like: formatPostLikeCount(post),
+    share: post.shares ?? "0",
+  };
+  const media = getFeedPostMediaList(post);
+
+  const isOwnPost = Boolean(currentUserId && post.authorUserId && currentUserId === post.authorUserId);
+  const visibleActions = isOwnPost
+    ? postActions.filter((action) => action.id !== "share")
+    : postActions;
+
+  return (
+    <Card
+      className="mx-auto w-[85%] max-w-full overflow-hidden [contain-intrinsic-size:765px] [content-visibility:auto] shadow-none"
+      data-blog-id={post.id}
+      data-testid="feed-post-card"
+    >
+      <CardHeader className="flex flex-row items-center justify-between gap-4 px-4 py-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link
+            aria-label={t("post.viewProfile", { name: identity.primaryName })}
+            className="block size-11 shrink-0 cursor-pointer overflow-hidden rounded-full border border-border/40 bg-surface-muted shadow-[inset_0_0_0_999px_rgba(217,119,6,0.10)]"
+            href={identity.primaryHref}
+          >
+            <img
+              alt={t("post.avatarAlt", { name: identity.primaryName })}
+              className="block size-full max-w-none rounded-full object-cover object-center"
+              decoding="async"
+              loading="lazy"
+              src={identity.primaryAvatar}
+            />
+          </Link>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <CardTitle className="truncate text-base font-bold">
+                <Link className="cursor-pointer" href={identity.primaryHref}>
+                  {identity.primaryName}
+                </Link>
+              </CardTitle>
+              <ReviewerBadgeChip badge={post.authorBadge} />
+              {!isOwnPost && (post.pageId ?? post.authorUserId) ? (
+                <FollowButton
+                  className="ml-auto !h-[24px] shrink-0 !px-2 !text-[12px]"
+                  isFollowing={post.pageId ? post.isPageFollowing : post.isAuthorFollowing}
+                  targetId={(post.pageId ?? post.authorUserId)!}
+                  targetType={post.pageId ? "cafe" : "user"}
+                />
+              ) : null}
+            </div>
+            {identity.isPagePost && identity.secondaryHref ? (
+              <Link
+                className="block cursor-pointer truncate text-xs font-bold text-coffee-muted"
+                href={identity.secondaryHref}
+              >
+                {identity.secondaryName}
+              </Link>
+            ) : null}
+          </div>
+        </div>
+        {post.id ? (
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <button
+                aria-label={t("post.action.moreOptions")}
+                className="grid size-8 shrink-0 cursor-pointer place-items-center rounded-full text-foreground outline-none"
+                type="button"
+              >
+                <MoreHorizontalIcon className="size-5" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {isOwnPost ? (
+                <DropdownMenuItem
+                  className="!cursor-pointer"
+                  onClick={() => onDeleteClick?.(post)}
+                  variant="destructive"
+                >
+                  <Trash2Icon className="size-4" />
+                  <span>{t("post.action.delete")}</span>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  className="!cursor-pointer focus:!bg-transparent focus:!text-inherit"
+                  onClick={() => onReportClick?.(post)}
+                >
+                  <FlagIcon className="size-4" />
+                  <span>{t("post.action.report")}</span>
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+      </CardHeader>
+
+      {media.length > 0 ? (
+        <PostMediaCarousel
+          eager={eagerMedia}
+          frame="adaptive"
+          imageClassName="bg-espresso"
+          media={media}
+        />
+      ) : null}
+
+      <CardContent className="flex flex-col gap-4 px-4 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            {visibleActions.map(({ icon: Icon, id, labelKey }) => (
+              <Button
+                aria-label={t(labelKey)}
+                className="h-auto cursor-pointer gap-1.5 px-0 py-0 text-sm font-bold text-foreground hover:bg-transparent hover:text-primary data-[state=active]:bg-transparent"
+                key={id}
+                onClick={
+                  id === "comment"
+                    ? () => onCommentClick?.(post)
+                    : id === "like"
+                      ? () => onLikeClick?.(post)
+                      : id === "share"
+                        ? () => onShareClick?.(post)
+                        : undefined
+                }
+                type="button"
+                variant="ghost"
+              >
+                <Icon
+                  className={cn(
+                    "size-6",
+                    id === "like" && post.isLiked && "fill-accent text-accent",
+                    id === "share" && post.isShared && "fill-primary text-primary",
+                  )}
+                  strokeWidth={2.2}
+                />
+                <span>{actionCounts[id]}</span>
+              </Button>
+            ))}
+          </div>
+          <SaveButton
+            isSaved={post.isSaved}
+            onToggle={() => onSaveClick?.(post)}
+          />
+        </div>
+
+        {locationLabel ? (
+          <p className="text-xs font-semibold text-muted">{locationLabel}</p>
+        ) : null}
+
+        <p className="text-sm leading-6 text-foreground">
+          <Link className="cursor-pointer font-bold" href={identity.primaryHref}>
+            {identity.primaryName}
+          </Link>{" "}
+          <MentionText text={post.caption} />
+        </p>
+        {post.tags.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {post.tags.map((tag) => (
+              <Badge className="font-bold" key={tag} variant="secondary">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}

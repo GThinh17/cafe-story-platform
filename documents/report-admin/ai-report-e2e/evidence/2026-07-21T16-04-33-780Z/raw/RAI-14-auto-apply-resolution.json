@@ -1,0 +1,41 @@
+{
+  "statusCode": 200,
+  "status": "Success",
+  "message": "Request processed successfully",
+  "data": {
+    "id": "75ff7b5b-8543-4b70-8849-ecd3299dd14c",
+    "contentReportId": "77b8021d-f01b-4383-b529-a6459aa5ce81",
+    "targetType": "BLOG",
+    "targetId": "555e9a98-998a-4dde-b02c-df1ce51cd743",
+    "reportDecision": "RESOLVE",
+    "targetAction": "HIDE",
+    "confidenceScore": 85,
+    "riskScore": 7.5,
+    "labels": [
+      "SCAM_FRAUD_OR_SPAM"
+    ],
+    "ruleCode": "BLOG_SCAM",
+    "explanation": "The report indicates potential spam content based on the classification of scam, fraud, or spam, and there is sufficient severity in the report to warrant action.",
+    "modelName": "gpt-4o-mini-2024-07-18",
+    "rawResponse": {
+      "openaiResponseId": "resp_09ee48409b5ac197006a5f992796b081989c370b53936d6b7e",
+      "reportId": "77b8021d-f01b-4383-b529-a6459aa5ce81",
+      "targetType": "BLOG",
+      "targetId": "555e9a98-998a-4dde-b02c-df1ce51cd743",
+      "sourceDecision": {
+        "reportDecision": "RESOLVE",
+        "targetAction": "HIDE",
+        "confidenceScore": 0.85,
+        "riskScore": 7.5,
+        "labels": [
+          "SCAM_FRAUD_OR_SPAM"
+        ],
+        "ruleCode": "BLOG_SCAM",
+        "explanation": "The report indicates potential spam content based on the classification of scam, fraud, or spam, and there is sufficient severity in the report to warrant action."
+      }
+    },
+    "createdAt": "2026-07-21T23:07:04.8779086",
+    "autoApplyJob": null,
+    "autoApplyWarning": "AI risk score is below the auto resolve threshold."
+  }
+}

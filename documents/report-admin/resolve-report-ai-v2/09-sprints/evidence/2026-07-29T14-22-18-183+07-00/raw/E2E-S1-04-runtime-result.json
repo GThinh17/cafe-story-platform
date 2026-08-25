@@ -1,0 +1,54 @@
+{
+  "httpStatus": 200,
+  "resolution": {
+    "id": "842dafcd-b7ce-4476-a183-238ffc4dbc94",
+    "contractVersion": "2.0",
+    "correlationId": "6fd613d0-c7b6-4cef-9c5b-dac93da66688",
+    "automationMode": "A0_RECOMMEND_ONLY",
+    "recommendationState": "NEEDS_MANUAL_REVIEW",
+    "contentReportId": "1fd74048-53f8-4006-b251-96beb6ebd456",
+    "targetType": "COMMENT",
+    "targetId": "53f9b063-610d-41f6-9568-9d5f94c4a6d5",
+    "reportDecision": "NEEDS_MANUAL_REVIEW",
+    "targetAction": "NO_ACTION",
+    "confidenceScore": null,
+    "riskScore": null,
+    "labels": [],
+    "ruleCode": null,
+    "explanation": "The absence of critical parent context (EV-PARENT-CONTEXT) necessitates a manual review to properly assess compliance with standards.",
+    "modelName": "gpt-4o-mini-2024-07-18",
+    "createdAt": "2026-07-29T14:34:01.3391126",
+    "autoApplyJob": null,
+    "autoApplyWarning": null,
+    "findings": [],
+    "evidenceSummary": {
+      "usedEvidenceIds": [
+        "EV-TARGET-IDENTITY",
+        "EV-TARGET-CONTENT",
+        "EV-TARGET-STATE"
+      ],
+      "counterEvidenceIds": [
+        "EV-REASON-ROUTE"
+      ],
+      "missingEvidenceIds": [
+        "EV-PARENT-CONTEXT"
+      ]
+    },
+    "blockedReasons": [
+      "CRITICAL_EVIDENCE_MISSING",
+      "EVIDENCE_NOT_SUFFICIENT"
+    ],
+    "evidenceQuality": "HIGH",
+    "evidenceSufficiency": "UNASSESSABLE",
+    "violationLikelihood": "UNKNOWN",
+    "harmSeverity": "UNKNOWN",
+    "actionRisk": "LOW",
+    "policyVersion": "PF-2.0.0-proposed.1",
+    "ruleCatalogVersion": "RC-2.0.0-proposed.1",
+    "promptVersion": "report-ai-v2-sprint1.1",
+    "workflowVersion": "cafestory-admin-report-ai-resolution-v2",
+    "targetSnapshotHash": "fed0acac080069b978ce26db9ebebf7252291721e4e17c361e15a18ec7e2e6b8"
+  },
+  "noMutation": true,
+  "autoApplyJobCount": 0
+}

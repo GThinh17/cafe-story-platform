@@ -1,0 +1,72 @@
+from typing import Any, Literal
+
+from pydantic import BaseModel, Field, field_validator
+
+
+Status = Literal["deny", "send Admin", "approve"]
+
+
+class BlogEvaluateRequest(BaseModel):
+    blogId: str = Field(..., min_length=1)
+    caption: str | None = ""
+    imageUrls: list[str] | None = Field(default_factory=list, max_length=10)
+
+    @field_validator("blogId")
+    @classmethod
+    def validate_blog_id(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("blogId must not be empty")
+        return value
+
+    @field_validator("caption", mode="before")
+    @classmethod
+    def default_caption(cls, value: Any) -> str:
+        return "" if value is None else str(value)
+
+    @field_validator("imageUrls", mode="before")
+    @classmethod
+    def default_image_urls(cls, value: Any) -> list[str]:
+        return [] if value is None else value
+
+
+class BlogEvaluateResponse(BaseModel):
+    blogId: str
+    captionScore: int
+    captionReason: str
+    imageScore: int
+    imageReason: str
+    tags: list[str] = Field(min_length=0, max_length=3)
+    status: Status
+
+
+class ChatHistoryMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(..., max_length=2000)
+
+
+class ChatAskRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=1000)
+    platform: Literal["web", "mobile"] | None = None
+    history: list[ChatHistoryMessage] = Field(default_factory=list, max_length=10)
+
+    @field_validator("query")
+    @classmethod
+    def validate_query(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("query must not be empty")
+        return value
+
+
+class ChatSource(BaseModel):
+    source_type: str
+    source_id: str
+    title: str
+    image_urls: list[str] = Field(default_factory=list)
+
+
+class ChatAskResponse(BaseModel):
+    answer: str
+    sources: list[ChatSource] = Field(default_factory=list)
+    cached: bool = False

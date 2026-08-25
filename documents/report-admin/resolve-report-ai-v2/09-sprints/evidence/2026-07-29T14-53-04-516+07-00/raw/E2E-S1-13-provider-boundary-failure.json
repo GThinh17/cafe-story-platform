@@ -1,0 +1,15 @@
+{
+  "httpStatus": 502,
+  "error": {
+    "correlationId": "14baff30-eff0-4183-b21a-a08965d192fb",
+    "statusCode": 502,
+    "status": "Fail",
+    "message": "AI recommendation service is unavailable.",
+    "data": null,
+    "code": "AI_PROVIDER_BOUNDARY_FAILED",
+    "retryable": true,
+    "stage": "N8N_PROVIDER"
+  },
+  "resolutionCountBefore": 0,
+  "resolutionCountAfterFailure": 0
+}

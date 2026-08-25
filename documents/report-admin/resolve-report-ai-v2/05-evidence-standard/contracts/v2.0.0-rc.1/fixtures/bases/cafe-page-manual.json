@@ -1,0 +1,100 @@
+{
+  "contractVersion": "2.0.0-rc.1",
+  "schemaVersion": "1.0.0-rc.1",
+  "correlationId": "COR-CAFE-PAGE-BASE",
+  "policyContext": {
+    "policyVersion": "POLICY-2.0.0-ACTIVE-FIXTURE",
+    "policyStatus": "ACTIVE",
+    "ruleCatalogVersion": "RC-2.0.0-ACTIVE-FIXTURE",
+    "ruleCatalogStatus": "ACTIVE",
+    "evidenceKindCatalogVersion": "1.0.0-rc.1",
+    "candidateRuleIds": ["CSR.ROUTE.002"]
+  },
+  "targetSnapshot": {
+    "targetType": "CAFE_PAGE",
+    "targetAlias": "target-page-1",
+    "snapshotVersion": "cafe-page-manual-1.0.0",
+    "snapshotHash": "sha256:cafe-page-snapshot-001",
+    "capturedAt": "2026-07-26T03:00:00Z",
+    "freshness": "CURRENT",
+    "reportTargetAssociation": {
+      "reportAlias": "report-4",
+      "targetAlias": "target-page-1",
+      "associationValidated": true
+    },
+    "data": {
+      "state": {
+        "lifecycleStatus": "ACTIVE",
+        "subscriptionActive": true,
+        "stateConsistency": "CONSISTENT"
+      },
+      "ownershipContext": {
+        "primaryOwnerAlias": "owner-user-1",
+        "ownerPiiIncluded": false
+      },
+      "publicPageContext": {
+        "name": "Bounded page name",
+        "contextOnly": true
+      },
+      "media": [],
+      "privacy": {
+        "providerEligible": false,
+        "providerProjectionCreated": false,
+        "ownerContactPiiIncluded": false,
+        "memberPiiIncluded": false
+      }
+    }
+  },
+  "providerExecution": {
+    "eligible": false,
+    "called": false,
+    "route": "LOCAL_MANUAL_ONLY"
+  },
+  "evidence": [
+    {"evidenceId":"EV-PAGE-IDENTITY","envelopeVersion":"1.0.0-rc.1","evidenceKind":"TARGET_IDENTITY","subject":{"targetType":"CAFE_PAGE","targetAlias":"target-page-1","snapshotVersion":"cafe-page-manual-1.0.0","snapshotHash":"sha256:cafe-page-snapshot-001"},"source":{"sourceType":"PLATFORM_RECORD","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"BackendPolicyGuard","collectorVersion":"2.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-page-identity"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"HIGH","reasonCodes":["DIRECT_PLATFORM_RECORD"]},"privacy":{"classification":"RESTRICTED","containsPersonalData":false,"redactionStatus":"APPLIED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":[],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"targetType":"CAFE_PAGE","targetRef":"target-page-1"},"reference":null,"truncated":false}},
+    {"evidenceId":"EV-PAGE-REPORT-ASSOCIATION","envelopeVersion":"1.0.0-rc.1","evidenceKind":"REPORT_TARGET_ASSOCIATION","subject":{"targetType":"CAFE_PAGE","targetAlias":"target-page-1","snapshotVersion":"cafe-page-manual-1.0.0","snapshotHash":"sha256:cafe-page-snapshot-001"},"source":{"sourceType":"PLATFORM_RECORD","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"BackendPolicyGuard","collectorVersion":"2.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-page-association"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"HIGH","reasonCodes":["DIRECT_PLATFORM_RECORD"]},"privacy":{"classification":"RESTRICTED","containsPersonalData":false,"redactionStatus":"APPLIED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":[],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"reportAlias":"report-4","associationValidated":true},"reference":null,"truncated":false}},
+    {"evidenceId":"EV-PAGE-STATE","envelopeVersion":"1.0.0-rc.1","evidenceKind":"TARGET_STATE","subject":{"targetType":"CAFE_PAGE","targetAlias":"target-page-1","snapshotVersion":"cafe-page-manual-1.0.0","snapshotHash":"sha256:cafe-page-snapshot-001"},"source":{"sourceType":"PLATFORM_RECORD","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"BackendPolicyGuard","collectorVersion":"2.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-page-state"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"HIGH","reasonCodes":["DIRECT_PLATFORM_RECORD"]},"privacy":{"classification":"RESTRICTED","containsPersonalData":false,"redactionStatus":"NOT_REQUIRED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":[],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"lifecycleStatus":"ACTIVE","subscriptionActive":true,"stateConsistency":"CONSISTENT"},"reference":null,"truncated":false}},
+    {"evidenceId":"EV-PAGE-PUBLIC-CONTEXT","envelopeVersion":"1.0.0-rc.1","evidenceKind":"TARGET_PUBLIC_PROFILE_CONTEXT","subject":{"targetType":"CAFE_PAGE","targetAlias":"target-page-1","snapshotVersion":"cafe-page-manual-1.0.0","snapshotHash":"sha256:cafe-page-snapshot-001"},"source":{"sourceType":"PLATFORM_RECORD","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"BackendPolicyGuard","collectorVersion":"2.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[{"type":"SANITIZE_AND_BOUND_CONTEXT","version":"1.0.0","materiality":"NON_MATERIAL"}]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-page-profile"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"MEDIUM","reasonCodes":["PUBLIC_PROFILE_CONTEXT"]},"privacy":{"classification":"RESTRICTED","containsPersonalData":false,"redactionStatus":"APPLIED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":[],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"name":"Bounded page name","contextOnly":true},"reference":null,"truncated":false}},
+    {"evidenceId":"EV-PAGE-OWNER","envelopeVersion":"1.0.0-rc.1","evidenceKind":"PAGE_OWNER_ASSOCIATION","subject":{"targetType":"CAFE_PAGE","targetAlias":"target-page-1","snapshotVersion":"cafe-page-manual-1.0.0","snapshotHash":"sha256:cafe-page-snapshot-001"},"source":{"sourceType":"PLATFORM_RECORD","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"BackendPolicyGuard","collectorVersion":"2.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-page-owner"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"HIGH","reasonCodes":["DIRECT_PLATFORM_RECORD"]},"privacy":{"classification":"RESTRICTED","containsPersonalData":true,"redactionStatus":"APPLIED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":[],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"ownerAlias":"owner-user-1","ownerPiiIncluded":false},"reference":null,"truncated":false}},
+    {"evidenceId":"EV-PAGE-REGION","envelopeVersion":"1.0.0-rc.1","evidenceKind":"TARGET_REGION_ASSOCIATION","subject":{"targetType":"CAFE_PAGE","targetAlias":"target-page-1","snapshotVersion":"cafe-page-manual-1.0.0","snapshotHash":"sha256:cafe-page-snapshot-001"},"source":{"sourceType":"PLATFORM_RECORD","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"BackendPolicyGuard","collectorVersion":"2.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":"sha256:ev-page-region"},"availability":{"status":"AVAILABLE","reasonCode":null},"quality":{"level":"MEDIUM","reasonCodes":["DECLARED_CONTEXT_NOT_JURISDICTION_PROOF"]},"privacy":{"classification":"RESTRICTED","containsPersonalData":false,"redactionStatus":"APPLIED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":[],"payload":{"representation":"INLINE","mediaType":"application/json","value":{"regionAlias":"region-2","jurisdictionProof":false},"reference":null,"truncated":false}},
+    {"evidenceId":"EV-PAGE-DEEP-CONTEXT","envelopeVersion":"1.0.0-rc.1","evidenceKind":"TARGET_DEEP_CONTEXT","subject":{"targetType":"CAFE_PAGE","targetAlias":"target-page-1","snapshotVersion":"cafe-page-manual-1.0.0","snapshotHash":"sha256:cafe-page-snapshot-001"},"source":{"sourceType":"PLATFORM_RECORD","sourceSystem":"CAFE_STORY_BACKEND","verificationStatus":"SYSTEM_CAPTURED","authorityScope":"PLATFORM_OWNED_FIELD"},"capture":{"collectorName":"BackendPolicyGuard","collectorVersion":"2.0.0","capturedAt":"2026-07-26T03:00:00Z","transformations":[]},"integrity":{"canonicalization":"JCS","digestAlgorithm":"SHA-256","payloadDigest":null},"availability":{"status":"NOT_COLLECTED","reasonCode":"TARGET_DEEP_POLICY_NOT_IN_SPRINT1"},"quality":{"level":"UNUSABLE","reasonCodes":["CAPABILITY_NOT_AVAILABLE"]},"privacy":{"classification":"RESTRICTED","containsPersonalData":false,"redactionStatus":"NOT_REQUIRED","retentionClass":"REPORT_EVIDENCE_90D"},"intendedUse":"CONTEXT_ONLY","collectedForRuleIds":["CSR.ROUTE.002"],"payload":{"representation":"NONE","mediaType":null,"value":null,"reference":null,"truncated":false}}
+  ],
+  "ruleEvaluations": [
+    {
+      "ruleId": "CSR.ROUTE.002",
+      "material": true,
+      "outcome": "UNASSESSABLE",
+      "supportingEvidenceIds": [],
+      "counterEvidenceIds": [],
+      "missingEvidenceIds": ["ME-PAGE-DEEP-CONTEXT"]
+    }
+  ],
+  "missingEvidence": [
+    {
+      "missingEvidenceId": "ME-PAGE-DEEP-CONTEXT",
+      "requiredByRuleId": "CSR.ROUTE.002",
+      "requirementType": "EVIDENCE_KIND",
+      "requiredEvidenceKind": "TARGET_DEEP_CONTEXT",
+      "semanticRequirementCode": null,
+      "triggerCondition": "TARGET_TYPE_CAFE_PAGE",
+      "critical": true,
+      "availability": "NOT_COLLECTED",
+      "reasonCode": "TARGET_DEEP_POLICY_NOT_IN_SPRINT1",
+      "recommendedNextStep": "HUMAN_REVIEW",
+      "decisionEffect": "NEEDS_MANUAL_REVIEW"
+    }
+  ],
+  "conflicts": [],
+  "scopeEvaluation": {
+    "complete": false,
+    "evidenceControlRuleIds": []
+  },
+  "recommendation": {
+    "operationalStatus": "VALID",
+    "reportDecision": "NEEDS_MANUAL_REVIEW",
+    "candidateTargetAction": "NO_ACTION",
+    "evidenceSufficiency": "UNASSESSABLE",
+    "findings": [],
+    "assessmentConfidence": null
+  }
+}

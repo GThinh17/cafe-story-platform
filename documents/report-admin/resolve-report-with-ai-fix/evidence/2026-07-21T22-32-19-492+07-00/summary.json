@@ -1,0 +1,42 @@
+{
+  "status": "PARTIAL",
+  "generatedAt": "2026-07-21T23:22:02+07:00",
+  "branch": "n8n/Ai-agent/fix-bug-report-admin",
+  "backend": {
+    "focusedTests": { "run": 53, "failures": 0, "errors": 0 },
+    "regressionTests": { "run": 607, "failures": 0, "errors": 0, "skipped": 1 },
+    "coverage": {
+      "AdminReportAiResolutionServiceImpl": { "linePercent": 100, "branchPercent": 86 },
+      "AdminReportAiAutoApplyJobServiceImpl": { "linePercent": 100, "branchPercent": 88.97 }
+    }
+  },
+  "frontend": {
+    "typecheck": "PASSED",
+    "build": "PASSED",
+    "staticUiFindings": []
+  },
+  "n8n": {
+    "workflowId": "cafestory-admin-report-ai-resolution-v2",
+    "json": "VALID",
+    "productionWebhook": "HTTP_200",
+    "probeElapsedMs": 4838
+  },
+  "e2e": {
+    "playwrightTestsPassed": 1,
+    "scenariosPassed": 28,
+    "scenariosBlocked": 2,
+    "scenariosFailed": 0,
+    "criteriaPassed": 140,
+    "criteriaTotal": 150,
+    "percent": 93.33,
+    "blockedScenarioIds": ["RAI-02", "RAI-08"],
+    "evidence": "documents/report-admin/ai-report-e2e/evidence/2026-07-21T16-10-47-782Z"
+  },
+  "openItems": [
+    "COMMENT runtime fixture",
+    "n8n webhook HMAC and replay protection",
+    "idempotency key",
+    "full target snapshot version/hash",
+    "frontend component coverage tooling"
+  ]
+}

@@ -1,0 +1,11 @@
+requirement_id	source_matrix	current_evidence	audit_status
+S1-N8N-02	sprint-01-safety-contract prompt injection	Prompt instruction exists; no executed adversarial fixture	BLOCKED
+SAF-009	safety-test-matrix prompt injection	No ADV execution report	BLOCKED
+CT-010	contract-test-matrix stale snapshot	Duplicate same-snapshot test only	BLOCKED
+SAF-010	safety-test-matrix stale snapshot	Duplicate same-snapshot test only	BLOCKED
+E2E-S1-04	e2e-test-plan COMMENT missing context	COMMENT runtime exists; missing-context fixture not isolated	BLOCKED
+E2E-S1-13	e2e-test-plan provider unavailable	Backend fail-closed unit only	BLOCKED
+SAF-011	safety-test-matrix bulk partial failure	RAI-25/27 observed Failed 0	BLOCKED
+SAF-012	safety-test-matrix terminal report	Backend terminal test pass; FE guard not isolated	PARTIAL
+RAI-16	G0-12E runner legacy cancel	Supplemental disposable legacy job	PASS_SUPPLEMENTAL
+

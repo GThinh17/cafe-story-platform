@@ -1,0 +1,12 @@
+node_modules/
+.next/
+out/
+dev-server*.log
+tsconfig.tsbuildinfo
+.playwright-report/
+.playwright-results/
+playwright-report/
+test-results/
+.env
+.env.*
+!.env.example

@@ -1,0 +1,37 @@
+package com.cafestory.service.serviceInterface;
+
+import com.cafestory.dto.responseDTO.BlogFeedResponse;
+import com.cafestory.dto.responseDTO.FeedResponseDTO;
+import com.cafestory.entity.enums.TrendWindowType;
+
+import java.util.List;
+import java.util.UUID;
+
+public interface BlogFeedRankingService {
+    default FeedResponseDTO getOrganicFeed(String cursor, int size) {
+        return getOrganicFeed(null, cursor, size);
+    }
+
+    FeedResponseDTO getOrganicFeed(UUID viewerUserId, String cursor, int size);
+
+    FeedResponseDTO getPersonalizedFeedPage(
+            UUID userId,
+            TrendWindowType windowType,
+            UUID regionId,
+            String cursor,
+            int size);
+
+    List<BlogFeedResponse> getPersonalizedFeed(
+            UUID userId,
+            TrendWindowType windowType,
+            UUID regionId,
+            int page,
+            int size);
+
+    List<BlogFeedResponse> rebuildRecommendationCache(
+            UUID userId,
+            TrendWindowType windowType,
+            UUID regionId);
+
+    void rebuildRecommendationCacheForAllActiveUsers();
+}

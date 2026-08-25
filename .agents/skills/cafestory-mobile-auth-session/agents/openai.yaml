@@ -1,0 +1,4 @@
+interface:
+  display_name: "CafeStory Mobile Auth Session"
+  short_description: "Handle mobile auth tokens and sessions correctly."
+  default_prompt: "Use CafeStory mobile auth session rules for this mobile API change."

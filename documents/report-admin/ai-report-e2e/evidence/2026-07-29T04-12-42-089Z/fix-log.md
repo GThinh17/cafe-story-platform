@@ -1,0 +1,3 @@
+- RAI-07: POST /api/admin/reports/{reportId}/ai-resolution returned 502; check BE webhook URL, active n8n workflow cafestory-admin-report-ai-resolution, and OpenAI credentials in n8n.
+- RAI-08: POST /api/admin/reports/{reportId}/ai-resolution returned 502; check BE webhook URL, active n8n workflow cafestory-admin-report-ai-resolution, and OpenAI credentials in n8n.
+- RAI-15: Legacy autoApply request returned 502; inspect A0 compatibility handling.

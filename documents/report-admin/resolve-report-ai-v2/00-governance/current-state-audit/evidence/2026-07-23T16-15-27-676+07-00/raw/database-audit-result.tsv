@@ -1,0 +1,61 @@
+SECTION	DB_SESSION
+schema_name	transaction_read_only	server_version
+public	on	17.6
+
+SECTION	REPORT_REASON_SUMMARY
+total_reasons	active_reasons	inactive_reasons	min_severity	max_severity	requires_description_count
+22	22	0	1	5	17
+
+SECTION	REPORT_STATUS_TARGET_DISTRIBUTION
+status	target_type	report_count
+OPEN	BLOG	1
+OPEN	USER	1
+REJECTED	BLOG	5
+REJECTED	CAFE_PAGE	3
+REJECTED	USER	8
+REVIEWING	BLOG	1
+
+SECTION	REPORT_REASON_USAGE
+reason_code	report_count
+SCAM_FRAUD_OR_SPAM	18
+SCAM_OR_FRAUD	1
+
+SECTION	REPORT_DATA_QUALITY
+total_reports	null_reason_id	blank_reason_snapshot	invalid_target_cardinality	target_type_link_mismatch	description_over_2000
+19	0	0	0	0	0
+
+SECTION	REPORT_REASON_REFERENCE_QUALITY
+missing_reason_reference	inactive_reason_reference	reason_target_mismatch
+0	0	0
+
+SECTION	AI_RESOLUTION_SUMMARY
+total_resolutions	null_confidence	null_risk	blank_explanation	blank_model	null_raw_response	null_labels
+23	0	0	0	0	0	0
+
+SECTION	AI_RESOLUTION_SCORE_BY_DECISION_ACTION
+report_decision	target_type	target_action	resolution_count	min_confidence	max_confidence	avg_confidence	min_risk	max_risk	avg_risk
+NEEDS_MANUAL_REVIEW	BLOG	NONE	6	50	75	60.00	3	4	3.58
+RESOLVE	BLOG	HIDE	5	85	85	85.00	4.5	75	20.28
+RESOLVE	CAFE_PAGE	SUSPEND_PAGE	6	85	85	85.00	7.5	8.5	7.83
+RESOLVE	USER	SUSPEND_USER	6	85	85	85.00	7	8	7.33
+
+SECTION	AI_RESOLUTION_LEGACY_THRESHOLD_PROFILE
+resolve_below_legacy_auto_threshold	resolve_below_legacy_confidence_threshold	manual_review_high_confidence
+16	0	0
+
+SECTION	AI_RESOLUTION_INVALID_COMBINATIONS
+invalid_combination_count
+0
+
+SECTION	AUTO_JOB_SUMMARY
+total_jobs	active_jobs	applied_jobs	cancelled_jobs	skipped_jobs	failed_jobs
+1	0	0	1	0	0
+
+SECTION	AUTO_JOB_DESTRUCTIVE_ACTIONS
+target_action	status	job_count
+
+SECTION	AUTO_JOB_ACTIVE_DUPLICATES
+report_with_multiple_active_jobs
+0
+
+AUDIT_END	ROLLBACK_COMPLETE

@@ -1,0 +1,30 @@
+{
+  "manifestVersion": "1.0.0",
+  "candidateVersion": "report-ai-v2-sprint2.4-candidate.1",
+  "lifecycle": "PROPOSED",
+  "runtimeAuthority": false,
+  "providerCalled": false,
+  "artifactHashes": {
+    "docker/contracts/admin-report-ai-prompt-pilot-s2.schema.json": "56c610689b71802c03d37083a9c5f6fb4aef2031e395e849fdc0fc2e271c8c30",
+    "docker/contracts/admin-report-ai-prompt-pilot-s2.json": "d71950c9400d73d849a1e7f003c27ce5f97358e509cd2a2d51c40fe7a2c54a1f",
+    "docker/n8n-code/admin-report-ai-resolution/assemble-prompt-pilot-s2-04.js": "1af4881b27d2fc0e0331ef9f71fc87b62cb951f5f1c0102faedead4f30d377c1",
+    "docker/tests/fixtures/admin-report-ai-prompt-pilot-v1/cases.json": "49deb08f4b444c9d0e72a01fe9d95b46af179e83780b05c2707dcb6c6e86b601",
+    "docker/tests/validate-admin-report-ai-prompt-pilot.mjs": "6212e52cd69f3b2a19a532a4f5b5d7b8429ea52095d027a223f4f02c6214617c"
+  },
+  "dependencyHashes": {
+    "docker/tests/fixtures/admin-report-ai-evaluation-v1/dataset.json": "e42d57559ed00be22dbbf1311aa070255ca7499f0c2095d8145361d73e3895f1",
+    "docker/tests/fixtures/admin-report-ai-evaluation-v1/rubric.json": "200a14e477d85893f81a409b9648ff174772dd31c8a50053e02e15ea372ab39a",
+    "docker/tests/fixtures/admin-report-ai-evaluation-v1/manifest.json": "bd3cd290653be306187769d4232dc3ac238c049b231a1474051a229ce2c77bd8",
+    "docker/contracts/admin-report-ai-provider-output-s2.schema.json": "1600cbaf9c4963213de86a8fb581dac0fdb19e3291e032ca2df463e4c9144e75",
+    "1-cafe-story-backend-javaspring/src/main/java/com/cafestory/service/serviceImplement/AdminReportAiPolicyCatalog.java": "2dcddb9a457e4e1bfb9b98d8074e46d4e8421781303b1590994b4928f4ce94d4"
+  },
+  "expectedCounts": {
+    "selectedProfiles": 1,
+    "exclusions": 4,
+    "executableBranches": 2,
+    "datasetCaseRefs": 5,
+    "untrustedSystemPromptMutations": 4,
+    "assemblerNegativeGuards": 5,
+    "specNegativeGuards": 6
+  }
+}

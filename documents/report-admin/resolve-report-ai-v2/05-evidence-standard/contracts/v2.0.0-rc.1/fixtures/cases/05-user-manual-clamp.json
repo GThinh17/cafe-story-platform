@@ -1,0 +1,11 @@
+{
+  "id": "M07-FX-05",
+  "description": "USER luôn local manual-only, provider không được gọi và không tạo finding.",
+  "base": "user-manual.json",
+  "operations": [],
+  "expected": {
+    "schemaValid": true,
+    "semanticValid": true,
+    "errorCodes": []
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "gate": "DOD-FIX-02",
+  "status": "COMPLETED_VERIFIED_APPROVED",
+  "approvalTokenExpected": "APPROVE_G0-12-DONE-FIX-02",
+  "approvalReceived": true,
+  "approvalTokenReceived": "APPROVE_G0-12-DONE-FIX-02",
+  "contractCoverage": [
+    "CT-010",
+    "SAF-010"
+  ],
+  "issues": {
+    "codeBugFixedVerified": 2,
+    "testBugFixedVerified": 2,
+    "openInScope": 0
+  },
+  "backend": {
+    "serviceFocusedTests": 25,
+    "serviceFocusedFailures": 0,
+    "adminReportAiFocusedTests": 63,
+    "adminReportAiFocusedFailures": 0,
+    "fullTests": 624,
+    "fullFailures": 0,
+    "fullErrors": 0,
+    "fullSkipped": 1,
+    "springContext": "PASS"
+  },
+  "coverage": {
+    "class": "AdminReportAiResolutionServiceImpl",
+    "lineCovered": 458,
+    "lineTotal": 458,
+    "linePercent": 100.0,
+    "branchCovered": 172,
+    "branchTotal": 196,
+    "branchPercent": 87.76
+  },
+  "projectStructureWarnings": 0,
+  "secretPatternHits": 0,
+  "publishedN8nRuntimeUpdated": false,
+  "productionDeployment": "NOT_AUTHORIZED",
+  "remainingRemediation": [
+    "DOD-FIX-03",
+    "DOD-FIX-04",
+    "DOD-FIX-05",
+    "DOD-FIX-06"
+  ]
+}

@@ -1,0 +1,16 @@
+CafeStory backend validation summary
+Run: 20260720-231600
+
+Focused suite
+Command: mvn '-Dtest=BlogFeedRankingServiceImplTest,FeedServiceImplTest,FeedControllerTest,PaymentControllerTest,PaymentServiceImplTest' test
+Result: PASS
+Tests run: 87, Failures: 0, Errors: 0, Skipped: 0
+
+Full regression suite
+Command: mvn test
+Result: PASS
+Tests run: 580, Failures: 0, Errors: 0, Skipped: 1
+
+JaCoCo diff-scoped production coverage
+Executable lines: 37/37 (100%)
+Branches: 10/10 (100%)

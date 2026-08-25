@@ -1,0 +1,27 @@
+{
+  "id": "M07-FX-02",
+  "description": "COMMENT cần direct parent context nhưng slot missing nên bắt buộc manual review.",
+  "base": "comment-resolve.json",
+  "operations": [
+    {"op":"replace","path":"/evidence/7/integrity/payloadDigest","value":null},
+    {"op":"replace","path":"/evidence/7/availability/status","value":"MISSING"},
+    {"op":"replace","path":"/evidence/7/availability/reasonCode","value":"PARENT_CONTEXT_NOT_AVAILABLE"},
+    {"op":"replace","path":"/evidence/7/quality/level","value":"UNUSABLE"},
+    {"op":"replace","path":"/evidence/7/quality/reasonCodes","value":["MATERIAL_CONTEXT_MISSING"]},
+    {"op":"replace","path":"/evidence/7/payload","value":{"representation":"NONE","mediaType":null,"value":null,"reference":null,"truncated":false}},
+    {"op":"replace","path":"/ruleEvaluations/0/outcome","value":"UNASSESSABLE"},
+    {"op":"replace","path":"/ruleEvaluations/0/supportingEvidenceIds","value":[]},
+    {"op":"replace","path":"/ruleEvaluations/0/counterEvidenceIds","value":[]},
+    {"op":"replace","path":"/ruleEvaluations/0/missingEvidenceIds","value":["ME-COMMENT-PARENT-CONTEXT"]},
+    {"op":"add","path":"/missingEvidence/-","value":{"missingEvidenceId":"ME-COMMENT-PARENT-CONTEXT","requiredByRuleId":"CSR.HAR.001","requirementType":"EVIDENCE_KIND","requiredEvidenceKind":"PARENT_COMMENT_CONTEXT","semanticRequirementCode":null,"triggerCondition":"DIRECT_REPLY_CONTEXT_MATERIAL","critical":true,"availability":"MISSING","reasonCode":"PARENT_CONTEXT_NOT_AVAILABLE","recommendedNextStep":"HUMAN_REVIEW_CONTEXT","decisionEffect":"NEEDS_MANUAL_REVIEW"}},
+    {"op":"replace","path":"/recommendation/reportDecision","value":"NEEDS_MANUAL_REVIEW"},
+    {"op":"replace","path":"/recommendation/candidateTargetAction","value":"NO_ACTION"},
+    {"op":"replace","path":"/recommendation/evidenceSufficiency","value":"UNASSESSABLE"},
+    {"op":"replace","path":"/recommendation/findings","value":[]}
+  ],
+  "expected": {
+    "schemaValid": true,
+    "semanticValid": true,
+    "errorCodes": []
+  }
+}

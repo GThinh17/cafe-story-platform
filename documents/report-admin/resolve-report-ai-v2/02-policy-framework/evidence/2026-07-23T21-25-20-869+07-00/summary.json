@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "1.0",
+  "gate": "G0-07",
+  "approval": "APPROVE_G0-07",
+  "status": "DONE",
+  "policyStatus": "PROPOSED",
+  "draftVersion": "PF-2.0.0-proposed.1",
+  "artifactCounts": {
+    "normativeFrameworkDocuments": 8,
+    "frameworkReadme": 1,
+    "governanceDocuments": 1,
+    "gapCoverageRows": 19,
+    "normativeClauses": 92,
+    "governanceClauses": 10
+  },
+  "businessAdopted": false,
+  "productionActive": false,
+  "sourceOrDataMutation": false,
+  "nextRequiredApproval": "APPROVE_G0-08"
+}

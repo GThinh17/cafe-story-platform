@@ -1,0 +1,58 @@
+{
+  "httpStatus": 200,
+  "resolution": {
+    "id": "0a6e56ed-2fd3-43c5-9ed6-963e39039cbe",
+    "contractVersion": "2.0",
+    "correlationId": "7f6a0819-89a7-4ef1-9900-c4ccec391541",
+    "automationMode": "A0_RECOMMEND_ONLY",
+    "recommendationState": "NEEDS_MANUAL_REVIEW",
+    "contentReportId": "33068f32-1d38-48df-a273-9a5f54733b83",
+    "targetType": "BLOG",
+    "targetId": "710e8e13-40b9-4828-9924-f5e9dcd64caf",
+    "reportDecision": "NEEDS_MANUAL_REVIEW",
+    "targetAction": "NO_ACTION",
+    "confidenceScore": null,
+    "riskScore": null,
+    "labels": [
+      "RESTRICTED_GOODS"
+    ],
+    "ruleCode": null,
+    "explanation": "The moderate quality of evidence regarding the reason for restriction does not substantiate a clear violation without further review.",
+    "modelName": "gpt-4o-mini-2024-07-18",
+    "createdAt": "2026-07-29T15:07:04.8916393",
+    "autoApplyJob": null,
+    "autoApplyWarning": null,
+    "findings": [],
+    "evidenceSummary": {
+      "usedEvidenceIds": [
+        "EV-TARGET-IDENTITY",
+        "EV-TARGET-CONTENT",
+        "EV-TARGET-STATE"
+      ],
+      "counterEvidenceIds": [],
+      "missingEvidenceIds": [
+        "EV-REASON-ROUTE"
+      ]
+    },
+    "blockedReasons": [
+      "EVIDENCE_NOT_SUFFICIENT"
+    ],
+    "evidenceQuality": "LOW",
+    "evidenceSufficiency": "INSUFFICIENT",
+    "violationLikelihood": "UNKNOWN",
+    "harmSeverity": "MEDIUM",
+    "actionRisk": "LOW",
+    "policyVersion": "PF-2.0.0-proposed.1",
+    "ruleCatalogVersion": "RC-2.0.0-proposed.1",
+    "promptVersion": "report-ai-v2-sprint1.1",
+    "workflowVersion": "cafestory-admin-report-ai-resolution-v2",
+    "targetSnapshotHash": "ebc652c0d8e50896c1092752daeecc1344e26fb9bc6db442dc02c40898fab68b"
+  },
+  "resolutionCountAfterRetry": 1,
+  "noTargetMutation": true,
+  "noReportMutation": true,
+  "autoApplyJobCount": 0,
+  "screenshots": [
+    "screenshots/E2E-S1-13-provider-boundary-operational-error.png"
+  ]
+}

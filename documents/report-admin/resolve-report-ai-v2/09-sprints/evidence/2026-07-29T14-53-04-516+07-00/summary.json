@@ -1,0 +1,49 @@
+{
+  "gate": "DOD-FIX-04",
+  "status": "COMPLETED_VERIFIED_APPROVED",
+  "scenario": "E2E-S1-13",
+  "issues": {
+    "testBugsFixedVerified": 1,
+    "codeBugsFixedVerified": 2,
+    "configLimitations": 1,
+    "openInScope": 0
+  },
+  "failure": {
+    "httpStatus": 502,
+    "code": "AI_PROVIDER_BOUNDARY_FAILED",
+    "retryable": true,
+    "stage": "N8N_PROVIDER",
+    "resolutionCountBefore": 0,
+    "resolutionCountAfter": 0
+  },
+  "recovery": {
+    "httpStatus": 200,
+    "resolutionCountAfter": 1,
+    "targetMutation": false,
+    "reportMutation": false,
+    "autoApplyJobsCreated": 0
+  },
+  "tests": {
+    "backendSmallestFocusedPassed": 2,
+    "backendFocusedPassed": 64,
+    "backendFullTests": 625,
+    "backendFullFailures": 0,
+    "backendFullErrors": 0,
+    "backendFullSkipped": 1,
+    "adminTypecheck": "PASS",
+    "adminBuild": "PASS",
+    "playwrightPassed": 1,
+    "playwrightTotal": 1
+  },
+  "coverage": {
+    "changedBackendLinePercent": 100.0,
+    "resolutionServiceBranchPercent": 87.75
+  },
+  "cleanup": {
+    "reportRows": 0,
+    "blogRows": 0
+  },
+  "productionDeployment": "NOT_AUTHORIZED",
+  "approval": "APPROVE_G0-12-DONE-FIX-04",
+  "nextAction": "IMPLEMENT_G0_12_DONE_FIX_05"
+}

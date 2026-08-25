@@ -1,0 +1,38 @@
+{
+  "manifestVersion": "1.0.0",
+  "benchmarkVersion": "1.0.0-rc.1",
+  "lifecycle": "PROPOSED",
+  "runtimeAuthority": false,
+  "providerCallAuthorizedBy": "IMPLEMENT_S2_05",
+  "providerQualityDenominator": 0,
+  "modelSelectionAuthority": false,
+  "artifactHashes": {
+    "docker/contracts/admin-report-ai-provider-benchmark-s2.schema.json": "0e2821f1a97f426e307fc7823edb82d9cc44c48be196845638c0344979604c19",
+    "docker/contracts/admin-report-ai-provider-benchmark-s2.json": "f3e4b51dbb37e69adf59b0c986053a74accf3ca71a311b2712cc8b70dd49c56e",
+    "docker/contracts/admin-report-ai-provider-evaluation-output-s2.schema.json": "bc2cf083a47728c94dde68001909f1edbbadc3035528402c0ca7cacb8e35507f",
+    "docker/tests/lib/admin-report-ai-provider-benchmark.mjs": "6ec6f3014aa0b13f210a143a0eda6883d1624bfacc856905d928ef5e00af4c0d",
+    "docker/tests/run-admin-report-ai-provider-benchmark.mjs": "6cbf18f54f956d72a93307b3b85d67b86d648a54cee54b3112732a5d3a91854e",
+    "docker/tests/validate-admin-report-ai-provider-benchmark.mjs": "66aa03e6a3a414b76e9f4ad881e92f97c8fd147f94d31718ee4fbb57d0b0c9ec"
+  },
+  "dependencyHashes": {
+    "docker/contracts/admin-report-ai-prompt-pilot-s2.schema.json": "56c610689b71802c03d37083a9c5f6fb4aef2031e395e849fdc0fc2e271c8c30",
+    "docker/contracts/admin-report-ai-prompt-pilot-s2.json": "d71950c9400d73d849a1e7f003c27ce5f97358e509cd2a2d51c40fe7a2c54a1f",
+    "docker/n8n-code/admin-report-ai-resolution/assemble-prompt-pilot-s2-04.js": "1af4881b27d2fc0e0331ef9f71fc87b62cb951f5f1c0102faedead4f30d377c1",
+    "docker/tests/fixtures/admin-report-ai-prompt-pilot-v1/cases.json": "49deb08f4b444c9d0e72a01fe9d95b46af179e83780b05c2707dcb6c6e86b601",
+    "docker/tests/fixtures/admin-report-ai-prompt-pilot-v1/manifest.json": "24e249391efc137250dbf7d14ef918c6f18fafe8e603d045e3770400c9f9b852",
+    "docker/tests/fixtures/admin-report-ai-evaluation-v1/dataset.json": "e42d57559ed00be22dbbf1311aa070255ca7499f0c2095d8145361d73e3895f1",
+    "docker/tests/fixtures/admin-report-ai-evaluation-v1/rubric.json": "200a14e477d85893f81a409b9648ff174772dd31c8a50053e02e15ea372ab39a",
+    "docker/tests/fixtures/admin-report-ai-evaluation-v1/manifest.json": "bd3cd290653be306187769d4232dc3ac238c049b231a1474051a229ce2c77bd8"
+  },
+  "expectedCounts": {
+    "models": 3,
+    "datasetCases": 5,
+    "directCases": 1,
+    "repeats": 2,
+    "scheduledRuns": 36,
+    "maximumProviderRequests": 36
+  },
+  "maximumEstimatedCostUsd": 1,
+  "projectedMaximumCostUsd": 0.918,
+  "selectionStatusWhenQualityMissing": "NO_MODEL_SELECTED_INSUFFICIENT_GROUND_TRUTH"
+}

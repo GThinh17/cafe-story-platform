@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "1.0",
+  "gate": "G0-10A",
+  "approval": "APPROVE_G0-10A",
+  "status": "PARTIAL_WAITING_USER_APPROVAL",
+  "approvedDecision": {
+    "decisionId": "BD-001",
+    "selectedOption": "A1_ROLE_BASED_OWNERSHIP"
+  },
+  "progress": {
+    "approved": 1,
+    "total": 12,
+    "current": "G0-10B"
+  },
+  "currentProposal": {
+    "decisionId": "BD-002",
+    "recommendedOption": "B1_A0_RECOMMEND_ONLY"
+  },
+  "nextRequiredApproval": "APPROVE_G0-10B",
+  "sourceOrDataMutation": false,
+  "g0_11Authorized": false
+}

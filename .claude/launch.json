@@ -1,0 +1,33 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "nextjs-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "2-cafe-story-nextjs-web"],
+      "port": 3000,
+      "autoPort": false
+    },
+    {
+      "name": "nextjs-web-prod",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "start", "--prefix", "2-cafe-story-nextjs-web"],
+      "port": 3000,
+      "autoPort": false
+    },
+    {
+      "name": "nextjs-admin",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "5-cafe-story-nextjs-admin"],
+      "port": 3636,
+      "autoPort": false
+    },
+    {
+      "name": "spring-backend",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd 1-cafe-story-backend-javaspring && .\\mvnw.cmd spring-boot:run"],
+      "port": 8080,
+      "autoPort": false
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+scenario	target	before_after_equal	report_unchanged	no_new_active_job	status
+RAI-07	BLOG	true	true	true	PASS
+RAI-08	COMMENT	true	true	true	PASS
+RAI-09	USER	true	true	true	PASS
+RAI-10	CAFE_PAGE	true	true	true	PASS
+RAI-17	COMMENT	true	true	true	PASS

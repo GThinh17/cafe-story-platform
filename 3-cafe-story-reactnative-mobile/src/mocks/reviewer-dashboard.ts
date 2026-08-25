@@ -1,0 +1,260 @@
+import type {
+  ReviewerDashboardActivity,
+  ReviewerDashboardBadgeHistoryItem,
+  ReviewerDashboardPayout,
+  ReviewerDashboardPerformancePoint,
+  ReviewerDashboardPeriod,
+  ReviewerDashboardProfile,
+  ReviewerDashboardRankingItem,
+  ReviewerDashboardSegmentItem,
+  ReviewerDashboardStats,
+} from "../types";
+
+export const mockReviewerDashboardProfile: ReviewerDashboardProfile = {
+  avatar:
+    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=240&q=80",
+  badge: "GOLD",
+  expireDate: "2027-05-31T23:59:59",
+  follow: 318,
+  follower: 1284,
+  like: 18420,
+  name: "Julianne Tran",
+  region: {
+    area: "District 1",
+    city: "Ho Chi Minh",
+    province: "Ho Chi Minh",
+    regionId: "33333333-3333-3333-3333-333333333333",
+    street: "Nguyen Hue",
+    ward: "Ben Nghe",
+  },
+  reviewerId: "11111111-1111-1111-1111-111111111111",
+  role: "REVIEWER",
+  score: 1120,
+  userId: "22222222-2222-2222-2222-222222222222",
+};
+
+export const mockReviewerDashboardStats: Record<
+  ReviewerDashboardPeriod,
+  ReviewerDashboardStats
+> = {
+  day: {
+    commentCount: 14,
+    likeCount: 48,
+    period: "day",
+    reviewerId: mockReviewerDashboardProfile.reviewerId,
+    score: 145,
+    shareCount: 9,
+  },
+  week: {
+    commentCount: 118,
+    likeCount: 420,
+    period: "week",
+    reviewerId: mockReviewerDashboardProfile.reviewerId,
+    score: 1218,
+    shareCount: 76,
+  },
+  month: {
+    commentCount: 436,
+    likeCount: 1840,
+    period: "month",
+    reviewerId: mockReviewerDashboardProfile.reviewerId,
+    score: 5206,
+    shareCount: 322,
+  },
+  "3months": {
+    commentCount: 1284,
+    likeCount: 5360,
+    period: "3months",
+    reviewerId: mockReviewerDashboardProfile.reviewerId,
+    score: 14482,
+    shareCount: 886,
+  },
+};
+
+export const mockReviewerDashboardRanking: ReviewerDashboardRankingItem[] = [
+  {
+    badge: "DIAMOND",
+    commentCount: 566,
+    likeCount: 2050,
+    location: "Da Nang",
+    rank: 1,
+    reviewerId: "77777777-7777-7777-7777-777777777777",
+    score: 6140,
+    shareCount: 410,
+  },
+  {
+    badge: "GOLD",
+    commentCount: 436,
+    likeCount: 1840,
+    location: "Ho Chi Minh",
+    rank: 2,
+    reviewerId: mockReviewerDashboardProfile.reviewerId,
+    score: 5206,
+    shareCount: 322,
+  },
+  {
+    badge: "GOLD",
+    commentCount: 360,
+    likeCount: 1420,
+    location: "Ha Noi",
+    rank: 3,
+    reviewerId: "88888888-8888-8888-8888-888888888888",
+    score: 3940,
+    shareCount: 240,
+  },
+  {
+    badge: "SILVER",
+    commentCount: 150,
+    likeCount: 840,
+    location: "Can Tho",
+    rank: 4,
+    reviewerId: "99999999-9999-9999-9999-999999999999",
+    score: 1888,
+    shareCount: 122,
+  },
+];
+
+export const mockReviewerDashboardSegment: ReviewerDashboardSegmentItem = {
+  commentCount: 436,
+  likeCount: 1840,
+  reviewerId: mockReviewerDashboardProfile.reviewerId,
+  score: 1120,
+  segment: "top",
+  shareCount: 322,
+};
+
+export const mockReviewerDashboardPayouts: ReviewerDashboardPayout[] = [
+  {
+    badge: "GOLD",
+    badgeMultiplier: 1.2,
+    commentAmount: 218000,
+    commentCount: 436,
+    id: "payout-2026-05",
+    likeAmount: 184000,
+    likeCount: 1840,
+    paidAt: null,
+    payoutMonth: "2026-05",
+    reviewerId: mockReviewerDashboardProfile.reviewerId,
+    shareAmount: 96600,
+    shareCount: 322,
+    status: "PENDING",
+    totalBaseAmount: 498600,
+    totalFinalAmount: 598320,
+  },
+  {
+    badge: "SILVER",
+    badgeMultiplier: 1.1,
+    commentAmount: 195000,
+    commentCount: 390,
+    id: "payout-2026-04",
+    likeAmount: 151000,
+    likeCount: 1510,
+    paidAt: "2026-05-05T09:00:00",
+    payoutMonth: "2026-04",
+    reviewerId: mockReviewerDashboardProfile.reviewerId,
+    shareAmount: 81000,
+    shareCount: 270,
+    status: "PAID",
+    totalBaseAmount: 427000,
+    totalFinalAmount: 469700,
+  },
+  {
+    badge: "BRONZE",
+    badgeMultiplier: 1.05,
+    commentAmount: 142000,
+    commentCount: 284,
+    id: "payout-2026-03",
+    likeAmount: 112000,
+    likeCount: 1120,
+    paidAt: "2026-04-05T09:00:00",
+    payoutMonth: "2026-03",
+    reviewerId: mockReviewerDashboardProfile.reviewerId,
+    shareAmount: 59400,
+    shareCount: 198,
+    status: "PAID",
+    totalBaseAmount: 313400,
+    totalFinalAmount: 329070,
+  },
+];
+
+export const mockReviewerDashboardBadges: ReviewerDashboardBadgeHistoryItem[] =
+  [
+    {
+      badge: "GOLD",
+      commentCount: 436,
+      id: "badge-2026-05",
+      likeCount: 1840,
+      month: "2026-05",
+      reviewerId: mockReviewerDashboardProfile.reviewerId,
+      score: 1120,
+      shareCount: 322,
+    },
+    {
+      badge: "GOLD",
+      commentCount: 390,
+      id: "badge-2026-04",
+      likeCount: 1510,
+      month: "2026-04",
+      reviewerId: mockReviewerDashboardProfile.reviewerId,
+      score: 820,
+      shareCount: 270,
+    },
+    {
+      badge: "SILVER",
+      commentCount: 284,
+      id: "badge-2026-03",
+      likeCount: 1120,
+      month: "2026-03",
+      reviewerId: mockReviewerDashboardProfile.reviewerId,
+      score: 620,
+      shareCount: 198,
+    },
+  ];
+
+export const mockReviewerDashboardPerformance: ReviewerDashboardPerformancePoint[] =
+  [
+    { comments: 284, label: "Mar", likes: 1120, score: 314, shares: 198 },
+    { comments: 390, label: "Apr", likes: 1510, score: 820, shares: 270 },
+    { comments: 436, label: "May", likes: 1840, score: 1120, shares: 322 },
+    { comments: 480, label: "Jun", likes: 2050, score: 1340, shares: 350 },
+    { comments: 520, label: "Jul", likes: 2360, score: 1490, shares: 410 },
+    { comments: 560, label: "Aug", likes: 2540, score: 1630, shares: 448 },
+  ];
+
+export const mockReviewerDashboardActivities: ReviewerDashboardActivity[] = [
+  {
+    description: "Velvet Roast pour-over review gained traction this morning.",
+    id: "activity-like",
+    time: "2 hr ago",
+    title: "Review received 128 new likes",
+    type: "like",
+  },
+  {
+    description: "Your District 1 cafe guide was reposted by local cafe fans.",
+    id: "activity-share",
+    time: "5 hr ago",
+    title: "Story shared by 24 readers",
+    type: "share",
+  },
+  {
+    description: "May score stayed inside the GOLD tier.",
+    id: "activity-badge",
+    time: "1 d ago",
+    title: "Gold badge maintained",
+    type: "badge",
+  },
+  {
+    description: "Earnings from likes, shares, and comments are ready.",
+    id: "activity-payout",
+    time: "2 d ago",
+    title: "May payout calculated",
+    type: "payout",
+  },
+  {
+    description: "You moved to #2 in the monthly reviewer ranking.",
+    id: "activity-rank",
+    time: "3 d ago",
+    title: "Leaderboard rank increased",
+    type: "ranking",
+  },
+];

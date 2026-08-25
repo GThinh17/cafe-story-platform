@@ -1,0 +1,20 @@
+{
+  "id": "M07-FX-08",
+  "description": "Material evidence conflict chưa giải quyết phải manual/no-action.",
+  "base": "blog-resolve.json",
+  "operations": [
+    {"op":"replace","path":"/ruleEvaluations/0/outcome","value":"CONFLICTED"},
+    {"op":"replace","path":"/ruleEvaluations/0/supportingEvidenceIds","value":["EV-BLOG-TEXT"]},
+    {"op":"replace","path":"/ruleEvaluations/0/counterEvidenceIds","value":["EV-BLOG-STATE"]},
+    {"op":"add","path":"/conflicts/-","value":{"conflictId":"CF-SAF-001","ruleId":"CSR.SAF.001","material":true,"evidenceIds":["EV-BLOG-TEXT","EV-BLOG-STATE"],"resolutionStatus":"UNRESOLVED"}},
+    {"op":"replace","path":"/recommendation/reportDecision","value":"NEEDS_MANUAL_REVIEW"},
+    {"op":"replace","path":"/recommendation/candidateTargetAction","value":"NO_ACTION"},
+    {"op":"replace","path":"/recommendation/evidenceSufficiency","value":"CONFLICTED"},
+    {"op":"replace","path":"/recommendation/findings","value":[]}
+  ],
+  "expected": {
+    "schemaValid": true,
+    "semanticValid": true,
+    "errorCodes": []
+  }
+}

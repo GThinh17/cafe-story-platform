@@ -1,0 +1,52 @@
+{
+  "statusCode": 200,
+  "status": "Success",
+  "message": "Request processed successfully",
+  "data": {
+    "id": "387c6a93-083b-4e86-a525-c99e51fc5f96",
+    "contractVersion": "2.0",
+    "correlationId": "929b1905-c776-4676-a12b-afebdb69314f",
+    "automationMode": "A0_RECOMMEND_ONLY",
+    "recommendationState": "NEEDS_MANUAL_REVIEW",
+    "contentReportId": "2f055546-4e96-4479-994b-3d4c5122d18c",
+    "targetType": "USER",
+    "targetId": "b99f66c0-06bf-4769-b819-ed918a4fa0d0",
+    "reportDecision": "NEEDS_MANUAL_REVIEW",
+    "targetAction": "NO_ACTION",
+    "confidenceScore": null,
+    "riskScore": null,
+    "labels": [
+      "manual-review"
+    ],
+    "ruleCode": null,
+    "explanation": "Target-deep policy evaluation is outside Sprint 1; an admin must review this report.",
+    "modelName": "backend-policy-guard",
+    "createdAt": "2026-07-29T11:12:59.0689845",
+    "autoApplyJob": null,
+    "autoApplyWarning": null,
+    "findings": [],
+    "evidenceSummary": {
+      "usedEvidenceIds": [
+        "EV-TARGET-IDENTITY",
+        "EV-TARGET-STATE"
+      ],
+      "missingEvidenceIds": [
+        "EV-TARGET-DEEP-REVIEW"
+      ]
+    },
+    "blockedReasons": [
+      "TARGET_DEEP_POLICY_NOT_IN_SPRINT1",
+      "EVIDENCE_NOT_SUFFICIENT"
+    ],
+    "evidenceQuality": "LOW",
+    "evidenceSufficiency": "UNASSESSABLE",
+    "violationLikelihood": "UNKNOWN",
+    "harmSeverity": "UNKNOWN",
+    "actionRisk": "LOW",
+    "policyVersion": "PF-2.0.0-proposed.1",
+    "ruleCatalogVersion": "RC-2.0.0-proposed.1",
+    "promptVersion": "report-ai-v2-sprint1.1",
+    "workflowVersion": "cafestory-admin-report-ai-resolution-v2",
+    "targetSnapshotHash": "3a1b03094c2410c208b7bd118a4e735b15ddcc7c837097dd24db0c7f4b884df9"
+  }
+}

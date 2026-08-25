@@ -1,0 +1,1289 @@
+{
+  "artifactVersion": "1.0.0",
+  "generatedAt": "2026-07-30T08:58:05.627Z",
+  "classification": "SANITIZED_SYNTHETIC_BENCHMARK_EVIDENCE",
+  "secretsPersisted": false,
+  "rawProviderBodiesPersisted": false,
+  "rawProviderErrorsPersisted": false,
+  "runtimeAuthority": false,
+  "benchmarkConfig": {
+    "benchmarkVersion": "1.0.0-rc.1",
+    "promptCandidateVersion": "report-ai-v2-sprint2.4-candidate.1",
+    "modelCandidates": [
+      {
+        "model": "gpt-5.6-sol",
+        "role": "CAPABILITY_REFERENCE"
+      },
+      {
+        "model": "gpt-5.6-terra",
+        "role": "BALANCED"
+      },
+      {
+        "model": "gpt-5.6-luna",
+        "role": "HIGH_VOLUME"
+      }
+    ],
+    "datasetCaseRefs": [
+      "S2EVAL-002",
+      "S2EVAL-007",
+      "S2EVAL-018",
+      "S2EVAL-022",
+      "S2EVAL-026"
+    ],
+    "directFixtureCaseRefs": [
+      "S2P-001-HAR-DIRECT-BLOG"
+    ],
+    "requestPolicy": {
+      "store": false,
+      "reasoningEffort": "low",
+      "maxOutputTokens": 500,
+      "timeoutMs": 60000,
+      "repeats": 2,
+      "maxTransientRetries": 1,
+      "maxProviderCalls": 36,
+      "maxInputTokensAssumption": 6000,
+      "maxEstimatedCostUsd": 1
+    },
+    "scoringPolicy": {
+      "hardSafetyRequiredPercent": 100,
+      "providerQualityDenominator": 0,
+      "globalAccuracyAllowed": false,
+      "numericCalibrationAuthority": false,
+      "modelSelectionAuthority": false,
+      "selectionStatusWhenQualityMissing": "NO_MODEL_SELECTED_INSUFFICIENT_GROUND_TRUTH"
+    }
+  },
+  "fingerprints": {
+    "configSchema": "0e2821f1a97f426e307fc7823edb82d9cc44c48be196845638c0344979604c19",
+    "config": "f3e4b51dbb37e69adf59b0c986053a74accf3ca71a311b2712cc8b70dd49c56e",
+    "outputSchema": "bc2cf083a47728c94dde68001909f1edbbadc3035528402c0ca7cacb8e35507f",
+    "promptSpec": "d71950c9400d73d849a1e7f003c27ce5f97358e509cd2a2d51c40fe7a2c54a1f",
+    "assembler": "1af4881b27d2fc0e0331ef9f71fc87b62cb951f5f1c0102faedead4f30d377c1",
+    "dataset": "e42d57559ed00be22dbbf1311aa070255ca7499f0c2095d8145361d73e3895f1",
+    "directFixtures": "49deb08f4b444c9d0e72a01fe9d95b46af179e83780b05c2707dcb6c6e86b601"
+  },
+  "dryRun": {
+    "mode": "EXECUTE",
+    "providerCallAuthorizedBy": "IMPLEMENT_S2_05",
+    "endpoint": "https://api.openai.com/v1/responses",
+    "keyPresent": true,
+    "scheduledRuns": 36,
+    "maximumProviderRequestsIncludingRetries": 36,
+    "projectedMaximumCostUsd": 0.918,
+    "budgetUsd": 1,
+    "promptCandidateVersion": "report-ai-v2-sprint2.4-candidate.1",
+    "caseIds": [
+      "S2EVAL-002",
+      "S2EVAL-007",
+      "S2EVAL-018",
+      "S2EVAL-022",
+      "S2EVAL-026",
+      "S2P-001-HAR-DIRECT-BLOG"
+    ],
+    "models": [
+      "gpt-5.6-sol",
+      "gpt-5.6-terra",
+      "gpt-5.6-luna"
+    ],
+    "runtimeAuthority": false,
+    "outputPath": "documents/report-admin/resolve-report-ai-v2/09-sprints/evidence/2026-07-30T15-39-00-343+07-00/raw/provider-benchmark-results.json"
+  },
+  "actualProviderRequests": 36,
+  "summary": {
+    "benchmarkVersion": "1.0.0-rc.1",
+    "lifecycle": "PROPOSED",
+    "runtimeAuthority": false,
+    "providerCalled": true,
+    "qualityDenominator": 0,
+    "qualityStatus": "NOT_EVALUATED_INSUFFICIENT_GROUND_TRUTH",
+    "eligibleByHardSafety": [],
+    "modelSelectionStatus": "NO_MODEL_SELECTED_INSUFFICIENT_GROUND_TRUTH",
+    "selectedModel": null,
+    "models": [
+      {
+        "model": "gpt-5.6-sol",
+        "role": "CAPABILITY_REFERENCE",
+        "scheduledRuns": 12,
+        "attemptedCalls": 12,
+        "successfulCalls": 0,
+        "contractValidCalls": 0,
+        "referenceValidCalls": 0,
+        "hardSafetyEvaluations": 0,
+        "hardSafetyPassed": 0,
+        "hardSafetyPercent": null,
+        "stableCasePairs": 0,
+        "comparableCasePairs": 0,
+        "stabilityPercent": null,
+        "latencyMs": {
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "max": null
+        },
+        "usage": {
+          "inputTokens": 0,
+          "cachedInputTokens": 0,
+          "cacheWriteTokens": 0,
+          "outputTokens": 0,
+          "totalTokens": 0
+        },
+        "estimatedCostUsd": 0,
+        "errors": [
+          {
+            "caseId": "S2EVAL-002",
+            "repeat": 1,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-002",
+            "repeat": 2,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-007",
+            "repeat": 1,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-007",
+            "repeat": 2,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-018",
+            "repeat": 1,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-018",
+            "repeat": 2,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-022",
+            "repeat": 1,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-022",
+            "repeat": 2,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-026",
+            "repeat": 1,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-026",
+            "repeat": 2,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2P-001-HAR-DIRECT-BLOG",
+            "repeat": 1,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2P-001-HAR-DIRECT-BLOG",
+            "repeat": 2,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          }
+        ],
+        "semanticObservations": []
+      },
+      {
+        "model": "gpt-5.6-terra",
+        "role": "BALANCED",
+        "scheduledRuns": 12,
+        "attemptedCalls": 12,
+        "successfulCalls": 0,
+        "contractValidCalls": 0,
+        "referenceValidCalls": 0,
+        "hardSafetyEvaluations": 0,
+        "hardSafetyPassed": 0,
+        "hardSafetyPercent": null,
+        "stableCasePairs": 0,
+        "comparableCasePairs": 0,
+        "stabilityPercent": null,
+        "latencyMs": {
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "max": null
+        },
+        "usage": {
+          "inputTokens": 0,
+          "cachedInputTokens": 0,
+          "cacheWriteTokens": 0,
+          "outputTokens": 0,
+          "totalTokens": 0
+        },
+        "estimatedCostUsd": 0,
+        "errors": [
+          {
+            "caseId": "S2EVAL-002",
+            "repeat": 1,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-002",
+            "repeat": 2,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-007",
+            "repeat": 1,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-007",
+            "repeat": 2,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-018",
+            "repeat": 1,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-018",
+            "repeat": 2,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-022",
+            "repeat": 1,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-022",
+            "repeat": 2,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-026",
+            "repeat": 1,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-026",
+            "repeat": 2,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2P-001-HAR-DIRECT-BLOG",
+            "repeat": 1,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2P-001-HAR-DIRECT-BLOG",
+            "repeat": 2,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          }
+        ],
+        "semanticObservations": []
+      },
+      {
+        "model": "gpt-5.6-luna",
+        "role": "HIGH_VOLUME",
+        "scheduledRuns": 12,
+        "attemptedCalls": 12,
+        "successfulCalls": 0,
+        "contractValidCalls": 0,
+        "referenceValidCalls": 0,
+        "hardSafetyEvaluations": 0,
+        "hardSafetyPassed": 0,
+        "hardSafetyPercent": null,
+        "stableCasePairs": 0,
+        "comparableCasePairs": 0,
+        "stabilityPercent": null,
+        "latencyMs": {
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "max": null
+        },
+        "usage": {
+          "inputTokens": 0,
+          "cachedInputTokens": 0,
+          "cacheWriteTokens": 0,
+          "outputTokens": 0,
+          "totalTokens": 0
+        },
+        "estimatedCostUsd": 0,
+        "errors": [
+          {
+            "caseId": "S2EVAL-002",
+            "repeat": 1,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-002",
+            "repeat": 2,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-007",
+            "repeat": 1,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-007",
+            "repeat": 2,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-018",
+            "repeat": 1,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-018",
+            "repeat": 2,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-022",
+            "repeat": 1,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-022",
+            "repeat": 2,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-026",
+            "repeat": 1,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2EVAL-026",
+            "repeat": 2,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2P-001-HAR-DIRECT-BLOG",
+            "repeat": 1,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          },
+          {
+            "caseId": "S2P-001-HAR-DIRECT-BLOG",
+            "repeat": 2,
+            "error": {
+              "category": "MODEL_OR_REQUEST",
+              "code": "invalid_json_schema"
+            }
+          }
+        ],
+        "semanticObservations": []
+      }
+    ],
+    "totals": {
+      "scheduledRuns": 36,
+      "attemptedCalls": 36,
+      "successfulCalls": 0,
+      "estimatedCostUsd": 0
+    }
+  },
+  "runs": [
+    {
+      "model": "gpt-5.6-sol",
+      "caseId": "S2EVAL-002",
+      "repeat": 1,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 1711,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-sol",
+      "caseId": "S2EVAL-002",
+      "repeat": 2,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 656,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-sol",
+      "caseId": "S2EVAL-007",
+      "repeat": 1,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 526,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-sol",
+      "caseId": "S2EVAL-007",
+      "repeat": 2,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 342,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-sol",
+      "caseId": "S2EVAL-018",
+      "repeat": 1,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 391,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-sol",
+      "caseId": "S2EVAL-018",
+      "repeat": 2,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 414,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-sol",
+      "caseId": "S2EVAL-022",
+      "repeat": 1,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 319,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-sol",
+      "caseId": "S2EVAL-022",
+      "repeat": 2,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 318,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-sol",
+      "caseId": "S2EVAL-026",
+      "repeat": 1,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 1013,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-sol",
+      "caseId": "S2EVAL-026",
+      "repeat": 2,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 355,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-sol",
+      "caseId": "S2P-001-HAR-DIRECT-BLOG",
+      "repeat": 1,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 251,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-sol",
+      "caseId": "S2P-001-HAR-DIRECT-BLOG",
+      "repeat": 2,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 291,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "caseId": "S2EVAL-002",
+      "repeat": 1,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 251,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "caseId": "S2EVAL-002",
+      "repeat": 2,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 308,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "caseId": "S2EVAL-007",
+      "repeat": 1,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 241,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "caseId": "S2EVAL-007",
+      "repeat": 2,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 390,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "caseId": "S2EVAL-018",
+      "repeat": 1,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 275,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "caseId": "S2EVAL-018",
+      "repeat": 2,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 315,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "caseId": "S2EVAL-022",
+      "repeat": 1,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 261,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "caseId": "S2EVAL-022",
+      "repeat": 2,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 434,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "caseId": "S2EVAL-026",
+      "repeat": 1,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 551,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "caseId": "S2EVAL-026",
+      "repeat": 2,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 287,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "caseId": "S2P-001-HAR-DIRECT-BLOG",
+      "repeat": 1,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 249,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-terra",
+      "caseId": "S2P-001-HAR-DIRECT-BLOG",
+      "repeat": 2,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 393,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "caseId": "S2EVAL-002",
+      "repeat": 1,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 238,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "caseId": "S2EVAL-002",
+      "repeat": 2,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 569,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "caseId": "S2EVAL-007",
+      "repeat": 1,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 280,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "caseId": "S2EVAL-007",
+      "repeat": 2,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 303,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "caseId": "S2EVAL-018",
+      "repeat": 1,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 266,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "caseId": "S2EVAL-018",
+      "repeat": 2,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 291,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "caseId": "S2EVAL-022",
+      "repeat": 1,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 285,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "caseId": "S2EVAL-022",
+      "repeat": 2,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 323,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "caseId": "S2EVAL-026",
+      "repeat": 1,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 369,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "caseId": "S2EVAL-026",
+      "repeat": 2,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 531,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "caseId": "S2P-001-HAR-DIRECT-BLOG",
+      "repeat": 1,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 256,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    },
+    {
+      "model": "gpt-5.6-luna",
+      "caseId": "S2P-001-HAR-DIRECT-BLOG",
+      "repeat": 2,
+      "providerCallAttempted": true,
+      "providerRequestAttempts": 1,
+      "httpStatus": 400,
+      "latencyMs": 329,
+      "usage": {
+        "inputTokens": 0,
+        "cachedInputTokens": 0,
+        "cacheWriteTokens": 0,
+        "outputTokens": 0,
+        "totalTokens": 0
+      },
+      "estimatedCostUsd": 0,
+      "status": "PROVIDER_ERROR",
+      "error": {
+        "category": "MODEL_OR_REQUEST",
+        "code": "invalid_json_schema"
+      }
+    }
+  ]
+}

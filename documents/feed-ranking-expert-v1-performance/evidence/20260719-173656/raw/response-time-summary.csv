@@ -1,0 +1,5 @@
+layer,metric,warmup,runs,min_ms,avg_ms,p50_ms,p75_ms,p95_ms,max_ms,error_rate_percent,result
+backend_cold,rebuild_HOUR_24,0,1,58202.00,58202.00,58202.00,58202.00,58202.00,58202.00,0,FAIL
+backend_warm,api_blogs_feed_size20,2,50,1549.21,1772.52,1674.64,1766.84,2684.11,3067.51,0,FAIL
+backend_mixed_warm,api_feed_size20,2,10,1960.06,2126.27,2063.79,2152.47,2486.46,2486.46,0,FAIL
+next_ssr_warm,authenticated_home,2,10,2914.93,3097.63,3028.32,3131.04,3689.78,3689.78,0,FAIL

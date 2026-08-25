@@ -1,0 +1,10 @@
+requirement	test_or_evidence	result
+DOD-19	E2E-S1-10	PASS
+SAF-012	terminal-report-guard-result.json	PASS
+FE-DISABLED	askAiDisabled-true	PASS
+NO-UI-REQUEST	uiAiRequestCount-0	PASS
+BE-DEFENSE-IN-DEPTH	bypass-HTTP-409	PASS
+NO-RESOLUTION	resolution-0-to-0	PASS
+NO-TARGET-MUTATION	target-snapshot	PASS
+A0-NO-AUTO-JOB	job-count-0	PASS
+CLEANUP	cleanup-verification.json	PASS-0-0

@@ -1,0 +1,53 @@
+{
+  "ai_model": {
+    "provider": "openai",
+    "text_model": "gpt-4o-mini",
+    "vision_model": "gpt-4o-mini"
+  },
+  "clip": {
+    "_note": "CLIP is kept for reference but is no longer used. AI model handles cafe detection instead.",
+    "model_name": "openai/clip-vit-base-patch32",
+    "not_cafe_label": "not a coffee shop (bar, office workspace with computers, restaurant, classroom, gym), unrelated image",
+    "labels": [
+      "coffee shop space, seating area with drinks, tables in a coffee shop with drinks (not just empty tables, not like a restaurant or bar without coffee-related items visible or office space without any cafe-related items visible)",
+      "coffee shop menu, menu board with drinks (not just a generic menu board, not like a restaurant or bar without coffee-related items visible), beverage list (not just a generic menu board, not like a restaurant or bar without coffee-related items visible)",
+      "coffee shop logo (coffee shop brand logo), brand sign (coffee shop brand sign), coffee shop branding (logo or sign with coffee shop brand name or logo visible)",
+      "coffee shop staff (employees, not just a person image), barista (person making coffee), person working (person behind the counter, not just a generic person image, not like a restaurant or bar without coffee-related items visible)",
+      "not a coffee shop (bar, office workspace with computers, restaurant, classroom, gym), unrelated image"
+    ],
+    "high_not_cafe_confidence": 80
+  },
+  "image_classifier": {
+    "max_images": 3,
+    "tags": {
+      "photo cafe": "ONLY if the cafe is specifically designed for photography: staged photo corners, dedicated neon signs for photos, clearly staged decor rooms/areas. DO NOT apply for pretty photos, cinematic photos, or vintage-filter shots.",
+      "pet cafe": "ONLY if animals (cat, dog, rabbit, bird, etc.) are clearly visible. At least one animal must be clearly in frame.",
+      "study cafe": "ONLY if laptops, books, notebooks, or multiple people working/studying are clearly visible in a large space with power outlets. DO NOT apply if only empty tables/chairs are shown.",
+      "vintage cafe": "ONLY if classical/retro interior is clearly visible: retro items, old wood, vintage lamps, or a clearly nostalgic design style.",
+      "garden cafe": "ONLY if there is abundant greenery, a garden, or an outdoor space where plants/flowers are the main focus — not just a few small potted plants.",
+      "anime cafe": "ONLY if anime posters, figures, cosplay, or game/manga themes are clearly visible in the cafe decor.",
+      "model cafe": "ONLY if miniature models (tanks, robots, ships, etc.) are displayed in the cafe.",
+      "acoustic cafe": "ONLY if a stage, musical instruments, microphones, or signs of live music are visible.",
+      "brunch cafe": "ONLY if food, pastries, a bakery display, or a breakfast/lunch service space is clearly visible.",
+      "takeaway": "ONLY if the cafe has no seating or the space is mainly an order counter / takeaway window.",
+      "vietnam traditional cafe": "ONLY if low plastic stools, sidewalk seating, phin drippers, or traditional Vietnamese sidewalk-cafe style is visible.",
+      "cafe space": "Use when the cafe space is clearly visible but does not fit any tag above. Includes modern, trendy, or artistic cafe corners.",
+      "cafe's drinks": "ONLY if drinks (coffee, tea, juice, smoothie, bubble tea, etc.) are clearly served or presented in the cafe. DO NOT apply for blurry, distant, or unclear cups. ONLY when a drink is the main subject shot up close.",
+      "cafe's menu": "ONLY if the cafe menu is clearly visible: menu board, printed menu, digital menu screen, or price board. Must actually be the cafe's menu, not inferred from drinks or decor. ONLY when the menu is the main subject shot up close. DO NOT apply for blurry, distant, or unclear menus."
+    },
+    "prompt_rules": [
+      "Pick 1 to 3 tags based on CLEAR VISUAL EVIDENCE in the images.",
+      "Only pick a tag when confidence >= 60. Prefer fewer correct tags over many uncertain ones.",
+      "DO NOT guess based on general vibe or mood.",
+      "If pets are clearly visible -> must include 'pet cafe'.",
+      "Pretty / cinematic / vintage-filtered photos are NOT 'photo cafe' unless the cafe has staged photo setups.",
+      "If unsure about a specific tag -> use 'cafe space' instead of guessing.",
+      "Every tag must be supported by at least one visible detail in the images."
+    ],
+    "fallback_tags": []
+  },
+  "decision": {
+    "caption_deny_score": 70,
+    "image_approve_score": 50
+  }
+}

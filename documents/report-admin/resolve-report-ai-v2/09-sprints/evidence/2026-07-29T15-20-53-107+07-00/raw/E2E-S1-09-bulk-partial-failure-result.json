@@ -1,0 +1,114 @@
+{
+  "itemResponses": [
+    {
+      "reportId": "0ed06fd3-5be2-46eb-a5ea-1396749a11f2",
+      "status": 409
+    },
+    {
+      "reportId": "79fd0a7f-4a2b-45e2-b33f-31f163b88b80",
+      "status": 200
+    }
+  ],
+  "successfulReport": {
+    "id": "79fd0a7f-4a2b-45e2-b33f-31f163b88b80",
+    "resolutionCountBefore": 0,
+    "resolutionCountAfter": 1,
+    "reportStatusBefore": "OPEN",
+    "reportStatusAfter": "OPEN",
+    "reportStateBefore": {
+      "id": "79fd0a7f-4a2b-45e2-b33f-31f163b88b80",
+      "reporterUserId": "a7150bf3-3312-422c-b028-08f05362eb83",
+      "targetType": "BLOG",
+      "targetId": "5af9ac19-c59e-4720-ba7b-fe6c6f2a7b29",
+      "blogId": "5af9ac19-c59e-4720-ba7b-fe6c6f2a7b29",
+      "commentId": null,
+      "reportedUserId": null,
+      "cafePageId": null,
+      "reasonId": "d5ddb2c9-9200-461a-9a11-92b8fa0215a7",
+      "reasonCode": "RESTRICTED_GOODS",
+      "reasonLabel": "Bán hoặc quảng bá mặt hàng bị hạn chế",
+      "reasonSeverity": 4,
+      "description": "E2E Report Admin AI E2E-S1-09 success 1785314942085 7ceeb1a0-2359-48e6-97a9-7c1217150228",
+      "status": "OPEN",
+      "createdAt": "2026-07-29T15:49:02.134485",
+      "resolvedAt": null
+    },
+    "reportStateAfter": {
+      "id": "79fd0a7f-4a2b-45e2-b33f-31f163b88b80",
+      "reporterUserId": "a7150bf3-3312-422c-b028-08f05362eb83",
+      "targetType": "BLOG",
+      "targetId": "5af9ac19-c59e-4720-ba7b-fe6c6f2a7b29",
+      "blogId": "5af9ac19-c59e-4720-ba7b-fe6c6f2a7b29",
+      "commentId": null,
+      "reportedUserId": null,
+      "cafePageId": null,
+      "reasonId": "d5ddb2c9-9200-461a-9a11-92b8fa0215a7",
+      "reasonCode": "RESTRICTED_GOODS",
+      "reasonLabel": "Bán hoặc quảng bá mặt hàng bị hạn chế",
+      "reasonSeverity": 4,
+      "description": "E2E Report Admin AI E2E-S1-09 success 1785314942085 7ceeb1a0-2359-48e6-97a9-7c1217150228",
+      "status": "OPEN",
+      "createdAt": "2026-07-29T15:49:02.134485",
+      "resolvedAt": null
+    },
+    "reportMutation": false,
+    "targetMutation": false,
+    "autoApplyJobCount": 0
+  },
+  "failedReport": {
+    "id": "0ed06fd3-5be2-46eb-a5ea-1396749a11f2",
+    "injectedStatus": "RESOLVED",
+    "resolutionCountBefore": 0,
+    "resolutionCountAfter": 0,
+    "reportStatusAfter": "RESOLVED",
+    "reportStateBefore": {
+      "id": "0ed06fd3-5be2-46eb-a5ea-1396749a11f2",
+      "reporterUserId": "a7150bf3-3312-422c-b028-08f05362eb83",
+      "targetType": "BLOG",
+      "targetId": "59e06be3-b22c-42c6-b591-b58804c3be94",
+      "blogId": "59e06be3-b22c-42c6-b591-b58804c3be94",
+      "commentId": null,
+      "reportedUserId": null,
+      "cafePageId": null,
+      "reasonId": "d5ddb2c9-9200-461a-9a11-92b8fa0215a7",
+      "reasonCode": "RESTRICTED_GOODS",
+      "reasonLabel": "Bán hoặc quảng bá mặt hàng bị hạn chế",
+      "reasonSeverity": 4,
+      "description": "E2E Report Admin AI E2E-S1-09 terminal-failure 1785314943410 11214dc3-037d-4dbe-a583-b6f9b8bccc75",
+      "status": "RESOLVED",
+      "createdAt": "2026-07-29T15:49:03.435858",
+      "resolvedAt": "2026-07-29T15:49:04.492373"
+    },
+    "reportStateAfter": {
+      "id": "0ed06fd3-5be2-46eb-a5ea-1396749a11f2",
+      "reporterUserId": "a7150bf3-3312-422c-b028-08f05362eb83",
+      "targetType": "BLOG",
+      "targetId": "59e06be3-b22c-42c6-b591-b58804c3be94",
+      "blogId": "59e06be3-b22c-42c6-b591-b58804c3be94",
+      "commentId": null,
+      "reportedUserId": null,
+      "cafePageId": null,
+      "reasonId": "d5ddb2c9-9200-461a-9a11-92b8fa0215a7",
+      "reasonCode": "RESTRICTED_GOODS",
+      "reasonLabel": "Bán hoặc quảng bá mặt hàng bị hạn chế",
+      "reasonSeverity": 4,
+      "description": "E2E Report Admin AI E2E-S1-09 terminal-failure 1785314943410 11214dc3-037d-4dbe-a583-b6f9b8bccc75",
+      "status": "RESOLVED",
+      "createdAt": "2026-07-29T15:49:03.435858",
+      "resolvedAt": "2026-07-29T15:49:04.492373"
+    },
+    "reportMutation": false,
+    "targetMutation": false,
+    "autoApplyJobCount": 0
+  },
+  "ui": {
+    "completed": 1,
+    "recommended": 0,
+    "manualReview": 1,
+    "failed": 1,
+    "remaining": 0
+  },
+  "screenshots": [
+    "screenshots/E2E-S1-09-bulk-partial-failure.png"
+  ]
+}

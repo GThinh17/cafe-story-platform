@@ -1,0 +1,9 @@
+criterion	method	expected	actual	status
+DD tiếng Việt	Strict UTF-8 decode và scan U+FFFD	Không có replacement character	13/13 file decode; replacement=0	PASS
+Luồng BE-n8n-BE-FE	Đối chiếu heading và marker	Đủ bốn layer	6/6 marker	PASS
+JSON hợp lệ	ConvertFrom-Json status và summary	Parse thành công	2/2 file	PASS
+Claim cũ đã loại	Regex stale phrases	Không có stale runtime claim	0 hit	PASS
+Không lộ secret	Regex secret value patterns	Không có secret value	0 hit	PASS
+Source boundary	git diff ngoài documents	Không có source change	0 tracked source change	PASS
+Source fingerprint	Get-FileHash SHA256	12/12 hash khớp	12/12	PASS
+Approval boundary	Kiểm tra approvedChatGates và next action	E/F approved; DONE chưa đóng	E=true; F=true; next=IMPLEMENT_G0_12_DONE_AUDIT	PASS

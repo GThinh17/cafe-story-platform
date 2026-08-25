@@ -1,0 +1,29 @@
+from google import genai
+from google.genai import types
+from PIL import Image
+
+from app.config.settings import GOOGLE_API_KEY
+from app.infra.base import AIModel
+
+
+class GeminiModel(AIModel):
+    def __init__(self, model_name: str) -> None:
+        self.model_name = model_name
+        if not GOOGLE_API_KEY:
+            raise RuntimeError("GOOGLE_API_KEY is required for Gemini.")
+        self._client = genai.Client(api_key=GOOGLE_API_KEY)
+
+    def _generate_text_impl(self, prompt: str) -> str:
+        response = self._client.models.generate_content(
+            model=self.model_name,
+            contents=prompt,
+            config=types.GenerateContentConfig(response_mime_type="application/json"),
+        )
+        return response.text or ""
+
+    def _generate_with_images_impl(self, prompt: str, images: list[Image.Image]) -> str:
+        response = self._client.models.generate_content(
+            model=self.model_name,
+            contents=[prompt, *images],
+        )
+        return response.text or ""

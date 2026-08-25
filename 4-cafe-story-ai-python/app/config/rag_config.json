@@ -1,0 +1,24 @@
+{
+  "models": {
+    "embedding": "text-embedding-3-small",
+    "embedding_dimensions": 1536,
+    "router": "gpt-4o-mini",
+    "generator": "gpt-4o-mini"
+  },
+  "chunking": {
+    "min_tokens": 100,
+    "max_tokens": 800,
+    "paragraph_split_threshold_tokens": 500,
+    "doc_section_split_threshold_tokens": 600
+  },
+  "retrieval": {
+    "top_k": 5,
+    "candidate_k": 50,
+    "rrf_k": 60
+  },
+  "ingest": {
+    "snapshot_page_limit": 200,
+    "embed_batch_size": 100,
+    "source_types": ["cafe_page", "blog", "reviewer"]
+  }
+}

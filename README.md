@@ -1,7 +1,5 @@
 # cafe-story-platform
 A multi-platform social media application for coffee lovers, supporting web and mobile experiences.
-# cafe-story-platform
-A multi-platform social media application for coffee lovers, supporting web and mobile experiences.
 
 # To run java spring backend 
 - first you have to clone project, and then
@@ -29,6 +27,6 @@ A multi-platform social media application for coffee lovers, supporting web and 
 
     for example: javaSpring/feature/<service name>
 
-    for example in fe: nextJs/feature or Page or Screen (react natice)/<name of the context>
+    for example in fe: nextJs/feature or Page or Screen (react native)/<name of the context>
 
  

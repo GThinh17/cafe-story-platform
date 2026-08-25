@@ -1,0 +1,144 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  ArrowLeftIcon,
+  BarChart3Icon,
+  BadgeIcon,
+  CoffeeIcon,
+  LayoutDashboardIcon,
+  TrophyIcon,
+  WalletIcon,
+} from "lucide-react";
+import { BrandIcon } from "@/components/ui/brand-icon";
+import { ReviewerBadgeChip } from "@/components/ui/reviewer-badge-chip";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { getReviewerByUserId } from "@/lib/api/reviewers";
+import { useI18n } from "@/components/providers/locale-provider";
+
+const sidebarLinks = [
+  {
+    href: "/reviewer-dashboard",
+    icon: LayoutDashboardIcon,
+    labelKey: "reviewer.nav.overview" as const,
+  },
+  {
+    href: "/reviewer-dashboard/performance",
+    icon: BarChart3Icon,
+    labelKey: "reviewer.nav.performance" as const,
+  },
+  {
+    href: "/reviewer-dashboard/ranking",
+    icon: TrophyIcon,
+    labelKey: "reviewer.nav.ranking" as const,
+  },
+  {
+    href: "/reviewer-dashboard/badges",
+    icon: BadgeIcon,
+    labelKey: "reviewer.nav.badges" as const,
+  },
+  {
+    href: "/reviewer-dashboard/earnings",
+    icon: WalletIcon,
+    labelKey: "reviewer.nav.earnings" as const,
+  },
+];
+
+export function ReviewerDashboardSidebar() {
+  const { t } = useI18n();
+  const pathname = usePathname();
+  const { user } = useCurrentUser();
+  const [badge, setBadge] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.userId) return;
+    void getReviewerByUserId(user.userId)
+      .then((r) => setBadge(r.badge))
+      .catch(() => null);
+  }, [user?.userId]);
+
+  const avatar = user?.userAvatar ?? null;
+  const name = user?.userFullName ?? user?.userName ?? null;
+
+  return (
+    <aside className="border-border bg-surface px-4 py-5 lg:fixed lg:inset-y-0 lg:left-0 lg:w-72 lg:border-r">
+      <div className="flex h-full flex-col gap-6">
+        <div className="flex items-center gap-3">
+          <BrandIcon className="size-11 shadow-sm" />
+          <div className="min-w-0">
+            <p className="text-sm font-black text-espresso">CafeStory</p>
+            <p className="truncate text-xs font-semibold text-muted">
+              {t("reviewer.workspace")}
+            </p>
+          </div>
+        </div>
+
+        <Link
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-border bg-background px-4 text-sm font-black text-foreground no-underline transition hover:border-primary hover:text-primary"
+          href="/"
+        >
+          <ArrowLeftIcon className="size-4" />
+          Home
+        </Link>
+
+        <div className="rounded-md border border-line-soft bg-background p-4">
+          <div className="flex items-center gap-3">
+            {avatar ? (
+              <img
+                alt={name ?? t("reviewer.avatarAlt")}
+                className="size-12 shrink-0 rounded-full border border-border object-cover"
+                decoding="async"
+                src={avatar}
+              />
+            ) : (
+              <div className="size-12 shrink-0 rounded-full border border-border bg-surface-muted" />
+            )}
+            <div className="min-w-0">
+              <p className="truncate text-sm font-black text-espresso">
+                {name ?? "—"}
+              </p>
+              <div className="mt-1">
+                <ReviewerBadgeChip badge={badge} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <nav className="flex flex-col gap-1.5">
+          {sidebarLinks.map(({ href, icon: Icon, labelKey }) => {
+            const isActive =
+              href === "/reviewer-dashboard"
+                ? pathname === href
+                : pathname === href || pathname.startsWith(`${href}/`);
+
+            return (
+              <Link
+                aria-current={isActive ? "page" : undefined}
+                className={`flex min-h-11 items-center gap-3 rounded-md px-3 text-left text-sm font-semibold no-underline transition ${
+                  isActive
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted hover:bg-surface-muted hover:text-primary"
+                }`}
+                href={href}
+                key={href}
+              >
+                <Icon className="size-4" />
+                {t(labelKey)}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="mt-auto rounded-md bg-espresso px-4 py-4 text-white">
+          <CoffeeIcon className="size-5" />
+          <p className="mt-3 text-sm font-black">{t("reviewer.keepReviewing")}</p>
+          <p className="mt-1 text-xs leading-5 text-white/72">
+            {t("reviewer.keepReviewingHint")}
+          </p>
+        </div>
+      </div>
+    </aside>
+  );
+}

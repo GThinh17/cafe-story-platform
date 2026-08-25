@@ -1,0 +1,6 @@
+class,line_percent,branch_percent,line_gate,branch_gate,status
+BlogFeedRankingServiceImpl,86.38,57.19,100,85,FAIL
+BlogRecommendationScoreBatchWriterImpl,100.00,100.00,100,85,PASS
+FeedRebuildExecutorConfig,100.00,100.00,100,85,PASS
+FeedScoreCalculationServiceImpl,100.00,94.34,100,85,PASS
+SponsoredCafeCandidateServiceImpl,99.32,89.74,100,85,FAIL_LINE

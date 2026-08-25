@@ -1,0 +1,42 @@
+{
+  "workflowId": "cafestory-admin-report-ai-resolution-v2",
+  "publishedVersionId": "4e221ccf-12a3-4583-8336-c4fda22b5b70",
+  "executions": [
+    {
+      "id": 215,
+      "status": "success",
+      "error": null
+    },
+    {
+      "id": 216,
+      "status": "error",
+      "error": "Admin Report AI nonce replay detected [line 58]"
+    },
+    {
+      "id": 217,
+      "status": "error",
+      "error": "Admin Report AI timestamp is outside the allowed window"
+    },
+    {
+      "id": 218,
+      "status": "error",
+      "error": "Admin Report AI timestamp is outside the allowed window"
+    },
+    {
+      "id": 219,
+      "status": "error",
+      "error": "Admin Report AI signature is invalid"
+    },
+    {
+      "id": 220,
+      "status": "error",
+      "error": "Admin Report AI body hash is invalid"
+    },
+    {
+      "id": 221,
+      "status": "error",
+      "error": "Admin Report AI signature headers are missing"
+    }
+  ],
+  "secretValuesIncluded": false
+}

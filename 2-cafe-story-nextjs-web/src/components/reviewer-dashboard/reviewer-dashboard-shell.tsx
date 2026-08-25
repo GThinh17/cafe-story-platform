@@ -1,0 +1,20 @@
+"use client";
+
+import type { ReactNode } from "react";
+import { ReviewerDashboardSidebar } from "@/components/reviewer-dashboard/reviewer-dashboard-sidebar";
+
+type ReviewerDashboardShellProps = {
+  children: ReactNode;
+};
+
+export function ReviewerDashboardShell({ children }: ReviewerDashboardShellProps) {
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <ReviewerDashboardSidebar />
+
+      <div className="min-h-screen lg:pl-72">
+        <main className="px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+      </div>
+    </div>
+  );
+}

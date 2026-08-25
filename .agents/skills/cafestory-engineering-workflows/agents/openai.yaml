@@ -1,0 +1,6 @@
+interface:
+  display_name: "CafeStory Engineering Workflows"
+  short_description: "Clean architecture workflows for CafeStory"
+  default_prompt: "Use $cafestory-engineering-workflows to implement a CafeStory feature with project conventions and validation."
+policy:
+  allow_implicit_invocation: true

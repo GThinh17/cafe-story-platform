@@ -1,0 +1,45 @@
+{
+  "statusCode": 200,
+  "status": "Success",
+  "message": "Request processed successfully",
+  "data": {
+    "id": "5b8935c7-8e72-4f1a-aa23-d17a8040e464",
+    "contentReportId": "0f7b0983-049e-4e0c-8a26-34b14ad38f38",
+    "targetType": "USER",
+    "targetId": "54fb02ff-8762-4e0a-ab38-e05369d3dbda",
+    "reportDecision": "RESOLVE",
+    "targetAction": "SUSPEND_USER",
+    "confidenceScore": 85,
+    "riskScore": 7,
+    "labels": [
+      "SCAM",
+      "FRAUD",
+      "SPAM"
+    ],
+    "ruleCode": "USER_SCAM_FRAUD",
+    "explanation": "The report indicates a severe issue concerning scam, fraud, or spam associated with this user. Given the high severity rating and the presence of a prior report related to the same user, it is clear that this individual poses a risk to the community.",
+    "modelName": "gpt-4o-mini-2024-07-18",
+    "rawResponse": {
+      "openaiResponseId": "resp_01a6db863fa0f318006a5f9a8ea0d88198836c43c1011682d9",
+      "reportId": "0f7b0983-049e-4e0c-8a26-34b14ad38f38",
+      "targetType": "USER",
+      "targetId": "54fb02ff-8762-4e0a-ab38-e05369d3dbda",
+      "sourceDecision": {
+        "reportDecision": "RESOLVE",
+        "targetAction": "SUSPEND_USER",
+        "confidenceScore": 0.85,
+        "riskScore": 7,
+        "labels": [
+          "SCAM",
+          "FRAUD",
+          "SPAM"
+        ],
+        "ruleCode": "USER_SCAM_FRAUD",
+        "explanation": "The report indicates a severe issue concerning scam, fraud, or spam associated with this user. Given the high severity rating and the presence of a prior report related to the same user, it is clear that this individual poses a risk to the community."
+      }
+    },
+    "createdAt": "2026-07-21T23:13:04.5904027",
+    "autoApplyJob": null,
+    "autoApplyWarning": null
+  }
+}

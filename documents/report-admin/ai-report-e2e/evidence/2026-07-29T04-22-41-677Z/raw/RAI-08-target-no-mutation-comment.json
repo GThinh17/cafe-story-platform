@@ -1,0 +1,23 @@
+{
+  "targetBefore": {
+    "targetType": "COMMENT",
+    "targetId": "c158cd15-5584-4852-9095-32e9d2012b0d",
+    "state": {
+      "blogId": "4f04a3f0-e3c5-492b-a65a-b387f1c1a6ec",
+      "content": "G0-12E synthetic published comment evidence fixture",
+      "status": "PUBLISHED",
+      "userId": "b99f66c0-06bf-4769-b819-ed918a4fa0d0"
+    }
+  },
+  "targetAfter": {
+    "targetType": "COMMENT",
+    "targetId": "c158cd15-5584-4852-9095-32e9d2012b0d",
+    "state": {
+      "blogId": "4f04a3f0-e3c5-492b-a65a-b387f1c1a6ec",
+      "content": "G0-12E synthetic published comment evidence fixture",
+      "status": "PUBLISHED",
+      "userId": "b99f66c0-06bf-4769-b819-ed918a4fa0d0"
+    }
+  },
+  "noMutation": true
+}

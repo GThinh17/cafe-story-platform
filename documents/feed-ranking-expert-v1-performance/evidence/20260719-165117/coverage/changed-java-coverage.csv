@@ -1,0 +1,6 @@
+file,line_covered,line_total,line_percent,branch_covered,branch_total,branch_percent,gate
+FeedScoreCalculationServiceImpl.java,64,64,100.00,50,53,94.34,PASS
+BlogFeedRankingServiceImpl.java,622,707,87.98,146,260,56.15,FAIL
+SponsoredCafeCandidateServiceImpl.java,147,148,99.32,70,78,89.74,FAIL
+BlogRecommendationScore.java,24,24,100.00,17,18,94.44,PASS
+Repository interfaces and FeedScoreCalculationService.java,N/A,N/A,N/A,N/A,N/A,N/A,NO_EXECUTABLE_LINES

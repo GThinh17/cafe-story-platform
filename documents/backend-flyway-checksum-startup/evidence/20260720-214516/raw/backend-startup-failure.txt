@@ -1,0 +1,31 @@
+Command:
+mvn spring-boot:run
+
+Working directory:
+E:\LuanVanToTNghiep\cafe-story-platform\1-cafe-story-backend-javaspring
+
+Result:
+Spring Boot startup failed during Flyway validation.
+Maven itself exited with BUILD SUCCESS because the spring-boot:run goal completed after the application failed.
+
+Key log:
+Validate failed: Migrations have failed validation
+Migration checksum mismatch for migration version 20260719.01
+-> Applied to database : 698173291
+-> Resolved locally    : 1984372332
+Either revert the changes to the migration, or run repair to update the schema history.
+
+Database host from sanitized startup log:
+jdbc:postgresql://aws-1-ap-northeast-2.pooler.supabase.com:5432/postgres?sslmode=require
+
+Related local file:
+1-cafe-story-backend-javaspring/src/main/resources/db/migration/V20260719_01__feed_expert_v1_score_components.sql
+
+Read-only schema check:
+- table `blog_recommendation_scores` contains all expected columns from the local migration:
+  `formula_version`, `relationship_score`, `interest_score`, `engagement_score`,
+  `quality_score`, `location_score`, `diversity_score`, `unseen_score`
+- index `idx_blog_recommendation_scores_formula` exists
+
+Sanitization:
+- credential values from `src/main/resources/.env` were not written to this evidence file.

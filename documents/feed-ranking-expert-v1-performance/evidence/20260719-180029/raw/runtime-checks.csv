@@ -1,0 +1,9 @@
+check,duration_ms,status,items,sql_statements,note
+rebuild_before,58202.00,200,434,,baseline trước sửa
+rebuild_after_batch,5635.75,200,434,,PostgreSQL thật
+cold_stale_get_day7,2516.87,200,20,,GET trả trước khi background rebuild hoàn tất
+cache_old_payload_first_read,2414.92,200,20,10,deserialize cũ fail rồi ghi payload mới
+cache_hit_1,337.28,200,20,1,cache JSON string
+cache_hit_2,296.55,200,20,1,cache JSON string
+cache_hit_3,316.31,200,20,1,cache JSON string
+cache_hit_4,253.08,200,20,1,cache JSON string

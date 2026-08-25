@@ -1,0 +1,11 @@
+trace_id	source	current_fact	design_route
+S2DD-T01	AdminReportAiPolicyCatalog.java:9-29	versions are proposed and candidate rule carries only ruleId/ruleVersion	S2-01 lifecycle and typed Runtime Rule Context
+S2DD-T02	AdminReportAiResolutionServiceImpl.java:353-386	request builder pins versions and builds map-based policy/evidence context	S2-01 typed request and idempotency version extension
+S2DD-T03	AdminReportAiResolutionServiceImpl.java:535-580	policy context and evidence are generic maps	S2-01 M07-compatible evidence and rule requirements
+S2DD-T04	AdminReportAiSemanticValidator.java:36-92	validator pins versions/categories/references and fail-closes	S2-02 extend existing trust boundary
+S2DD-T05	AdminReportAiSemanticValidator.java:113-182	validator checks ruleId/evidence references but not ruleVersion/burden/completeness	S2-02 per-rule semantic invariants
+S2DD-T06	cafestory-admin-report-ai-resolution-n8n-workflow.json	workflow has generic prompt, inline schema and sends full body	S2-01 safe projection and S2-04 prompt assembler
+S2DD-T07	rule-to-evidence-requirement-matrix.md:482-543	M06 explicitly says catalog proposed, generic evidence maps and missing runtime enforcement	S2-01/S2-02 normative input
+S2DD-T08	evidence-metadata-contract.schema.json	M07 defines typed evidence/rule/missing/scope records	S2-01 reuses definitions instead of inventing second evidence model
+S2DD-T09	admin-reports-page.tsx:944,1156-1267	UI already presents limitations/evidence/findings/version	S2 core keeps endpoint/UI authority stable
+S2DD-T10	ADV-001 through ADV-012	provider is not called and suite proves boundary/normalization only	S2-03 separates hard gates from provider quality

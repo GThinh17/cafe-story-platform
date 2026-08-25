@@ -1,0 +1,60 @@
+{
+  "gate": "G0-12A",
+  "status": "IMPLEMENTED_SOURCE_VERIFIED_AWAITING_APPROVAL",
+  "finalClassification": "PARTIAL",
+  "branch": "n8n/Ai-agent/fix-bug-report-admin",
+  "sourceBaselineCommit": "c4bb2a7",
+  "implementationCommit": "bcc7932",
+  "automationMode": "A0_RECOMMEND_ONLY",
+  "runtimeAuthority": false,
+  "backend": {
+    "baselineTests": {
+      "run": 12,
+      "passed": 12,
+      "failed": 0
+    },
+    "finalFocusedRegression": {
+      "run": 45,
+      "passed": 45,
+      "failed": 0,
+      "skipped": 0
+    },
+    "springContext": "PASS",
+    "newSignerCoverage": {
+      "lineCovered": 88,
+      "lineTotal": 88,
+      "linePercent": 100.0,
+      "branchCovered": 48,
+      "branchTotal": 56,
+      "branchPercent": 85.71
+    }
+  },
+  "n8nExport": {
+    "jsonParse": "PASS",
+    "nodeCount": 5,
+    "active": false,
+    "validRequest": "PASS",
+    "replayRejected": "PASS",
+    "staleTimestampRejected": "PASS",
+    "tamperedBodyRejected": "PASS",
+    "invalidSignatureRejected": "PASS",
+    "signedResponse": "PASS",
+    "composeConfig": "PASS"
+  },
+  "issues": {
+    "total": 10,
+    "fixedVerified": 4,
+    "fixedStaticVerified": 2,
+    "acceptedResidualRisk": 1,
+    "userActionRequired": 1,
+    "runtimeBlockers": 2
+  },
+  "runtime": {
+    "dockerDaemon": "UNAVAILABLE",
+    "hmacSecretConfigured": false,
+    "publishedWebhook": "NOT_RUN",
+    "providerCall": "NOT_RUN",
+    "adminUiE2E": "NOT_RUN"
+  },
+  "nextToken": "APPROVE_G0-12A"
+}

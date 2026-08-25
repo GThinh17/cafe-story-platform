@@ -1,0 +1,11 @@
+{
+  "id": "M07-FX-01",
+  "description": "BLOG text rule có direct evidence, không critical missing/conflict, cho phép RESOLVE recommendation.",
+  "base": "blog-resolve.json",
+  "operations": [],
+  "expected": {
+    "schemaValid": true,
+    "semanticValid": true,
+    "errorCodes": []
+  }
+}

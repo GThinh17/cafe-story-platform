@@ -1,0 +1,76 @@
+import { StyleSheet, View } from "react-native";
+import { Text } from "react-native";
+
+import { colors, spacing, typography } from "../../theme";
+import type { RecommendationCardResponse } from "../../types";
+import { EmptyState } from "../ui/empty-state";
+import { ListRowSkeletonList } from "../ui/skeleton";
+import { ExploreRecommendationCard } from "./explore-recommendation-card";
+import { t } from "../../features/i18n";
+
+type ExploreRecommendationListProps = {
+  emptyDescription: string;
+  emptyTitle: string;
+  error?: string | null;
+  isLoading?: boolean;
+  items: RecommendationCardResponse[];
+  onItemPress?: (item: RecommendationCardResponse) => void;
+  title: string;
+};
+
+export function ExploreRecommendationList({
+  emptyDescription,
+  emptyTitle,
+  error,
+  isLoading = false,
+  items,
+  onItemPress,
+  title,
+}: ExploreRecommendationListProps) {
+  if (isLoading) {
+    return (
+      <View style={styles.section}>
+        <Text style={styles.title}>{title}</Text>
+        <ListRowSkeletonList padded={false} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return <EmptyState description={t("Pull down to try again.")} title={error} />;
+  }
+
+  if (!items.length) {
+    return <EmptyState description={emptyDescription} title={emptyTitle} />;
+  }
+
+  return (
+    <View style={styles.section}>
+      <Text style={styles.title}>{title}</Text>
+      <View style={styles.list}>
+        {items.map((item) => (
+          <ExploreRecommendationCard
+            item={item}
+            key={`${item.targetType}-${item.targetId}`}
+            onPress={onItemPress}
+          />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  list: {
+    gap: spacing.sm,
+  },
+  section: {
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  title: {
+    color: colors.foreground,
+    fontSize: typography.body,
+    fontWeight: "900",
+  },
+});

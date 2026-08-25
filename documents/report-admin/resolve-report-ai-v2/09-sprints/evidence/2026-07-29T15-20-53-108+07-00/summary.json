@@ -1,0 +1,43 @@
+{
+  "gate": "DOD-FIX-06",
+  "status": "COMPLETED_VERIFIED_AWAITING_APPROVAL",
+  "traceability": ["DOD-19", "SAF-012", "E2E-S1-10"],
+  "productionCodeChanged": false,
+  "issues": {
+    "testBugsFixedVerified": 2,
+    "codeBugs": 0,
+    "configLimitations": 1,
+    "openInScope": 0
+  },
+  "terminalGuard": {
+    "terminalStatus": "RESOLVED",
+    "askAiDisabled": true,
+    "uiAiRequestCount": 0,
+    "backendBypassHttpStatus": 409,
+    "resolutionCountBefore": 0,
+    "resolutionCountAfter": 0,
+    "reportMutation": false,
+    "targetMutation": false,
+    "autoApplyJobsCreated": 0
+  },
+  "tests": {
+    "playwrightPassed": 1,
+    "playwrightTotal": 1,
+    "adminTypecheck": "PASS",
+    "adminBuild": "PASS",
+    "backendFullTests": 625,
+    "backendFullFailures": 0,
+    "backendFullErrors": 0,
+    "backendFullSkipped": 1
+  },
+  "coverage": {
+    "productionChangedFileGate": "NOT_APPLICABLE",
+    "frontendUnitCoverage": "TOOLING_MISSING"
+  },
+  "cleanup": {
+    "reportRows": 0,
+    "blogRows": 0
+  },
+  "productionDeployment": "NOT_AUTHORIZED",
+  "nextApproval": "APPROVE_G0-12-DONE-FIX-06"
+}

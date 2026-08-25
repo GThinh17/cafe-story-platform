@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0",
+  "gate": "G0-08",
+  "approval": "APPROVE_G0-08",
+  "status": "DONE",
+  "catalogStatus": "PROPOSED",
+  "catalogVersion": "RC-2.0.0-proposed.1",
+  "policyDependency": "PF-2.0.0-proposed.1",
+  "metrics": {
+    "registryRulesAndControls": 24,
+    "uniqueRuleIds": 24,
+    "ruleDefinitionCoverage": 24,
+    "runtimeReasons": 22,
+    "mappedRuntimeReasons": 22,
+    "policyFamilies": 10,
+    "sourceChanges": 0
+  },
+  "automationBaseline": "A0_RECOMMEND_ONLY",
+  "businessAdopted": false,
+  "productionActive": false,
+  "sourceOrDataMutation": false,
+  "nextRequiredApproval": "APPROVE_G0-09"
+}

@@ -1,0 +1,57 @@
+{
+  "first": {
+    "statusCode": 409,
+    "status": "Fail",
+    "message": "Report already exists for this user",
+    "data": null
+  },
+  "staleReports": [
+    {
+      "id": "f0f94f21-59cf-4c92-a9e9-a1679b9ee506",
+      "reporterUserId": "a7150bf3-3312-422c-b028-08f05362eb83",
+      "reporterUserName": "g012e_admin",
+      "reporterUserAvatar": null,
+      "targetType": "USER",
+      "targetId": "b99f66c0-06bf-4769-b819-ed918a4fa0d0",
+      "blogId": null,
+      "commentId": null,
+      "reportedUserId": "b99f66c0-06bf-4769-b819-ed918a4fa0d0",
+      "cafePageId": null,
+      "reasonId": "d5ddb2c9-9200-461a-9a11-92b8fa0215a7",
+      "reasonCode": "RESTRICTED_GOODS",
+      "reason": "Bán hoặc quảng bá mặt hàng bị hạn chế",
+      "reasonLabel": "Bán hoặc quảng bá mặt hàng bị hạn chế",
+      "reasonSeverity": 4,
+      "description": "E2E Report Admin AI RAI-03 USER 1785298528563",
+      "status": "OPEN",
+      "createdAt": "2026-07-29T11:15:28.597596",
+      "resolvedAt": null
+    }
+  ],
+  "second": {
+    "statusCode": 201,
+    "status": "Success",
+    "message": "Request processed successfully",
+    "data": {
+      "id": "1a906352-6763-4ea8-918a-629be5af9a40",
+      "reporterUserId": "a7150bf3-3312-422c-b028-08f05362eb83",
+      "reporterUserName": "g012e_admin",
+      "reporterUserAvatar": null,
+      "targetType": "USER",
+      "targetId": "b99f66c0-06bf-4769-b819-ed918a4fa0d0",
+      "blogId": null,
+      "commentId": null,
+      "reportedUserId": "b99f66c0-06bf-4769-b819-ed918a4fa0d0",
+      "cafePageId": null,
+      "reasonId": "d5ddb2c9-9200-461a-9a11-92b8fa0215a7",
+      "reasonCode": "RESTRICTED_GOODS",
+      "reason": "Bán hoặc quảng bá mặt hàng bị hạn chế",
+      "reasonLabel": "Bán hoặc quảng bá mặt hàng bị hạn chế",
+      "reasonSeverity": 4,
+      "description": "E2E Report Admin AI RAI-20-23 STATUS 1785298555471",
+      "status": "OPEN",
+      "createdAt": "2026-07-29T11:15:55.6262744",
+      "resolvedAt": null
+    }
+  }
+}

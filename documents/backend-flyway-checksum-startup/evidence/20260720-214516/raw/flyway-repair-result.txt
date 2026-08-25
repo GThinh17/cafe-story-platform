@@ -1,0 +1,32 @@
+Command:
+Flyway API repair, using runtime dependencies from Maven and datasource properties loaded from backend `src/main/resources/.env`.
+
+Scope:
+Only Flyway schema history metadata was repaired. No Java source files or SQL migration files were edited.
+
+Before:
+- version: 20260719.01
+- description: performance indexes
+- checksum: 698173291
+- success: true
+
+Repair:
+- repaired schema history table `public.flyway_schema_history`
+- repaired version `20260719.01`
+
+After:
+- version: 20260719.01
+- description: feed expert v1 score components
+- checksum: 1984372332
+- success: true
+
+Post-repair runtime smoke:
+- `http://localhost:8080/v3/api-docs`: HTTP 200, JSON response
+- `http://localhost:8080/swagger-ui.html`: HTTP 200, HTML response
+- `http://localhost:8080/`: HTTP 401, expected for protected/default route
+
+Post-repair regression:
+- `mvn test`: BUILD SUCCESS, 571 tests, 0 failures, 0 errors, 1 skipped
+
+Sanitization:
+- datasource URL, username, and password were not stored in this evidence file.
